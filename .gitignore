@@ -1,0 +1,15 @@
+*.pyc
+.venv
+client_secret.json
+token.json
+.vscode
+env.py
+log.txt
+bin
+lib
+calendar.json
+pyvenv.cfg
+share
+cache
+*.egg-info/
+.env

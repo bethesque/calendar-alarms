@@ -1,0 +1,60 @@
+[build-system]
+requires = [
+  "setuptools>=77",
+  "wheel",
+  "packaging>=24.2"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "calender-alarms"
+version = "1.0.0"
+description = "House wide alarms for Google calendar events"
+readme = "README.md"
+requires-python = ">=3.9.2"
+license = "MIT"
+authors = [
+  {name = "Beth Skurrie", email = "beth@bethesque.com"},
+]
+keywords = []
+
+# Main project dependencies (replaces requirements.txt)
+dependencies = [
+    "google-api-python-client==2.99.0",
+    "google-auth-httplib2==0.1.1",
+    "google-auth-oauthlib==1.1.0",
+    "CherryPy==18.10.0",
+    "requests==2.31.0",
+    "tzdata",
+    "mutagen==1.47.0",
+    "gtts==2.5.4",
+]
+
+[project.optional-dependencies]
+# Extra dependencies installed via `pip install ".[dev]"`
+dev = [
+    "black",
+]
+
+[project.urls]
+# Links displayed on PyPI
+Homepage = "https://github.com/thetrav/calendar"
+
+[project.scripts]
+
+cal-alarm-stop = "ecal.alarms.cli:stop_alarm"
+cal-alarm-test = "ecal.alarms.cli:test_alarm"
+cal-alarm-check = "ecal.alarms.cli:check_alarms"
+
+cal-announce = "ecal.announcements.announce:announce" # Morning summary announcement
+cal-announce-cached = "ecal.announcements.announce:play_morning_summary_announcement" # Play the cached voice file
+
+cal-data-refresh = "ecal.cli:refresh_calendar_data"
+
+[tool.setuptools]
+# Tells setuptools where to find your source code
+packages = ["ecal"]
+
+[tool.pytest.ini_options]
+# Configuration for other tools (like pytest) can also live here
+testpaths = ["tests"]

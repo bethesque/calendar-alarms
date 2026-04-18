@@ -1,0 +1,155 @@
+[
+    {
+        "date": "2026-04-06",
+        "date_time": "2026-04-06T00:00:00+10:00",
+        "timed_events": [
+            {
+                "description": "#alarm",
+                "end_time": null,
+                "owner": "Kids",
+                "recurring": true,
+                "start_time": "2026-04-06T08:00:00+10:00",
+                "summary": "Kaylee: music books"
+            },
+            {
+                "description": null,
+                "end_time": null,
+                "owner": "Beth",
+                "recurring": false,
+                "start_time": "2026-04-06T08:30:00+10:00",
+                "summary": "Call radiology"
+            },
+            {
+                "description": "#alarm",
+                "end_time": null,
+                "owner": "Kids",
+                "recurring": true,
+                "start_time": "2026-04-06T19:30:00+10:00",
+                "summary": "Cuddles (Kaylee first)"
+            },
+            {
+                "description": "#alarm",
+                "end_time": null,
+                "owner": "B & T",
+                "recurring": true,
+                "start_time": "2026-04-06T19:30:00+10:00",
+                "summary": "Bin night (recycling)"
+            }
+        ],
+        "whole_day_events": [
+            {
+                "description": "",
+                "end_time": null,
+                "owner": "BoM",
+                "recurring": true,
+                "start_time": null,
+                "summary": "Max 23, Possible shower"
+            },
+            {
+                "description": "#notimportant",
+                "end_time": null,
+                "owner": "B & T",
+                "recurring": false,
+                "start_time": null,
+                "summary": "SCHOOL HOLIDAYS"
+            },
+            {
+                "description": null,
+                "end_time": null,
+                "owner": "Kids",
+                "recurring": true,
+                "start_time": null,
+                "summary": "Screen day"
+            }
+        ]
+    },
+    {
+        "date": "2026-04-07",
+        "date_time": "2026-04-07T00:00:00+10:00",
+        "timed_events": [
+            {
+                "description": null,
+                "end_time": null,
+                "owner": "Kids",
+                "recurring": true,
+                "start_time": "2026-04-07T08:00:00+10:00",
+                "summary": "Pat: music books, library books"
+            },
+            {
+                "description": null,
+                "end_time": null,
+                "owner": "B & T",
+                "recurring": false,
+                "start_time": "2026-04-07T08:30:00+10:00",
+                "summary": "Maria cleaning"
+            },
+            {
+                "description": null,
+                "end_time": null,
+                "owner": "Beth",
+                "recurring": true,
+                "start_time": "2026-04-07T10:30:00+10:00",
+                "summary": "Gym"
+            },
+            {
+                "description": null,
+                "end_time": null,
+                "owner": "Beth",
+                "recurring": false,
+                "start_time": "2026-04-07T12:00:00+10:00",
+                "summary": "Heather visit"
+            },
+            {
+                "description": null,
+                "end_time": null,
+                "owner": "B & T",
+                "recurring": true,
+                "start_time": "2026-04-07T16:00:00+10:00",
+                "summary": "Swimming"
+            },
+            {
+                "description": null,
+                "end_time": null,
+                "owner": "B & T",
+                "recurring": true,
+                "start_time": "2026-04-07T19:00:00+10:00",
+                "summary": "Maybe a family boardgame?"
+            },
+            {
+                "description": null,
+                "end_time": null,
+                "owner": "Kids",
+                "recurring": true,
+                "start_time": "2026-04-07T19:00:00+10:00",
+                "summary": "Shower (Pat first)"
+            }
+        ],
+        "whole_day_events": [
+            {
+                "description": "",
+                "end_time": null,
+                "image_path": "images/tshirt_and_long_pants.png",
+                "owner": "BoM",
+                "recurring": true,
+                "start_time": null,
+                "summary": "Min 16, Max 21, 0-3mm 80%, Showers"
+            },
+            {
+                "description": "#notimportant",
+                "end_time": null,
+                "owner": "B & T",
+                "recurring": false,
+                "start_time": null,
+                "summary": "SCHOOL HOLIDAYS"
+            },
+            {
+                "description": null,
+                "end_time": null,
+                "owner": "Kids",
+                "recurring": true,
+                "start_time": null,
+                "summary": "Screen free day"
+            }
+        ]
+    }
+]
