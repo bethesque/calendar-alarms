@@ -5,7 +5,7 @@ from ecal.alarms import ALARM_SOCKET, ANNOUNCEMENT_SOCKET
 from ecal.alarms.mpv import MpvProcess, fade_out
 from ecal.log_config import setup_logging
 
-setup_logging()
+setup_logging(logging.DEBUG)
 
 logger = logging.getLogger(__name__)
 

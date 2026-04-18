@@ -9,6 +9,7 @@ Mac or Linux environment. Windows is not supported.
 - python 3.13
 - mpv (music player for mac/linux)
 - snapcast (a multiroom client-server audio player)
+- ffmpeg
 
 ### Set up
 
@@ -20,6 +21,7 @@ source .venv/bin/activate
 pip install -e .
 brew install mpv
 brew install snapcast
+brew install ffmpeg
 ```
 
 #### linux
@@ -29,6 +31,7 @@ source ./venv/Scripts/activate
 pip install -e .
 sudo apt install mpv
 sudo apt install snapcast
+sudo apt install ffmpeg
 ```
 
 ## Deployment

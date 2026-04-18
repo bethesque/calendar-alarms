@@ -5,6 +5,7 @@ import socket
 import os
 import logging
 from mutagen.mp3 import MP3
+from ecal.env import SINGLE_STREAM
 
 logger = logging.getLogger(__name__)
 
@@ -41,13 +42,26 @@ class MpvProcess:
         if os.path.exists(self.ipc_socket):
             os.remove(self.ipc_socket)
 
-        proc = subprocess.Popen([
-            "mpv",
-            "--idle=yes",
-            "--no-video",
-            f"--input-ipc-server={self.ipc_socket}",
-            "--really-quiet"
-        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        if SINGLE_STREAM:
+            options = ["mpv",
+                       "--idle=yes",
+                       "--no-video",
+                       "--keep-open=yes",
+                       "--ao=pcm",
+                       "--ao-pcm-file=/tmp/snapfifo",
+                       "--audio-format=s16",
+                       "--audio-channels=stereo",
+                        "--audio-samplerate=48000",
+                        f"--input-ipc-server={self.ipc_socket}",
+                       ]
+        else:
+            options = ["mpv",
+                        "--idle=yes",
+                        "--no-video",
+                        f"--input-ipc-server={self.ipc_socket}",
+                        "--really-quiet"]
+
+        proc = subprocess.Popen(options, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
         return proc
 
     def wait_for_ipc(self, timeout=2.0):
