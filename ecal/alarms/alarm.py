@@ -34,8 +34,10 @@ def play_alarm_with_single_stream(announcement_files):
         logger.error(f"Error: mpv IPC socket at {MIXED_SOCKET} not ready")
         exit(1)
 
-    alarm_player.set_volume(DEFAULT_VOLUME)
+    alarm_player.set_volume(0)
     alarm_player.play_file(audio_file)
+    fade_up([(alarm_player, 60)], 10, 10)
+    fade_up([(alarm_player, 90)], 45, 10)
 
 def play_alarm_with_dual_streams(announcement_files):
     alarm_player, announcement_player = prepare_mvp_processes()
