@@ -1,9 +1,9 @@
 #!/bin/bash
-# Run from project root. This script is intended to be run from a cron job to play the morning announcements.
+# Run from project root. This script is intended to be run from a cron job.
 
 set -Eeuo pipefail
 
-echo "Morning announcements at $(date)"
+echo "Refreshing calendar data at $(date)"
 
 # Make this work on mac and on the raspberry pi.
 if [ -x "/usr/bin/python3.13" ]; then
@@ -14,4 +14,4 @@ else
   PYTH="python"
 fi
 
-"$PYTH" morning_announcements.py "$@"
+"$PYTH" -c "from ecal.cli import refresh_calendar_data; refresh_calendar_data()"

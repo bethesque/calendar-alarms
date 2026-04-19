@@ -18,7 +18,7 @@ if [ -x "/usr/bin/python3.13" ]; then
   echo "/usr/bin/python3.13 exists and is executable."
   PYTH="/usr/bin/python3.13"
 else
-  echo "/usr/bin/python is not executable or does not exist. Using python on path."
+  echo "/usr/bin/pytho3.13 is not executable or does not exist. Using python on path."
   PYTH="python"
 fi
 
