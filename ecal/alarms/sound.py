@@ -1,5 +1,8 @@
 import subprocess
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 def build_alarm_audio(
     announcement_file: str,
@@ -54,4 +57,49 @@ def build_alarm_audio(
         output_file,
     ]
 
-    subprocess.run(cmd, check=True)
+    subprocess.run(cmd, stdout=subprocess.DEVNULL,
+    stderr=subprocess.PIPE,
+    text=True)
+
+def build_announcement_audio(
+    announcement_file: str,
+    music_file: str,
+    output_file: str,
+):
+    filter_complex = (
+        # Announcement (delay + smooth start)
+        "[0:a]aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo,"
+        "volume=1.5,adelay=5000|5000,afade=t=in:st=5:d=1[ann];"
+
+        # Music
+        "[1:a]aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo,"
+        "volume=0.5[music];"
+
+        # Mix
+        "[music][ann]amix=inputs=2:duration=longest:weights='1 1.2',"
+
+        # Initial fade-in + limiter
+        "afade=t=in:st=0:d=1.5,"
+        "alimiter=limit=0.9"
+    )
+
+    cmd = [
+        "ffmpeg",
+        "-i", announcement_file,
+        "-i", music_file,
+        "-filter_complex", filter_complex,
+
+        "-c:a", "pcm_s16le",
+        "-ar", "48000",
+        "-ac", "2",
+
+        "-y",
+        output_file,
+    ]
+
+    result = subprocess.run(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True)
+    logger.info(f"FFmpeg output: {result.stderr}")

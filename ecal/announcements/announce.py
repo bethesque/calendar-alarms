@@ -1,10 +1,12 @@
 import logging
+from ecal.alarms.mpv import MpvProcess
 from ecal.google_calendar import WeatherForecast, load_data_from_file
 from ecal.alarms.text_to_voice import text_to_voice_file_daily_summary
-from ecal.env import DATA_DIRECTORY, CACHE_DIRECTORY
-from ecal.alarms import DEFAULT_VOLUME
+from ecal.env import DATA_DIRECTORY, CACHE_DIRECTORY, SINGLE_STREAM
+from ecal.alarms import DEFAULT_VOLUME, MIXED_SOCKET
 from ecal.log_config import setup_logging
 from ecal.alarms.alarm import prepare_mvp_processes
+from ecal.alarms.sound import build_alarm_audio, build_announcement_audio
 
 DATA_FILE = f"{DATA_DIRECTORY}/calendar.json"
 ANNOUNCEMENT_FILE = CACHE_DIRECTORY + "/audio/daily_summary.mp3"
@@ -23,6 +25,28 @@ def announce(calendar_file=DATA_FILE):
     play_morning_summary_announcement(announcement_file)
 
 def play_morning_summary_announcement(announcement_file=ANNOUNCEMENT_FILE):
+    if SINGLE_STREAM:
+        play_morning_summary_announcement_single_stream(announcement_file)
+    else:
+        play_morning_summary_announcement_dual_stream(announcement_file)
+
+def play_morning_summary_announcement_single_stream(announcement_file=ANNOUNCEMENT_FILE):
+    audio_file = DATA_DIRECTORY + "/alarm_mix.wav"
+    build_announcement_audio(
+        announcement_file=announcement_file,
+        music_file=ANNOUNCEMENT_BACKGROUND_MUSIC,
+        output_file=audio_file
+    )
+    # Play the mixed audio file
+    alarm_player = MpvProcess(MIXED_SOCKET)
+    alarm_player.start()
+    if not alarm_player.wait_for_ipc(timeout=30.0):
+        logger.error(f"Error: mpv IPC socket at {MIXED_SOCKET} not ready")
+        exit(1)
+    alarm_player.set_volume(DEFAULT_VOLUME * .60)
+    alarm_player.play_file(audio_file)
+
+def play_morning_summary_announcement_dual_stream(announcement_file=ANNOUNCEMENT_FILE):
     alarm_process, announcement_process = prepare_mvp_processes()
     alarm_process.set_volume(DEFAULT_VOLUME * .60)
     alarm_process.play_file(ANNOUNCEMENT_BACKGROUND_MUSIC)
