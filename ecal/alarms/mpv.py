@@ -49,6 +49,7 @@ class MpvProcess:
                        "--keep-open=yes",
                        "--ao=pcm",
                        "--ao-pcm-file=/tmp/snapfifo",
+                       "--ao-pcm-waveheader=no",
                        "--audio-format=s16",
                        "--audio-channels=stereo",
                         "--audio-samplerate=48000",
