@@ -253,7 +253,8 @@ def fade_out(mvp_processes, duration, steps=10):
 
     fade_outs = []
     for player in mvp_processes:
-        fade_outs.append(FadeOut(player, target_volume=0, num_steps=steps))
+        if player.is_running():
+            fade_outs.append(FadeOut(player, target_volume=0, num_steps=steps))
 
     step_time = duration / steps
 

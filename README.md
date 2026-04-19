@@ -41,3 +41,15 @@ sudo apt install ffmpeg
 - A Raspberry Pi or other Linux like environment to run the python scripts and Snapserver on. I had trouble getting the pipes to work with Snapcast on Mac, so there may be some issue there.
 - A speaker for every room you want the alarms to play in
 - A Raspberry Pi or old Android phone for every speaker
+
+### Installation
+
+```
+git clone https://github.com/bethesque/calendar-alarms.git
+cd calendar-alarms
+sudo apt install python3-pip
+sudo apt install mpv
+brew install snapcast
+sudo apt install ffmpeg
+python3 -m pip install -e .
+```
