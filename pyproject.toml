@@ -45,6 +45,7 @@ Homepage = "https://github.com/thetrav/calendar"
 cal-alarm-stop = "ecal.alarms.cli:stop_alarm"
 cal-alarm-test = "ecal.alarms.cli:test_alarm"
 cal-alarm-check = "ecal.alarms.cli:check_alarms"
+play-test-file = "ecal.alarms.cli:play_test_file"
 
 cal-announce = "ecal.announcements.announce:announce" # Morning summary announcement
 cal-announce-cached = "ecal.announcements.announce:play_morning_summary_announcement" # Play the cached voice file

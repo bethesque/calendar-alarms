@@ -2,7 +2,7 @@ import logging
 
 from ecal.alarms.alarm import play_alarm
 from ecal.alarms import ALARM_SOCKET, ANNOUNCEMENT_SOCKET, MIXED_SOCKET
-from ecal.alarms.mpv import MpvProcess, fade_out
+from ecal.alarms.mpv import MpvProcess, fade_out, fade_up
 from ecal.log_config import setup_logging
 from ecal.env import SINGLE_STREAM
 
@@ -75,4 +75,31 @@ def stop_alarm():
         logger.info("Alarm stopped.")
     except Exception as e:
         logger.error(f"Error stopping alarm: {e}")
+        exit(1)
+
+
+def play_test_file():
+    # get audio file path from the command line argument
+    parser = argparse.ArgumentParser(description="Play a test audio file")
+    parser.add_argument(
+        "audio_file",
+        help="Path to the audio file to play"
+    )
+    args = parser.parse_args()
+    audio_file = args.audio_file
+
+    try:
+        # Play the mixed audio file
+        alarm_player = MpvProcess(MIXED_SOCKET)
+        alarm_player.start()
+
+        if not alarm_player.wait_for_ipc(timeout=30.0):
+            logger.error(f"Error: mpv IPC socket at {MIXED_SOCKET} not ready")
+            exit(1)
+
+        alarm_player.set_volume(60)
+        alarm_player.play_file(audio_file)
+        fade_up([(alarm_player, 100)], 45, 10)
+    except Exception as e:
+        logger.error(f"Error playing alarm: {e}")
         exit(1)
