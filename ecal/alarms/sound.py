@@ -41,6 +41,7 @@ def build_alarm_audio(
 
     cmd = [
         "ffmpeg",
+        "-loglevel", "warning",
         "-f", "lavfi",
         "-t", "5",
         "-i", "anullsrc=r=48000:cl=stereo",
@@ -57,9 +58,12 @@ def build_alarm_audio(
         output_file,
     ]
 
-    subprocess.run(cmd, stdout=subprocess.DEVNULL,
-    stderr=subprocess.PIPE,
-    text=True)
+    result = subprocess.run(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True)
+    logger.debug(f"FFmpeg output: {result.stderr}")
 
 def build_announcement_audio(
     announcement_file: str,
@@ -85,6 +89,7 @@ def build_announcement_audio(
 
     cmd = [
         "ffmpeg",
+        "-loglevel", "warning",
         "-i", announcement_file,
         "-i", music_file,
         "-filter_complex", filter_complex,
@@ -102,4 +107,4 @@ def build_announcement_audio(
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.PIPE,
                 text=True)
-    logger.info(f"FFmpeg output: {result.stderr}")
+    logger.debug(f"FFmpeg output: {result.stderr}")
