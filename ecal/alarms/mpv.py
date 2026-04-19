@@ -152,15 +152,17 @@ class MpvProcess:
 
     def play_file(self, file_path):
         self.send_command("playlist_clear")
+        self.send_command("set_property", ["pause", True])
         self.send_command("set_property", ["loop-file", "no"])
         self.send_command("set_property", ["loop-playlist", "no"])
-        self.send_command("loadfile", [file_path])
+        self.send_command("loadfile", [file_path, "replace"])
+        self.send_command("set_property", ["pause", False])
 
     def play_file_on_loop(self, file_path, max_length):
         num_loops = self.num_loops(max_length, file_path)
         self.send_command("set_property", ["loop-file", num_loops])
         self.send_command("set_property", ["loop-playlist", "no"])
-        self.send_command("loadfile", [file_path])
+        self.send_command("loadfile", [file_path, "replace"])
 
     def play_files(self, file_paths):
         self.send_command("playlist_clear")
