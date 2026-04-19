@@ -45,11 +45,25 @@ sudo apt install ffmpeg
 ### Installation
 
 ```
+# Update python
+sudo add-apt-repository ppa:deadsnakes/ppa
+sudo apt update
+sudo apt install python3.13
+sudo apt install python3.13-venv
+python3.13 -m ensurepip --upgrade
+python3.13 -m pip install --upgrade pip setuptools wheel
+
 git clone https://github.com/bethesque/calendar-alarms.git
 cd calendar-alarms
 sudo apt install python3-pip
 sudo apt install mpv
 brew install snapcast
 sudo apt install ffmpeg
-python3 -m pip install -e .
+python3.13 -m pip install -e .
 ```
+
+
+# Useful links
+
+https://github.com/snapcast/snapcast/issues/1094
+

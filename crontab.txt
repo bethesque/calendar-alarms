@@ -22,32 +22,24 @@
 #
 # m h  dom mon dow   command
 
-# ====== SCREEN ======
-
-# Lazy refresh screen once an hour if data has changed - fetch the data just before the hour in case there is an alarm
-55 * * * * cd /home/thetrav/calendar && ./script/main.sh >> /home/thetrav/calendar/logs/cron.log  2>&1
-
-# Check once a minute if the token has been updated and force refresh if so
-* * * * * cd /home/thetrav/calendar && ./script/main-update-screen-if-token-updated.sh >> /home/thetrav/calendar/logs/cron.log  2>&1
-
 # ====== ALARMS ======
 
 # Between 7am (inclusive) and 9pm (exclusive) check for alarms every 5 minutes from 0 to 45 minutes past the hour
-0-45/5 7-20 * * * cd /home/thetrav/calendar && ./script/check_for_alarms.sh "5" >> /home/thetrav/calendar/logs/cron.log  2>&1
+0-45/5 7-20 * * * cd /home/beth/calendar-alarms && ./script/check_for_alarms_nas.sh "5" >> /home/thetrav/calendar/logs/cron.log  2>&1
 
 # Between 7am (inclusive) and 9pm (exclusive) check for alarms in a 10 minute block at 50 minutes past the hour,
 # because we don't want to clash with the screen refresh as it could freeze the raspberry pi
-50 7-20 * * * cd /home/thetrav/calendar && ./script/check_for_alarms.sh "10" >> /home/thetrav/calendar/logs/cron.log  2>&1
+50 7-20 * * * cd /home/beth/calendar-alarms && ./script/check_for_alarms_nas.sh "10" >> /home/thetrav/calendar/logs/cron.log  2>&1
 
 # ====== ANNOUNCEMENTS ======
 
 # 7:23 on weekdays (avoid any alarms)
-23 7 * * 1-5 cd /home/thetrav/calendar && ./script/morning_announcements.sh >> /home/thetrav/calendar/logs/cron.log  2>&1
+23 7 * * 1-5 cd /home/beth/calendar-alarms && ./script/morning_announcements_nas.sh >> /home/thetrav/calendar/logs/cron.log  2>&1
 
 # 8:33 on weekends
-33 8 * * 0,6 cd /home/thetrav/calendar && ./script/morning_announcements.sh >> /home/thetrav/calendar/logs/cron.log  2>&1
+33 8 * * 0,6 cd /home/beth/calendar-alarms && ./script/morning_announcements_nas.sh >> /home/thetrav/calendar/logs/cron.log  2>&1
 
 # ====== LOGS ======
 
 # Clean up app logs on Sunday mornings
-0 2 * * 0 cd /home/thetrav/calendar && ./script/truncate_logs.sh
+0 2 * * 0 cd /home/beth/calendar-alarms && ./script/truncate_logs.sh

@@ -84,16 +84,20 @@ class MpvProcess:
     def send_command(self, cmd, args=None):
         if args is None:
             args = []
+
         message = (json.dumps({"command": [cmd] + args}) + "\n").encode("utf-8")
+
         try:
             with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+                s.settimeout(5.0)  # <-- 5 second timeout
+
                 logger.debug(f"Sending command to {self.ipc_socket}: {message}")
                 s.connect(self.ipc_socket)
                 s.sendall(message)
 
                 response = b""
                 while True:
-                    chunk = s.recv(1024)
+                    chunk = s.recv(1024)  # will raise socket.timeout if >5s
                     if not chunk:
                         break
                     response += chunk
@@ -103,6 +107,9 @@ class MpvProcess:
             decoded = response.decode("utf-8", errors="replace").strip()
             if decoded:
                 logger.debug(f"mpv response ({self.ipc_socket}): {decoded}")
+
+        except socket.timeout:
+            logger.debug(f"Timeout waiting for response from {self.ipc_socket}")
         except (ConnectionRefusedError, FileNotFoundError):
             logger.debug(f"mpv {self.ipc_socket} is not running or IPC socket missing")
 
@@ -111,6 +118,7 @@ class MpvProcess:
         message = json.dumps({"command": ["get_property", property_name]}) + "\n"
         try:
             with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+                s.settimeout(5.0)  # <-- 5 second timeout
                 logger.debug(f"Sending command to {self.ipc_socket}: {message}")
                 s.connect(self.ipc_socket)
                 s.sendall(message.encode("utf-8"))
@@ -136,6 +144,8 @@ class MpvProcess:
                         except json.JSONDecodeError:
                             logger.debug(f"Failed to decode JSON response from mpv ({self.ipc_socket}): {line}")
                 logger.debug(f"Failed to decode JSON response from mpv ({self.ipc_socket}): {response.decode('utf-8')}")
+        except socket.timeout:
+            logger.debug(f"Timeout waiting for response from {self.ipc_socket}")
         except (ConnectionRefusedError, FileNotFoundError):
             logger.debug("mpv is not running or IPC socket missing")
         return None
@@ -202,7 +212,11 @@ class FadeOut:
         self.current_step = 0
 
     def step(self):
+        if self.initial_volume == None:
+            logger.info(f"Could not get initial volume for mpv player with IPC socket: {self.mpv_process.ipc_socket}, skipping fade out")
+            return True  # can't get volume, so just skip the fade out
         if self.initial_volume == 0:
+            logger.info(f"Initial volume is already 0 for mpv player with IPC socket: {self.mpv_process.ipc_socket}, skipping fade out")
             return True  # already at 0 volume, so we're done
         if self.current_step < len(self.percentages):
             percent = self.percentages[self.current_step]
@@ -233,7 +247,7 @@ class FadeUp:
             # if the current volume has changed since the last step, return True to indicate we're done, as something else has changed the volume
             current_volume = self.mpv_process.get_volume()
             if current_volume != self.last_known_volume:
-                logger.debug("Volume changed externally during fade up (from %s to %s), stopping fade up for mpv player with IPC socket: %s", self.last_known_volume, current_volume, self.mpv_process.ipc_socket)
+                logger.info("Volume changed externally during fade up (from %s to %s), stopping fade up for mpv player with IPC socket: %s", self.last_known_volume, current_volume, self.mpv_process.ipc_socket)
                 return True  # done
             new_volume = self.volumes[self.current_step]
             self.mpv_process.set_volume(new_volume)

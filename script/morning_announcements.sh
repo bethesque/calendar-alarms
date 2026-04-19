@@ -11,4 +11,4 @@ source .env
 
 ./script/connect_bluetooth_speaker.sh
 
-ecal-announce
+
