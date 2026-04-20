@@ -1,192 +1,178 @@
-import subprocess
 import time
-import json
-import socket
-import os
 import logging
 from mutagen.mp3 import MP3
-from ecal.env import SINGLE_STREAM
+import musicpd
+from typing import Optional, List, Tuple
 
 logger = logging.getLogger(__name__)
 
 """
-Manages the mpd process for playing alarm and announcement sounds.
+Manages the MPD (Music Player Daemon) for playing alarm and announcement sounds.
+Uses the python-musicpd library to communicate with the MPD daemon.
 """
 
 class MpdProcess:
-    def __init__(self, ipc_socket):
-        self.ipc_socket = ipc_socket
+    """Interface to control MPD daemon for playing audio files."""
 
-    def is_running(self):
-        """Return True if mpv IPC socket exists and is connectable."""
-        if not os.path.exists(self.ipc_socket):
-            return False
+    def __init__(self, host: str = 'localhost', port: int = 6600):
+        """Initialize MPD client connection parameters.
+
+        Args:
+            host: MPD server hostname (default: localhost)
+            port: MPD server port (default: 6600)
+        """
+        self.host = host
+        self.port = port
+        self.client: Optional[musicpd.MPDClient] = None
+
+    def _connect(self) -> bool:
+        """Establish connection to MPD daemon."""
         try:
-            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-                s.settimeout(0.1)
-                s.connect(self.ipc_socket)
+            if self.client is None:
+                self.client = musicpd.MPDClient()
+                self.client.timeout = 5.0
+                self.client.connect(self.host, self.port)
             return True
-        except (ConnectionRefusedError, FileNotFoundError, socket.timeout):
+        except (musicpd.ConnectionError, OSError) as e:
+            logger.debug(f"Failed to connect to MPD at {self.host}:{self.port}: {e}")
+            self.client = None
             return False
 
-    def start(self):
-        """Start mpv with IPC if not already running."""
-        if self.is_running():
-            logger.debug(f"mpv {self.ipc_socket} is already running")
-            return None
+    def is_running(self) -> bool:
+        """Return True if MPD daemon is running and connectable."""
+        try:
+            if self.client is None:
+                if not self._connect():
+                    return False
+            # Try to ping the server
+            self.client.ping()
+            return True
+        except (musicpd.ConnectionError, OSError):
+            self.client = None
+            return False
 
-        if os.path.exists(self.ipc_socket):
-            os.remove(self.ipc_socket)
+    def _ensure_connected(self) -> bool:
+        """Ensure we have an active connection to MPD."""
+        if not self.is_running():
+            return self._connect()
+        return True
 
-
-        options = ["mpv",
-                    "--idle=yes",
-                    "--no-video",
-                    "--keep-open=yes",
-                    "--ao=pcm",
-                    "--ao-pcm-file=/tmp/snapfifo",
-                    "--ao-pcm-waveheader=no",
-                    "--audio-format=s16",
-                    "--audio-channels=stereo",
-                    "--audio-samplerate=48000",
-                    f"--input-ipc-server={self.ipc_socket}",
-                    ]
-
-
-        proc = subprocess.Popen(options, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
-        return proc
-
-    def wait_for_ipc(self, timeout=2.0):
-        """Wait until mpv IPC socket exists and is connectable."""
-        start = time.time()
-        while True:
-            if os.path.exists(self.ipc_socket):
-                try:
-                    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-                        s.settimeout(0.1)
-                        s.connect(self.ipc_socket)
-                    return True
-                except (ConnectionRefusedError, socket.timeout):
-                    pass
-            if time.time() - start > timeout:
-                return False
-            time.sleep(0.05)
-
-    def send_command(self, cmd, args=None):
-        if args is None:
-            args = []
-
-        message = (json.dumps({"command": [cmd] + args}) + "\n").encode("utf-8")
+    def play_file(self, file_path: str):
+        """Load and play a single file."""
+        if not self._ensure_connected():
+            logger.warning(f"Cannot connect to MPD to play {file_path}")
+            return
 
         try:
-            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-                s.settimeout(5.0)  # <-- 5 second timeout
+            self.client.clear()
+            self.client.add(file_path)
+            self.client.play()
+            logger.debug(f"Playing file: {file_path}")
+        except musicpd.CommandError as e:
+            logger.error(f"Failed to play file {file_path}: {e}")
 
-                logger.debug(f"Sending command to {self.ipc_socket}: {message}")
-                s.connect(self.ipc_socket)
-                s.sendall(message)
+    def play_file_on_loop(self, file_path: str, max_length: float):
+        """Load and play a file repeatedly for max_length seconds."""
+        if not self._ensure_connected():
+            logger.warning(f"Cannot connect to MPD to play {file_path}")
+            return
 
-                response = b""
-                while True:
-                    chunk = s.recv(1024)  # will raise socket.timeout if >5s
-                    if not chunk:
-                        break
-                    response += chunk
-                    if b"\n" in chunk:
-                        break
-
-            decoded = response.decode("utf-8", errors="replace").strip()
-            if decoded:
-                logger.debug(f"mpv response ({self.ipc_socket}): {decoded}")
-
-        except socket.timeout:
-            logger.debug(f"Timeout waiting for response from {self.ipc_socket}")
-        except (ConnectionRefusedError, FileNotFoundError):
-            logger.debug(f"mpv {self.ipc_socket} is not running or IPC socket missing")
-
-    def get_property(self, property_name):
-        """Get a property value from mpv."""
-        message = json.dumps({"command": ["get_property", property_name]}) + "\n"
         try:
-            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-                s.settimeout(5.0)  # <-- 5 second timeout
-                logger.debug(f"Sending command to {self.ipc_socket}: {message}")
-                s.connect(self.ipc_socket)
-                s.sendall(message.encode("utf-8"))
-                # Read response
-                response = b""
-                while True:
-                    chunk = s.recv(1024)
-                    if not chunk:
-                        break
-                    response += chunk
-                    if b"\n" in response:
-                        break
+            num_loops = self.num_loops(max_length, file_path)
+            self.client.clear()
+            self.client.add(file_path)
+            self.client.repeat(1)  # Enable repeat mode
+            self.client.play()
+            logger.debug(f"Playing file on loop ({num_loops} times): {file_path}")
+        except musicpd.CommandError as e:
+            logger.error(f"Failed to play file on loop {file_path}: {e}")
 
-                # the data may contain multiple lines of JSON, so we need to split it and find the one that contains the "data" field
-                json_lines = response.decode("utf-8").strip().split('\n')
-                for line in json_lines:
-                    if line.strip():
-                        try:
-                            data = json.loads(line)
-                            logger.debug(f"mpv response ({self.ipc_socket}): {data}")
-                            if "data" in data:
-                                return data["data"]
-                        except json.JSONDecodeError:
-                            logger.debug(f"Failed to decode JSON response from mpv ({self.ipc_socket}): {line}")
-                logger.debug(f"Failed to decode JSON response from mpv ({self.ipc_socket}): {response.decode('utf-8')}")
-        except socket.timeout:
-            logger.debug(f"Timeout waiting for response from {self.ipc_socket}")
-        except (ConnectionRefusedError, FileNotFoundError):
-            logger.debug("mpv is not running or IPC socket missing")
-        return None
+    def play_files(self, file_paths: List[str]):
+        """Load and play a list of files sequentially."""
+        if not self._ensure_connected():
+            logger.warning("Cannot connect to MPD to play files")
+            return
 
-    def play_file(self, file_path):
-        self.send_command("playlist_clear")
-        self.send_command("set_property", ["pause", True])
-        self.send_command("set_property", ["loop-file", "no"])
-        self.send_command("set_property", ["loop-playlist", "no"])
-        self.send_command("loadfile", [file_path, "replace"])
-        self.send_command("set_property", ["pause", False])
+        try:
+            self.client.clear()
+            for file_path in file_paths:
+                self.client.add(file_path)
+            self.client.play()
+            logger.debug(f"Playing {len(file_paths)} files")
+        except musicpd.CommandError as e:
+            logger.error(f"Failed to play files: {e}")
 
-    def play_file_on_loop(self, file_path, max_length):
-        num_loops = self.num_loops(max_length, file_path)
-        self.send_command("set_property", ["loop-file", num_loops])
-        self.send_command("set_property", ["loop-playlist", "no"])
-        self.send_command("loadfile", [file_path, "replace"])
+    def play_files_on_loop(self, file_paths: List[str], max_length: float):
+        """Load and play a list of files repeatedly for max_length seconds."""
+        if not self._ensure_connected():
+            logger.warning("Cannot connect to MPD to play files")
+            return
 
-    def play_files(self, file_paths):
-        self.send_command("playlist_clear")
-        self.send_command("set_property", ["loop-file", "no"])
-        self.send_command("set_property", ["loop-playlist", "no"])
-        for file_path in file_paths:
-            self.send_command("loadfile", [file_path, "append-play"])
+        try:
+            num_loops = self.num_loops(max_length, *file_paths)
+            self.client.clear()
+            for file_path in file_paths:
+                self.client.add(file_path)
+            self.client.repeat(1)  # Enable repeat mode
+            self.client.play()
+            logger.debug(f"Playing {len(file_paths)} files on loop ({num_loops} times)")
+        except musicpd.CommandError as e:
+            logger.error(f"Failed to play files on loop: {e}")
 
-    def play_files_on_loop(self, file_paths, max_length):
-        num_loops = self.num_loops(max_length, *file_paths)
-        self.send_command("playlist_clear")
-        self.send_command("set_property", ["loop-file", "no"])
-        self.send_command("set_property", ["loop-playlist", num_loops])
-        for file_path in file_paths:
-            self.send_command("loadfile", [file_path, "append-play"])
+    def set_volume(self, vol: int):
+        """Set volume to a value from 0-100."""
+        if not self._ensure_connected():
+            logger.warning(f"Cannot connect to MPD to set volume")
+            return
 
-    def set_volume(self, vol):
-        self.send_command("set_property", ["volume", vol])
+        try:
+            # Clamp volume to 0-100 range
+            vol = max(0, min(100, vol))
+            self.client.setvol(vol)
+            logger.debug(f"Set volume to {vol}")
+        except musicpd.CommandError as e:
+            logger.error(f"Failed to set volume: {e}")
 
     def stop(self):
-        self.send_command("stop")
+        """Stop playback and clear the playlist."""
+        if not self._ensure_connected():
+            return
 
-    def num_loops(self, max_length, *file_paths):
+        try:
+            self.client.stop()
+            self.client.clear()
+            self.client.repeat(0)  # Disable repeat mode
+            logger.debug("Stopped MPD playback")
+        except musicpd.CommandError as e:
+            logger.error(f"Failed to stop MPD: {e}")
+
+    def get_volume(self) -> Optional[int]:
+        """Get current volume level (0-100)."""
+        if not self._ensure_connected():
+            return None
+
+        try:
+            status = self.client.status()
+            volume = status.get('volume', '0')
+            return int(volume)
+        except (musicpd.CommandError, ValueError) as e:
+            logger.debug(f"Failed to get volume: {e}")
+            return None
+
+    def num_loops(self, max_length: float, *file_paths: str) -> int:
+        """Calculate the number of loops needed to play files for max_length seconds."""
         total_length = sum(self.track_length(fp) for fp in file_paths)
         return max(1, int(max_length // total_length))
 
-    # does this need a self argument?
-    def track_length(self, file_path):
-        audio = MP3(file_path)
-        return audio.info.length
-
-    def get_volume(self):
-        return self.get_property("volume")
+    @staticmethod
+    def track_length(file_path: str) -> float:
+        """Get the length of an audio file in seconds."""
+        try:
+            audio = MP3(file_path)
+            return audio.info.length
+        except Exception as e:
+            logger.warning(f"Failed to get length of {file_path}: {e}")
+            return 0
 
 # This calculates the steps, but does not do the waiting, so that multiple players can be
 # faded out together without needing to use threads. The caller can call step() repeatedly
@@ -195,98 +181,114 @@ class MpdProcess:
 # Also, this needs to be called by an HTTP endpoint, so I don't like to add extra
 # treads in an HTTP server.
 class FadeOut:
-    def __init__(self, mpv_process, target_volume, num_steps=10):
-        self.mpv_process = mpv_process
+    """Gradually fade out volume over multiple steps."""
+
+    def __init__(self, mpd_process: MpdProcess, target_volume: int = 0, num_steps: int = 10):
+        self.mpd_process = mpd_process
         self.target_volume = target_volume
         self.num_steps = num_steps
-        self.initial_volume = int(volume) if (volume := mpv_process.get_volume()) is not None else None
-        # convert this to an array of volume levels to step through, from initial_volume down to target_volume
-        self.percentages = list(reversed(range(0, 100, 100 // num_steps)))
+        self.initial_volume = mpd_process.get_volume()
+        # Convert to an array of volume levels to step through, from initial_volume down to target_volume
+        self.percentages = list(reversed(range(0, 101, 100 // num_steps)))
         self.current_step = 0
 
-    def step(self):
-        if self.initial_volume == None:
-            logger.info(f"Could not get initial volume for mpv player with IPC socket: {self.mpv_process.ipc_socket}, skipping fade out")
+    def step(self) -> bool:
+        """Execute one step of the fade out. Returns True when complete."""
+        if self.initial_volume is None:
+            logger.info(f"Could not get initial volume for MPD player, skipping fade out")
             return True  # can't get volume, so just skip the fade out
         if self.initial_volume == 0:
-            logger.info(f"Initial volume is already 0 for mpv player with IPC socket: {self.mpv_process.ipc_socket}, skipping fade out")
+            logger.info(f"Initial volume is already 0 for MPD player, skipping fade out")
             return True  # already at 0 volume, so we're done
         if self.current_step < len(self.percentages):
             percent = self.percentages[self.current_step]
-            new_volume = self.initial_volume * percent // 100
-            self.mpv_process.set_volume(new_volume)
+            new_volume = max(0, self.initial_volume * percent // 100)
+            self.mpd_process.set_volume(new_volume)
             self.current_step += 1
             return False  # not done yet
         else:
-            self.mpv_process.stop()
-            logger.info("Stopped mpv player with IPC socket: %s", self.mpv_process.ipc_socket)
+            self.mpd_process.stop()
+            logger.info("Stopped MPD playback")
             return True  # done
 
 
 class FadeUp:
-    def __init__(self, mpv_process, target_volume, num_steps=10):
-        self.mpv_process = mpv_process
+    """Gradually fade up volume over multiple steps."""
+
+    def __init__(self, mpd_process: MpdProcess, target_volume: int = 100, num_steps: int = 10):
+        self.mpd_process = mpd_process
         self.target_volume = target_volume
         self.num_steps = num_steps
-        self.last_known_volume = int(volume) if (volume := mpv_process.get_volume()) is not None else None
+        self.last_known_volume = mpd_process.get_volume() or 0
         # An array of volume levels to step through, from initial_volume up to target_volume
-        self.volumes = range(self.last_known_volume, target_volume, (target_volume - self.last_known_volume) // num_steps)
-        if self.volumes[-1] != target_volume:
-            self.volumes = list(self.volumes) + [target_volume]
+        volume_step = max(1, (target_volume - self.last_known_volume) // num_steps)
+        self.volumes = list(range(self.last_known_volume, target_volume, volume_step))
+        if not self.volumes or self.volumes[-1] != target_volume:
+            self.volumes.append(target_volume)
         self.current_step = 0
 
-    def step(self):
+    def step(self) -> bool:
+        """Execute one step of the fade up. Returns True when complete."""
         if self.current_step < len(self.volumes):
-            # if the current volume has changed since the last step, return True to indicate we're done, as something else has changed the volume
-            current_volume = self.mpv_process.get_volume()
-            if current_volume != self.last_known_volume:
-                logger.info("Volume changed externally during fade up (from %s to %s), stopping fade up for mpv player with IPC socket: %s", self.last_known_volume, current_volume, self.mpv_process.ipc_socket)
+            # if the current volume has changed since the last step, return True to indicate we're done,
+            # as something else has changed the volume
+            current_volume = self.mpd_process.get_volume()
+            if current_volume is not None and current_volume != self.last_known_volume:
+                logger.info(f"Volume changed externally during fade up (from {self.last_known_volume} to {current_volume}), stopping fade up")
                 return True  # done
             new_volume = self.volumes[self.current_step]
-            self.mpv_process.set_volume(new_volume)
+            self.mpd_process.set_volume(new_volume)
             self.last_known_volume = new_volume
             self.current_step += 1
             if self.current_step < len(self.volumes):
                 return False  # not done yet
             else:
-                logger.info("Finished fading up mpv player with IPC socket: %s", self.mpv_process.ipc_socket)
+                logger.info("Finished fading up MPD playback")
             return True
         else:
             return True  # done
 
-"""
-Gradually fade out the volume of the given mpv processes over the specified duration and steps, then stop them.
-"""
-def fade_out(mvp_processes, duration, steps=10):
 
+def fade_out(mpd_processes: List[MpdProcess], duration: float, steps: int = 10):
+    """Gradually fade out the volume of the given MPD processes over the specified duration and steps, then stop them.
+
+    Args:
+        mpd_processes: List of MpdProcess instances to fade out
+        duration: Total duration in seconds for the fade out
+        steps: Number of volume steps for the fade out
+    """
     fade_outs = []
-    for player in mvp_processes:
+    for player in mpd_processes:
         if player.is_running():
             fade_outs.append(FadeOut(player, target_volume=0, num_steps=steps))
 
-    step_time = duration / steps
+    step_time = duration / steps if steps > 0 else duration
 
     while fade_outs:
         for fade in fade_outs[:]:
             if fade.step():
                 fade_outs.remove(fade)
-        time.sleep(step_time) if fade_outs else None
+        if fade_outs:
+            time.sleep(step_time)
 
 
-"""
-Gradually fade up the volume of the given mpv processes over the specified duration and steps.
-First pararmeter is a list of tuples of (mpv_process, target_volume), so that different players can be faded up to different volumes.
-"""
-def fade_up(mvp_processes_and_target_volumes, duration, steps=10):
+def fade_up(mpd_processes_and_target_volumes: List[Tuple[MpdProcess, int]], duration: float, steps: int = 10):
+    """Gradually fade up the volume of the given MPD processes over the specified duration and steps.
 
+    Args:
+        mpd_processes_and_target_volumes: List of tuples of (MpdProcess, target_volume)
+        duration: Total duration in seconds for the fade up
+        steps: Number of volume steps for the fade up
+    """
     fade_ups = []
-    for player, target_volume in mvp_processes_and_target_volumes:
+    for player, target_volume in mpd_processes_and_target_volumes:
         fade_ups.append(FadeUp(player, target_volume=target_volume, num_steps=steps))
 
-    step_time = duration / steps
+    step_time = duration / steps if steps > 0 else duration
 
     while fade_ups:
         for fade in fade_ups[:]:
             if fade.step():
                 fade_ups.remove(fade)
-        time.sleep(step_time) if fade_ups else None
+        if fade_ups:
+            time.sleep(step_time)
