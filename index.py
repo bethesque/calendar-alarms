@@ -2,8 +2,8 @@ import logging
 import cherrypy
 import google_auth_oauthlib.flow
 from ecal.env import SERVER_ADDRESS, SCOPE, login_hint
-from ecal.alarms.mpv import MpvProcess, fade_out
-from ecal.alarms import ALARM_SOCKET, ANNOUNCEMENT_SOCKET
+from ecal.alarms.mpd import MpdProcess, fade_out
+from ecal.env import MPD_HOST, MPD_PORT
 from ecal.log_config import setup_logging_for_http_server
 
 setup_logging_for_http_server()
@@ -35,11 +35,10 @@ class AlarmController(object):
         message = ""
 
         try:
-            alarm_player = MpvProcess(ALARM_SOCKET)
-            announcement_player = MpvProcess(ANNOUNCEMENT_SOCKET)
+            alarm_player = MpdProcess(MPD_HOST, MPD_PORT)
 
-            # collect the players that are currently running (if the IPC socket is available)
-            players_to_fade = [player for player in [alarm_player, announcement_player] if player.is_running()]
+            # collect the players that are currently running
+            players_to_fade = [player for player in [alarm_player] if player.is_running()]
 
             fade_out(players_to_fade, 3)
             message = "Alarm stopped."

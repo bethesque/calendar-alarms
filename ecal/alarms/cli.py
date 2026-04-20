@@ -1,10 +1,9 @@
 import logging
 
 from ecal.alarms.alarm import play_alarm
-from ecal.alarms import ALARM_SOCKET, ANNOUNCEMENT_SOCKET, MIXED_SOCKET
-from ecal.alarms.mpv import MpvProcess, fade_out, fade_up
+from ecal.env import MPD_HOST, MPD_PORT
+from ecal.alarms.mpd import MpdProcess, fade_out, fade_up
 from ecal.log_config import setup_logging
-from ecal.env import SINGLE_STREAM
 
 setup_logging(logging.DEBUG)
 
@@ -61,17 +60,14 @@ def test_alarm():
         print("Testing alarm... press Ctrl+C to stop")
         play_alarm(["audio/test_announcement.mp3"])
     except KeyboardInterrupt as e:
-        alarm_player = MpvProcess(ALARM_SOCKET)
-        announcement_player = MpvProcess(ANNOUNCEMENT_SOCKET)
-        fade_out([alarm_player, announcement_player], 3)
+        alarm_player = MpdProcess(MPD_HOST, MPD_PORT)
+        fade_out([alarm_player], 3)
         exit(0)
 
 def stop_alarm():
     try:
-        mixed_player = MpvProcess(MIXED_SOCKET)
-        alarm_player = MpvProcess(ALARM_SOCKET)
-        announcement_player = MpvProcess(ANNOUNCEMENT_SOCKET)
-        fade_out([alarm_player, announcement_player, mixed_player], 3)
+        alarm_player = MpdProcess(MPD_HOST, MPD_PORT)
+        fade_out([alarm_player], 3)
         logger.info("Alarm stopped.")
     except Exception as e:
         logger.error(f"Error stopping alarm: {e}")
@@ -90,16 +86,10 @@ def play_test_file():
 
     try:
         # Play the mixed audio file
-        alarm_player = MpvProcess(MIXED_SOCKET)
-        alarm_player.start()
-
-        if not alarm_player.wait_for_ipc(timeout=30.0):
-            logger.error(f"Error: mpv IPC socket at {MIXED_SOCKET} not ready")
-            exit(1)
-
+        alarm_player = MpdProcess(MPD_HOST, MPD_PORT)
         alarm_player.set_volume(60)
         alarm_player.play_file(audio_file)
-        fade_up([(alarm_player, 100)], 45, 10)
+        fade_up([(alarm_player, 80)], 5, 10)
     except Exception as e:
         logger.error(f"Error playing alarm: {e}")
         exit(1)

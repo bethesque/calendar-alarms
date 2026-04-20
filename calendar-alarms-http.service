@@ -1,0 +1,11 @@
+[Unit]
+Description=Calendar Alarms
+After=multi-user.target
+
+[Service]
+WorkingDirectory=/home/beth/calendar-alarms
+ExecStart=/usr/bin/python3.13 /home/beth/calendar-alarms/index.py
+User=beth
+
+[Install]
+WantedBy=multi-user.target

@@ -68,11 +68,6 @@ sudo usermod -aG audio $USER
 
 sudo apt install alsa-utils
 
-# Step 1: enable loopback device
-sudo modprobe snd-aloop
-
-# Persist it
-echo "snd-aloop" | sudo tee -a /etc/modules
 
 
 vi /etc/snapserver.conf
