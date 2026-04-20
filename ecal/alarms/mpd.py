@@ -12,6 +12,38 @@ Manages the MPD (Music Player Daemon) for playing alarm and announcement sounds.
 Uses the python-musicpd library to communicate with the MPD daemon.
 """
 
+def wrapext(func):
+    """Decorator to wrap errors in musicpd.MPDError"""
+    errors=(OSError, TimeoutError)
+    into = musicpd.MPDError
+    def w_func(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except errors as err:
+            strerr = str(err)
+            if hasattr(err, 'strerror'):
+                if err.strerror:
+                    strerr = err.strerror
+            raise into(strerr) from err
+    return w_func
+
+
+class MyClient(musicpd.MPDClient):
+    """Plain client inheriting from MPDClient"""
+
+    def __init__(self):
+        # Set logging to debug level
+        logging.basicConfig(level=logging.DEBUG,
+                format='%(levelname)-8s %(module)-10s %(message)s')
+        self.log = logging.getLogger(__name__)
+        super().__init__()
+
+    @wrapext
+    def __getattr__(self, cmd):
+        """Wrapper around MPDClient calls for abstract overriding"""
+        self.log.debug('cmd: %s', cmd)
+        return super().__getattr__(cmd)
+
 class MpdProcess:
     """Interface to control MPD daemon for playing audio files."""
 
@@ -30,7 +62,7 @@ class MpdProcess:
         """Establish connection to MPD daemon."""
         try:
             if self.client is None:
-                self.client = musicpd.MPDClient()
+                self.client = MyClient()
                 self.client.socket_timeout = 5.0
                 self.client.connect(self.host, self.port)
             return True

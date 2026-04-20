@@ -7,7 +7,7 @@ from ecal.alarms.log_config import setup_logging_for_cron
 from ecal.env import DATA_DIRECTORY
 from ecal.alarms.alarm import check_for_alarms
 
-setup_logging_for_cron()
+setup_logging_for_cron(logging.DEBUG)
 
 logger = logging.getLogger(__name__)
 
