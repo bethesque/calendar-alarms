@@ -28,6 +28,7 @@ def wrapext(func):
     return w_func
 
 
+# https://kaliko.gitlab.io/python-musicpd/examples.html#dealing-with-exceptions
 class MyClient(musicpd.MPDClient):
     """Plain client inheriting from MPDClient"""
 

@@ -22,11 +22,12 @@ def play_alarm(announcement_files):
     )
 
     logger.info(f"Playing alarm {audio_file}")
-
+    logger.debug("Creating MPD Process with host: %s, port: %d", MPD_HOST, MPD_PORT)
     # Play the mixed audio file
     alarm_player = MpdProcess(MPD_HOST, MPD_PORT)
-
+    logger.debug("Setting default volume: %d", DEFAULT_VOLUME)
     alarm_player.set_volume(DEFAULT_VOLUME)
+    logger.debug("Playing audio file: %s", audio_file)
     alarm_player.play_file(audio_file)
     logger.info("Alarm started, fading up volume...")
     fade_up([(alarm_player, 100)], 45, 10)
