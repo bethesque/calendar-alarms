@@ -73,6 +73,12 @@ sudo apt install alsa-utils
 vi /etc/snapserver.conf
 
 
+#### HTTP service
+
+The HTTP service provides two functions - allowing the calendar to get/update Google credentials for fetching the calendar data, and providing an endpoint to stop the alarm.
+
+
+
 ```
 
 sudo cp /home/beth/calendar-alarms/calendar-alarms-http.service /lib/systemd/system/calendar-alarms-http.service
