@@ -6,13 +6,13 @@ from ecal.alarms.sound import build_alarm_audio
 from ecal.alarms.text_to_voice import text_to_voice_file
 from ecal.alarms.mpd import MpdProcess, fade_up
 from ecal.alarms import ALARM_FILE, DEFAULT_VOLUME
-from ecal.env import DATA_DIRECTORY, MPD_HOST, MPD_PORT
+from ecal.env import MPD_HOST, MPD_PORT, OUTPUT_AUDIO_DIRECTORY
 
 
 logger = logging.getLogger(__name__)
 
 def play_alarm(announcement_files):
-    audio_file = DATA_DIRECTORY + "/alarm_mix.wav"
+    audio_file = OUTPUT_AUDIO_DIRECTORY + "/alarm_mixed.wav"
     # TODO use all announcement files
     build_alarm_audio(
         announcement_file=announcement_files[0],
