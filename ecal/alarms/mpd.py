@@ -162,7 +162,7 @@ class MpdProcess:
             return audio.info.length
         except Exception as e:
             logger.warning(f"Failed to get length of {file_path}: {e}")
-            return 0
+            raise e
 
 # This calculates the steps, but does not do the waiting, so that multiple players can be
 # faded out together without needing to use threads. The caller can call step() repeatedly

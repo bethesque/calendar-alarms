@@ -1,5 +1,5 @@
 import subprocess
-
+from mutagen.mp3 import MP3
 import logging
 
 logger = logging.getLogger(__name__)
@@ -10,6 +10,11 @@ def build_alarm_audio(
     output_file: str,
     duration: int = 300
 ):
+
+    announcement_loops = num_loops(duration, announcement_file)
+    alarm_loops = num_loops(duration, alarm_file)
+
+
     logger.debug(f"Building alarm audio with announcement_file={announcement_file}, alarm_file={alarm_file}, output_file={output_file}, duration={duration}")
     filter_complex = (
         # 1) Force format INCLUDING sample format
@@ -20,11 +25,11 @@ def build_alarm_audio(
         "[s0][s1]concat=n=2:v=0:a=1[ann_once];"
 
         # 3) Loop announcement cycle
-        "[ann_once]aloop=loop=-1:size=2e+09[ann];"
+        f"[ann_once]aloop=loop={announcement_loops}:size=2e+09[ann];"
 
         # 4) Prepare alarm
         "[2:a]aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo,"
-        "volume=0.5,aloop=loop=-1:size=2e+09[alarm];"
+        f"volume=0.5,aloop=loop={alarm_loops}:size=2e+09[alarm];"
 
         # 5) Mix
         "[alarm][ann]amix=inputs=2:duration=longest:weights='1 1.5',"
@@ -110,3 +115,17 @@ def build_announcement_audio(
                 stderr=subprocess.PIPE,
                 text=True)
     logger.debug(f"FFmpeg output: {result.stderr}")
+
+def num_loops(max_length: float, *file_paths: str) -> int:
+        """Calculate the number of loops needed to play files for max_length seconds."""
+        total_length = sum(track_length(fp) for fp in file_paths)
+        return max(1, int(max_length // total_length))
+
+def track_length(file_path: str) -> float:
+    """Get the length of an audio file in seconds."""
+    try:
+        audio = MP3(file_path)
+        return audio.info.length
+    except Exception as e:
+        logger.warning(f"Failed to get length of {file_path}: {e}")
+        raise e
