@@ -21,11 +21,14 @@ def play_alarm(announcement_files):
         duration=300
     )
 
+    logger.info(f"Playing alarm {audio_file}")
+
     # Play the mixed audio file
     alarm_player = MpdProcess(MPD_HOST, MPD_PORT)
 
     alarm_player.set_volume(DEFAULT_VOLUME)
     alarm_player.play_file(audio_file)
+    logger.info("Alarm started, fading up volume...")
     fade_up([(alarm_player, 100)], 45, 10)
 
 def parse_iso(dt_str):
