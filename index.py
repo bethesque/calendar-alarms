@@ -103,4 +103,4 @@ class CalendarWebServer(object):
         return "Welcome back. The calendar screen should update within a few minutes."
 
 if __name__ == "__main__":
-    cherrypy.quickstart(CalendarWebServer())
+    cherrypy.quickstart(CalendarWebServer(), config="server.conf")

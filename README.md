@@ -75,6 +75,29 @@ vi /etc/snapserver.conf
 
 ```
 
+sudo cp /home/beth/calendar-alarms/calendar-alarms-http.service /lib/systemd/system/calendar-alarms-http.service
+```
+
+Reload with:
+
+```
+sudo systemctl daemon-reload
+```
+
+Start service if it has stopped with
+
+```
+sudo systemctl restart calendar-alarms-http.service
+```
+
+View system logs using
+
+```
+journalctl -u calendar-alarms-http -f # view logs
+```
+
+
+
 ### Clients
 
 ```
