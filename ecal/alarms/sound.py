@@ -10,6 +10,7 @@ def build_alarm_audio(
     output_file: str,
     duration: int = 300
 ):
+    logger.debug(f"Building alarm audio with announcement_file={announcement_file}, alarm_file={alarm_file}, output_file={output_file}, duration={duration}")
     filter_complex = (
         # 1) Force format INCLUDING sample format
         "[0:a]aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo[s0];"
@@ -36,7 +37,6 @@ def build_alarm_audio(
         # 7) Final limiter + trim
         f"alimiter=limit=0.9,atrim=duration={duration}"
 
-
     )
 
     cmd = [
@@ -57,6 +57,8 @@ def build_alarm_audio(
         "-y",
         output_file,
     ]
+
+    logger.debug(f"Running FFmpeg command: {' '.join(cmd)}")
 
     result = subprocess.run(
                 cmd,
