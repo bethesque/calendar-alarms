@@ -3,6 +3,7 @@ import logging
 from mutagen.mp3 import MP3
 import musicpd
 from typing import Optional, List, Tuple
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ class MpdProcess:
         try:
             if self.client is None:
                 self.client = musicpd.MPDClient()
-                self.client.timeout = 5.0
+                self.client.socket_timeout = 5.0
                 self.client.connect(self.host, self.port)
             return True
         except (musicpd.ConnectionError, OSError) as e:
@@ -63,61 +64,17 @@ class MpdProcess:
             logger.warning(f"Cannot connect to MPD to play {file_path}")
             return
 
-        try:
-            self.client.clear()
-            self.client.add(file_path)
-            self.client.play()
-            logger.debug(f"Playing file: {file_path}")
-        except musicpd.CommandError as e:
-            logger.error(f"Failed to play file {file_path}: {e}")
-
-    def play_file_on_loop(self, file_path: str, max_length: float):
-        """Load and play a file repeatedly for max_length seconds."""
-        if not self._ensure_connected():
-            logger.warning(f"Cannot connect to MPD to play {file_path}")
-            return
-
-        try:
-            num_loops = self.num_loops(max_length, file_path)
-            self.client.clear()
-            self.client.add(file_path)
-            self.client.repeat(1)  # Enable repeat mode
-            self.client.play()
-            logger.debug(f"Playing file on loop ({num_loops} times): {file_path}")
-        except musicpd.CommandError as e:
-            logger.error(f"Failed to play file on loop {file_path}: {e}")
-
-    def play_files(self, file_paths: List[str]):
-        """Load and play a list of files sequentially."""
-        if not self._ensure_connected():
-            logger.warning("Cannot connect to MPD to play files")
-            return
+        full_path = f"file://{os.path.abspath(file_path)}"
 
         try:
             self.client.clear()
-            for file_path in file_paths:
-                self.client.add(file_path)
+            self.client.add(full_path)
             self.client.play()
-            logger.debug(f"Playing {len(file_paths)} files")
+            logger.debug(f"Playing file: {full_path}")
         except musicpd.CommandError as e:
-            logger.error(f"Failed to play files: {e}")
+            logger.error(f"Failed to play file {full_path}: {e}")
 
-    def play_files_on_loop(self, file_paths: List[str], max_length: float):
-        """Load and play a list of files repeatedly for max_length seconds."""
-        if not self._ensure_connected():
-            logger.warning("Cannot connect to MPD to play files")
-            return
 
-        try:
-            num_loops = self.num_loops(max_length, *file_paths)
-            self.client.clear()
-            for file_path in file_paths:
-                self.client.add(file_path)
-            self.client.repeat(1)  # Enable repeat mode
-            self.client.play()
-            logger.debug(f"Playing {len(file_paths)} files on loop ({num_loops} times)")
-        except musicpd.CommandError as e:
-            logger.error(f"Failed to play files on loop: {e}")
 
     def set_volume(self, vol: int):
         """Set volume to a value from 0-100."""
