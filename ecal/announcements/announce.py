@@ -1,17 +1,15 @@
 import logging
 from ecal.alarms.mpd import MpdProcess
-from ecal.alarms.mpv import MpvProcess
 from ecal.google_calendar import WeatherForecast, load_data_from_file
 from ecal.alarms.text_to_voice import text_to_voice_file_daily_summary
 from ecal.env import DATA_DIRECTORY, CACHE_DIRECTORY, SINGLE_STREAM, OUTPUT_AUDIO_DIRECTORY, MPD_HOST, MPD_PORT
-from ecal.alarms import DEFAULT_VOLUME, MIXED_SOCKET
+from ecal.alarms import DEFAULT_VOLUME
 from ecal.log_config import setup_logging
-from ecal.alarms.alarm import prepare_mvp_processes
-from ecal.alarms.sound import build_alarm_audio, build_announcement_audio
+from ecal.alarms.sound import build_announcement_audio
 import os
 
 DATA_FILE = f"{DATA_DIRECTORY}/calendar.json"
-ANNOUNCEMENT_FILE = CACHE_DIRECTORY + "/audio/daily_summary.mp3"
+SPEECH_FILE = CACHE_DIRECTORY + "/audio/daily_summary.mp3"
 MIXED_FILE = f"{OUTPUT_AUDIO_DIRECTORY}/mixed6.wav"
 SILENCE = "audio/silence_5s.mp3"
 ANNOUNCEMENT_BACKGROUND_MUSIC = "audio/Daybreak.mp3"
@@ -24,19 +22,12 @@ logger = logging.getLogger(__name__)
 Top level entry point. Generate a summary of today's events, convert them to voice, and play them.
 """
 def announce(calendar_file=DATA_FILE):
-    announcement_file = get_daily_summary_announcement(calendar_file)
-    play_morning_summary_announcement(announcement_file)
+    speech_file = get_daily_summary_announcement(calendar_file)
+    play_morning_summary_announcement(speech_file)
 
-def play_morning_summary_announcement(announcement_file=ANNOUNCEMENT_FILE):
-    if SINGLE_STREAM:
-        play_morning_summary_announcement_single_stream(announcement_file)
-    else:
-        play_morning_summary_announcement_dual_stream(announcement_file)
-
-def play_morning_summary_announcement_single_stream(announcement_file=ANNOUNCEMENT_FILE):
-
+def play_morning_summary_announcement(speech_file=SPEECH_FILE):
     build_announcement_audio(
-        announcement_file=announcement_file,
+        speech_file=speech_file,
         music_file=ANNOUNCEMENT_BACKGROUND_MUSIC,
         output_file=MIXED_FILE
     )
@@ -49,12 +40,6 @@ def play_morning_summary_announcement_single_stream(announcement_file=ANNOUNCEME
     alarm_player.set_volume(DEFAULT_VOLUME)
     alarm_player.play_file(MIXED_FILE)
 
-def play_morning_summary_announcement_dual_stream(announcement_file=ANNOUNCEMENT_FILE):
-    alarm_process, announcement_process = prepare_mvp_processes()
-    alarm_process.set_volume(DEFAULT_VOLUME * .60)
-    alarm_process.play_file(ANNOUNCEMENT_BACKGROUND_MUSIC)
-    announcement_process.play_files([SILENCE, announcement_file])
-
 """
 Generate the voice file from the calendar events in the given file, and return the
 path to the voice file.
@@ -66,9 +51,9 @@ def get_daily_summary_announcement(calendar_file=DATA_FILE):
     sentences = build_sentences(all_events)
     announcement = " ".join(sentences)
     logger.info(f"Generated daily summary announcement: {announcement}")
-    announcement_file = text_to_voice_file_daily_summary(announcement)
-    #announcement_file = "cache/audio/daily_summary.mp3"
-    return announcement_file
+    speech_file = text_to_voice_file_daily_summary(announcement)
+    #speech_file = "cache/audio/daily_summary.mp3"
+    return speech_file
 
 """
 Build a List of sentences to speak aloud from the given list of Events.

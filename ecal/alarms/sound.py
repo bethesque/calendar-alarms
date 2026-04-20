@@ -66,7 +66,7 @@ def build_alarm_audio(
     logger.debug(f"FFmpeg output: {result.stderr}")
 
 def build_announcement_audio(
-    announcement_file: str,
+    speech_file: str,
     music_file: str,
     output_file: str,
 ):
@@ -90,7 +90,7 @@ def build_announcement_audio(
     cmd = [
         "ffmpeg",
         "-loglevel", "warning",
-        "-i", announcement_file,
+        "-i", speech_file,
         "-i", music_file,
         "-filter_complex", filter_complex,
 

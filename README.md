@@ -7,9 +7,9 @@
 Mac or Linux environment. Windows is not supported.
 
 - python 3.13
-- mpv (music player for mac/linux)
+- mpd (music player for mac/linux)
 - snapcast (a multiroom client-server audio player)
-- ffmpeg
+- ffmpeg (used to mix announcements and alarm music)
 
 ### Set up
 
@@ -19,7 +19,7 @@ Mac or Linux environment. Windows is not supported.
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .
-brew install mpv
+brew install mpd
 brew install snapcast
 brew install ffmpeg
 ```
@@ -29,7 +29,7 @@ brew install ffmpeg
 python -m venv .venv
 source ./venv/Scripts/activate
 pip install -e .
-sudo apt install mpv
+sudo apt install mpd
 sudo apt install snapcast
 sudo apt install ffmpeg
 ```
@@ -57,7 +57,7 @@ python3.13 -m pip install --upgrade pip setuptools wheel
 git clone https://github.com/bethesque/calendar-alarms.git
 cd calendar-alarms
 sudo apt install python3-pip
-sudo apt install mpv
+sudo apt install mpd
 brew install snapcast
 sudo apt install ffmpeg
 python3.13 -m pip install -e .
@@ -161,20 +161,3 @@ Restart=on-failure
 #
 [Install]
 WantedBy=multi-user.target
-
-
-echo '{ "command": ["loadfile", "/home/beth/calendar-alarms/cache/audio/daily_summary.mp3", "replace"] }'  | socat - /tmp/mpv_mixed.sock
-
-
-
-
-mpv --idle=yes --no-video --keep-open=yes --ao=pcm --ao-pcm-file=/tmp/snapfifo --ao-pcm-waveheader=no --audio-format=s16 --audio-channels=stereo --audio-samplerate=48000 --input-ipc-server=/tmp/mpv_mixed.sock &
-
-# this works
-echo '{ "command": ["loadfile", "/home/beth/calendar-alarms/alarm_mix.wav"] }'  | socat - /tmp/mpv_mixed.sock
-
-echo '{ "command": ["get_property", "idle-active"] }' | socat - /tmp/mpv_mixed.sock
-# {"data":false,"request_id":0,"error":"success"}
-
-# this does nothing
-echo '{ "command": ["loadfile", "/home/beth/calendar-alarms/alarm_mix.wav"] }'  | socat - /tmp/mpv_mixed.sock
