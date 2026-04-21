@@ -15,7 +15,6 @@ WINDOW="$1"
 
 # Make this work on mac and on the raspberry pi.
 if [ -x "/usr/bin/python3.13" ]; then
-  echo "/usr/bin/python3.13 exists and is executable."
   PYTH="/usr/bin/python3.13"
 else
   echo "/usr/bin/pytho3.13 is not executable or does not exist. Using python on path."
