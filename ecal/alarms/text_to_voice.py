@@ -2,6 +2,7 @@ from ecal.string_utils import sanitise_filename
 from gtts import gTTS
 import os
 import logging
+import random
 
 DEFAULT_ANNOUCEMENT_FILE = "audio/default_announcement.mp3"
 
@@ -18,7 +19,8 @@ def text_to_voice_file(text, cache_directory=CACHE_DIRECTORY):
     # Take first 20 words to avoid long processing times and large audio files
     words = text.split()
     truncated_text = " ".join(words[:20])
-    audio_file_path = os.path.join(cache_directory, "audio", sanitise_filename(truncated_text) + ".mp3")
+    tld = gtts_tld()
+    audio_file_path = os.path.join(cache_directory, "audio", sanitise_filename(truncated_text + "_" + tld) + ".mp3")
     # if the file already exists, return it
     if os.path.exists(audio_file_path):
         logger.debug("Audio file already exists for text: %s, returning existing file: %s", truncated_text, audio_file_path)
@@ -26,7 +28,7 @@ def text_to_voice_file(text, cache_directory=CACHE_DIRECTORY):
 
     try:
         logger.debug("Generating TTS for text: %s, saving to: %s", truncated_text, audio_file_path)
-        tts = gTTS(truncated_text, timeout=5)
+        tts = gTTS(truncated_text, timeout=5, lang='en', tld=tld)
 
         # Ensure the cache directory exists
         os.makedirs(os.path.dirname(audio_file_path), exist_ok=True)
@@ -55,6 +57,10 @@ def text_to_voice_file_daily_summary(text, cache_directory=CACHE_DIRECTORY):
         return DEFAULT_ANNOUCEMENT_FILE
 
     return audio_file_path
+
+def gtts_tld():
+    # Randomly select a tld to keep things interesting.
+    return random.choice(['com.au', 'com.au', 'com.au', 'com.au', 'com.au', 'com.au', 'ie', 'co.uk', 'ca'])
 
 if __name__ == "__main__":
     test_text = "This is a test event. Don't do anything."
