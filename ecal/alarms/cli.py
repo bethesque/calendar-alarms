@@ -3,9 +3,9 @@ import logging
 from ecal.alarms.alarm import play_alarm
 from ecal.env import MPD_HOST, MPD_PORT
 from ecal.alarms.mpd import MpdProcess, fade_out, fade_up
-from ecal.log_config import setup_logging
+from ecal.log_config import setup_logging_for_alarms
 
-setup_logging(logging.DEBUG)
+setup_logging_for_alarms()
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +17,6 @@ from datetime import datetime
 from ecal.log_config import setup_logging
 from ecal.env import DATA_DIRECTORY
 from ecal.alarms.alarm import check_for_alarms
-
-setup_logging()
 
 logger = logging.getLogger(__name__)
 

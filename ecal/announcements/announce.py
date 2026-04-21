@@ -2,19 +2,16 @@ import logging
 from ecal.alarms.mpd import MpdProcess
 from ecal.google_calendar import WeatherForecast, load_data_from_file
 from ecal.alarms.text_to_voice import text_to_voice_file_daily_summary
-from ecal.env import DATA_DIRECTORY, CACHE_DIRECTORY, SINGLE_STREAM, OUTPUT_AUDIO_DIRECTORY, MPD_HOST, MPD_PORT
+from ecal.env import DATA_DIRECTORY, CACHE_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, MPD_HOST, MPD_PORT
 from ecal.alarms import DEFAULT_VOLUME
-from ecal.log_config import setup_logging
 from ecal.alarms.sound import build_announcement_audio
-import os
+
 
 DATA_FILE = f"{DATA_DIRECTORY}/calendar.json"
 SPEECH_FILE = CACHE_DIRECTORY + "/audio/daily_summary.mp3"
 MIXED_FILE = f"{OUTPUT_AUDIO_DIRECTORY}/mixed6.wav"
 SILENCE = "audio/silence_5s.mp3"
 ANNOUNCEMENT_BACKGROUND_MUSIC = "audio/Daybreak.mp3"
-
-setup_logging(logging.INFO)
 
 logger = logging.getLogger(__name__)
 

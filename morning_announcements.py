@@ -2,6 +2,10 @@ import argparse
 from ecal.env import DATA_DIRECTORY
 import os
 from ecal.announcements.announce import announce, play_morning_summary_announcement
+import logging
+from ecal.log_config import setup_logging_for_announcements
+
+setup_logging_for_announcements()
 
 if __name__ == "__main__":
     # add --cached option to only announce cached events

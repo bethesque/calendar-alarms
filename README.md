@@ -34,6 +34,15 @@ sudo apt install snapcast
 sudo apt install ffmpeg
 ```
 
+### Local testing
+
+Run mpd
+```
+/opt/homebrew/opt/mpd/bin/mpd --no-daemon --verbose
+```
+
+
+
 ## Deployment
 
 ### Requirements
@@ -143,21 +152,3 @@ https://github.com/snapcast/snapcast/issues/1094
 
 
 
-[Unit]
-Description=Snapcast client
-Documentation=man:snapclient(1)
-Wants=avahi-daemon.service
-After=network.target time-sync.target sound.target avahi-daemon.service
-#
-[Service]
-EnvironmentFile=-/etc/default/snapclient
-Environment=XDG_RUNTIME_DIR=/run/user/1000
-ExecStart=/usr/bin/snapclient --logsink=system $SNAPCLIENT_OPTS
-User=thetrav
-Group=thetrav
-# very noisy on stdout
-StandardOutput=null
-Restart=on-failure
-#
-[Install]
-WantedBy=multi-user.target

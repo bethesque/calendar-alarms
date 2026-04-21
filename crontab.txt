@@ -22,6 +22,8 @@
 #
 # m h  dom mon dow   command
 
+IS_CRON=true
+
 # ====== FETCH CALENDAR DATA ======
 
 # Every 5 minutes between 7am (inclusive) and 9pm (exclusive), but offset from the alarms by 2 minutes
