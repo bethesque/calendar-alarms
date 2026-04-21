@@ -1,6 +1,8 @@
 import subprocess
-from mutagen.mp3 import MP3
 import logging
+import subprocess
+import tempfile
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -11,9 +13,10 @@ def build_alarm_audio(
     duration: int = 300
 ):
 
+    # Not quite right because we add silence at the beginning and between loops, but it's good enough
+    # The overall file will be concatenated at <duration> seconds
     announcement_loops = num_loops(duration, announcement_file)
     alarm_loops = num_loops(duration, alarm_file)
-
 
     logger.debug(f"Building alarm audio with announcement_file={announcement_file}, alarm_file={alarm_file}, output_file={output_file}, duration={duration}")
     filter_complex = (
@@ -121,11 +124,56 @@ def num_loops(max_length: float, *file_paths: str) -> int:
         total_length = sum(track_length(fp) for fp in file_paths)
         return max(1, int(max_length // total_length))
 
-def track_length(file_path: str) -> float:
-    """Get the length of an audio file in seconds."""
+# def track_length(file_path: str) -> float:
+#     """Get the length of an audio file in seconds."""
+#     try:
+#         audio = MP3(file_path)
+#         return audio.info.length
+#     except Exception as e:
+#         logger.warning(f"Failed to get length of {file_path}: {e}")
+#         raise e
+
+
+
+def track_length(path: str)  -> float:
     try:
-        audio = MP3(file_path)
-        return audio.info.length
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-v", "error",
+                "-show_entries", "format=duration",
+                "-of", "default=noprint_wrappers=1:nokey=1",
+                path
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            check=True
+        )
+        return float(result.stdout.strip())
     except Exception as e:
-        logger.warning(f"Failed to get length of {file_path}: {e}")
-        raise e
+        raise RuntimeError(f"Failed to get duration: {e}")
+
+
+def join_mp3s_to_wav(mp3_files, output_wav):
+    with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
+        for mp3 in mp3_files:
+            f.write(f"file '{os.path.abspath(mp3)}'\n")
+        list_file = f.name
+
+    try:
+        subprocess.run([
+            "ffmpeg",
+            "-y",
+            "-f", "concat",
+            "-safe", "0",
+            "-i", list_file,
+            "-vn",
+            "-acodec", "pcm_s16le",
+            output_wav
+        ], check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+    finally:
+        os.remove(list_file)

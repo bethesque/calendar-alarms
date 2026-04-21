@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timedelta
 
 from ecal.alarms.mpd import MpdProcess
-from ecal.alarms.sound import build_alarm_audio
+from ecal.alarms.sound import build_alarm_audio, join_mp3s_to_wav
 from ecal.alarms.text_to_voice import text_to_voice_file
 from ecal.alarms.mpd import MpdProcess, fade_up
 from ecal.alarms import ALARM_FILE, DEFAULT_VOLUME
@@ -12,10 +12,13 @@ from ecal.env import MPD_HOST, MPD_PORT, OUTPUT_AUDIO_DIRECTORY
 logger = logging.getLogger(__name__)
 
 def play_alarm(announcement_files):
+    joined_announcement_file = OUTPUT_AUDIO_DIRECTORY + "/announcement.wav"
+    join_mp3s_to_wav(announcement_files, joined_announcement_file)
+
     audio_file = OUTPUT_AUDIO_DIRECTORY + "/alarm_mixed.wav"
-    # TODO use all announcement files
+
     build_alarm_audio(
-        announcement_file=announcement_files[0],
+        announcement_file=joined_announcement_file,
         alarm_file=ALARM_FILE,
         output_file=audio_file,
         duration=300

@@ -26,7 +26,6 @@ dependencies = [
     "CherryPy==18.10.0",
     "requests==2.31.0",
     "tzdata",
-    "mutagen==1.47.0",
     "gtts==2.5.4",
     "python-musicpd==0.9.2"
 ]
