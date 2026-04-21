@@ -13,8 +13,12 @@ fi
 
 WINDOW="$1"
 
-source .env
+# Make this work on mac and on the raspberry pi.
+if [ -x "/usr/bin/python3.13" ]; then
+  PYTH="/usr/bin/python3.13"
+else
+  echo "/usr/bin/pytho3.13 is not executable or does not exist. Using python on path."
+  PYTH="python"
+fi
 
-./script/connect_bluetooth_speaker.sh
-
-/usr/bin/python check_for_alarms.py --window "$WINDOW"
+"$PYTH" check_for_alarms.py --window "$WINDOW"

@@ -5,10 +5,12 @@ set -Eeuo pipefail
 
 echo "Morning announcements at $(date)"
 
-export PATH="/home/$(id -un)/.local/bin:${PATH}"
+# Make this work on mac and on the raspberry pi.
+if [ -x "/usr/bin/python3.13" ]; then
+  PYTH="/usr/bin/python3.13"
+else
+  echo "/usr/bin/python3.13 is not executable or does not exist. Using python on path."
+  PYTH="python"
+fi
 
-source .env
-
-./script/connect_bluetooth_speaker.sh
-
-
+"$PYTH" morning_announcements.py "$@"
