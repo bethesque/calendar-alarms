@@ -4,6 +4,7 @@ import musicpd
 from typing import Optional, List, Tuple
 import os
 from contextlib import contextmanager
+from ecal.env import MPD_HOST, MPD_PORT
 
 logger = logging.getLogger(__name__)
 
@@ -13,13 +14,12 @@ including functionality to fade in and fade out the volume.
 It uses the python-musicpd library to communicate with the MPD daemon.
 """
 
-
-
 @contextmanager
-def mpd_connection(client):
-    client.connect()
+def mpd_connection():
+    client = MpdClient(MPD_HOST, MPD_PORT)
     try:
-        yield
+        client.connect()
+        yield client
     except Exception as e:
         logger.error(f"Error while connected to MPD: {e}")
         raise e

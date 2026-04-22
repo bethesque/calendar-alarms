@@ -28,8 +28,7 @@ def play_morning_summary_announcement(speech_file=SPEECH_FILE):
         output_file=MIXED_FILE
     )
     # Play the mixed audio file
-    alarm_player = MpdClient(MPD_HOST, MPD_PORT)
-    with mpd_connection(alarm_player):
+    with mpd_connection() as alarm_player:
         alarm_player.set_volume(INITIAL_VOLUME)
         alarm_player.play_file(MIXED_FILE)
 

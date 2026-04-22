@@ -59,15 +59,13 @@ def test_alarm():
         play_alarm(["audio/test_announcement.mp3"])
     except KeyboardInterrupt as e:
         logger.info("Stopping test alarm...")
-        alarm_player = MpdClient(MPD_HOST, MPD_PORT)
-        with mpd_connection(alarm_player):
+        with mpd_connection() as alarm_player:
             fade_out([alarm_player], 3)
         exit(0)
 
 def stop_alarm():
     try:
-        alarm_player = MpdClient(MPD_HOST, MPD_PORT)
-        with mpd_connection(alarm_player):
+        with mpd_connection() as alarm_player:
             fade_out([alarm_player], 3)
             logger.info("Alarm stopped.")
     except Exception as e:
@@ -86,8 +84,7 @@ def play_test_file():
 
     try:
         # Play the mixed audio file
-        alarm_player = MpdClient(MPD_HOST, MPD_PORT)
-        with mpd_connection(alarm_player):
+        with mpd_connection() as alarm_player:
             alarm_player.set_volume(60)
             alarm_player.play_file(audio_file)
             fade_up([(alarm_player, 80)], 5, 10)

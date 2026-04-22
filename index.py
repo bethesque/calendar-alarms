@@ -34,9 +34,8 @@ class AlarmController(object):
     def stop(self):
         logger.info("Stopping alarm...")
         message = ""
-        alarm_player = MpdClient(MPD_HOST, MPD_PORT)
         try:
-            with mpd_connection(alarm_player):
+            with mpd_connection() as alarm_player:
                 if alarm_player.is_running():
                     fade_out([alarm_player], 3)
                     alarm_player.stop()

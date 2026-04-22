@@ -26,8 +26,7 @@ def play_alarm(announcement_files):
 
     logger.info(f"Playing alarm {audio_file}")
     # Play the mixed audio file
-    alarm_player = MpdClient(MPD_HOST, MPD_PORT)
-    with mpd_connection(alarm_player):
+    with mpd_connection() as alarm_player:
         alarm_player.set_volume(INITIAL_VOLUME)
         alarm_player.play_file(audio_file)
         fade_up([(alarm_player, 100)], 45, 10)
