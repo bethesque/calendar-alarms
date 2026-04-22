@@ -1,16 +1,30 @@
 import time
 import logging
-from mutagen.mp3 import MP3
 import musicpd
 from typing import Optional, List, Tuple
 import os
+from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
 
 """
-Manages the MPD (Music Player Daemon) for playing alarm and announcement sounds.
-Uses the python-musicpd library to communicate with the MPD daemon.
+This module provides an interface to control the MPD daemon for playing audio files,
+including functionality to fade in and fade out the volume.
+It uses the python-musicpd library to communicate with the MPD daemon.
 """
+
+
+
+@contextmanager
+def mpd_connection(client):
+    client.connect()
+    try:
+        yield
+    except Exception as e:
+        logger.error(f"Error while connected to MPD: {e}")
+        raise e
+    finally:
+        client.disconnect()
 
 def wrapext(func):
     """Decorator to wrap errors in musicpd.MPDError"""
@@ -29,7 +43,7 @@ def wrapext(func):
 
 
 # https://kaliko.gitlab.io/python-musicpd/examples.html#dealing-with-exceptions
-class MyClient(musicpd.MPDClient):
+class LoggingClient(musicpd.MPDClient):
     """Plain client inheriting from MPDClient"""
 
     def __init__(self):
@@ -45,7 +59,7 @@ class MyClient(musicpd.MPDClient):
         self.log.debug('cmd: %s', cmd)
         return super().__getattr__(cmd)
 
-class MpdProcess:
+class MpdClient:
     """Interface to control MPD daemon for playing audio files."""
 
     def __init__(self, host: str = 'localhost', port: int = 6600):
@@ -63,13 +77,27 @@ class MpdProcess:
         """Establish connection to MPD daemon."""
         try:
             if self.client is None:
-                self.client = MyClient()
+                self.client = LoggingClient()
                 self.client.socket_timeout = 5.0
                 self.client.connect(self.host, self.port)
             return self
         except (musicpd.ConnectionError, OSError) as e:
             logger.debug(f"Failed to connect to MPD at {self.host}:{self.port}: {e}")
             raise e
+
+    def disconnect(self):
+        """Disconnect from MPD daemon."""
+        if self.client is not None:
+            try:
+                self.client.close()
+                self.client.disconnect()
+                logger.debug("Disconnected client from MPD")
+            except (musicpd.ConnectionError, OSError) as e:
+                logger.debug(f"Failed to disconnect from MPD: {e}")
+            finally:
+                self.client = None
+        else:
+            logger.debug("MPD client was not connected, nothing to disconnect")
 
     def is_running(self) -> bool:
         """Return True if MPD daemon is running and connectable."""
@@ -140,7 +168,7 @@ class MpdProcess:
 class FadeOut:
     """Gradually fade out volume over multiple steps."""
 
-    def __init__(self, mpd_process: MpdProcess, target_volume: int = 0, num_steps: int = 10):
+    def __init__(self, mpd_process: MpdClient, target_volume: int = 0, num_steps: int = 10):
         self.mpd_process = mpd_process
         self.target_volume = target_volume
         self.num_steps = num_steps
@@ -172,7 +200,7 @@ class FadeOut:
 class FadeUp:
     """Gradually fade up volume over multiple steps."""
 
-    def __init__(self, mpd_process: MpdProcess, target_volume: int = 100, num_steps: int = 10):
+    def __init__(self, mpd_process: MpdClient, target_volume: int = 100, num_steps: int = 10):
         self.mpd_process = mpd_process
         self.target_volume = target_volume
         self.num_steps = num_steps
@@ -206,7 +234,7 @@ class FadeUp:
             return True  # done
 
 
-def fade_out(mpd_processes: List[MpdProcess], duration: float, steps: int = 10):
+def fade_out(mpd_processes: List[MpdClient], duration: float, steps: int = 10):
     """Gradually fade out the volume of the given MPD processes over the specified duration and steps, then stop them.
 
     Args:
@@ -229,7 +257,7 @@ def fade_out(mpd_processes: List[MpdProcess], duration: float, steps: int = 10):
             time.sleep(step_time)
 
 
-def fade_up(mpd_processes_and_target_volumes: List[Tuple[MpdProcess, int]], duration: float, steps: int = 10):
+def fade_up(mpd_processes_and_target_volumes: List[Tuple[MpdClient, int]], duration: float, steps: int = 10):
     """Gradually fade up the volume of the given MPD processes over the specified duration and steps.
 
     Args:

@@ -2,7 +2,7 @@ import logging
 
 from ecal.alarms.alarm import play_alarm
 from ecal.env import MPD_HOST, MPD_PORT
-from ecal.alarms.mpd import MpdProcess, fade_out, fade_up
+from ecal.alarms.mpd import MpdClient, fade_out, fade_up, mpd_connection
 from ecal.log_config import setup_logging_for_alarms
 
 setup_logging_for_alarms()
@@ -58,19 +58,21 @@ def test_alarm():
         print("Testing alarm... press Ctrl+C to stop")
         play_alarm(["audio/test_announcement.mp3"])
     except KeyboardInterrupt as e:
-        alarm_player = MpdProcess(MPD_HOST, MPD_PORT).connect()
-        fade_out([alarm_player], 3)
+        logger.info("Stopping test alarm...")
+        alarm_player = MpdClient(MPD_HOST, MPD_PORT)
+        with mpd_connection(alarm_player):
+            fade_out([alarm_player], 3)
         exit(0)
 
 def stop_alarm():
     try:
-        alarm_player = MpdProcess(MPD_HOST, MPD_PORT).connect()
-        fade_out([alarm_player], 3)
-        logger.info("Alarm stopped.")
+        alarm_player = MpdClient(MPD_HOST, MPD_PORT)
+        with mpd_connection(alarm_player):
+            fade_out([alarm_player], 3)
+            logger.info("Alarm stopped.")
     except Exception as e:
         logger.error(f"Error stopping alarm: {e}")
         exit(1)
-
 
 def play_test_file():
     # get audio file path from the command line argument
@@ -84,10 +86,11 @@ def play_test_file():
 
     try:
         # Play the mixed audio file
-        alarm_player = MpdProcess(MPD_HOST, MPD_PORT).connect()
-        alarm_player.set_volume(60)
-        alarm_player.play_file(audio_file)
-        fade_up([(alarm_player, 80)], 5, 10)
+        alarm_player = MpdClient(MPD_HOST, MPD_PORT)
+        with mpd_connection(alarm_player):
+            alarm_player.set_volume(60)
+            alarm_player.play_file(audio_file)
+            fade_up([(alarm_player, 80)], 5, 10)
     except Exception as e:
         logger.error(f"Error playing alarm: {e}")
         exit(1)

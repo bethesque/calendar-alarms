@@ -1,10 +1,10 @@
 import logging
 from datetime import datetime, timedelta
 
-from ecal.alarms.mpd import MpdProcess
+from ecal.alarms.mpd import MpdClient
 from ecal.alarms.sound import build_alarm_audio, join_mp3s_to_wav
 from ecal.alarms.text_to_voice import text_to_voice_file
-from ecal.alarms.mpd import MpdProcess, fade_up
+from ecal.alarms.mpd import MpdClient, fade_up, mpd_connection
 from ecal.alarms import ALARM_FILE
 from ecal.env import MPD_HOST, MPD_PORT, OUTPUT_AUDIO_DIRECTORY, INITIAL_VOLUME
 
@@ -26,10 +26,11 @@ def play_alarm(announcement_files):
 
     logger.info(f"Playing alarm {audio_file}")
     # Play the mixed audio file
-    alarm_player = MpdProcess(MPD_HOST, MPD_PORT).connect()
-    alarm_player.set_volume(INITIAL_VOLUME)
-    alarm_player.play_file(audio_file)
-    fade_up([(alarm_player, 100)], 45, 10)
+    alarm_player = MpdClient(MPD_HOST, MPD_PORT)
+    with mpd_connection(alarm_player):
+        alarm_player.set_volume(INITIAL_VOLUME)
+        alarm_player.play_file(audio_file)
+        fade_up([(alarm_player, 100)], 45, 10)
 
 def parse_iso(dt_str):
     return datetime.fromisoformat(dt_str)

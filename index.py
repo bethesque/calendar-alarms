@@ -2,7 +2,7 @@ import logging
 import cherrypy
 import google_auth_oauthlib.flow
 from ecal.env import SERVER_ADDRESS, SCOPE, login_hint
-from ecal.alarms.mpd import MpdProcess, fade_out
+from ecal.alarms.mpd import MpdClient, fade_out, mpd_connection
 from ecal.env import MPD_HOST, MPD_PORT
 from ecal.log_config import setup_logging_for_http_server
 
@@ -34,15 +34,15 @@ class AlarmController(object):
     def stop(self):
         logger.info("Stopping alarm...")
         message = ""
-
+        alarm_player = MpdClient(MPD_HOST, MPD_PORT)
         try:
-            alarm_player = MpdProcess(MPD_HOST, MPD_PORT)
-
-            # collect the players that are currently running
-            players_to_fade = [player for player in [alarm_player] if player.is_running()]
-
-            fade_out(players_to_fade, 3)
-            message = "Alarm stopped."
+            with mpd_connection(alarm_player):
+                if alarm_player.is_running():
+                    fade_out([alarm_player], 3)
+                    alarm_player.stop()
+                    message = "Alarm stopped."
+                else:
+                    message = "MPD is not running. No alarm to stop."
         except Exception as e:
             message = f"Error stopping alarm: {e}"
 

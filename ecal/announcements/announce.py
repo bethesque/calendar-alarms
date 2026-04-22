@@ -1,5 +1,5 @@
 import logging
-from ecal.alarms.mpd import MpdProcess
+from ecal.alarms.mpd import MpdClient, mpd_connection
 from ecal.calendar.google_calendar import WeatherForecast, load_data_from_file
 from ecal.alarms.text_to_voice import text_to_voice_file_daily_summary
 from ecal.env import DATA_DIRECTORY, CACHE_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, MPD_HOST, MPD_PORT, INITIAL_VOLUME
@@ -28,9 +28,10 @@ def play_morning_summary_announcement(speech_file=SPEECH_FILE):
         output_file=MIXED_FILE
     )
     # Play the mixed audio file
-    alarm_player = MpdProcess(MPD_HOST, MPD_PORT).connect()
-    alarm_player.set_volume(INITIAL_VOLUME)
-    alarm_player.play_file(MIXED_FILE)
+    alarm_player = MpdClient(MPD_HOST, MPD_PORT)
+    with mpd_connection(alarm_player):
+        alarm_player.set_volume(INITIAL_VOLUME)
+        alarm_player.play_file(MIXED_FILE)
 
 """
 Generate the voice file from the calendar events in the given file, and return the
