@@ -149,6 +149,9 @@ cat /lib/systemd/system/snapclient.service # view systemd config file
 # Useful links
 
 https://github.com/snapcast/snapcast/issues/1094
+https://whynot.guide/posts/howtos/multiroom-media/
+https://www.hietala.org/multi-room-audio-with-mpd-and-snapcast.html
+
 
 
 

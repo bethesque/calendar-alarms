@@ -27,6 +27,22 @@
     group: audio
     mode: "0660"
 
+- name: Ensure mpd runtime directory exists
+  file:
+    path: /run/mpd
+    state: directory
+    owner: "{{ mpd_user }}"
+    group: audio
+    mode: "0755"
+
+- name: Ensure mpd data directory exists
+  file:
+    path: /var/lib/mpd/
+    state: directory
+    owner: "{{ mpd_user }}"
+    group: audio
+    mode: "0755"
+
 - name: Configure MPD
   template:
     src: mpd.conf.j2
