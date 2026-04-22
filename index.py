@@ -32,6 +32,7 @@ class AlarmController(object):
 
     @cherrypy.expose
     def stop(self):
+        logger.info("Stopping alarm...")
         message = ""
 
         try:
