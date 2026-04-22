@@ -1,0 +1,9 @@
+- name: restart mpd
+  systemd:
+    name: mpd
+    state: restarted
+
+- name: restart snapserver
+  systemd:
+    name: snapserver
+    state: restarted

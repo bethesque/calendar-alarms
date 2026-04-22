@@ -1,0 +1,4 @@
+- hosts: audio_host
+  become: yes
+  roles:
+    - audio_pipeline

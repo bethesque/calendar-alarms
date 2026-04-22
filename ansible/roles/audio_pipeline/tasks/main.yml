@@ -1,0 +1,58 @@
+- name: Install packages
+  apt:
+    name:
+      - mpd
+      - snapserver
+      - ffmpeg
+    state: present
+    update_cache: yes
+
+- name: Ensure snapserver runtime directory exists
+  file:
+    path: /run/snapserver
+    state: directory
+    owner: "{{ mpd_user }}"
+    group: audio
+    mode: "0755"
+
+- name: Ensure FIFO exists
+  command: mkfifo {{ mpd_fifo_path }}
+  args:
+    creates: "{{ mpd_fifo_path }}"
+
+- name: Set FIFO permissions
+  file:
+    path: "{{ mpd_fifo_path }}"
+    owner: "{{ mpd_user }}"
+    group: audio
+    mode: "0660"
+
+- name: Configure MPD
+  template:
+    src: mpd.conf.j2
+    dest: /etc/mpd.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart mpd
+
+- name: Configure Snapserver
+  template:
+    src: snapserver.conf.j2
+    dest: /etc/snapserver.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart snapserver
+
+- name: Ensure MPD is enabled and running
+  systemd:
+    name: mpd
+    enabled: yes
+    state: started
+
+- name: Ensure Snapserver is enabled and running
+  systemd:
+    name: snapserver
+    enabled: yes
+    state: started

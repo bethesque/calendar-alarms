@@ -1,0 +1,27 @@
+music_directory         "{{ music_directory }}"
+playlist_directory      "{{ playlist_directory }}"
+db_file                 "{{ db_file }}"
+state_file              "{{ state_file }}"
+sticker_file            "{{ sticker_file }}"
+
+user                    "{{ mpd_user }}"
+bind_to_address         "{{ mpd_bind_address }}"
+# port                    "6600"
+
+# Output #####################################################################
+
+audio_output {
+    type            "fifo"
+    name            "snapcast"
+    path            "{{ mpd_fifo_path }}"
+    format          "{{ audio_format }}"
+    mixer_type      "software"
+}
+
+# Input #####################################################################
+
+input {
+        plugin "file"
+}
+
+filesystem_charset      "UTF-8"

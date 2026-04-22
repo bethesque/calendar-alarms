@@ -1,0 +1,15 @@
+[stream]
+source = pipe://{{ mpd_fifo_path }}?name=mpd&codec=pcm&sampleformat={{ audio_format }}
+# source = file:///tmp/bethtest.wav?name=bethtest
+
+[http]
+enabled = true
+bind_to_address = 0.0.0.0
+port = 1781
+# TODO
+# doc_root = /usr/share/snapserver/snapweb
+
+[tcp]
+enabled = true
+bind_to_address = 0.0.0.0
+port = 1705
