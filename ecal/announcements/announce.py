@@ -1,9 +1,8 @@
 import logging
 from ecal.alarms.mpd import MpdProcess
-from ecal.google_calendar import WeatherForecast, load_data_from_file
+from ecal.calendar.google_calendar import WeatherForecast, load_data_from_file
 from ecal.alarms.text_to_voice import text_to_voice_file_daily_summary
-from ecal.env import DATA_DIRECTORY, CACHE_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, MPD_HOST, MPD_PORT
-from ecal.alarms import DEFAULT_VOLUME
+from ecal.env import DATA_DIRECTORY, CACHE_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, MPD_HOST, MPD_PORT, INITIAL_VOLUME
 from ecal.alarms.sound import build_announcement_audio
 
 
@@ -29,12 +28,8 @@ def play_morning_summary_announcement(speech_file=SPEECH_FILE):
         output_file=MIXED_FILE
     )
     # Play the mixed audio file
-    alarm_player = MpdProcess(MPD_HOST, MPD_PORT)
-
-    # if not alarm_player.is_running():
-    #     logger.error(f"Error: mpd process is not running")
-    #     exit(1)
-    alarm_player.set_volume(DEFAULT_VOLUME)
+    alarm_player = MpdProcess(MPD_HOST, MPD_PORT).connect()
+    alarm_player.set_volume(INITIAL_VOLUME)
     alarm_player.play_file(MIXED_FILE)
 
 """

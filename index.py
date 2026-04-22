@@ -100,7 +100,7 @@ class CalendarWebServer(object):
         with open("token.json", "w") as text_file:
             print(flow.credentials.to_json(), file=text_file)
 
-        return "Welcome back. The calendar screen should update within a few minutes."
+        return "The Calendar Alarms credentials have been updated."
 
 if __name__ == "__main__":
     cherrypy.quickstart(CalendarWebServer(), config="server.conf")

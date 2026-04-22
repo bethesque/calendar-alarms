@@ -124,17 +124,6 @@ def num_loops(max_length: float, *file_paths: str) -> int:
         total_length = sum(track_length(fp) for fp in file_paths)
         return max(1, int(max_length // total_length))
 
-# def track_length(file_path: str) -> float:
-#     """Get the length of an audio file in seconds."""
-#     try:
-#         audio = MP3(file_path)
-#         return audio.info.length
-#     except Exception as e:
-#         logger.warning(f"Failed to get length of {file_path}: {e}")
-#         raise e
-
-
-
 def track_length(path: str)  -> float:
     try:
         result = subprocess.run(
@@ -155,7 +144,7 @@ def track_length(path: str)  -> float:
         raise RuntimeError(f"Failed to get duration: {e}")
 
 
-def join_mp3s_to_wav(mp3_files, output_wav):
+def join_mp3s_to_wav(mp3_files: list, output_wav: str):
     with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
         for mp3 in mp3_files:
             f.write(f"file '{os.path.abspath(mp3)}'\n")

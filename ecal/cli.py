@@ -1,5 +1,5 @@
 from ecal.env import DATA_DIRECTORY
-from ecal.google_calendar import CalendarSource
+from ecal.calendar.google_calendar import CalendarSource
 from ecal.env import filter
 from ecal.log_config import setup_logging_for_data_refresh
 

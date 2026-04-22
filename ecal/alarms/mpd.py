@@ -59,24 +59,23 @@ class MpdProcess:
         self.port = port
         self.client: Optional[musicpd.MPDClient] = None
 
-    def _connect(self) -> bool:
+    def connect(self):
         """Establish connection to MPD daemon."""
         try:
             if self.client is None:
                 self.client = MyClient()
                 self.client.socket_timeout = 5.0
                 self.client.connect(self.host, self.port)
-            return True
+            return self
         except (musicpd.ConnectionError, OSError) as e:
             logger.debug(f"Failed to connect to MPD at {self.host}:{self.port}: {e}")
-            self.client = None
-            return False
+            raise e
 
     def is_running(self) -> bool:
         """Return True if MPD daemon is running and connectable."""
         try:
             if self.client is None:
-                if not self._connect():
+                if not self.connect():
                     return False
             # Try to ping the server
             self.client.ping()
@@ -88,15 +87,10 @@ class MpdProcess:
     def _ensure_connected(self) -> bool:
         """Ensure we have an active connection to MPD."""
         if not self.is_running():
-            return self._connect()
+            return self.connect()
         return True
 
     def play_file(self, file_path: str):
-        """Load and play a single file."""
-        if not self._ensure_connected():
-            logger.warning(f"Cannot connect to MPD to play {file_path}")
-            return
-
         full_path = f"file://{os.path.abspath(file_path)}"
 
         try:
@@ -106,15 +100,11 @@ class MpdProcess:
             logger.debug(f"Playing file: {full_path}")
         except musicpd.CommandError as e:
             logger.error(f"Failed to play file {full_path}: {e}")
+            raise e
 
 
 
     def set_volume(self, vol: int):
-        """Set volume to a value from 0-100."""
-        if not self._ensure_connected():
-            logger.warning(f"Cannot connect to MPD to set volume")
-            return
-
         try:
             # Clamp volume to 0-100 range
             vol = max(0, min(100, vol))
@@ -124,10 +114,6 @@ class MpdProcess:
             logger.error(f"Failed to set volume: {e}")
 
     def stop(self):
-        """Stop playback and clear the playlist."""
-        if not self._ensure_connected():
-            return
-
         try:
             self.client.stop()
             self.client.clear()
@@ -137,10 +123,6 @@ class MpdProcess:
             logger.error(f"Failed to stop MPD: {e}")
 
     def get_volume(self) -> Optional[int]:
-        """Get current volume level (0-100)."""
-        if not self._ensure_connected():
-            return None
-
         try:
             status = self.client.status()
             volume = status.get('volume', '0')
@@ -148,21 +130,6 @@ class MpdProcess:
         except (musicpd.CommandError, ValueError) as e:
             logger.debug(f"Failed to get volume: {e}")
             return None
-
-    def num_loops(self, max_length: float, *file_paths: str) -> int:
-        """Calculate the number of loops needed to play files for max_length seconds."""
-        total_length = sum(self.track_length(fp) for fp in file_paths)
-        return max(1, int(max_length // total_length))
-
-    @staticmethod
-    def track_length(file_path: str) -> float:
-        """Get the length of an audio file in seconds."""
-        try:
-            audio = MP3(file_path)
-            return audio.info.length
-        except Exception as e:
-            logger.warning(f"Failed to get length of {file_path}: {e}")
-            raise e
 
 # This calculates the steps, but does not do the waiting, so that multiple players can be
 # faded out together without needing to use threads. The caller can call step() repeatedly

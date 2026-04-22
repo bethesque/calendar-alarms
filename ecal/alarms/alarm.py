@@ -5,8 +5,8 @@ from ecal.alarms.mpd import MpdProcess
 from ecal.alarms.sound import build_alarm_audio, join_mp3s_to_wav
 from ecal.alarms.text_to_voice import text_to_voice_file
 from ecal.alarms.mpd import MpdProcess, fade_up
-from ecal.alarms import ALARM_FILE, DEFAULT_VOLUME
-from ecal.env import MPD_HOST, MPD_PORT, OUTPUT_AUDIO_DIRECTORY
+from ecal.alarms import ALARM_FILE
+from ecal.env import MPD_HOST, MPD_PORT, OUTPUT_AUDIO_DIRECTORY, INITIAL_VOLUME
 
 
 logger = logging.getLogger(__name__)
@@ -26,8 +26,8 @@ def play_alarm(announcement_files):
 
     logger.info(f"Playing alarm {audio_file}")
     # Play the mixed audio file
-    alarm_player = MpdProcess(MPD_HOST, MPD_PORT)
-    alarm_player.set_volume(DEFAULT_VOLUME)
+    alarm_player = MpdProcess(MPD_HOST, MPD_PORT).connect()
+    alarm_player.set_volume(INITIAL_VOLUME)
     alarm_player.play_file(audio_file)
     fade_up([(alarm_player, 100)], 45, 10)
 
@@ -73,6 +73,7 @@ def log_results(results):
     logging.info("Total matched events: %d", len(results))
 
 def check_for_alarms(base_time, window, calendar_data):
+    print("Hello")
     start, end = get_time_window(base_time, window)
 
     logging.info(
