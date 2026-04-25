@@ -40,8 +40,6 @@ def build_alarm_audio(
         # ✅ 6) Fade in over 1 second
         f"afade=t=in:st=0:d=1.5,afade=t=out:st={duration-5}:d=5,"
 
-        "adelay=1000|1000"
-
         # 7) Final limiter + trim
         f"alimiter=limit=0.9,atrim=duration={duration}"
 
