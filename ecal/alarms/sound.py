@@ -35,7 +35,7 @@ def build_alarm_audio(
         f"volume=0.5,aloop=loop={alarm_loops}:size=2e+09[alarm];"
 
         # 5) Mix
-        "[alarm][ann]amix=inputs=2:duration=longest:weights='1 1.5',"
+        "[alarm][ann]amix=inputs=2:duration=longest:weights='1 1.2',"
 
         # ✅ 6) Fade in over 1 second
         f"afade=t=in:st=0:d=1.5,afade=t=out:st={duration-5}:d=5,"
