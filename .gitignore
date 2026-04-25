@@ -13,3 +13,4 @@ share
 cache
 *.egg-info/
 .env
+resources

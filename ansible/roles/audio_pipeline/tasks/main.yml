@@ -72,3 +72,7 @@
     name: snapserver
     enabled: yes
     state: started
+
+# TODO - Add user to audio group
+
+# TODO - Add calendar-alarms-http.service

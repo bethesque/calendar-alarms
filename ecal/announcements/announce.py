@@ -2,8 +2,9 @@ import logging
 from ecal.alarms.mpd import MpdClient, mpd_connection
 from ecal.calendar.google_calendar import WeatherForecast, load_data_from_file
 from ecal.alarms.text_to_voice import text_to_voice_file_daily_summary
-from ecal.env import DATA_DIRECTORY, CACHE_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, MPD_HOST, MPD_PORT, INITIAL_VOLUME
+from ecal.env import DATA_DIRECTORY, CACHE_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, RESOURCES_DIRECTORY, INITIAL_VOLUME
 from ecal.alarms.sound import build_announcement_audio
+from ecal.random_text import select_text
 
 
 DATA_FILE = f"{DATA_DIRECTORY}/calendar.json"
@@ -11,6 +12,7 @@ SPEECH_FILE = CACHE_DIRECTORY + "/audio/daily_summary.mp3"
 MIXED_FILE = f"{OUTPUT_AUDIO_DIRECTORY}/mixed6.wav"
 SILENCE = "audio/silence_5s.mp3"
 ANNOUNCEMENT_BACKGROUND_MUSIC = "audio/Daybreak.mp3"
+MORNING_ANNOUNCEMENTS_PRELUDE_CHOICES = "morning_announcements_prelude_choices.txt"
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +46,6 @@ def get_daily_summary_announcement(calendar_file=DATA_FILE):
     announcement = " ".join(sentences)
     logger.info(f"Generated daily summary announcement: {announcement}")
     speech_file = text_to_voice_file_daily_summary(announcement)
-    #speech_file = "cache/audio/daily_summary.mp3"
     return speech_file
 
 """
@@ -55,6 +56,10 @@ def build_sentences(all_events):
     events = get_non_weather_forecast_events(all_events)
 
     sentences = ["Good morning!"]
+
+    extra_text = select_text(None, 1/5, MORNING_ANNOUNCEMENTS_PRELUDE_CHOICES)
+    if extra_text:
+        sentences.append(extra_text)
 
     if weather_forecast:
         sentences.append(f"The weather forecast for today is: {weather_forecast.summary}.")

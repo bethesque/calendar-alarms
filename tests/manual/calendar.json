@@ -17,7 +17,7 @@
                 "owner": "Beth",
                 "recurring": false,
                 "start_time": "2026-04-06T08:30:00+10:00",
-                "summary": "Call radiology"
+                "summary": "Dentist"
             },
             {
                 "description": "#alarm",
@@ -128,7 +128,6 @@
             {
                 "description": "",
                 "end_time": null,
-                "image_path": "images/tshirt_and_long_pants.png",
                 "owner": "BoM",
                 "recurring": true,
                 "start_time": null,

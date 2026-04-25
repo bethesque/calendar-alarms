@@ -6,7 +6,7 @@ from ecal.alarms.mpd import MpdClient, fade_out, mpd_connection
 from ecal.env import MPD_HOST, MPD_PORT
 from ecal.log_config import setup_logging_for_http_server
 
-setup_logging_for_http_server()
+setup_logging_for_http_server(logging.INFO)
 
 logger = logging.getLogger(__name__)
 

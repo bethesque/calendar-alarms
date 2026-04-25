@@ -34,11 +34,12 @@ dependencies = [
 # Extra dependencies installed via `pip install ".[dev]"`
 dev = [
     "black",
+    "pytest==9.0.3"
 ]
 
 [project.urls]
 # Links displayed on PyPI
-Homepage = "https://github.com/thetrav/calendar"
+Homepage = "https://github.com/bethesque/calendar-alarms"
 
 [project.scripts]
 

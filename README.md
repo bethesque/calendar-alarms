@@ -34,14 +34,30 @@ sudo apt install snapcast
 sudo apt install ffmpeg
 ```
 
-### Local testing
+### Local manual testing
 
-Run mpd
+For mac, in `ecal/env.py` set
+
+```py
+OUTPUT_AUDIO_DIRECTORY = "/tmp"
+MPD_HOST = "/tmp/mpd.socket"
+MPD_PORT = 0
+```
+
+Ensure MPD daemon is running
+
 ```
 /opt/homebrew/opt/mpd/bin/mpd --no-daemon --verbose
 ```
 
+Run scripts in `/tests/manual`
 
+### Automated testing
+
+```
+python3 -m pip install -e ".[dev]"
+pytest
+```
 
 ## Deployment
 

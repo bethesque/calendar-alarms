@@ -1,10 +1,11 @@
+from datetime import datetime
 import argparse
-from ecal.env import DATA_DIRECTORY
+from ecal.env import DATA_DIRECTORY, LOG_LEVEL
 import os
 from ecal.announcements.announce import announce, play_morning_summary_announcement
 from ecal.log_config import setup_logging_for_announcements
 
-setup_logging_for_announcements()
+setup_logging_for_announcements(str(LOG_LEVEL))
 
 if __name__ == "__main__":
     # add --cached option to only announce cached events
@@ -14,11 +15,12 @@ if __name__ == "__main__":
         action="store_true",
         help="Only announce cached events"
     )
+
     parser.add_argument(
-        "--window",
-        type=int,
-        default=5,
-        help="Time window in minutes for checking alarms (default: 5)"
+        "--base_time",
+        type=lambda s: datetime.fromisoformat(s),
+        default=None,
+        help="Base time for checking alarms (ISO format, defaults to current time)"
     )
 
     parser.add_argument(

@@ -4,10 +4,10 @@ import os
 import argparse
 from datetime import datetime
 from ecal.log_config import setup_logging_for_alarms
-from ecal.env import DATA_DIRECTORY
+from ecal.env import DATA_DIRECTORY, LOG_LEVEL
 from ecal.alarms.alarm import check_for_alarms
 
-setup_logging_for_alarms(logging.DEBUG)
+setup_logging_for_alarms(str(LOG_LEVEL))
 
 logger = logging.getLogger(__name__)
 

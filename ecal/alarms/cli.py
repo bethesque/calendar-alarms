@@ -1,22 +1,18 @@
 import logging
-
-from ecal.alarms.alarm import play_alarm
-from ecal.env import MPD_HOST, MPD_PORT
-from ecal.alarms.mpd import MpdClient, fade_out, fade_up, mpd_connection
-from ecal.log_config import setup_logging_for_alarms
-
-setup_logging_for_alarms()
-
-logger = logging.getLogger(__name__)
-
 import json
 import logging
 import os
 import argparse
 from datetime import datetime
-from ecal.log_config import setup_logging
+from ecal.alarms.alarm import play_alarm
+from ecal.env import LOG_LEVEL
+from ecal.alarms.mpd import fade_out, fade_up, mpd_connection
+from ecal.log_config import setup_logging_for_alarms
+
 from ecal.env import DATA_DIRECTORY
 from ecal.alarms.alarm import check_for_alarms
+
+setup_logging_for_alarms(str(LOG_LEVEL))
 
 logger = logging.getLogger(__name__)
 
