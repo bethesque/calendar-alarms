@@ -1,13 +1,12 @@
 import logging
+import glob
 from datetime import datetime, timedelta
-
-from ecal.alarms.mpd import MpdClient
 from ecal.alarms.sound import build_alarm_audio, join_mp3s_to_wav
 from ecal.alarms.text_to_voice import text_to_voice_file
-from ecal.alarms.mpd import MpdClient, fade_up, mpd_connection
-from ecal.alarms import ALARM_FILE
-from ecal.env import MPD_HOST, MPD_PORT, OUTPUT_AUDIO_DIRECTORY, INITIAL_VOLUME
-
+from ecal.alarms.mpd import fade_up, mpd_connection
+from ecal.select_item import select_item_by_date
+from ecal.alarms import ALARMS_DIRECTORY
+from ecal.env import OUTPUT_AUDIO_DIRECTORY, INITIAL_VOLUME
 
 logger = logging.getLogger(__name__)
 
@@ -17,9 +16,11 @@ def play_alarm(announcement_files):
 
     audio_file = OUTPUT_AUDIO_DIRECTORY + "/alarm_mixed.wav"
 
+    alarm_file = get_alarm_file()
+
     build_alarm_audio(
         announcement_file=joined_announcement_file,
-        alarm_file=ALARM_FILE,
+        alarm_file=alarm_file,
         output_file=audio_file,
         duration=300
     )
@@ -94,3 +95,17 @@ def announcement_files_for_events(events):
 def announcement_for_event(event):
     summary = event.get("summary", "an event")
     return f"It's time for {summary}"
+
+def get_alarm_file(date=None):
+    alarm_files = get_alarm_files()
+    if date is None:
+        date = datetime.now().date()
+    # New alarm every 14 days
+    return select_item_by_date(sorted(alarm_files), date, 14)
+
+def get_alarm_files():
+    # Get all mp3 files in the ALARMS_DIRECTORY
+    alarm_files = glob.glob(f"{ALARMS_DIRECTORY}/*.mp3")
+    if not alarm_files:
+        raise FileNotFoundError(f"No alarm files found in {ALARMS_DIRECTORY}")
+    return alarm_files
