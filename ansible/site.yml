@@ -2,3 +2,7 @@
   become: yes
   roles:
     - audio_pipeline
+- hosts: audio_clients
+  become: yes
+  roles:
+    - audio_client

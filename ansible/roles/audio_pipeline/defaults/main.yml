@@ -8,3 +8,14 @@ playlist_directory: /var/lib/mpd/playlists
 db_file: /var/lib/mpd/tag_cache
 state_file: /var/lib/mpd/state
 sticker_file: /var/lib/mpd/sticker.sql
+
+snapserver_http_port: 1780
+snapserver_version: "0.35.0"
+snapserver_arch: "amd64" # move this to host file
+snapserver_deb: "snapserver_{{ snapserver_version }}-1_{{ snapserver_arch }}_bullseye.deb"
+snapserver_url: "https://github.com/snapcast/snapcast/releases/download/v{{ snapserver_version }}/{{ snapserver_deb }}"
+snapserver_tmp: "/tmp/{{ snapserver_deb }}"
+
+snapcast_repo: https://github.com/snapcast/snapcast.git
+snapcast_version: v0.35.0
+snapcast_src_dir: /opt/snapcast

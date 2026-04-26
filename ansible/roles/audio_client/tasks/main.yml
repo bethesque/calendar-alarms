@@ -1,0 +1,52 @@
+- name: Get installed Snapclient version
+  ansible.builtin.command: dpkg-query -W -f='${Version}' snapclient
+  register: snapclient_version_raw
+  failed_when: false
+  changed_when: false
+
+- name: Set installed version without trailing revision
+  ansible.builtin.set_fact:
+    installed_snapclient_version: >-
+      {{
+        snapclient_version_raw.stdout | default('')
+        | regex_replace('-[0-9]+$', '')
+      }}
+
+- name: Debug installed version
+  ansible.builtin.debug:
+    msg: "Installed: {{ installed_snapclient_version | default('none') }} | Desired: {{ snapclient_version }}"
+
+- name: Decide if install/upgrade is needed
+  ansible.builtin.set_fact:
+    snapclient_needs_install: "{{ installed_snapclient_version != snapclient_version }}"
+
+- name: Download Snapclient .deb if version mismatch
+  ansible.builtin.get_url:
+    url: "{{ snapclient_url }}"
+    dest: "{{ snapclient_tmp }}"
+    mode: "0644"
+  when: snapclient_needs_install
+
+- name: Install/upgrade Snapclient .deb
+  ansible.builtin.apt:
+    deb: "{{ snapclient_tmp }}"
+    state: present
+  when: snapclient_needs_install
+
+- name: Configure snapclient
+  template:
+    src: snapclient.conf.j2
+    dest: /etc/default/snapclient
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Ensure snapclient is enabled and started
+  ansible.builtin.systemd:
+    name: snapclient
+    enabled: true
+    state: restarted

@@ -1,20 +1,4 @@
-- name: Install packages
-  apt:
-    name:
-      - mpd
-      - snapserver
-      - ffmpeg
-    state: present
-    update_cache: yes
-
-- name: Ensure snapserver runtime directory exists
-  file:
-    path: /run/snapserver
-    state: directory
-    owner: "{{ mpd_user }}"
-    group: audio
-    mode: "0755"
-
+# MPD FIFO
 - name: Ensure FIFO exists
   command: mkfifo {{ mpd_fifo_path }}
   args:
@@ -26,6 +10,136 @@
     owner: "{{ mpd_user }}"
     group: audio
     mode: "0660"
+
+
+- name: Install packages
+  apt:
+    name:
+      - mpd
+      - ffmpeg
+    state: present
+    update_cache: yes
+
+
+# START SNAPSERVER SETUP ###
+# Have to build from source to get the latest version so it is compatible with Home Assistant
+# The latest version in the package manager is 0.23.0 which is too old to work with HA.
+
+- name: Check if snapserver exists
+  ansible.builtin.command: snapserver --version
+  register: snapserver_version_cmd
+  ignore_errors: true
+  changed_when: false
+
+- name: Extract installed version
+  ansible.builtin.set_fact:
+    snapserver_installed_version: "{{ snapserver_version_cmd.stdout | regex_search('([0-9]+\\.[0-9]+\\.[0-9]+)') }}"
+  when: snapserver_version_cmd.rc == 0
+
+- name: Decide if build is required
+  ansible.builtin.set_fact:
+    build_snapcast: >-
+      {{ snapserver_version_cmd.rc != 0 or
+          snapserver_installed_version != snapcast_version | regex_replace('^v', '') }}
+
+- name: Debug decision (optional)
+  ansible.builtin.debug:
+    msg: "Build required: {{ build_snapcast }} (installed={{ snapserver_installed_version | default('none') }})"
+
+- name: Install build dependencies
+  ansible.builtin.apt:
+    name:
+      - git
+      - build-essential
+      - cmake
+      - libasound2-dev
+      - libavahi-client-dev
+      - libssl-dev
+      - libflac-dev
+      - libogg-dev
+      - libopus-dev
+      - libsoxr-dev
+      - libvorbis-dev
+      - libboost-all-dev
+    state: present
+    update_cache: yes
+  when: build_snapcast
+
+- name: Clone Snapcast repo
+  ansible.builtin.git:
+    repo: "{{ snapcast_repo }}"
+    dest: "{{ snapcast_src_dir }}"
+    version: "{{ snapcast_version }}"
+    update: yes
+  when: build_snapcast
+
+- name: Ensure build directory exists
+  ansible.builtin.file:
+    path: "{{ snapcast_src_dir }}/build"
+    state: directory
+  when: build_snapcast
+
+- name: Configure with cmake
+  ansible.builtin.command:
+    cmd: cmake ..
+    chdir: "{{ snapcast_src_dir }}/build"
+  args:
+    creates: "{{ snapcast_src_dir }}/build/Makefile"
+  when: build_snapcast
+
+- name: Build Snapcast
+  ansible.builtin.command:
+    cmd: make -j{{ ansible_processor_vcpus | default(2) }}
+    chdir: "{{ snapcast_src_dir }}/build"
+  when: build_snapcast
+
+- name: Install Snapcast
+  ansible.builtin.command:
+    cmd: make install
+    chdir: "{{ snapcast_src_dir }}/build"
+  when: build_snapcast
+
+- name: Ensure snapserver runtime directory exists
+  file:
+    path: /run/snapserver
+    state: directory
+    owner: "{{ mpd_user }}"
+    group: audio
+    mode: "0755"
+
+- name: Ensure snapserver user is in audio group
+  ansible.builtin.user:
+    name: _snapserver
+    groups: audio
+    append: yes
+
+- name: Configure Snapserver
+  template:
+    src: snapserver.conf.j2
+    dest: /etc/snapserver.conf
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart snapserver
+  ansible.builtin.systemd:
+    name: snapserver
+    state: restarted
+    enabled: true
+
+- name: Ensure snapserver is enabled and started
+  ansible.builtin.systemd:
+    name: snapserver
+    enabled: true
+    state: started
+
+### END SNAPSERVER SETUP ###
+
+### START MPD SETUP ###
 
 - name: Ensure mpd runtime directory exists
   file:
@@ -52,26 +166,13 @@
     mode: "0644"
   notify: restart mpd
 
-- name: Configure Snapserver
-  template:
-    src: snapserver.conf.j2
-    dest: /etc/snapserver.conf
-    owner: root
-    group: root
-    mode: "0644"
-  notify: restart snapserver
-
 - name: Ensure MPD is enabled and running
   systemd:
     name: mpd
     enabled: yes
     state: started
 
-- name: Ensure Snapserver is enabled and running
-  systemd:
-    name: snapserver
-    enabled: yes
-    state: started
+### END MPD SETUP ###
 
 # TODO - Add user to audio group
 

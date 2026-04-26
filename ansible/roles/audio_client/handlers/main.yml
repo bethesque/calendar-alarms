@@ -1,0 +1,4 @@
+- name: restart snapclient
+  systemd:
+    name: snapclient
+    state: restarted
