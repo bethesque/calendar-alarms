@@ -3,3 +3,5 @@ snapclient_arch: "armhf"
 snapclient_deb: "snapclient_{{ snapclient_version }}-1_{{ snapclient_arch }}_bullseye.deb"
 snapclient_url: "https://github.com/snapcast/snapcast/releases/download/v{{ snapclient_version }}/{{ snapclient_deb }}"
 snapclient_tmp: "/tmp/{{ snapclient_deb }}"
+
+snapclient_user: "{{ ansible_user }}"

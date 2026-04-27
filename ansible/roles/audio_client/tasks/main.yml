@@ -1,3 +1,18 @@
+- name: Check if lingering is enabled
+  ansible.builtin.stat:
+    path: "/var/lib/systemd/linger/{{ snapclient_user }}"
+  register: linger_file
+  become: true
+
+- name: Enable lingering for user
+  ansible.builtin.command: "loginctl enable-linger {{ snapclient_user }}"
+  when: not linger_file.stat.exists
+  become: true
+
+# INSTALL SNAPCLIENT
+# Can't use the package manager version because it's too old to work with Home Assistant,
+# so we have to download and install the .deb from the releases page on GitHub.
+
 - name: Get installed Snapclient version
   ansible.builtin.command: dpkg-query -W -f='${Version}' snapclient
   register: snapclient_version_raw
@@ -33,20 +48,43 @@
     state: present
   when: snapclient_needs_install
 
-- name: Configure snapclient
-  template:
-    src: snapclient.conf.j2
-    dest: /etc/default/snapclient
-    owner: root
-    group: root
+# Configure snapclient systemd service for user
+# Best to do it as a user service rather than a system service to avoid permissions
+# issues with audio devices. The Bluetooth audio sink is owned by the user,
+# so its easiest if the snapclient service runs as the user as well.
+
+- name: Ensure user systemd directory exists
+  ansible.builtin.file:
+    path: "/home/{{ snapclient_user }}/.config/systemd/user"
+    state: directory
+    owner: "{{ snapclient_user }}"
+    group: "{{ snapclient_user }}"
+    mode: "0755"
+  become: true
+
+# Logs can be viewed with `journalctl --user -u calendar-alarms-snapclient -f`
+- name: Install snapclient user service
+  ansible.builtin.template:
+      # Give it a custom service name so multiple snapclient instances can be run if needed
+    # (e.g. one for calendar alarms, one for general music)
+    src: calendar-alarms-snapclient.service.j2
+    dest: "/home/{{ snapclient_user }}/.config/systemd/user/calendar-alarms-snapclient.service"
+    owner: "{{ snapclient_user }}"
+    group: "{{ snapclient_user }}"
     mode: "0644"
+  become: true
 
-- name: Reload systemd daemon
-  ansible.builtin.systemd:
-    daemon_reload: true
+- name: Reload user systemd daemon
+  ansible.builtin.command: systemctl --user daemon-reload
+  become: true
+  become_user: "{{ snapclient_user }}"
 
-- name: Ensure snapclient is enabled and started
-  ansible.builtin.systemd:
-    name: snapclient
-    enabled: true
-    state: restarted
+- name: Enable snapclient user service
+  ansible.builtin.command: systemctl --user enable calendar-alarms-snapclient
+  become: true
+  become_user: "{{ snapclient_user }}"
+
+- name: Start or restart snapclient user service
+  ansible.builtin.command: systemctl --user restart calendar-alarms-snapclient
+  become: true
+  become_user: "{{ snapclient_user }}"
