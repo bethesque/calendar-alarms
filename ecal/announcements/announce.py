@@ -1,7 +1,7 @@
 import logging
 import glob
 from datetime import datetime
-from ecal.alarms.mpd import mpd_connection
+from ecal.alarms.mpd import fade_up, mpd_connection
 from ecal.calendar.google_calendar import WeatherForecast, load_data_from_file
 from ecal.alarms.text_to_voice import text_to_voice_file_daily_summary
 from ecal.alarms.sound import build_announcement_audio
@@ -40,6 +40,7 @@ def play_morning_announcements_audio_file(speech_file=SPEECH_FILE):
     with mpd_connection() as alarm_player:
         alarm_player.set_volume(INITIAL_VOLUME)
         alarm_player.play_file(MIXED_FILE)
+        fade_up([(alarm_player, 90)], 5, 10)
 
 """
 Generate the voice file from the calendar events in the given file, and return the
