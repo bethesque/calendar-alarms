@@ -9,7 +9,6 @@ db_file: /var/lib/mpd/tag_cache
 state_file: /var/lib/mpd/state
 sticker_file: /var/lib/mpd/sticker.sql
 
-snapserver_http_port: 1780
 snapserver_version: "0.35.0"
 snapserver_arch: "amd64" # move this to host file
 snapserver_deb: "snapserver_{{ snapserver_version }}-1_{{ snapserver_arch }}_bullseye.deb"

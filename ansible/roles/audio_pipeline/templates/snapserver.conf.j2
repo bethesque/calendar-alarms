@@ -7,8 +7,7 @@ source = pipe://{{ mpd_fifo_path }}?name=mpd&codec=pcm&sampleformat={{ audio_for
 enabled = true
 bind_to_address = 0.0.0.0
 port = {{ snapserver_http_port }}
-# TODO
-# doc_root = /usr/share/snapserver/snapweb
+doc_root = /usr/share/snapserver/snapweb
 
 [tcp]
 enabled = true
