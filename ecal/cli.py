@@ -13,7 +13,7 @@ setup_logging_for_data_refresh(str(LOG_LEVEL))
 
 def refresh_calendar_data():
     print(f"Refreshing calendar data in {DATA_FILE}...")
-    calendar_source = CalendarSource(stubbed=False, cache_file_path=DATA_FILE)
+    calendar_source = CalendarSource(cache_file_path=DATA_FILE)
     calendar_source.load_creds()
     calendar_source.fetch_data(filter)
     calendar_source.save_data_to_file()

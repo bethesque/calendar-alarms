@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import datetime
+import re
 from zoneinfo import ZoneInfo
 import os.path
 from dataclasses import dataclass, field
@@ -34,6 +35,35 @@ class Event:
     start_time: datetime.datetime = None
     end_time: datetime.datetime = None
     recurring: bool = False
+    _alarm_offset: int | None = None
+
+    def alarm_time(self):
+        if self.has_alarm():
+            return self.start_time - datetime.timedelta(minutes=self.alarm_offset())
+        else:
+            return None
+
+    def alarm_time_within_window(self, start_time, end_time):
+        alarm_time = self.alarm_time()
+        if alarm_time and start_time <= alarm_time < end_time:
+            return True
+        else:
+            return None
+
+    def alarm_offset(self):
+        if self._alarm_offset is None:
+            self._alarm_offset = 0
+
+            if self.has_alarm():
+                match = re.search(r"#alarm(\d+)", self.description)
+                if match:
+                    self._alarm_offset = int(match.group(1))
+
+        return self._alarm_offset
+
+    def has_alarm(self):
+        return "#alarm" in (self.description or "") and self.start_time is not None
+
 
 
 @dataclass
@@ -191,7 +221,7 @@ def get_calendars(creds, filter):
     return displayed_calendar_days
 
 # Load calendar data from a JSON file.
-def load_data_from_file(file_path):
+def load_data_from_file(file_path: str) -> list[CalendarDay]:
     with open(file_path, "r") as f:
         days = json.load(f)
         calendar_days = []
@@ -221,66 +251,27 @@ def load_event(event_dict):
     else:
         return Event(**event_args)
 
-def test_data():
-    today = datetime.datetime.combine(
-        datetime.date.today(), datetime.time.min, tzinfo=ZoneInfo(TIMEZONE)
-    )
-    tomorrow = today + datetime.timedelta(days=1)
-    calendars = [CalendarDay(date=today.date()), CalendarDay(date=tomorrow.date())]
-    today = calendars[0]
-    tomorrow = calendars[1]
-    forecast = "Min 11, Max 16, 1-8mm 90%, Showers, Windy"
-    today.whole_day_events.append(WeatherForecast("BoM", forecast, ""))
-    today.whole_day_events.append(Event("Trav", "Working on calendar epaper thing", "Once off event"))
-    today.whole_day_events.append(Event("Trav", "A very important event", "#veryimportant", recurring=True))
-    today.whole_day_events.append(Event("Trav", "A normal recurring event", "", recurring=True))
-    today.whole_day_events.append(Event("Trav", "An important recurring event", "#important", recurring=True))
-    today.whole_day_events.append(Event("Beth", "A once off unimportant event", "#notimportant", recurring=True))
-    today.timed_events.append(
-        Event(
-            "Beth",
-            "A very long summary that is going to take way more space than we have to fit in the calendar horizontally which will cause it to split across multiple lines",
-            None,
-            datetime.datetime(2023, 11, 2, 11, 30, tzinfo=ZoneInfo(TIMEZONE)),
-        )
-    )
-    event_time = datetime.datetime(2023, 11, 3, 9, tzinfo=ZoneInfo(TIMEZONE))
-    for n in range(10):
-        tomorrow.timed_events.append(Event("B & T", f"fake event #{n}", None, event_time, recurring=True))
-        event_time = event_time + datetime.timedelta(minutes=30)
-    return calendars
-
-
-@dataclass
-class FakeCreds:
-    valid: bool
 
 
 @dataclass
 class CalendarSource:
-    stubbed: bool
     cache_file_path: str
     calendar_days: list = None
     creds: any = None
 
     def load_creds(self):
-        if self.stubbed:
-            self.creds = FakeCreds(valid=True)
-        else:
-            self.creds = load_google_creds()
+        self.creds = load_google_creds()
         return self.creds
 
     def creds_valid(self):
         return self.creds and self.creds.valid
 
     def fetch_data(self, filter):
-        if self.stubbed:
-            self.calendar_days = test_data()
-        else:
-            self.calendar_days = get_calendars(self.creds, filter)
+
+        self.calendar_days = get_calendars(self.creds, filter)
         return self.calendar_days
 
-    def load_data_from_file(self):
+    def load_data_from_file(self) -> list[CalendarDay]:
         self.calendar_days = load_data_from_file(self.cache_file_path)
         return self.calendar_days
 

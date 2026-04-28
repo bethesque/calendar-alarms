@@ -20,12 +20,12 @@
                 "summary": "Dentist"
             },
             {
-                "description": "#alarm",
+                "description": "#alarm10",
                 "end_time": null,
                 "owner": "Kids",
                 "recurring": true,
-                "start_time": "2026-04-06T19:30:00+10:00",
-                "summary": "Cuddles (Kaylee first)"
+                "start_time": "2026-04-06T19:40:00+10:00",
+                "summary": "Test event"
             },
             {
                 "description": "#alarm",

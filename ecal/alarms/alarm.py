@@ -45,21 +45,12 @@ def get_time_window(base_time, window_minutes):
     end_time = start_time + timedelta(minutes=window_minutes)
     return start_time, end_time
 
-def find_alarm_events_in_range(events_data, start_time, end_time):
+def find_alarm_events_in_range(calendar_days, start_time, end_time):
     matching_events = []
 
-    for day in events_data:
-        for event in day.get("timed_events", []):
-            start_str = event.get("start_time")
-            description = event.get("description")
-
-            # Discard events without a start time or without the #alarm tag in the description
-            if not start_str or (not description or "#alarm" not in description):
-                continue
-
-            event_start = parse_iso(start_str)
-
-            if start_time <= event_start < end_time:
+    for day in calendar_days:
+        for event in day.timed_events:
+            if event.alarm_time_within_window(start_time, end_time):
                 matching_events.append(event)
 
     return matching_events
@@ -68,13 +59,12 @@ def log_results(results):
     for result in results:
         logging.info(
             "Matched event: %s | %s",
-            result.get("start_time"),
-            result.get("summary")
+            result.start_time,
+            result.summary
         )
     logging.info("Total matched events: %d", len(results))
 
 def check_for_alarms(base_time, window, calendar_data):
-    print("Hello")
     start, end = get_time_window(base_time, window)
 
     logging.info(
@@ -93,8 +83,11 @@ def announcement_files_for_events(events):
     return deduplicate_list([text_to_voice_file(announcement_for_event(event)) for event in events])
 
 def announcement_for_event(event):
-    summary = event.get("summary", "an event")
-    return f"It's time for {summary}"
+    summary = event.summary if event.summary else "an event"
+    if event.alarm_offset() > 0:
+        return f"It will be time for {summary} in {event.alarm_offset()} minutes"
+    else:
+        return f"It's time for {summary}"
 
 def get_alarm_file(date=None):
     alarm_files = get_alarm_files()

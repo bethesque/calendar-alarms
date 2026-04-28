@@ -20,9 +20,13 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -e .
 brew install mpd
+brew install mpc
 brew install snapcast
 brew install ffmpeg
 ```
+
+In `~/.mpd/mpd.conf` set `bind_to_address		"/tmp/mpd.socket"`
+
 
 #### linux
 ```
@@ -30,6 +34,7 @@ python -m venv .venv
 source ./venv/Scripts/activate
 pip install -e .
 sudo apt install mpd
+sudo apt install mpc
 sudo apt install snapcast
 sudo apt install ffmpeg
 ```
@@ -51,6 +56,11 @@ Ensure MPD daemon is running
 ```
 
 Run scripts in `/tests/manual`
+
+```
+export MPD_HOST="/tmp/mpd.socket"
+mpc stop
+```
 
 ### Automated testing
 
