@@ -69,9 +69,8 @@
     owner: "{{ snapclient_user }}"
     group: "{{ snapclient_user }}"
     mode: "0755"
-  become: true
 
-# Logs can be viewed with `journalctl --user -u calendar-alarms-snapclient -f`
+# Logs can be viewed with `sudo journalctl --user -f | grep snapclient`
 - name: Install snapclient user service
   ansible.builtin.template:
       # Give it a custom service name so multiple snapclient instances can be run if needed
@@ -81,19 +80,19 @@
     owner: "{{ snapclient_user }}"
     group: "{{ snapclient_user }}"
     mode: "0644"
-  become: true
 
 - name: Reload user systemd daemon
   ansible.builtin.command: systemctl --user daemon-reload
-  become: true
-  become_user: "{{ snapclient_user }}"
 
 - name: Enable snapclient user service
   ansible.builtin.command: systemctl --user enable calendar-alarms-snapclient
-  become: true
-  become_user: "{{ snapclient_user }}"
+
+# Can't run these yet as there is no USB audio device.
+- name: Enable snapclient user service
+  ansible.builtin.command: systemctl --user stop calendar-alarms-snapclient
 
 - name: Start or restart snapclient user service
-  ansible.builtin.command: systemctl --user restart calendar-alarms-snapclient
-  become: true
-  become_user: "{{ snapclient_user }}"
+  ansible.builtin.command: systemctl --user start calendar-alarms-snapclient
+  when: inventory_hostname == 'kaypi.local' or inventory_hostname == 'ecal.travis.dixon.net.au'
+
+

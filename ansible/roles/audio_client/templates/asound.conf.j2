@@ -1,11 +1,11 @@
-# Default ALSA output: USB Audio Device (name-based, not card-index)
-
-defaults.pcm.card Device
-defaults.ctl.card Device
+pcm.usb {
+    type plug
+    slave.pcm "hw:CARD=Device,DEV=0"
+}
 
 pcm.!default {
     type plug
-    slave.pcm "plughw:CARD=Device,DEV=0"
+    slave.pcm "usb"
 }
 
 ctl.!default {
