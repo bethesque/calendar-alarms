@@ -9,6 +9,15 @@
   when: not linger_file.stat.exists
   become: true
 
+- name: Configure ALSA default to USB audio device
+  become: true
+  ansible.builtin.template:
+    src: asound.conf.j2
+    dest: /etc/asound.conf
+    owner: root
+    group: root
+    mode: "0644"
+
 # INSTALL SNAPCLIENT
 # Can't use the package manager version because it's too old to work with Home Assistant,
 # so we have to download and install the .deb from the releases page on GitHub.
