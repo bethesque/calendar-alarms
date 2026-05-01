@@ -1,0 +1,240 @@
+import requests
+import time
+import logging
+import sys
+import http.client
+from typing import Optional, List, Tuple
+import logging
+
+
+from ecal.env import HOME_ASSISTANT_URL, HOME_ASSISTANT_TOKEN, LOG_LEVEL
+from ecal.log_config import setup_logging_for_alarms
+
+
+logger = logging.getLogger(__name__)
+
+setup_logging_for_alarms(LOG_LEVEL, 1)
+
+
+class MusicAssistant:
+    def __init__(self, players: list[str], ha_url: str = HOME_ASSISTANT_URL, token: str = HOME_ASSISTANT_TOKEN):
+        self.players = [MusicAssistantPlayer(f"media_player.{name}") for name in players]
+        self.playing_players = []
+
+    def store_current_state(self):
+        for player in self.players:
+            player.store_original_state()
+
+    def fade_out_and_pause(self):
+        self.playing_players = [player for player in self.players if player.was_playing]
+        fade_out(self.playing_players, duration=4, steps=10)
+
+    def restore_original_state(self):
+        for player in self.playing_players:
+            player.play()
+
+        # give the buffers time to get their glitches out
+        time.sleep(1)
+
+        fade_up([(player, player.original_volume) for player in self.playing_players], duration=5, steps=10)
+
+
+class MusicAssistantPlayer:
+    def __init__(self, player_name: str, ha_url: str = HOME_ASSISTANT_URL, token: str = HOME_ASSISTANT_TOKEN):
+        self.player_name = player_name
+        self.ha_url = ha_url
+        self.headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        }
+        self.session = requests.Session()
+        self.session.headers.update(self.headers)
+        self._state = None
+
+    def _call_service(self, domain: str, service: str, data: dict):
+        url = f"{self.ha_url}/api/services/{domain}/{service}"
+        response = self.session.post(url, json=data, timeout=40)
+        response.raise_for_status()
+        return response
+
+    def get_state(self) -> dict:
+        url = f"{self.ha_url}/api/states/{self.player_name}"
+        response = self.session.get(url, timeout=40)
+        response.raise_for_status()
+        return response.json()
+
+    def set_volume(self, level: float):
+        logger.info(f"Setting volume of {self.player_name} to {level}")
+        self._call_service("media_player", "volume_set", {
+            "entity_id": self.player_name,
+            "volume_level": level,
+        })
+
+    def stop(self):
+        self.pause
+
+    def pause(self):
+        self._call_service("media_player", "media_pause", {
+            "entity_id": self.player_name,
+        })
+
+    def play(self):
+        self._call_service("media_player", "media_play", {
+            "entity_id": self.player_name,
+        })
+
+    def store_original_state(self):
+        self._state = self.get_state()
+        logger.info(f"Storing original state for {self.player_name}: {self._state}")
+        self.original_volume = self._state.get("attributes", {}).get("volume_level", 0)
+        self.was_playing = self._state.get("state") == "playing"
+        logger.info(f"Stored original state: volume={self.original_volume}, was_playing={self.was_playing}")
+
+    def get_volume(self) -> int:
+        state = self.get_state()
+        vol = state.get("attributes", {}).get("volume_level", 0)
+        logger.info(f"Current volume for {self.player_name} is {vol}")
+        return vol
+
+    def is_running(self) -> bool:
+        state = self.get_state()
+        return state.get("state") == "playing"
+
+
+# This calculates the steps, but does not do the waiting, so that multiple players can be
+# faded out together without needing to use threads. The caller can call step() repeatedly
+# with a sleep in between, until it returns True to indicate it's done.
+# Could have used threads to do this, but trying to minimise resource usage on the Pi.
+# Also, this needs to be called by an HTTP endpoint, so I don't like to add extra
+# treads in an HTTP server.
+class FadeOut:
+    """Gradually fade out volume over multiple steps."""
+
+    def __init__(self, ma_player: MusicAssistantPlayer, target_volume: float = 0.0, num_steps: int = 10):
+        self.ma_player = ma_player
+        self.initial_volume = ma_player.get_volume()
+        self.volumes = FadeOut.calculate_volume_steps(num_steps, self.initial_volume, target_volume)
+        self.current_step = 0
+
+    @staticmethod
+    def calculate_volume_steps(num_steps, current_volume, target_volume) -> List[float]:
+        if current_volume is None or num_steps <= 0:
+            return [target_volume]
+
+        step = (current_volume - target_volume) / num_steps
+        volumes = [current_volume - i * step for i in range(num_steps)]
+        if not volumes or volumes[-1] != target_volume:
+            volumes.append(target_volume)
+        return volumes
+
+    def step(self) -> bool:
+        """Execute one step of the fade out. Returns True when complete."""
+        if self.initial_volume is None:
+            logger.info(f"Could not get initial volume for Music Assistant player, skipping fade out")
+            return True
+        if self.initial_volume == 0:
+            logger.info(f"Initial volume is already 0 for Music Assistant player, skipping fade out")
+            return True
+        if self.current_step < len(self.volumes):
+            new_volume = max(0.0, min(1.0, self.volumes[self.current_step]))
+            self.ma_player.set_volume(new_volume)
+            self.current_step += 1
+            return False
+        else:
+            self.ma_player.pause()
+            logger.info("Stopped Music Assistant playback")
+            return True
+
+
+class FadeUp:
+    """Gradually fade up volume over multiple steps."""
+
+    def __init__(self, ma_player: MusicAssistantPlayer, target_volume: float = 1.0, num_steps: int = 10):
+        self.ma_player = ma_player
+        self.last_known_volume = ma_player.get_volume() or 0
+        self.volumes = FadeUp.calculate_volume_steps(num_steps, self.last_known_volume, target_volume)
+        self.current_step = 0
+
+    @staticmethod
+    def calculate_volume_steps(num_steps, current_volume, target_volume) -> List[float]:
+        if num_steps <= 0 or current_volume is None:
+            return [target_volume]
+
+        volume_step = (target_volume - current_volume) / num_steps
+        volumes = [current_volume + i * volume_step for i in range(num_steps)]
+        if not volumes or volumes[-1] != target_volume:
+            volumes.append(target_volume)
+        return volumes
+
+    # Returns True when completed, either because the target volume has been reached
+    # or because someone has altered the volume via another input.
+    def step(self) -> bool:
+        """Execute one step of the fade up. Returns True when complete."""
+        if self.current_step < len(self.volumes):
+            # if the current volume has changed since the last step, return True to indicate we're done,
+            # as something else has changed the volume
+            current_volume = self.ma_player.get_volume()
+            if current_volume is not None and not self.similar_enough(current_volume, self.last_known_volume):
+                logger.info(f"Volume changed externally during fade up (from {self.last_known_volume} to {current_volume}), stopping fade up")
+                return True # done
+            new_volume = self.volumes[self.current_step]
+            self.ma_player.set_volume(new_volume)
+            self.last_known_volume = new_volume
+            self.current_step += 1
+            if self.current_step < len(self.volumes):
+                return False  # not done yet
+            else:
+                logger.info("Finished fading up Music Assistant playback")
+            return True
+        else:
+            return True  # done
+
+    # Sometimes the volume that set comes back as a slightly different volume to do numbers and rounding
+    # and maths.
+    def similar_enough(self, vol1: float, vol2: float, threshold: float = 0.1) -> bool:
+        return abs(vol1 - vol2) <= threshold
+
+
+def fade_out(ma_players: List[MusicAssistantPlayer], duration: float, steps: int = 10):
+    """Gradually fade out the volume of the given Music Assistant players over the specified duration and steps, then stop them.
+
+    Args:
+        mpd_processes: List of MusicAssistantPlayer instances to fade out
+        duration: Total duration in seconds for the fade out
+        steps: Number of volume steps for the fade out
+    """
+    fade_outs = []
+    for player in ma_players:
+        if player.is_running():
+            fade_outs.append(FadeOut(player, target_volume=0, num_steps=steps))
+
+    step_time = duration / steps if steps > 0 else duration
+
+    while fade_outs:
+        for fade in fade_outs[:]:
+            if fade.step():
+                fade_outs.remove(fade)
+        if fade_outs:
+            time.sleep(step_time)
+
+
+def fade_up(players_and_target_volumes: List[Tuple[MusicAssistantPlayer, int]], duration: float, steps: int = 10):
+    """Gradually fade up the volume of the given Music Assistant players over the specified duration and steps.
+
+    Args:
+        mpd_processes_and_target_volumes: List of tuples of (MusicAssistantPlayer, target_volume)
+        duration: Total duration in seconds for the fade up
+        steps: Number of volume steps for the fade up
+    """
+    fade_ups = []
+    for player, target_volume in players_and_target_volumes:
+        fade_ups.append(FadeUp(player, target_volume=target_volume, num_steps=steps))
+
+    step_time = duration / steps if steps > 0 else duration
+
+    while fade_ups:
+        for fade in fade_ups[:]:
+            if fade.step():
+                fade_ups.remove(fade)
+        if fade_ups:
+            time.sleep(step_time)

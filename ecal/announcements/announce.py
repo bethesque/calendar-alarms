@@ -57,6 +57,7 @@ def get_morning_announcements_text(calendar_file=DATA_FILE):
 
 def get_events(calendar_file=DATA_FILE):
     # Array of CalendarDay objects
+    # TODO only get today's events, not all events in the file
     calendar_days = load_data_from_file(calendar_file)
     return calendar_days[0].all_events() if calendar_days else []
 
