@@ -1,104 +1,148 @@
-import subprocess
+#!/usr/bin/env python3
 
-def build_alarm(announcement, alarm, output, duration=300):
-    subprocess.run([
-        "ffmpeg",
-        "-f", "lavfi",
-        "-t", "5",
-        "-i", "anullsrc=r=44100:cl=stereo",
-        "-i", announcement,
-        "-stream_loop", "-1",
-        "-i", alarm,
-        "-filter_complex",
+import requests
+import time
+import logging
+import sys
+import http.client
 
-        # 1) Take input 0 (silence) + input 1 (announcement)
-        #    Concatenate them into a single audio stream
-        #    Then loop that combined stream forever and label it [ann]
-        "[0:a][1:a]concat=n=2:v=0:a=1,"        # join silence + announcement
-        "aloop=loop=-1:size=2e+09[ann];"       # loop it infinitely → [ann]
+HA_URL = "http://192.168.20.3:8123"
+TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiIwMGRkYWI1YzE5MWM0ODFkOGM1ZjBlMjIyYjZhYmY1YSIsImlhdCI6MTc3NzUyMDk4MywiZXhwIjoyMDkyODgwOTgzfQ.XXZC4F8QgUm8aSnwiWmAXX4GvDPq_5p_ifm-Lpz4tTY"
+PLAYERS = ["media_player.kaypi"]
 
-        # 2) Take input 2 (alarm audio)
-        #    Lower its volume to 60% so it doesn't overpower speech
-        #    Loop it forever and label it [alarm]
-        "[2:a]volume=0.6,"                     # reduce alarm loudness
-        "aloop=loop=-1:size=2e+09[alarm];"     # loop alarm infinitely → [alarm]
+ALARM_MEDIA = "library://track/6620"
 
-        # 3) Mix both streams together:
-        #    - alarm (background)
-        #    - announcement loop (foreground)
-        #    Output continues as long as the longest stream runs
-        "[alarm][ann]amix=inputs=2:duration=longest,"
-        f"atrim=duration={duration}",
-        "-c:a", "flac",
-        "-y",
-        output
-    ], check=True)
+HEADERS = {
+    "Authorization": f"Bearer {TOKEN}",
+    "Content-Type": "application/json",
+}
+
+# Configure the root logger to output to stdout
+logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+
+# Optional: Enable low-level debugging to see raw HTTP headers/body
+http.client.HTTPConnection.debuglevel = 1
+
+# ------------------------
+# Helpers
+# ------------------------
+
+def call_service(domain, service, data):
+    url = f"{HA_URL}/api/services/{domain}/{service}"
+    r = requests.post(url, headers=HEADERS, json=data, timeout=40)
+    r.raise_for_status()
+
+def get_state(player):
+    url = f"{HA_URL}/api/states/{player}"
+    r = requests.get(url, headers=HEADERS, timeout=40)
+    r.raise_for_status()
+    return r.json()
+
+def set_volume(level, player):
+    call_service("media_player", "volume_set", {
+        "entity_id": player,
+        "volume_level": level
+    })
+
+def pause(player):
+    call_service("media_player", "media_pause", {
+        "entity_id": player
+    })
+
+def play(player):
+    call_service("media_player", "media_play", {
+        "entity_id": player
+    })
+
+def play_alarm():
+    call_service("media_player", "play_media", {
+        "entity_id": player,
+        "media_content_id": ALARM_MEDIA,
+        "media_content_type": "music"
+    })
+
+# ------------------------
+# Fade logic (via MA volume)
+# ------------------------
+
+def fade_volume(start, end, duration=3, steps=10, player):
+    step_time = duration / steps
+    delta = (end - start) / steps
+
+    vol = start
+    for _ in range(steps):
+        vol += delta
+        set_volume(max(0, min(1, vol)), player)
+        time.sleep(step_time)
+
+# ------------------------
+# Main flow
+# ------------------------
+
+def main():
+    player = PLAYERS[0]  # For simplicity, just use the first player
+    # Get current state
+    print("Checking current player state...")
+    state = get_state(player)
+    attrs = state.get("attributes", {})
+
+    original_volume = attrs.get("volume_level", 0.5)
+    was_playing = state.get("state") == "playing"
+
+    print(f"Original volume: {original_volume}, was playing: {was_playing}")
+
+    # 1. Fade down
+    fade_volume(original_volume, 0, duration=4, player=player)
+
+    # 2. Pause current playback
+    if was_playing:
+        pause(player)
+        time.sleep(1)
+
+    # 3. Set alarm volume higher
+    # set_volume(0.8, player)
+
+    print("PLAYING ALARM")
+    time.sleep(5)
+
+    # 4. Play alarm via Music Assistant
+    #play_alarm()
+
+    #fade_volume(0.2, 0.8, duration=5)
+
+    # 5. Wait until alarm finishes
+    # (poll state until it's no longer playing alarm)
+    timeout = 300  # max 5 minutes
+    start_time = time.time()
+
+    # while True:
+    #     time.sleep(2)
+
+    #     state = get_state()
+    #     current_state = state.get("state")
+
+    #     # If stopped/idle → alarm finished
+    #     if current_state in ["idle", "paused"]:
+    #         break
+
+    #     if time.time() - start_time > timeout:
+    #         print("Alarm timeout reached")
+    #         break
 
 
-import subprocess
 
-import subprocess
+    # 7. Resume music if it was playing
+    if was_playing:
+        play(player)
 
+    time.sleep(5)
 
-import subprocess
+    # 6. Restore previous volume
+    fade_volume(0, original_volume, duration=10, player=player)
 
+    print("Alarm cycle complete")
 
-def build_alarm_audio(
-    announcement_file: str,
-    alarm_file: str,
-    output_file: str,
-    duration: int = 300
-):
-    filter_complex = (
-        # 1) Force format INCLUDING sample format
-        "[0:a]aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo[s0];"
-        "[1:a]aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo,volume=1.8[s1];"
+# ------------------------
 
-        # 2) Build ONE cycle: silence → announcement
-        "[s0][s1]concat=n=2:v=0:a=1[ann_once];"
-
-        # 3) Loop announcement cycle
-        "[ann_once]aloop=loop=-1:size=2e+09[ann];"
-
-        # 4) Prepare alarm
-        "[2:a]aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo,"
-        "volume=0.5,aloop=loop=-1:size=2e+09[alarm];"
-
-        # 5) Mix
-        "[alarm][ann]amix=inputs=2:duration=longest:weights='1 1.5',"
-
-        # ✅ 6) Fade in over 1 second
-        f"afade=t=in:st=0:d=1.5,afade=t=out:st={duration-5}:d=5,"
-
-        "adelay=1000|1000"
-
-        # 7) Final limiter + trim
-        f"alimiter=limit=0.9,atrim=duration={duration}"
-
-
-    )
-
-    cmd = [
-        "ffmpeg",
-        "-f", "lavfi",
-        "-t", "5",
-        "-i", "anullsrc=r=48000:cl=stereo",
-        "-i", announcement_file,
-        "-stream_loop", "-1",
-        "-i", alarm_file,
-        "-filter_complex", filter_complex,
-
-        "-c:a", "pcm_s16le",
-        "-ar", "48000",
-        "-ac", "2",
-
-        "-y",
-        output_file,
-    ]
-
-    subprocess.run(cmd, check=True)
-
-
-#build_alarm("audio/test_announcement.mp3", "audio/alarm.mp3", "output.flac", duration=300)
-
-build_alarm_audio("audio/test_announcement.mp3", "audio/alarm.mp3", "bethtest-announce-and-music-fade-in.wav", duration=300)
+if __name__ == "__main__":
+    main()

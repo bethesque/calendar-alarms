@@ -1,0 +1,19 @@
+function calendar-alarms-snapclient-logs {
+    journalctl SYSLOG_IDENTIFIER=calendar-alarms-snapclient "$@"
+}
+
+function calendar-alarms-snapclient-status {
+    systemctl --user status calendar-alarms-snapclient "$@"
+}
+
+function calendar-alarms-snapclient-start {
+    systemctl --user start calendar-alarms-snapclient "$@"
+}
+
+function calendar-alarms-snapclient-stop {
+    systemctl --user stop calendar-alarms-snapclient "$@"
+}
+
+function calendar-alarms-snapclient-restart {
+    systemctl --user restart calendar-alarms-snapclient "$@"
+}

@@ -70,7 +70,7 @@
     group: "{{ snapclient_user }}"
     mode: "0755"
 
-# Logs can be viewed with `sudo journalctl --user -f | grep snapclient`
+# Logs can be viewed with `journalctl SYSLOG_IDENTIFIER=calendar-alarms-snapclient`
 - name: Install snapclient user service
   ansible.builtin.template:
       # Give it a custom service name so multiple snapclient instances can be run if needed
@@ -95,4 +95,10 @@
   ansible.builtin.command: systemctl --user start calendar-alarms-snapclient
   when: inventory_hostname == 'kaypi.local' or inventory_hostname == 'ecal.travis.dixon.net.au'
 
-
+- name: Add calendar alarms utils file
+  ansible.builtin.template:
+    src: calendar-alarms-utils.sh.j2
+    dest: "/home/{{ snapclient_user }}/calendar-alarms-utils.sh"
+    owner: "{{ snapclient_user }}"
+    group: "{{ snapclient_user }}"
+    mode: "0755"
