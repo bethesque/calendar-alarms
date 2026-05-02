@@ -24,7 +24,7 @@ def setup_logging(level=int|str, log_file=None, stdout=True, http_debug=None):
 
     if http_debug is not None:
         import http.client
-        http.client.HTTPConnection.debuglevel = 1
+        http.client.HTTPConnection.debuglevel = http_debug
 
 
 

@@ -3,45 +3,34 @@ import time
 import logging
 import sys
 import http.client
+import json
 from typing import Optional, List, Tuple
 import logging
+from dataclasses import dataclass, field
 
 
-from ecal.env import HOME_ASSISTANT_URL, HOME_ASSISTANT_TOKEN, LOG_LEVEL
-from ecal.log_config import setup_logging_for_alarms
-
+from ecal.env import HOME_ASSISTANT_URL, HOME_ASSISTANT_TOKEN
 
 logger = logging.getLogger(__name__)
 
-setup_logging_for_alarms(LOG_LEVEL, 1)
 
 
-class MusicAssistant:
-    def __init__(self, players: list[str], ha_url: str = HOME_ASSISTANT_URL, token: str = HOME_ASSISTANT_TOKEN):
-        self.players = [MusicAssistantPlayer(f"media_player.{name}") for name in players]
-        self.playing_players = []
+#
 
-    def store_current_state(self):
-        for player in self.players:
-            player.store_original_state()
+@dataclass
+class PlayerState:
+    state: dict
 
-    def fade_out_and_pause(self):
-        self.playing_players = [player for player in self.players if player.was_playing]
-        fade_out(self.playing_players, duration=4, steps=10)
+    def get_volume(self) -> float:
+        return float(self.state.get("attributes", {}).get("volume_level", 0.0))
 
-    def restore_original_state(self):
-        for player in self.playing_players:
-            player.play()
-
-        # give the buffers time to get their glitches out
-        time.sleep(1)
-
-        fade_up([(player, player.original_volume) for player in self.playing_players], duration=5, steps=10)
+    def playing(self) -> bool:
+        return self.state.get("state", "") in ["playing", "buffering"]
 
 
 class MusicAssistantPlayer:
     def __init__(self, player_name: str, ha_url: str = HOME_ASSISTANT_URL, token: str = HOME_ASSISTANT_TOKEN):
-        self.player_name = player_name
+        self.name = player_name
         self.ha_url = ha_url
         self.headers = {
             "Authorization": f"Bearer {token}",
@@ -49,7 +38,13 @@ class MusicAssistantPlayer:
         }
         self.session = requests.Session()
         self.session.headers.update(self.headers)
-        self._state = None
+        self._original_state = PlayerState({})
+
+    def get_original_state(self) -> PlayerState:
+        return self._original_state
+
+    def set_original_state(self, state):
+        self._original_state = state
 
     def _call_service(self, domain: str, service: str, data: dict):
         url = f"{self.ha_url}/api/services/{domain}/{service}"
@@ -57,16 +52,16 @@ class MusicAssistantPlayer:
         response.raise_for_status()
         return response
 
-    def get_state(self) -> dict:
-        url = f"{self.ha_url}/api/states/{self.player_name}"
-        response = self.session.get(url, timeout=40)
+    def get_state(self) -> PlayerState:
+        url = f"{self.ha_url}/api/states/{self.name}"
+        response = self.session.get(url, timeout=10)
         response.raise_for_status()
-        return response.json()
+        return PlayerState(response.json())
 
     def set_volume(self, level: float):
-        logger.info(f"Setting volume of {self.player_name} to {level}")
+        logger.info(f"Setting volume of {self.name} to {level}")
         self._call_service("media_player", "volume_set", {
-            "entity_id": self.player_name,
+            "entity_id": self.name,
             "volume_level": level,
         })
 
@@ -75,31 +70,24 @@ class MusicAssistantPlayer:
 
     def pause(self):
         self._call_service("media_player", "media_pause", {
-            "entity_id": self.player_name,
+            "entity_id": self.name,
         })
 
     def play(self):
         self._call_service("media_player", "media_play", {
-            "entity_id": self.player_name,
+            "entity_id": self.name,
         })
 
     def store_original_state(self):
-        self._state = self.get_state()
-        logger.info(f"Storing original state for {self.player_name}: {self._state}")
-        self.original_volume = self._state.get("attributes", {}).get("volume_level", 0)
-        self.was_playing = self._state.get("state") == "playing"
-        logger.info(f"Stored original state: volume={self.original_volume}, was_playing={self.was_playing}")
+        self._original_state = self.get_state()
+        logger.debug(f"Storing original state for {self.name}: {self._original_state}")
 
-    def get_volume(self) -> int:
+    # Calls the API
+    def get_volume(self) -> float:
         state = self.get_state()
-        vol = state.get("attributes", {}).get("volume_level", 0)
-        logger.info(f"Current volume for {self.player_name} is {vol}")
+        vol = state.get_volume()
+        logger.info(f"Current volume for {self.name} is {vol}")
         return vol
-
-    def is_running(self) -> bool:
-        state = self.get_state()
-        return state.get("state") == "playing"
-
 
 # This calculates the steps, but does not do the waiting, so that multiple players can be
 # faded out together without needing to use threads. The caller can call step() repeatedly
@@ -107,13 +95,13 @@ class MusicAssistantPlayer:
 # Could have used threads to do this, but trying to minimise resource usage on the Pi.
 # Also, this needs to be called by an HTTP endpoint, so I don't like to add extra
 # treads in an HTTP server.
-class FadeOut:
+class PlayerFadeOut:
     """Gradually fade out volume over multiple steps."""
 
     def __init__(self, ma_player: MusicAssistantPlayer, target_volume: float = 0.0, num_steps: int = 10):
         self.ma_player = ma_player
         self.initial_volume = ma_player.get_volume()
-        self.volumes = FadeOut.calculate_volume_steps(num_steps, self.initial_volume, target_volume)
+        self.volumes = PlayerFadeOut.calculate_volume_steps(num_steps, self.initial_volume, target_volume)
         self.current_step = 0
 
     @staticmethod
@@ -146,13 +134,13 @@ class FadeOut:
             return True
 
 
-class FadeUp:
+class PlayerFadeUp:
     """Gradually fade up volume over multiple steps."""
 
     def __init__(self, ma_player: MusicAssistantPlayer, target_volume: float = 1.0, num_steps: int = 10):
         self.ma_player = ma_player
         self.last_known_volume = ma_player.get_volume() or 0
-        self.volumes = FadeUp.calculate_volume_steps(num_steps, self.last_known_volume, target_volume)
+        self.volumes = PlayerFadeUp.calculate_volume_steps(num_steps, self.last_known_volume, target_volume)
         self.current_step = 0
 
     @staticmethod
@@ -205,8 +193,8 @@ def fade_out(ma_players: List[MusicAssistantPlayer], duration: float, steps: int
     """
     fade_outs = []
     for player in ma_players:
-        if player.is_running():
-            fade_outs.append(FadeOut(player, target_volume=0, num_steps=steps))
+        if player.get_original_state().playing():
+            fade_outs.append(PlayerFadeOut(player, target_volume=0, num_steps=steps))
 
     step_time = duration / steps if steps > 0 else duration
 
@@ -218,7 +206,7 @@ def fade_out(ma_players: List[MusicAssistantPlayer], duration: float, steps: int
             time.sleep(step_time)
 
 
-def fade_up(players_and_target_volumes: List[Tuple[MusicAssistantPlayer, int]], duration: float, steps: int = 10):
+def fade_up(players_and_target_volumes: List[Tuple[MusicAssistantPlayer, float]], duration: float, steps: int = 10):
     """Gradually fade up the volume of the given Music Assistant players over the specified duration and steps.
 
     Args:
@@ -228,7 +216,7 @@ def fade_up(players_and_target_volumes: List[Tuple[MusicAssistantPlayer, int]], 
     """
     fade_ups = []
     for player, target_volume in players_and_target_volumes:
-        fade_ups.append(FadeUp(player, target_volume=target_volume, num_steps=steps))
+        fade_ups.append(PlayerFadeUp(player, target_volume=target_volume, num_steps=steps))
 
     step_time = duration / steps if steps > 0 else duration
 
@@ -238,3 +226,53 @@ def fade_up(players_and_target_volumes: List[Tuple[MusicAssistantPlayer, int]], 
                 fade_ups.remove(fade)
         if fade_ups:
             time.sleep(step_time)
+
+class MusicAssistant:
+    def __init__(self, players: list[MusicAssistantPlayer], ha_url: str = HOME_ASSISTANT_URL, token: str = HOME_ASSISTANT_TOKEN):
+        self.players = players
+
+    def store_current_state(self):
+        for player in self.players:
+            player.store_original_state()
+
+    def fade_out_and_pause(self):
+        fade_out(self.players, duration=4, steps=10)
+
+    def restore_original_state(self):
+        playing_players = [player for player in self.players if player.get_original_state().playing()]
+        if playing_players:
+            for player in playing_players:
+                player.play()
+
+            # give the buffers time to get their glitches out
+            time.sleep(1)
+
+            fade_up([(player, player.get_original_state().get_volume()) for player in playing_players], duration=5, steps=10)
+
+class MusicAssistantState:
+
+    @staticmethod
+    def save(music_assistant, file_path):
+        music_assistant_state = {}
+        music_assistant_state["playing_players"] = [ { "name": player.name, "original_state": player.get_original_state().state } for player in music_assistant.players ]
+
+        data_json = json.dumps(music_assistant_state, sort_keys=True)
+        with open(file_path, "w") as f:
+            f.write(data_json)
+
+    @staticmethod
+    def load(file_path) -> MusicAssistant:
+        with open(file_path, "r") as f:
+            music_assistant_state = json.load(f)
+        playing_players = music_assistant_state["playing_players"]
+        if playing_players and isinstance(playing_players, list):
+            players = []
+            for player_dict in playing_players:
+                player = MusicAssistantPlayer(player_dict["name"])
+                player.set_original_state(PlayerState(player_dict["original_state"]))
+                players.append(player)
+            return MusicAssistant(players=players)
+        else:
+            logger.warning("Could not load playing players from saved state. Returning MusicAssistant with no players")
+            logger.warning(music_assistant_state)
+            return MusicAssistant([])
