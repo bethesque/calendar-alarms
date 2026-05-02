@@ -25,11 +25,12 @@ def play_alarm(announcement_files, before_alarm_hook=None):
         duration=300
     )
 
-    logger.info(f"Playing alarm {audio_file}")
+
     # Play the mixed audio file
     with mpd_connection() as alarm_player:
         if before_alarm_hook:
             before_alarm_hook()
+        logger.info(f"Playing alarm {audio_file}")
         alarm_player.set_volume(INITIAL_VOLUME)
         alarm_player.play_file(audio_file)
         fade_up([(alarm_player, 100)], 45, 10)

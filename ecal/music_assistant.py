@@ -57,7 +57,7 @@ class MusicAssistantPlayer:
         return PlayerState(response.json())
 
     def set_volume(self, level: float):
-        logger.info(f"Setting volume of {self.name} to {level}")
+        logger.debug(f"Setting volume of {self.name} to {level}")
         self._call_service("media_player", "volume_set", {
             "entity_id": self.name,
             "volume_level": level,
