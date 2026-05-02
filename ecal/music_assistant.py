@@ -3,6 +3,7 @@ import time
 import logging
 import os
 import json
+from pathlib import Path
 from typing import List, Tuple
 import logging
 from dataclasses import dataclass
@@ -237,7 +238,7 @@ class MusicAssistant:
     def fade_out_and_pause(self):
         fade_out(self.players, duration=4, steps=10)
 
-    def fetch_state(self):
+    def restore_original_state(self):
         playing_players = [player for player in self.players if player.get_original_state().playing()]
         if playing_players:
             for player in playing_players:
@@ -292,3 +293,7 @@ class MusicAssistantState:
         except FileNotFoundError:
             return False
         return (time.time() - mtime) < max_age_seconds
+
+    @staticmethod
+    def clear(file_path = MUSIC_ASSISTANT_STATE_FILE):
+        Path(file_path).unlink(missing_ok=True)

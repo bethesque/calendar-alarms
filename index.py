@@ -53,8 +53,9 @@ class AlarmController(object):
         try:
             if MusicAssistantState.fresh():
                 ma = MusicAssistantState.load()
-                ma.fetch_state()
+                ma.restore_original_state()
                 logger.info("Restored saved Music Assistant state")
+                MusicAssistantState.clear()
             else:
                 logger.info("Not restoring Music Assistant state as the file is either too old or does not exist")
         except Exception as e:

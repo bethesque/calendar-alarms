@@ -35,7 +35,7 @@ def main():
 
     ma = MusicAssistantState.load("music_assistant_state.json")
 
-    ma.fetch_state()
+    ma.restore_original_state()
 
 
 if __name__ == "__main__":
