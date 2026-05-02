@@ -18,3 +18,5 @@ snapserver_tmp: "/tmp/{{ snapserver_deb }}"
 snapcast_repo: https://github.com/snapcast/snapcast.git
 snapcast_version: v0.35.0
 snapcast_src_dir: /opt/snapcast
+
+snapweb_doc_root: /usr/share/snapserver/snapweb
