@@ -10,7 +10,7 @@ from ecal.env import OUTPUT_AUDIO_DIRECTORY, INITIAL_VOLUME
 
 logger = logging.getLogger(__name__)
 
-def play_alarm(announcement_files):
+def play_alarm(announcement_files, before_alarm_hook=None):
     joined_announcement_file = OUTPUT_AUDIO_DIRECTORY + "/announcement.wav"
     join_mp3s_to_wav(announcement_files, joined_announcement_file)
 
@@ -28,6 +28,8 @@ def play_alarm(announcement_files):
     logger.info(f"Playing alarm {audio_file}")
     # Play the mixed audio file
     with mpd_connection() as alarm_player:
+        if before_alarm_hook:
+            before_alarm_hook()
         alarm_player.set_volume(INITIAL_VOLUME)
         alarm_player.play_file(audio_file)
         fade_up([(alarm_player, 100)], 45, 10)
@@ -64,7 +66,7 @@ def log_results(results):
         )
     logging.info("Total matched events: %d", len(results))
 
-def check_for_alarms(base_time, window, calendar_data):
+def check_for_alarms(base_time, window, calendar_data, before_alarm_hook=None):
     start, end = get_time_window(base_time, window)
 
     logging.info(
@@ -77,7 +79,7 @@ def check_for_alarms(base_time, window, calendar_data):
     log_results(results)
 
     if results:
-        play_alarm(announcement_files_for_events(results))
+        play_alarm(announcement_files_for_events(results), before_alarm_hook)
 
 def announcement_files_for_events(events):
     return deduplicate_list([text_to_voice_file(announcement_for_event(event)) for event in events])

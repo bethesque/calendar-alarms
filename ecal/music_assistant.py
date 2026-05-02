@@ -1,21 +1,18 @@
 import requests
 import time
 import logging
-import sys
-import http.client
+import os
 import json
-from typing import Optional, List, Tuple
+from typing import List, Tuple
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
-from ecal.env import HOME_ASSISTANT_URL, HOME_ASSISTANT_TOKEN
+from ecal.env import HOME_ASSISTANT_URL, HOME_ASSISTANT_TOKEN, CACHE_DIRECTORY
 
 logger = logging.getLogger(__name__)
 
-
-
-#
+MUSIC_ASSISTANT_STATE_FILE = CACHE_DIRECTORY + "/music_assistant_state.json"
 
 @dataclass
 class PlayerState:
@@ -65,20 +62,19 @@ class MusicAssistantPlayer:
             "volume_level": level,
         })
 
-    def stop(self):
-        self.pause
-
     def pause(self):
+        logger.info(f"Pausing media player {self.name}")
         self._call_service("media_player", "media_pause", {
             "entity_id": self.name,
         })
 
     def play(self):
+        logger.info(f"Playing media player {self.name}")
         self._call_service("media_player", "media_play", {
             "entity_id": self.name,
         })
 
-    def store_original_state(self):
+    def fetch_state(self):
         self._original_state = self.get_state()
         logger.debug(f"Storing original state for {self.name}: {self._original_state}")
 
@@ -163,7 +159,7 @@ class PlayerFadeUp:
             # as something else has changed the volume
             current_volume = self.ma_player.get_volume()
             if current_volume is not None and not self.similar_enough(current_volume, self.last_known_volume):
-                logger.info(f"Volume changed externally during fade up (from {self.last_known_volume} to {current_volume}), stopping fade up")
+                logger.info(f"Volume for {self.ma_player.name} changed externally during fade up (from {self.last_known_volume} to {current_volume}), stopping fade up")
                 return True # done
             new_volume = self.volumes[self.current_step]
             self.ma_player.set_volume(new_volume)
@@ -195,6 +191,9 @@ def fade_out(ma_players: List[MusicAssistantPlayer], duration: float, steps: int
     for player in ma_players:
         if player.get_original_state().playing():
             fade_outs.append(PlayerFadeOut(player, target_volume=0, num_steps=steps))
+
+    if not fade_outs:
+        logger.info("No Music Assistant players to pause")
 
     step_time = duration / steps if steps > 0 else duration
 
@@ -231,14 +230,14 @@ class MusicAssistant:
     def __init__(self, players: list[MusicAssistantPlayer], ha_url: str = HOME_ASSISTANT_URL, token: str = HOME_ASSISTANT_TOKEN):
         self.players = players
 
-    def store_current_state(self):
+    def fetch_current_state(self):
         for player in self.players:
-            player.store_original_state()
+            player.fetch_state()
 
     def fade_out_and_pause(self):
         fade_out(self.players, duration=4, steps=10)
 
-    def restore_original_state(self):
+    def fetch_state(self):
         playing_players = [player for player in self.players if player.get_original_state().playing()]
         if playing_players:
             for player in playing_players:
@@ -249,10 +248,15 @@ class MusicAssistant:
 
             fade_up([(player, player.get_original_state().get_volume()) for player in playing_players], duration=5, steps=10)
 
+    @staticmethod
+    def build_for_players_with_names(names):
+        players = [MusicAssistantPlayer(f"media_player.{name}") for name in names]
+        return MusicAssistant(players)
+
 class MusicAssistantState:
 
     @staticmethod
-    def save(music_assistant, file_path):
+    def save(music_assistant, file_path = MUSIC_ASSISTANT_STATE_FILE):
         music_assistant_state = {}
         music_assistant_state["playing_players"] = [ { "name": player.name, "original_state": player.get_original_state().state } for player in music_assistant.players ]
 
@@ -261,7 +265,7 @@ class MusicAssistantState:
             f.write(data_json)
 
     @staticmethod
-    def load(file_path) -> MusicAssistant:
+    def load(file_path=MUSIC_ASSISTANT_STATE_FILE) -> MusicAssistant:
         with open(file_path, "r") as f:
             music_assistant_state = json.load(f)
         playing_players = music_assistant_state["playing_players"]
@@ -276,3 +280,15 @@ class MusicAssistantState:
             logger.warning("Could not load playing players from saved state. Returning MusicAssistant with no players")
             logger.warning(music_assistant_state)
             return MusicAssistant([])
+
+    """
+        Do not restore any state that is more than 5 minutes old
+    """
+    @staticmethod
+    def fresh(max_age_mins = 5, file_path = MUSIC_ASSISTANT_STATE_FILE) -> bool:
+        max_age_seconds = max_age_mins * 60
+        try:
+            mtime = os.path.getmtime(file_path)
+        except FileNotFoundError:
+            return False
+        return (time.time() - mtime) < max_age_seconds

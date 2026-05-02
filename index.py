@@ -3,14 +3,64 @@ import cherrypy
 import google_auth_oauthlib.flow
 from ecal.env import SERVER_ADDRESS, SCOPE, login_hint
 from ecal.alarms.mpd import MpdClient, fade_out, mpd_connection
+from ecal.music_assistant import MusicAssistantState
 from ecal.env import MPD_HOST, MPD_PORT
 from ecal.log_config import setup_logging_for_http_server
+import threading
+import time
+from queue import Queue
 
 setup_logging_for_http_server(logging.INFO)
 
 logger = logging.getLogger(__name__)
 
 class AlarmController(object):
+    def __init__(self):
+        self.queue = Queue(maxsize=1)  # <- key trick
+        self._pending = False
+        self._lock = threading.Lock()
+
+        threading.Thread(target=self._worker, daemon=True).start()
+
+    def _worker(self):
+        while True:
+            self.queue.get()
+            try:
+                self.stop_alarm()
+            finally:
+                with self._lock:
+                    self._pending = False
+                self.queue.task_done()
+
+    def stop_alarm(self):
+        # Stop alarm
+        logger.info("Stopping alarm...")
+        message = ""
+        try:
+            with mpd_connection() as alarm_player:
+                if alarm_player.is_running():
+                    fade_out([alarm_player], 3)
+                    alarm_player.stop()
+                    message = "Alarm stopped."
+                else:
+                    message = "MPD is not running. No alarm to stop."
+        except Exception as e:
+            logger.error(f"Error stopping alarm: {e}")
+
+        logger.info(message)
+
+        # Restore Music Assistant state
+        try:
+            if MusicAssistantState.fresh():
+                ma = MusicAssistantState.load()
+                ma.fetch_state()
+                logger.info("Restored saved Music Assistant state")
+            else:
+                logger.info("Not restoring Music Assistant state as the file is either too old or does not exist")
+        except Exception as e:
+            logger.error(f"Error restoring Music Assistant state: {e}")
+
+
 
     @cherrypy.expose
     def index(self):
@@ -32,20 +82,8 @@ class AlarmController(object):
 
     @cherrypy.expose
     def stop(self):
-        logger.info("Stopping alarm...")
-        message = ""
-        try:
-            with mpd_connection() as alarm_player:
-                if alarm_player.is_running():
-                    fade_out([alarm_player], 3)
-                    alarm_player.stop()
-                    message = "Alarm stopped."
-                else:
-                    message = "MPD is not running. No alarm to stop."
-        except Exception as e:
-            message = f"Error stopping alarm: {e}"
-
-        logger.info(message)
+        message = self.do_thing()
+        cherrypy.response.status = 202
 
         return f"""
         <html>
@@ -60,6 +98,21 @@ class AlarmController(object):
         </html>
         """
 
+    def do_thing(self) -> str:
+        with self._lock:
+            if self._pending:
+                return "Alarm currently being stopped"
+
+            self._pending = True
+
+        try:
+            self.queue.put_nowait(None)
+            return "Stopping alarm..."
+        except:
+            # extremely rare race safety net
+            with self._lock:
+                self._pending = False
+            return "Alarm currently being stopped"
 
 class CalendarWebServer(object):
     alarm = AlarmController()
