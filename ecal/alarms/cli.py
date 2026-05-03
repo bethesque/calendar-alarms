@@ -9,12 +9,10 @@ from ecal.env import LOG_LEVEL
 from ecal.alarms.mpd import fade_out, fade_up, mpd_connection
 from ecal.log_config import setup_logging_for_alarms
 from ecal.calendar.google_calendar import CalendarSource
+from ecal.scene import Scene
 
-from ecal.env import DATA_DIRECTORY, PLAYERS, CACHE_DIRECTORY
+from ecal.env import DATA_DIRECTORY
 from ecal.alarms.alarm import check_for_alarms
-from ecal.music_assistant import MusicAssistant, MusicAssistantState
-
-
 
 setup_logging_for_alarms(str(LOG_LEVEL))
 
@@ -53,14 +51,7 @@ def check_alarms():
     base_time = args.base_time or datetime.now().astimezone()
     calendar_data = load_events(args.calendar_file)
 
-    def pause_music_assistant_players():
-        logger.info("Pausing Music Assistant players (if any)...")
-        ma = MusicAssistant.build_for_players_with_names(PLAYERS)
-        ma.fetch_current_state()
-        MusicAssistantState.save(ma, CACHE_DIRECTORY + "/music_assistant_state.json")
-        ma.fade_out_and_pause()
-
-    before_alarm_hook = pause_music_assistant_players if args.handle_music_assistant else None
+    before_alarm_hook = Scene.prepare if args.handle_music_assistant else None
 
     check_for_alarms(base_time, args.window, calendar_data, before_alarm_hook)
 

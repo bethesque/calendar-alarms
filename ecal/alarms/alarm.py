@@ -3,7 +3,7 @@ import glob
 from datetime import datetime, timedelta
 from ecal.alarms.sound import build_alarm_audio, join_mp3s_to_wav
 from ecal.alarms.text_to_voice import text_to_voice_file
-from ecal.alarms.mpd import fade_up, mpd_connection
+from ecal.alarms.mpd import fade_up, fade_out, mpd_connection
 from ecal.select_item import select_item_by_date
 from ecal.alarms import ALARMS_DIRECTORY
 from ecal.env import OUTPUT_AUDIO_DIRECTORY, INITIAL_VOLUME
@@ -34,6 +34,25 @@ def play_alarm(announcement_files, before_alarm_hook=None):
         alarm_player.set_volume(INITIAL_VOLUME)
         alarm_player.play_file(audio_file)
         fade_up([(alarm_player, 100)], 45, 10)
+
+def stop_alarm(after_alarm_hook=None):
+    # Stop alarm
+    logger.info("Stopping alarm...")
+    message = ""
+    try:
+        with mpd_connection() as alarm_player:
+            if alarm_player.is_running():
+                fade_out([alarm_player], 3)
+                alarm_player.stop()
+                message = "Alarm stopped."
+            else:
+                message = "MPD is not running. No alarm to stop."
+    except Exception as e:
+        logger.error(f"Error stopping alarm: {e}")
+
+    logger.info(message)
+
+    after_alarm_hook() if after_alarm_hook else None
 
 def parse_iso(dt_str):
     return datetime.fromisoformat(dt_str)

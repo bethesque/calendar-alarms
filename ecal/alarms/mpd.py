@@ -170,12 +170,25 @@ class FadeOut:
 
     def __init__(self, mpd_process: MpdClient, target_volume: int = 0, num_steps: int = 10):
         self.mpd_process = mpd_process
-        self.target_volume = target_volume
-        self.num_steps = num_steps
         self.initial_volume = mpd_process.get_volume()
         # Convert to an array of volume levels to step through, from initial_volume down to target_volume
-        self.percentages = list(reversed(range(0, 101, 100 // num_steps)))
+        self.percentages = FadeOut.calculate_volume_steps(num_steps, self.initial_volume, target_volume)
         self.current_step = 0
+
+    """
+    Returns percentages not vol steps, need to update
+    """
+    @staticmethod
+    def calculate_volume_steps(num_steps, current_volume, target_volume) -> List[int]:
+        if num_steps < 1:
+            raise Exception(f"num_steps ({num_steps}) must be more than 0")
+        volume_step = max(1, (current_volume - target_volume) // num_steps)
+        volumes = list(reversed(range(target_volume, current_volume, volume_step)))
+        if not volumes or volumes[-1] != target_volume:
+            volumes.append(target_volume)
+        return volumes
+
+        #return list(reversed(range(0, 101, 100 // num_steps)))
 
     def step(self) -> bool:
         """Execute one step of the fade out. Returns True when complete."""
@@ -202,15 +215,18 @@ class FadeUp:
 
     def __init__(self, mpd_process: MpdClient, target_volume: int = 100, num_steps: int = 10):
         self.mpd_process = mpd_process
-        self.target_volume = target_volume
-        self.num_steps = num_steps
         self.last_known_volume = mpd_process.get_volume() or 0
         # An array of volume levels to step through, from initial_volume up to target_volume
-        volume_step = max(1, (target_volume - self.last_known_volume) // num_steps)
-        self.volumes = list(range(self.last_known_volume, target_volume, volume_step))
-        if not self.volumes or self.volumes[-1] != target_volume:
-            self.volumes.append(target_volume)
+        self.volumes = FadeUp.calculate_volume_steps(num_steps, self.last_known_volume, target_volume)
         self.current_step = 0
+
+    @staticmethod
+    def calculate_volume_steps(num_steps, current_volume, target_volume) -> List[int]:
+        volume_step = max(1, (target_volume - current_volume) // num_steps)
+        volumes = list(range(current_volume, target_volume, volume_step))
+        if not volumes or volumes[-1] != target_volume:
+            volumes.append(target_volume)
+        return volumes
 
     def step(self) -> bool:
         """Execute one step of the fade up. Returns True when complete."""
@@ -218,7 +234,7 @@ class FadeUp:
             # if the current volume has changed since the last step, return True to indicate we're done,
             # as something else has changed the volume
             current_volume = self.mpd_process.get_volume()
-            if current_volume is not None and current_volume != self.last_known_volume:
+            if current_volume is not None and not self.similar_enough(current_volume, self.last_known_volume):
                 logger.info(f"Volume changed externally during fade up (from {self.last_known_volume} to {current_volume}), stopping fade up")
                 return True  # done
             new_volume = self.volumes[self.current_step]
@@ -232,6 +248,12 @@ class FadeUp:
             return True
         else:
             return True  # done
+
+
+    # Sometimes the volume that set comes back as a slightly different volume to do numbers and rounding
+    # and maths.
+    def similar_enough(self, vol1: int, vol2: int, threshold: int = 2) -> bool:
+        return abs(vol1 - vol2) <= threshold
 
 
 def fade_out(mpd_processes: List[MpdClient], duration: float, steps: int = 10):

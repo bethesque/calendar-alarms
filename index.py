@@ -2,12 +2,10 @@ import logging
 import cherrypy
 import google_auth_oauthlib.flow
 from ecal.env import SERVER_ADDRESS, SCOPE, login_hint
-from ecal.alarms.mpd import MpdClient, fade_out, mpd_connection
-from ecal.music_assistant import MusicAssistantState
-from ecal.env import MPD_HOST, MPD_PORT
 from ecal.log_config import setup_logging_for_http_server
 import threading
-import time
+from ecal.scene import Scene
+from ecal.alarms.alarm import stop_alarm
 from queue import Queue
 
 setup_logging_for_http_server(logging.INFO)
@@ -26,42 +24,11 @@ class AlarmController(object):
         while True:
             self.queue.get()
             try:
-                self.stop_alarm()
+                stop_alarm(Scene.restore)
             finally:
                 with self._lock:
                     self._pending = False
                 self.queue.task_done()
-
-    def stop_alarm(self):
-        # Stop alarm
-        logger.info("Stopping alarm...")
-        message = ""
-        try:
-            with mpd_connection() as alarm_player:
-                if alarm_player.is_running():
-                    fade_out([alarm_player], 3)
-                    alarm_player.stop()
-                    message = "Alarm stopped."
-                else:
-                    message = "MPD is not running. No alarm to stop."
-        except Exception as e:
-            logger.error(f"Error stopping alarm: {e}")
-
-        logger.info(message)
-
-        # Restore Music Assistant state
-        try:
-            if MusicAssistantState.fresh():
-                ma = MusicAssistantState.load()
-                ma.restore_original_state()
-                logger.info("Restored saved Music Assistant state")
-                MusicAssistantState.clear()
-            else:
-                logger.info("Not restoring Music Assistant state as the file is either too old or does not exist")
-        except Exception as e:
-            logger.error(f"Error restoring Music Assistant state: {e}")
-
-
 
     @cherrypy.expose
     def index(self):

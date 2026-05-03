@@ -57,10 +57,11 @@ class MusicAssistantPlayer:
         return PlayerState(response.json())
 
     def set_volume(self, level: float):
-        logger.debug(f"Setting volume of {self.name} to {level}")
+        safe_level = max(0.0, min(1.0, level))
+        logger.debug(f"Setting volume of {self.name} to {safe_level}")
         self._call_service("media_player", "volume_set", {
             "entity_id": self.name,
-            "volume_level": level,
+            "volume_level": safe_level,
         })
 
     def pause(self):
@@ -83,7 +84,7 @@ class MusicAssistantPlayer:
     def get_volume(self) -> float:
         state = self.get_state()
         vol = state.get_volume()
-        logger.info(f"Current volume for {self.name} is {vol}")
+        logger.debug(f"Current volume for {self.name} is {vol}")
         return vol
 
 # This calculates the steps, but does not do the waiting, so that multiple players can be
@@ -103,6 +104,9 @@ class PlayerFadeOut:
 
     @staticmethod
     def calculate_volume_steps(num_steps, current_volume, target_volume) -> List[float]:
+        if target_volume > 1.0:
+            logger.warning(f"Cannot raise volume over 1.0, changing target_volume from {target_volume} to 1.0")
+            target_volume = 1.0
         if current_volume is None or num_steps <= 0:
             return [target_volume]
 
@@ -120,14 +124,16 @@ class PlayerFadeOut:
         if self.initial_volume == 0:
             logger.info(f"Initial volume is already 0 for Music Assistant player, skipping fade out")
             return True
+        if self.current_step == 0:
+            logger.info(f"Starting fade out of {self.ma_player.name} from {self.volumes[0]} to {self.volumes[-1]}")
         if self.current_step < len(self.volumes):
-            new_volume = max(0.0, min(1.0, self.volumes[self.current_step]))
+            new_volume = self.volumes[self.current_step]
             self.ma_player.set_volume(new_volume)
             self.current_step += 1
             return False
         else:
             self.ma_player.pause()
-            logger.info("Stopped Music Assistant playback")
+            logger.info("Paused Music Assistant playback")
             return True
 
 
@@ -155,6 +161,8 @@ class PlayerFadeUp:
     # or because someone has altered the volume via another input.
     def step(self) -> bool:
         """Execute one step of the fade up. Returns True when complete."""
+        if self.current_step == 0:
+            logger.info(f"Starting fade up of {self.ma_player.name} from {self.volumes[0]} to {self.volumes[-1]}")
         if self.current_step < len(self.volumes):
             # if the current volume has changed since the last step, return True to indicate we're done,
             # as something else has changed the volume
@@ -169,7 +177,7 @@ class PlayerFadeUp:
             if self.current_step < len(self.volumes):
                 return False  # not done yet
             else:
-                logger.info("Finished fading up Music Assistant playback")
+                logger.info(f"Finished fade up of {self.ma_player.name}")
             return True
         else:
             return True  # done

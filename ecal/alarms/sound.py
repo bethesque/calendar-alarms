@@ -122,6 +122,9 @@ def num_loops(max_length: float, *file_paths: str) -> int:
         total_length = sum(track_length(fp) for fp in file_paths)
         return max(1, int(max_length // total_length))
 
+"""
+Length of the audio file in seconds.
+"""
 def track_length(path: str)  -> float:
     try:
         result = subprocess.run(
