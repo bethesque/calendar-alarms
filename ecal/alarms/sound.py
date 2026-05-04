@@ -73,7 +73,7 @@ def build_alarm_audio(
                 text=True)
     logger.debug(f"FFmpeg output: {result.stderr}")
 
-def build_announcement_audio(
+def mix_announcement_audio(
     speech_file: str,
     music_file: str,
     output_file: str,
@@ -81,7 +81,7 @@ def build_announcement_audio(
     filter_complex = (
         # Announcement (delay + smooth start)
         "[0:a]aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo,"
-        "volume=1.5,adelay=5000|5000,afade=t=in:st=5:d=1[ann];"
+        "volume=1.5,adelay=5000|5000[ann];"
 
         # Music
         "[1:a]aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo,"

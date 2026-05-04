@@ -2,7 +2,7 @@ from datetime import datetime
 import argparse
 from ecal.env import DATA_DIRECTORY, LOG_LEVEL
 import os
-from ecal.announcements.announce import announce, play_morning_announcements_audio_file, SPEECH_FILE
+from ecal.announcements.announce import play_morning_announcements, play_morning_announcements_audio_file, SPEECH_FILE
 from ecal.log_config import setup_logging_for_announcements
 from ecal.scene import Scene
 
@@ -35,4 +35,4 @@ if __name__ == "__main__":
     if args.cached:
         play_morning_announcements_audio_file(SPEECH_FILE, Scene.prepare, Scene.restore)
     else:
-        announce(args.calendar_file, Scene.prepare, Scene.restore)
+        play_morning_announcements(args.calendar_file, args.base_time, Scene.prepare, Scene.restore)
