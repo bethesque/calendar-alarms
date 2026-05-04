@@ -27,13 +27,14 @@ def main():
     ma = MusicAssistant(players)
 
     ma.fetch_current_state()
-    MusicAssistantState.save(ma, "music_assistant_state.json")
+    ma_state = MusicAssistantState()
+    ma_state.save(ma)
 
     ma.fade_out_and_pause()
 
     time.sleep(3)
 
-    ma = MusicAssistantState.load("music_assistant_state.json")
+    ma = ma_state.load()
 
     ma.restore_original_state()
 

@@ -82,7 +82,7 @@ def build_sentences(all_events):
 
     sentences = ["Good morning!"]
 
-    extra_text = select_text(None, 1/5, MORNING_ANNOUNCEMENTS_PRELUDE_CHOICES)
+    extra_text = select_text(None, 1, MORNING_ANNOUNCEMENTS_PRELUDE_CHOICES)
     if extra_text:
         sentences.append(extra_text)
 

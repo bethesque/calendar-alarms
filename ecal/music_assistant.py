@@ -257,25 +257,28 @@ class MusicAssistant:
 
             fade_up([(player, player.get_original_state().get_volume()) for player in playing_players], duration=5, steps=10)
 
+    def playing(self) -> bool:
+        return any(player.get_original_state().playing() for player in self.players)
+
     @staticmethod
     def build_for_players_with_names(names):
         players = [MusicAssistantPlayer(f"media_player.{name}") for name in names]
         return MusicAssistant(players)
 
+@dataclass
 class MusicAssistantState:
+    file_path: str = MUSIC_ASSISTANT_STATE_FILE
 
-    @staticmethod
-    def save(music_assistant, file_path = MUSIC_ASSISTANT_STATE_FILE):
+    def save(self, music_assistant):
         music_assistant_state = {}
         music_assistant_state["playing_players"] = [ { "name": player.name, "original_state": player.get_original_state().state } for player in music_assistant.players ]
 
         data_json = json.dumps(music_assistant_state, sort_keys=True)
-        with open(file_path, "w") as f:
+        with open(self.file_path, "w") as f:
             f.write(data_json)
 
-    @staticmethod
-    def load(file_path=MUSIC_ASSISTANT_STATE_FILE) -> MusicAssistant:
-        with open(file_path, "r") as f:
+    def load(self) -> MusicAssistant:
+        with open(self.file_path, "r") as f:
             music_assistant_state = json.load(f)
         playing_players = music_assistant_state["playing_players"]
         if playing_players and isinstance(playing_players, list):
@@ -293,15 +296,13 @@ class MusicAssistantState:
     """
         Do not restore any state that is more than 5 minutes old
     """
-    @staticmethod
-    def fresh(max_age_mins = 5, file_path = MUSIC_ASSISTANT_STATE_FILE) -> bool:
+    def fresh(self, max_age_mins = 5) -> bool:
         max_age_seconds = max_age_mins * 60
         try:
-            mtime = os.path.getmtime(file_path)
+            mtime = os.path.getmtime(self.file_path)
         except FileNotFoundError:
             return False
         return (time.time() - mtime) < max_age_seconds
 
-    @staticmethod
-    def clear(file_path = MUSIC_ASSISTANT_STATE_FILE):
-        Path(file_path).unlink(missing_ok=True)
+    def clear(self):
+        Path(self.file_path).unlink(missing_ok=True)
