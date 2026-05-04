@@ -31,8 +31,9 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+    base_time = args.base_time or datetime.now().astimezone()
 
     if args.cached:
         play_morning_announcements_audio_file(SPEECH_FILE, Scene.prepare, Scene.restore)
     else:
-        play_morning_announcements(args.calendar_file, args.base_time, Scene.prepare, Scene.restore)
+        play_morning_announcements(args.calendar_file, base_time, Scene.prepare, Scene.restore)
