@@ -1,0 +1,29 @@
+function calendar-alarms-snapserver-logs {
+    journalctl SYSLOG_IDENTIFIER=calendar-alarms-snapserver "$@"
+}
+
+function calendar-alarms-snapserver-status {
+    sudo systemctl status snapserver "$@"
+}
+
+function calendar-alarms-snapserver-start {
+    sudo systemctl start snapserver "$@"
+}
+
+function calendar-alarms-snapserver-stop {
+    sudo systemctl stop snapserver "$@"
+}
+
+function calendar-alarms-snapserver-restart {
+    sudo systemctl restart snapserver "$@"
+}
+
+function calendar-alarms-snapserver-test {
+    export MPD_HOST="{{ mpd_bind_address }}"
+    mpc clear
+    mpc add /usr/share/sounds/alsa/Front_Center.wav
+    mpc volume 50
+    mpc play
+    sleep 5
+    mpc clear
+}

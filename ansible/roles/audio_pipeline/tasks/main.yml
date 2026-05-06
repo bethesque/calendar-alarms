@@ -182,3 +182,10 @@
 # TODO - Add user to audio group
 
 # TODO - Add calendar-alarms-http.service
+
+- name: Add calendar alarms utils file
+  ansible.builtin.template:
+    src: calendar-alarms-utils.sh.j2
+    dest: "/home/{{ ansible_user }}/calendar-alarms-utils.sh"
+    owner: "{{ ansible_user }}"
+    mode: "0755"

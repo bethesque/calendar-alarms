@@ -1,9 +1,10 @@
 [Unit]
 Description=Snapclient for Calendar Alarms
-After=network-online.target
+After=network-online.target sound.target
 Wants=network-online.target
 
 [Service]
+ExecStartPre=/bin/sleep 2
 ExecStart=/usr/bin/snapclient tcp://{{ snapserver_host }}:{{ snapserver_stream_port }} --hostID={{ device_name }} --instance 2
 Restart=always
 RestartSec=5

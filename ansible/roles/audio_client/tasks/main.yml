@@ -9,6 +9,11 @@
   when: not linger_file.stat.exists
   become: true
 
+- name: Check if /etc/asound.conf exists
+  ansible.builtin.stat:
+    path: /etc/asound.conf
+  register: asound_conf_stat
+
 - name: Configure ALSA default to USB audio device
   become: true
   ansible.builtin.template:
@@ -17,6 +22,13 @@
     owner: root
     group: root
     mode: "0644"
+
+- name: Reboot if ALSA config was created for the first time
+  become: true
+  ansible.builtin.reboot:
+    msg: "Rebooting to apply initial ALSA configuration"
+    reboot_timeout: 300
+  when: not asound_conf_stat.stat.exists
 
 # INSTALL SNAPCLIENT
 # Can't use the package manager version because it's too old to work with Home Assistant,
@@ -87,13 +99,13 @@
 - name: Enable snapclient user service
   ansible.builtin.command: systemctl --user enable calendar-alarms-snapclient
 
-# Can't run these yet as there is no USB audio device.
 - name: Enable snapclient user service
   ansible.builtin.command: systemctl --user stop calendar-alarms-snapclient
 
 - name: Start or restart snapclient user service
   ansible.builtin.command: systemctl --user start calendar-alarms-snapclient
-  when: inventory_hostname == 'kaypi.local' or inventory_hostname == 'ecal.travis.dixon.net.au'
+
+# TODO might need to stop and remove the system level snapclient on a brand new install.
 
 - name: Add calendar alarms utils file
   ansible.builtin.template:
