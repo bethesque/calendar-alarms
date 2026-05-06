@@ -1,10 +1,10 @@
 from datetime import datetime
 import argparse
-from ecal.env import DATA_DIRECTORY, LOG_LEVEL
+from vcal.env import DATA_DIRECTORY, LOG_LEVEL
 import os
-from ecal.announcements.announce import play_morning_announcements, play_morning_announcements_audio_file, SPEECH_FILE
-from ecal.log_config import setup_logging_for_announcements
-from ecal.scene import Scene
+from vcal.announcements.announce import play_morning_announcements, play_morning_announcements_audio_file, SPEECH_FILE
+from vcal.log_config import setup_logging_for_announcements
+from vcal.scene import Scene
 
 setup_logging_for_announcements(str(LOG_LEVEL))
 

@@ -1,11 +1,11 @@
 import logging
 import cherrypy
 import google_auth_oauthlib.flow
-from ecal.env import SERVER_ADDRESS, SCOPE, login_hint
-from ecal.log_config import setup_logging_for_http_server
+from vcal.env import SERVER_ADDRESS, SCOPE, login_hint
+from vcal.log_config import setup_logging_for_http_server
 import threading
-from ecal.scene import Scene
-from ecal.alarms.alarm import stop_alarm
+from vcal.scene import Scene
+from vcal.alarms.alarm import stop_alarm
 from queue import Queue
 
 setup_logging_for_http_server(logging.INFO)

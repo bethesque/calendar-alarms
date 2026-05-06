@@ -13,4 +13,4 @@ else
   PYTH="python"
 fi
 
-"$PYTH" -c "from ecal.cli import refresh_calendar_data; refresh_calendar_data()"
+"$PYTH" -c "from vcal.cli import refresh_calendar_data; refresh_calendar_data()"
