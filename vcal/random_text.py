@@ -2,7 +2,7 @@ import random
 import os
 from collections import Counter
 import logging
-from ecal.env import CACHE_DIRECTORY, RESOURCES_DIRECTORY
+from vcal.env import CACHE_DIRECTORY, RESOURCES_DIRECTORY
 
 logger = logging.getLogger(__name__)
 

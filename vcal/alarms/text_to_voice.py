@@ -1,9 +1,9 @@
 import os
 import logging
 from gtts import gTTS
-from ecal.string_utils import sanitise_filename
-from ecal.random_text import select_text
-from ecal.env import CACHE_DIRECTORY, GOOGLE_TRANSLATE_LANG, DEFAULT_GOOGLE_TRANSLATE_TLD
+from vcal.string_utils import sanitise_filename
+from vcal.random_text import select_text
+from vcal.env import CACHE_DIRECTORY, GOOGLE_TRANSLATE_LANG, DEFAULT_GOOGLE_TRANSLATE_TLD
 
 DEFAULT_ANNOUCEMENT_FILE = "audio/default_announcement.mp3"
 AUDIO_CACHE_DIR = os.path.join(CACHE_DIRECTORY, "audio")

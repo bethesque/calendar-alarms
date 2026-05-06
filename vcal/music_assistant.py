@@ -9,7 +9,7 @@ import logging
 from dataclasses import dataclass
 
 
-from ecal.env import HOME_ASSISTANT_URL, HOME_ASSISTANT_TOKEN, CACHE_DIRECTORY
+from vcal.env import HOME_ASSISTANT_URL, HOME_ASSISTANT_TOKEN, CACHE_DIRECTORY
 
 logger = logging.getLogger(__name__)
 

@@ -1,7 +1,7 @@
-from ecal.env import DATA_DIRECTORY, LOG_LEVEL
-from ecal.calendar.google_calendar import CalendarSource
-from ecal.env import filter
-from ecal.log_config import setup_logging_for_data_refresh
+from vcal.env import DATA_DIRECTORY, LOG_LEVEL
+from vcal.calendar.google_calendar import CalendarSource
+from vcal.env import filter
+from vcal.log_config import setup_logging_for_data_refresh
 
 """
 This script refreshes the calendar data and saves it to a local file.

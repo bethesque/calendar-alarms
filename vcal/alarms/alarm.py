@@ -1,12 +1,12 @@
 import logging
 import glob
 from datetime import datetime, timedelta
-from ecal.alarms.sound import build_alarm_audio, join_mp3s_to_wav
-from ecal.alarms.text_to_voice import text_to_voice_file
-from ecal.alarms.mpd import fade_up, fade_out, mpd_connection
-from ecal.select_item import select_item_by_date
-from ecal.alarms import ALARMS_DIRECTORY
-from ecal.env import OUTPUT_AUDIO_DIRECTORY, INITIAL_VOLUME
+from vcal.alarms.sound import build_alarm_audio, join_mp3s_to_wav
+from vcal.alarms.text_to_voice import text_to_voice_file
+from vcal.alarms.mpd import fade_up, fade_out, mpd_connection
+from vcal.select_item import select_item_by_date
+from vcal.alarms import ALARMS_DIRECTORY
+from vcal.env import OUTPUT_AUDIO_DIRECTORY, INITIAL_VOLUME
 
 logger = logging.getLogger(__name__)
 

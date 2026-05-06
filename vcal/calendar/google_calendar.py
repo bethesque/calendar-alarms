@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from operator import attrgetter
 import logging
 import json
-from ecal.string_utils import json_default_encoder
+from vcal.string_utils import json_default_encoder
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build

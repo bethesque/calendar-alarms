@@ -2,7 +2,7 @@ import random
 import os
 from pathlib import Path
 
-from ecal.random_text import select_text
+from vcal.random_text import select_text
 
 def write_file(path: Path, lines):
     os.makedirs(path.parent, exist_ok=True)

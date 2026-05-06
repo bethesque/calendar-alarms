@@ -4,15 +4,15 @@ import logging
 import os
 import argparse
 from datetime import datetime
-from ecal.alarms.alarm import play_alarm
-from ecal.env import LOG_LEVEL
-from ecal.alarms.mpd import fade_out, fade_up, mpd_connection
-from ecal.log_config import setup_logging_for_alarms
-from ecal.calendar.google_calendar import CalendarSource
-from ecal.scene import Scene
+from vcal.alarms.alarm import play_alarm
+from vcal.env import LOG_LEVEL
+from vcal.alarms.mpd import fade_out, fade_up, mpd_connection
+from vcal.log_config import setup_logging_for_alarms
+from vcal.calendar.google_calendar import CalendarSource
+from vcal.scene import Scene
 
-from ecal.env import DATA_DIRECTORY
-from ecal.alarms.alarm import check_for_alarms
+from vcal.env import DATA_DIRECTORY
+from vcal.alarms.alarm import check_for_alarms
 
 setup_logging_for_alarms(str(LOG_LEVEL))
 

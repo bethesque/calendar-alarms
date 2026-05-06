@@ -1,5 +1,5 @@
-from ecal.music_assistant import MusicAssistant, MusicAssistantState
-from ecal.env import CACHE_DIRECTORY, PLAYERS
+from vcal.music_assistant import MusicAssistant, MusicAssistantState
+from vcal.env import CACHE_DIRECTORY, PLAYERS
 
 import logging
 

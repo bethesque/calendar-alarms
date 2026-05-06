@@ -2,14 +2,14 @@ import logging
 import glob
 import time
 from datetime import datetime
-from ecal.alarms.mpd import fade_up, mpd_connection
-from ecal.calendar.google_calendar import WeatherForecast, load_data_from_file
-from ecal.alarms.text_to_voice import text_to_voice_file_daily_summary
-from ecal.alarms.sound import mix_announcement_audio, track_length
-from ecal.random_text import select_text
-from ecal.select_item import select_item_by_date
-from ecal.env import DATA_DIRECTORY, CACHE_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, INITIAL_VOLUME, ANNOUNCEMENT_VOLUME
-from ecal.alarms import BACKGROUND_MUSIC_DIRECTORY
+from vcal.alarms.mpd import fade_up, mpd_connection
+from vcal.calendar.google_calendar import WeatherForecast, load_data_from_file
+from vcal.alarms.text_to_voice import text_to_voice_file_daily_summary
+from vcal.alarms.sound import mix_announcement_audio, track_length
+from vcal.random_text import select_text
+from vcal.select_item import select_item_by_date
+from vcal.env import DATA_DIRECTORY, CACHE_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, INITIAL_VOLUME, ANNOUNCEMENT_VOLUME
+from vcal.alarms import BACKGROUND_MUSIC_DIRECTORY
 
 CALENDAR_FILE = f"{DATA_DIRECTORY}/calendar.json"
 SPEECH_FILE = CACHE_DIRECTORY + "/audio/morning_annoucements_speech.mp3"
@@ -80,7 +80,7 @@ def get_events(calendar_file, base_time):
 
     match = next((day for day in calendar_days if day.date == base_time.date()), None)
     if match:
-        return match
+        return match.all_events()
     else:
         raise MissingCalendarDataException()
 
