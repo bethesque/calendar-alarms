@@ -48,8 +48,8 @@ cal-alarm-test = "vcal.alarms.cli:test_alarm"
 cal-alarm-check = "vcal.alarms.cli:check_alarms"
 play-test-file = "vcal.alarms.cli:play_test_file"
 
-cal-announce = "vcal.announcements.announce:announce" # Morning summary announcement
-cal-announce-cached = "vcal.announcements.announce:play_morning_summary_announcement" # Play the cached voice file
+cal-announce = "vcal.announcements.cli:play_morning_announcements" # Morning summary announcement
+cal-announce-cached = "vcal.announcements.cli:play_morning_announcements_cached" # Play the cached voice file
 
 cal-data-refresh = "vcal.cli:refresh_calendar_data"
 
