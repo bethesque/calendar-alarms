@@ -19,6 +19,11 @@ MORNING_ANNOUNCEMENTS_PRELUDE_CHOICES = "morning_announcements_prelude_choices.t
 
 logger = logging.getLogger(__name__)
 
+class MissingCalendarDataException(Exception):
+    pass
+
+
+
 """
 Top level entry point. Generate a summary of today's events, convert them to voice, and play them.
 """
@@ -60,9 +65,13 @@ def get_morning_announcements_speech_file(calendar_file, base_time):
     return text_to_voice_file_daily_summary(get_morning_announcements_text(calendar_file, base_time))
 
 def get_morning_announcements_text(calendar_file, base_time):
-    announcement = " ".join(build_sentences(get_events(calendar_file, base_time)))
-    logger.info(f"Generated daily summary announcement: {announcement}")
-    return announcement
+    try:
+        announcement = " ".join(build_sentences(get_events(calendar_file, base_time)))
+        logger.info(f"Generated daily summary announcement: {announcement}")
+        return announcement
+    except MissingCalendarDataException:
+        return "There was no calendar data found for today's date. "
+
 
 def get_events(calendar_file, base_time):
     # Array of CalendarDay objects
@@ -70,8 +79,10 @@ def get_events(calendar_file, base_time):
     calendar_days = load_data_from_file(calendar_file)
 
     match = next((day for day in calendar_days if day.date == base_time.date()), None)
-    # TODO raise exception if day not found
-    return match.all_events() if match else []
+    if match:
+        return match
+    else:
+        raise MissingCalendarDataException()
 
 """
 Build a List of sentences to speak aloud from the given list of Events.

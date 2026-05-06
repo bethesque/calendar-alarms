@@ -4,7 +4,7 @@ import musicpd
 from typing import Optional, List, Tuple
 import os
 from contextlib import contextmanager
-from ecal.env import MPD_HOST, MPD_PORT
+from vcal.env import MPD_HOST, MPD_PORT
 
 logger = logging.getLogger(__name__)
 

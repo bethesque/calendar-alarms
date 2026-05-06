@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 """
 Takes a list of CalenderDays and finds any alarms due within the given time window.
 """
+
 class AlarmFinder:
     def __init__(self, calendar_days, base_time, window):
         self.calendar_days = calendar_days
