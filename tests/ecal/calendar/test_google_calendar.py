@@ -1,7 +1,7 @@
 import datetime
 from zoneinfo import ZoneInfo
 
-from ecal.calendar.google_calendar import Event
+from vcal.calendar.google_calendar import Event
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
 

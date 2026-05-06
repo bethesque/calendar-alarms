@@ -1,5 +1,5 @@
 import pytest
-from ecal.alarms.mpd import FadeOut, FadeUp
+from vcal.alarms.mpd import FadeOut, FadeUp
 
 
 class TestFadeOutCalculateVolumeSteps:
