@@ -43,19 +43,19 @@ Homepage = "https://github.com/bethesque/calendar-alarms"
 
 [project.scripts]
 
-cal-alarm-stop = "ecal.alarms.cli:stop_alarm"
-cal-alarm-test = "ecal.alarms.cli:test_alarm"
-cal-alarm-check = "ecal.alarms.cli:check_alarms"
-play-test-file = "ecal.alarms.cli:play_test_file"
+cal-alarm-stop = "vcal.alarms.cli:stop_alarm"
+cal-alarm-test = "vcal.alarms.cli:test_alarm"
+cal-alarm-check = "vcal.alarms.cli:check_alarms"
+play-test-file = "vcal.alarms.cli:play_test_file"
 
-cal-announce = "ecal.announcements.announce:announce" # Morning summary announcement
-cal-announce-cached = "ecal.announcements.announce:play_morning_summary_announcement" # Play the cached voice file
+cal-announce = "vcal.announcements.announce:announce" # Morning summary announcement
+cal-announce-cached = "vcal.announcements.announce:play_morning_summary_announcement" # Play the cached voice file
 
-cal-data-refresh = "ecal.cli:refresh_calendar_data"
+cal-data-refresh = "vcal.cli:refresh_calendar_data"
 
 [tool.setuptools]
 # Tells setuptools where to find your source code
-packages = ["ecal"]
+packages = ["vcal"]
 
 [tool.pytest.ini_options]
 # Configuration for other tools (like pytest) can also live here
