@@ -1,0 +1,26 @@
+- name: Ensure snapserver runtime directory exists
+  file:
+    path: /run/snapserver
+    state: directory
+    owner: "{{ mpd_user }}"
+    group: audio
+    mode: "0755"
+
+- name: Ensure snapserver user is in audio group
+  ansible.builtin.user:
+    name: _snapserver
+    groups: audio
+    append: yes
+
+- name: Configure Snapserver
+  template:
+    src: snapserver.conf.j2
+    dest: /etc/snapserver.conf
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Configure Snapweb (use the custom build from https://github.com/bethesque/snapweb)
+  copy:
+    src: "{{ playbook_dir }}/../snapweb/"
+    dest: "{{ snapweb_doc_root }}"

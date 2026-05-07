@@ -1,3 +1,12 @@
+- name: Install packages
+  apt:
+    name:
+      - mpd
+      - ffmpeg
+      - alsa-utils
+    state: present
+    update_cache: yes
+
 # MPD FIFO
 - name: Ensure FIFO exists
   command: mkfifo {{ mpd_fifo_path }}
@@ -12,211 +21,17 @@
     mode: "0660"
 
 
-- name: Install packages
-  apt:
-    name:
-      - mpd
-      - ffmpeg
-    state: present
-    update_cache: yes
-
-
-# START SNAPSERVER SETUP ###
-# Have to build from source to get the latest version so it is compatible with Home Assistant
-# The latest version in the package manager is 0.23.0 which is too old to work with HA.
-
-- name: Check if snapserver exists
-  ansible.builtin.command: snapserver --version
-  register: snapserver_version_cmd
-  ignore_errors: true
-  changed_when: false
-
-- name: Extract installed version
-  ansible.builtin.set_fact:
-    snapserver_installed_version: "{{ snapserver_version_cmd.stdout | regex_search('([0-9]+\\.[0-9]+\\.[0-9]+)') }}"
-  when: snapserver_version_cmd.rc == 0
-
-- name: Decide if build is required
-  ansible.builtin.set_fact:
-    build_snapcast: >-
-      {{ snapserver_version_cmd.rc != 0 or
-          snapserver_installed_version != snapcast_version | regex_replace('^v', '') }}
-
-- name: Debug decision (optional)
-  ansible.builtin.debug:
-    msg: "Build required: {{ build_snapcast }} (installed={{ snapserver_installed_version | default('none') }})"
-
-- name: Install build dependencies
-  ansible.builtin.apt:
-    name:
-      - git
-      - build-essential
-      - cmake
-      - libasound2-dev
-      - libavahi-client-dev
-      - libssl-dev
-      - libflac-dev
-      - libogg-dev
-      - libopus-dev
-      - libsoxr-dev
-      - libvorbis-dev
-      - libboost-all-dev
-    state: present
-    update_cache: yes
-  when: build_snapcast
-
-- name: Clone Snapcast repo
-  ansible.builtin.git:
-    repo: "{{ snapcast_repo }}"
-    dest: "{{ snapcast_src_dir }}"
-    version: "{{ snapcast_version }}"
-    update: yes
-  when: build_snapcast
-
-- name: Ensure build directory exists
-  ansible.builtin.file:
-    path: "{{ snapcast_src_dir }}/build"
-    state: directory
-  when: build_snapcast
-
-- name: Configure with cmake
-  ansible.builtin.command:
-    cmd: cmake ..
-    chdir: "{{ snapcast_src_dir }}/build"
-  args:
-    creates: "{{ snapcast_src_dir }}/build/Makefile"
-  when: build_snapcast
-
-- name: Build Snapcast
-  ansible.builtin.command:
-    cmd: make -j{{ ansible_processor_vcpus | default(2) }}
-    chdir: "{{ snapcast_src_dir }}/build"
-  when: build_snapcast
-
-- name: Install Snapcast
-  ansible.builtin.command:
-    cmd: make install
-    chdir: "{{ snapcast_src_dir }}/build"
-  when: build_snapcast
-
-- name: Ensure snapserver runtime directory exists
-  file:
-    path: /run/snapserver
-    state: directory
-    owner: "{{ mpd_user }}"
-    group: audio
-    mode: "0755"
-
-- name: Ensure snapserver user is in audio group
-  ansible.builtin.user:
-    name: _snapserver
-    groups: audio
-    append: yes
+- name: Install Snapserver
+  ansible.builtin.import_tasks: snapserver_install.yml
 
 - name: Configure Snapserver
-  template:
-    src: snapserver.conf.j2
-    dest: /etc/snapserver.conf
-    owner: root
-    group: root
-    mode: "0644"
+  ansible.builtin.import_tasks: snapserver_configure.yml
 
-- name: Configure Snapweb (use the custom build from https://github.com/bethesque/snapweb)
-  copy:
-    src: "{{ playbook_dir }}/../snapweb/"
-    dest: "{{ snapweb_doc_root }}"
+- name: Configure Snapserver service
+  ansible.builtin.import_tasks: snapserver_service.yml
 
-- name: Reload systemd daemon
-  ansible.builtin.systemd:
-    daemon_reload: true
-
-- name: Restart snapserver
-  ansible.builtin.systemd:
-    name: snapserver
-    state: restarted
-    enabled: true
-
-- name: Ensure snapserver is enabled and started
-  ansible.builtin.systemd:
-    name: snapserver
-    enabled: true
-    state: started
-
-### END SNAPSERVER SETUP ###
-
-### START MPD SETUP ###
-
-- name: Install MPD
-  become: true
-  ansible.builtin.package:
-    name: mpd
-    state: present
-
-- name: Check mpd group membership
-  ansible.builtin.command: id -nG mpd
-  register: mpd_groups
-  changed_when: false
-
-- name: Determine if mpd is in audio group
-  ansible.builtin.set_fact:
-    mpd_in_audio: "{{ 'audio' in mpd_groups.stdout.split() }}"
-
-- name: Add mpd to audio group if needed
-  become: true
-  ansible.builtin.user:
-    name: mpd
-    groups: audio
-    append: true
-  when: not mpd_in_audio
-
-- name: Reset SSH connection if needed
-  ansible.builtin.meta: reset_connection
-  when: not mpd_in_audio
-
-- name: Ensure mpd runtime directory exists
-  file:
-    path: /run/mpd
-    state: directory
-    owner: "{{ mpd_user }}"
-    group: audio
-    mode: "0755"
-
-- name: Ensure mpd data directory exists
-  file:
-    path: /var/lib/mpd/
-    state: directory
-    owner: "{{ mpd_user }}"
-    group: audio
-    mode: "0755"
-
-- name: Configure MPD
-  template:
-    src: mpd.conf.j2
-    dest: /etc/mpd.conf
-    owner: root
-    group: root
-    mode: "0644"
-  notify: restart mpd
-
-- name: Ensure MPD is enabled and running
-  systemd:
-    name: mpd
-    enabled: yes
-    state: started
-
-### END MPD SETUP ###
-
-- name: Install ffmpeg
-  become: true
-  ansible.builtin.package:
-    name: ffmpeg
-    state: present
-
-- name: Install alsa-utils
-  become: true
-  ansible.builtin.package:
-    name: alsa-utils
-    state: present
+- name: Configure mpd
+  ansible.builtin.import_tasks: mpd_configure.yml
 
 # TODO - Add calendar-alarms-http.service
 
