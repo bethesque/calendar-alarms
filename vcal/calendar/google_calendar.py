@@ -37,24 +37,24 @@ class Event:
     recurring: bool = False
     _alarm_offset: int | None = None
 
-    def alarm_time(self):
+    def notification_time(self):
         if self.has_notification():
-            return self.start_time - datetime.timedelta(minutes=self.alarm_offset())
+            return self.start_time - datetime.timedelta(minutes=self.notification_offset())
         else:
             return None
 
-    def alarm_time_within_window(self, start_time, end_time):
-        alarm_time = self.alarm_time()
+    def notification_time_within_window(self, start_time, end_time):
+        alarm_time = self.notification_time()
         if alarm_time and start_time <= alarm_time < end_time:
             return True
         else:
             return None
 
-    def alarm_offset(self):
+    def notification_offset(self):
         if self._alarm_offset is None:
             self._alarm_offset = 0
 
-            if self.has_alarm():
+            if self.has_notification():
                 match = re.search(r"#(?:alarm|announce)(\d+)", self.description)
                 if match:
                     self._alarm_offset = int(match.group(1))

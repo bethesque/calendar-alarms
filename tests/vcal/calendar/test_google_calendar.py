@@ -14,7 +14,7 @@ def test_alarm_time_with_no_offset_returns_event_start_time():
         start_time=start_time,
     )
 
-    assert event.alarm_time() ==  datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
+    assert event.notification_time() ==  datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
 
 def test_alarm_time_with_weird_tag():
     start_time = datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
@@ -25,7 +25,7 @@ def test_alarm_time_with_weird_tag():
         start_time=start_time,
     )
 
-    assert event.alarm_time() ==  event.start_time
+    assert event.notification_time() ==  event.start_time
 
 def test_alarm_time_returns_offset_from_start_time():
     start_time = datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
@@ -36,7 +36,7 @@ def test_alarm_time_returns_offset_from_start_time():
         start_time=start_time,
     )
 
-    assert event.alarm_time() ==  datetime.datetime(2026, 4, 28, 11, 40, tzinfo=TIMEZONE)
+    assert event.notification_time() ==  datetime.datetime(2026, 4, 28, 11, 40, tzinfo=TIMEZONE)
 
 def test_announce_time_returns_offset_from_start_time():
     start_time = datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
@@ -47,7 +47,7 @@ def test_announce_time_returns_offset_from_start_time():
         start_time=start_time,
     )
 
-    assert event.alarm_time() ==  datetime.datetime(2026, 4, 28, 11, 40, tzinfo=TIMEZONE)
+    assert event.notification_time() ==  datetime.datetime(2026, 4, 28, 11, 40, tzinfo=TIMEZONE)
 
 def test_alarm_time_returns_none_when_no_alarm_tag_present():
     event = Event(
@@ -57,7 +57,7 @@ def test_alarm_time_returns_none_when_no_alarm_tag_present():
         start_time=datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE),
     )
 
-    assert event.alarm_time() is None
+    assert event.notification_time() is None
 
 
 def test_alarm_time_returns_none_when_start_time_missing():
@@ -68,7 +68,7 @@ def test_alarm_time_returns_none_when_start_time_missing():
         start_time=None,
     )
 
-    assert event.alarm_time() is None
+    assert event.notification_time() is None
 
 
 def test_alarm_offset_returns_parsed_number():
@@ -79,7 +79,7 @@ def test_alarm_offset_returns_parsed_number():
         start_time=datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE),
     )
 
-    assert event.alarm_offset() == 20
+    assert event.notification_offset() == 20
 
 
 def test_alarm_offset_returns_different_numbers():
@@ -90,7 +90,7 @@ def test_alarm_offset_returns_different_numbers():
         start_time=datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE),
     )
 
-    assert event.alarm_offset() == 5
+    assert event.notification_offset() == 5
 
 
 def test_alarm_offset_returns_zero_when_no_number():
@@ -101,7 +101,7 @@ def test_alarm_offset_returns_zero_when_no_number():
         start_time=datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE),
     )
 
-    assert event.alarm_offset() == 0
+    assert event.notification_offset() == 0
 
 
 def test_alarm_offset_returns_zero_when_no_alarm_tag():
@@ -112,7 +112,7 @@ def test_alarm_offset_returns_zero_when_no_alarm_tag():
         start_time=datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE),
     )
 
-    assert event.alarm_offset() == 0
+    assert event.notification_offset() == 0
 
 
 def test_alarm_offset_returns_zero_when_no_start_time():
@@ -123,7 +123,7 @@ def test_alarm_offset_returns_zero_when_no_start_time():
         start_time=None,
     )
 
-    assert event.alarm_offset() == 0
+    assert event.notification_offset() == 0
 
 
 def test_alarm_offset_caches_result():
@@ -135,9 +135,9 @@ def test_alarm_offset_caches_result():
     )
 
     # First call should parse and cache
-    first_call = event.alarm_offset()
+    first_call = event.notification_offset()
     # Second call should return cached value
-    second_call = event.alarm_offset()
+    second_call = event.notification_offset()
 
     assert first_call == 15
     assert second_call == 15

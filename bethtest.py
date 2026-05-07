@@ -7,8 +7,8 @@ import sys
 
 from typing import Optional, List, Tuple
 
-from ecal.env import PLAYERS, LOG_LEVEL
-from ecal.log_config import setup_logging_for_alarms
+from vcal.env import PLAYERS, LOG_LEVEL
+from vcal.log_config import setup_logging_for_alarms
 
 # Configure the root logger to output to stdout
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 logger = logging.getLogger(__name__)
 
 
-from ecal.music_assistant import MusicAssistant, MusicAssistantPlayer, MusicAssistantState
+from vcal.music_assistant import MusicAssistant, MusicAssistantPlayer, MusicAssistantState
 
 setup_logging_for_alarms(LOG_LEVEL, None)
 
