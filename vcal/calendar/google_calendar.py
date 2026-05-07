@@ -38,7 +38,7 @@ class Event:
     _alarm_offset: int | None = None
 
     def alarm_time(self):
-        if self.has_alarm():
+        if self.has_notification():
             return self.start_time - datetime.timedelta(minutes=self.alarm_offset())
         else:
             return None
@@ -55,7 +55,7 @@ class Event:
             self._alarm_offset = 0
 
             if self.has_alarm():
-                match = re.search(r"#alarm(\d+)", self.description)
+                match = re.search(r"#(?:alarm|announce)(\d+)", self.description)
                 if match:
                     self._alarm_offset = int(match.group(1))
 
@@ -63,6 +63,13 @@ class Event:
 
     def has_alarm(self):
         return "#alarm" in (self.description or "") and self.start_time is not None
+
+    def has_announcement(self):
+        return "#announce" in (self.description or "") and self.start_time is not None
+
+    def has_notification(self):
+        return self.has_alarm() or self.has_announcement()
+
 
 
 

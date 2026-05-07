@@ -52,8 +52,9 @@ def check_alarms():
     calendar_data = load_events(args.calendar_file)
 
     before_alarm_hook = Scene.prepare if args.handle_music_assistant else None
+    after_alarm_hook = Scene.restore if args.handle_music_assistant else None
 
-    check_for_alarms(base_time, args.window, calendar_data, before_alarm_hook)
+    check_for_alarms(base_time, args.window, calendar_data, before_alarm_hook, after_alarm_hook)
 
 def test_alarm():
     try:

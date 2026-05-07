@@ -38,6 +38,16 @@ def test_alarm_time_returns_offset_from_start_time():
 
     assert event.alarm_time() ==  datetime.datetime(2026, 4, 28, 11, 40, tzinfo=TIMEZONE)
 
+def test_announce_time_returns_offset_from_start_time():
+    start_time = datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
+    event = Event(
+        owner="Beth",
+        summary="Morning meeting",
+        description="#announce20",
+        start_time=start_time,
+    )
+
+    assert event.alarm_time() ==  datetime.datetime(2026, 4, 28, 11, 40, tzinfo=TIMEZONE)
 
 def test_alarm_time_returns_none_when_no_alarm_tag_present():
     event = Event(
