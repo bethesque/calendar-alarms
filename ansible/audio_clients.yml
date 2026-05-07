@@ -1,0 +1,3 @@
+- hosts: audio_clients
+  roles:
+    - audio_client

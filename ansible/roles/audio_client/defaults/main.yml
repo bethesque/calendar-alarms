@@ -1,7 +1,15 @@
 snapclient_version: "0.35.0"
-snapclient_arch: "armhf"
 snapclient_deb: "snapclient_{{ snapclient_version }}-1_{{ snapclient_arch }}_{{ host_distro }}.deb"
 snapclient_url: "https://github.com/snapcast/snapcast/releases/download/v{{ snapclient_version }}/{{ snapclient_deb }}"
 snapclient_tmp: "/tmp/{{ snapclient_deb }}"
 
 snapclient_user: "{{ ansible_user }}"
+
+snapclient_arch: >-
+  {{
+    'armhf' if ansible_facts['architecture'] == 'armv7l'
+    else 'armv6' if ansible_facts['architecture'] == 'armv6l'
+    else 'aarch64' if ansible_facts['architecture'] == 'aarch64'
+    else 'x86_64' if ansible_facts['architecture'] in ['x86_64', 'amd64']
+    else ansible_facts['architecture']
+  }}

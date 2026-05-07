@@ -2,3 +2,5 @@ snapserver_stream_port: 1804
 snapserver_tcp_port: 1805
 snapserver_http_port: 1880
 snapserver_host:  192.168.20.3
+
+host_distro: "{{ ansible_facts['distribution_release'] | lower }}"

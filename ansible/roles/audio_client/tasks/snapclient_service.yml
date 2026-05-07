@@ -1,0 +1,43 @@
+- name: Stop and disable system-level snapclient service (if it exists)
+  become: true
+  ansible.builtin.systemd:
+    name: snapclient.service
+    state: stopped
+    enabled: false
+  failed_when: false
+
+# Configure snapclient systemd service for user
+# Best to do it as a user service rather than a system service to avoid permissions
+# issues with audio devices. The Bluetooth audio sink is owned by the user,
+# so its easiest if the snapclient service runs as the user as well.
+
+- name: Ensure user systemd directory exists
+  ansible.builtin.file:
+    path: "/home/{{ snapclient_user }}/.config/systemd/user"
+    state: directory
+    owner: "{{ snapclient_user }}"
+    group: "{{ snapclient_user }}"
+    mode: "0755"
+
+# Logs can be viewed with `journalctl SYSLOG_IDENTIFIER=calendar-alarms-snapclient`
+- name: Install snapclient user service
+  ansible.builtin.template:
+      # Give it a custom service name so multiple snapclient instances can be run if needed
+    # (e.g. one for calendar alarms, one for general music)
+    src: calendar-alarms-snapclient.service.j2
+    dest: "/home/{{ snapclient_user }}/.config/systemd/user/calendar-alarms-snapclient.service"
+    owner: "{{ snapclient_user }}"
+    group: "{{ snapclient_user }}"
+    mode: "0644"
+
+- name: Reload user systemd daemon
+  ansible.builtin.command: systemctl --user daemon-reload
+
+- name: Enable snapclient user service
+  ansible.builtin.command: systemctl --user enable calendar-alarms-snapclient
+
+- name: Enable snapclient user service
+  ansible.builtin.command: systemctl --user stop calendar-alarms-snapclient
+
+- name: Start or restart snapclient user service
+  ansible.builtin.command: systemctl --user start calendar-alarms-snapclient

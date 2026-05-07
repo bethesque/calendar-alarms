@@ -14,3 +14,4 @@ cache
 *.egg-info/
 .env
 resources
+secrets.yml

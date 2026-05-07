@@ -1,0 +1,57 @@
+- name: Get ALSA playback devices
+  ansible.builtin.command: aplay -l
+  register: aplay_output
+  changed_when: false
+  when: is_pi == false
+
+- name: Extract USB Audio card/device tuples
+  ansible.builtin.set_fact:
+    usb_audio_matches: >-
+      {{
+        aplay_output.stdout
+        | regex_findall('card[ ]+([0-9]+):[ ]+.*USB Audio Device.*[ ]device[ ]+([0-9]+):')
+      }}
+  when: is_pi == false
+
+- name: Show detected ALSA matches
+  ansible.builtin.debug:
+    var: usb_audio_matches
+  when: is_pi == false
+
+- name: Set snapclient sound device (for non pi devices - don't want to mess with defaults on the nas)
+  ansible.builtin.set_fact:
+    snapclient_soundcard_option: >-
+      {{ "--soundcard plughw:" ~ (usb_audio_matches[0] | join(',')) }}
+  when:
+    - is_pi == false
+    - usb_audio_matches | length > 0
+
+- name: Default empty sound device (other hosts)
+  ansible.builtin.set_fact:
+    snapclient_soundcard_option: ""
+  when: is_pi == true
+
+- name: Show snapclient_soundcard_option
+  ansible.builtin.debug:
+    var: snapclient_soundcard_option
+
+- name: Check if /etc/asound.conf exists
+  ansible.builtin.stat:
+    path: /etc/asound.conf
+  register: asound_conf_stat
+
+- name: Configure ALSA default to USB audio device
+  become: true
+  ansible.builtin.template:
+    src: asound.conf.j2
+    dest: /etc/asound.conf
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Reboot if ALSA config was created for the first time
+  become: true
+  ansible.builtin.reboot:
+    msg: "Rebooting to apply initial ALSA configuration"
+    reboot_timeout: 300
+  when: is_pi and not asound_conf_stat.stat.exists

@@ -1,116 +1,28 @@
-- name: Check if lingering is enabled
-  ansible.builtin.stat:
-    path: "/var/lib/systemd/linger/{{ snapclient_user }}"
-  register: linger_file
+# - name: End play for host if version matches
+#   ansible.builtin.meta: end_play
+
+- name: Configure sound
+  ansible.builtin.import_tasks: sound.yml
+
+- name: Configure snapclient_user (the ansible user)
+  ansible.builtin.import_tasks: snapclient_user.yml
+
+- name: Install Snapclient
+  ansible.builtin.import_tasks: snapclient_install.yml
+
+- name: Configure Snapclient service
+  ansible.builtin.import_tasks: snapclient_service.yml
+
+- name: Install alsa-utils
   become: true
-
-- name: Enable lingering for user
-  ansible.builtin.command: "loginctl enable-linger {{ snapclient_user }}"
-  when: not linger_file.stat.exists
-  become: true
-
-- name: Check if /etc/asound.conf exists
-  ansible.builtin.stat:
-    path: /etc/asound.conf
-  register: asound_conf_stat
-
-- name: Configure ALSA default to USB audio device
-  become: true
-  ansible.builtin.template:
-    src: asound.conf.j2
-    dest: /etc/asound.conf
-    owner: root
-    group: root
-    mode: "0644"
-
-- name: Reboot if ALSA config was created for the first time
-  become: true
-  ansible.builtin.reboot:
-    msg: "Rebooting to apply initial ALSA configuration"
-    reboot_timeout: 300
-  when: not asound_conf_stat.stat.exists
-
-# INSTALL SNAPCLIENT
-# Can't use the package manager version because it's too old to work with Home Assistant,
-# so we have to download and install the .deb from the releases page on GitHub.
-
-- name: Get installed Snapclient version
-  ansible.builtin.command: dpkg-query -W -f='${Version}' snapclient
-  register: snapclient_version_raw
-  failed_when: false
-  changed_when: false
-
-- name: Set installed version without trailing revision
-  ansible.builtin.set_fact:
-    installed_snapclient_version: >-
-      {{
-        snapclient_version_raw.stdout | default('')
-        | regex_replace('-[0-9]+$', '')
-      }}
-
-- name: Debug installed version
-  ansible.builtin.debug:
-    msg: "Installed: {{ installed_snapclient_version | default('none') }} | Desired: {{ snapclient_version }}"
-
-- name: Decide if install/upgrade is needed
-  ansible.builtin.set_fact:
-    snapclient_needs_install: "{{ installed_snapclient_version != snapclient_version }}"
-
-- name: Download Snapclient .deb if version mismatch
-  ansible.builtin.get_url:
-    url: "{{ snapclient_url }}"
-    dest: "{{ snapclient_tmp }}"
-    mode: "0644"
-  when: snapclient_needs_install
-
-- name: Install/upgrade Snapclient .deb
-  ansible.builtin.apt:
-    deb: "{{ snapclient_tmp }}"
+  ansible.builtin.package:
+    name: alsa-utils
     state: present
-  when: snapclient_needs_install
-
-# Configure snapclient systemd service for user
-# Best to do it as a user service rather than a system service to avoid permissions
-# issues with audio devices. The Bluetooth audio sink is owned by the user,
-# so its easiest if the snapclient service runs as the user as well.
-
-- name: Ensure user systemd directory exists
-  ansible.builtin.file:
-    path: "/home/{{ snapclient_user }}/.config/systemd/user"
-    state: directory
-    owner: "{{ snapclient_user }}"
-    group: "{{ snapclient_user }}"
-    mode: "0755"
-
-# Logs can be viewed with `journalctl SYSLOG_IDENTIFIER=calendar-alarms-snapclient`
-- name: Install snapclient user service
-  ansible.builtin.template:
-      # Give it a custom service name so multiple snapclient instances can be run if needed
-    # (e.g. one for calendar alarms, one for general music)
-    src: calendar-alarms-snapclient.service.j2
-    dest: "/home/{{ snapclient_user }}/.config/systemd/user/calendar-alarms-snapclient.service"
-    owner: "{{ snapclient_user }}"
-    group: "{{ snapclient_user }}"
-    mode: "0644"
-
-- name: Reload user systemd daemon
-  ansible.builtin.command: systemctl --user daemon-reload
-
-- name: Enable snapclient user service
-  ansible.builtin.command: systemctl --user enable calendar-alarms-snapclient
-
-- name: Enable snapclient user service
-  ansible.builtin.command: systemctl --user stop calendar-alarms-snapclient
-
-- name: Start or restart snapclient user service
-  ansible.builtin.command: systemctl --user start calendar-alarms-snapclient
-
-# TODO might need to stop and remove the system level snapclient on a brand new install.
 
 - name: Add calendar alarms utils file
   ansible.builtin.template:
-    src: calendar-alarms-utils.sh.j2
-    dest: "/home/{{ snapclient_user }}/calendar-alarms-utils.sh"
+    src: calendar-alarms-client-utils.sh.j2
+    dest: "/home/{{ snapclient_user }}/calendar-alarms-client-utils.sh"
     owner: "{{ snapclient_user }}"
     group: "{{ snapclient_user }}"
     mode: "0755"

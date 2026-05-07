@@ -1,0 +1,23 @@
+- name: Check if lingering is enabled
+  ansible.builtin.stat:
+    path: "/var/lib/systemd/linger/{{ snapclient_user }}"
+  register: linger_file
+  become: true
+
+- name: Enable lingering for snapclient user
+  ansible.builtin.command: "loginctl enable-linger {{ snapclient_user }}"
+  when: not linger_file.stat.exists
+  become: true
+
+- name: Ensure snapclient user is in audio group
+  become: true
+  ansible.builtin.user:
+    name: "{{ snapclient_user }}"
+    groups: audio
+    append: true
+  register: snapclient_user_update
+
+- name: Reset connection if group membership changed
+  when: snapclient_user_update.changed | bool
+  block:
+    - ansible.builtin.meta: reset_connection

@@ -146,6 +146,33 @@
 
 ### START MPD SETUP ###
 
+- name: Install MPD
+  become: true
+  ansible.builtin.package:
+    name: mpd
+    state: present
+
+- name: Check mpd group membership
+  ansible.builtin.command: id -nG mpd
+  register: mpd_groups
+  changed_when: false
+
+- name: Determine if mpd is in audio group
+  ansible.builtin.set_fact:
+    mpd_in_audio: "{{ 'audio' in mpd_groups.stdout.split() }}"
+
+- name: Add mpd to audio group if needed
+  become: true
+  ansible.builtin.user:
+    name: mpd
+    groups: audio
+    append: true
+  when: not mpd_in_audio
+
+- name: Reset SSH connection if needed
+  ansible.builtin.meta: reset_connection
+  when: not mpd_in_audio
+
 - name: Ensure mpd runtime directory exists
   file:
     path: /run/mpd
@@ -179,13 +206,24 @@
 
 ### END MPD SETUP ###
 
-# TODO - Add user to audio group
+- name: Install ffmpeg
+  become: true
+  ansible.builtin.package:
+    name: ffmpeg
+    state: present
+
+- name: Install alsa-utils
+  become: true
+  ansible.builtin.package:
+    name: alsa-utils
+    state: present
 
 # TODO - Add calendar-alarms-http.service
 
 - name: Add calendar alarms utils file
   ansible.builtin.template:
-    src: calendar-alarms-utils.sh.j2
-    dest: "/home/{{ ansible_user }}/calendar-alarms-utils.sh"
+    src: calendar-alarms-server-utils.sh.j2
+    dest: "/home/{{ ansible_user }}/calendar-alarms-server-utils.sh"
     owner: "{{ ansible_user }}"
     mode: "0755"
+

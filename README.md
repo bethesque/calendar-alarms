@@ -41,7 +41,7 @@ sudo apt install ffmpeg
 
 ### Local manual testing
 
-For mac, in `ecal/env.py` set
+For mac, in `vcal/env.py` set
 
 ```py
 OUTPUT_AUDIO_DIRECTORY = "/tmp"
@@ -80,6 +80,9 @@ pytest
 ### Installation
 
 ### Server
+
+*Install python (instructions for Ubuntu jammy)*
+
 ```
 # Update python
 sudo add-apt-repository ppa:deadsnakes/ppa
@@ -88,25 +91,23 @@ sudo apt install python3.13
 sudo apt install python3.13-venv
 python3.13 -m ensurepip --upgrade
 python3.13 -m pip install --upgrade pip setuptools wheel
+```
 
+*Clone and set up repository*
+```
 git clone https://github.com/bethesque/calendar-alarms.git
 cd calendar-alarms
 sudo apt install python3-pip
-sudo apt install mpd
-brew install snapcast
-sudo apt install ffmpeg
 python3.13 -m pip install -e .
+```
 
-sudo usermod -aG audio $USER
+*Set up users/packages/service*
 
-# logout and login again
-
-sudo apt install alsa-utils
-
-
-
-vi /etc/snapserver.conf
-
+On develoment machine
+1. Install ansible.
+1. Create `ansible/secrets.yml` with `travnas_pass` and `pi_pass` values.
+1. Run `script/deploy/audio_host.sh`
+1. Run `script/deploy/audio_clients.sh`
 
 #### HTTP service
 
@@ -161,7 +162,7 @@ sudo systemctl enable snapclient # enable at startup
 
 
 export SNAPSERVER_IP="192.168.20.3" # use your own server's IP here
-export SNAPCLIENT_NAME="ecal" # give your client a unique name
+export SNAPCLIENT_NAME="vcal" # give your client a unique name
 echo "SNAPCLIENT_OPTS=\"-h ${SNAPSERVER_IP} --soundcard pulse --hostID=${SNAPCLIENT_NAME}\"" | sudo tee /etc/default/snapclient > /dev/null
 cat /etc/default/snapclient # sanity check
 
@@ -177,6 +178,7 @@ cat /lib/systemd/system/snapclient.service # view systemd config file
 https://github.com/snapcast/snapcast/issues/1094
 https://whynot.guide/posts/howtos/multiroom-media/
 https://www.hietala.org/multi-room-audio-with-mpd-and-snapcast.html
+https://www.instructables.com/From-Record-Player-to-Multi-room-Spotify-Controler/
 
 
 
