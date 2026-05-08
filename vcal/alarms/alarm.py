@@ -154,7 +154,7 @@ class AnnouncementAudio:
         return list(dict.fromkeys(items))
 
     def preannouncement_bell(self):
-        return AUDIO_DIRECTORY + "/preannounce.mp3"
+        return AUDIO_DIRECTORY + "/preannounce_0_3_vol.mp3"
 
 def play_notifications(announcements_file, alarms_file, scene: SceneProtocol):
     scene.save()
