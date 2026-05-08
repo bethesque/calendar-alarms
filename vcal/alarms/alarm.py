@@ -6,7 +6,7 @@ from vcal.alarms.sound import build_alarm_audio, join_mp3s_to_wav, mix_announcem
 from vcal.alarms.text_to_voice import text_to_voice_file
 from vcal.alarms.mpd import fade_up, fade_out, mpd_connection
 from vcal.select_item import select_item_by_date
-from vcal.alarms import ALARMS_DIRECTORY
+from vcal.alarms import ALARMS_DIRECTORY, AUDIO_DIRECTORY
 from vcal.env import OUTPUT_AUDIO_DIRECTORY, INITIAL_VOLUME, ANNOUNCEMENT_VOLUME
 from vcal.alarms.sound import track_length
 from vcal.scene import SceneProtocol
@@ -135,7 +135,8 @@ class AnnouncementAudio:
 
     def build_announcement_file(self):
         joined_announcement_file = OUTPUT_AUDIO_DIRECTORY + "/announcement.wav"
-        join_mp3s_to_wav(self._announcement_files_for_events(), joined_announcement_file)
+        files = [self.preannouncement_bell()] + self._announcement_files_for_events()
+        join_mp3s_to_wav(files, joined_announcement_file)
 
         return joined_announcement_file
 
@@ -149,9 +150,11 @@ class AnnouncementAudio:
         else:
             return f"It's time for {summary}"
 
-
     def _deduplicate_list(self, items):
         return list(dict.fromkeys(items))
+
+    def preannouncement_bell(self):
+        return AUDIO_DIRECTORY + "/preannounce.mp3"
 
 def play_notifications(announcements_file, alarms_file, scene: SceneProtocol):
     scene.save()
