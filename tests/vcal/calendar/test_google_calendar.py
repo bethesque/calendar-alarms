@@ -71,7 +71,7 @@ def test_alarm_time_returns_none_when_start_time_missing():
     assert event.notification_time() is None
 
 
-def test_alarm_offset_returns_parsed_number():
+def test_notification_offset_returns_parsed_number():
     event = Event(
         owner="Beth",
         summary="Meeting",
@@ -82,7 +82,7 @@ def test_alarm_offset_returns_parsed_number():
     assert event.notification_offset() == 20
 
 
-def test_alarm_offset_returns_different_numbers():
+def test_notification_offset_returns_different_numbers():
     event = Event(
         owner="Beth",
         summary="Meeting",
@@ -93,7 +93,7 @@ def test_alarm_offset_returns_different_numbers():
     assert event.notification_offset() == 5
 
 
-def test_alarm_offset_returns_zero_when_no_number():
+def test_notification_offset_returns_zero_when_no_number():
     event = Event(
         owner="Beth",
         summary="Meeting",
@@ -104,7 +104,7 @@ def test_alarm_offset_returns_zero_when_no_number():
     assert event.notification_offset() == 0
 
 
-def test_alarm_offset_returns_zero_when_no_alarm_tag():
+def test_notification_offset_returns_zero_when_no_alarm_tag():
     event = Event(
         owner="Beth",
         summary="Meeting",
@@ -115,7 +115,7 @@ def test_alarm_offset_returns_zero_when_no_alarm_tag():
     assert event.notification_offset() == 0
 
 
-def test_alarm_offset_returns_zero_when_no_start_time():
+def test_notification_offset_returns_zero_when_no_start_time():
     event = Event(
         owner="Beth",
         summary="Meeting",
@@ -126,7 +126,7 @@ def test_alarm_offset_returns_zero_when_no_start_time():
     assert event.notification_offset() == 0
 
 
-def test_alarm_offset_caches_result():
+def test_notification_offset_caches_result():
     event = Event(
         owner="Beth",
         summary="Meeting",

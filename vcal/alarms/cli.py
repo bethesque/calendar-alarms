@@ -4,15 +4,15 @@ import logging
 import os
 import argparse
 from datetime import datetime
-from vcal.alarms.alarm import play_alarm
+from vcal.alarms.alarm import _play_alarm
 from vcal.env import LOG_LEVEL
 from vcal.alarms.mpd import fade_out, fade_up, mpd_connection
 from vcal.log_config import setup_logging_for_alarms
 from vcal.calendar.google_calendar import CalendarSource
-from vcal.scene import Scene
+from vcal.scene import Scene, NullScene
 
 from vcal.env import DATA_DIRECTORY
-from vcal.alarms.alarm import check_for_alarms
+from vcal.alarms.alarm import check_for_notifications
 
 setup_logging_for_alarms(str(LOG_LEVEL))
 
@@ -51,15 +51,14 @@ def check_alarms():
     base_time = args.base_time or datetime.now().astimezone()
     calendar_data = load_events(args.calendar_file)
 
-    before_alarm_hook = Scene.prepare if args.handle_music_assistant else None
-    after_alarm_hook = Scene.restore if args.handle_music_assistant else None
+    scene = Scene() if args.handle_music_assistant else NullScene()
 
-    check_for_alarms(base_time, args.window, calendar_data, before_alarm_hook, after_alarm_hook)
+    check_for_notifications(base_time, args.window, calendar_data, scene)
 
 def test_alarm():
     try:
         print("Testing alarm... press Ctrl+C to stop")
-        play_alarm(["audio/test_announcement.mp3"])
+        _play_alarm(["audio/test_announcement.mp3"], False)
     except KeyboardInterrupt as e:
         logger.info("Stopping test alarm...")
         with mpd_connection() as alarm_player:

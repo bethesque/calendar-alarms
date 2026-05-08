@@ -132,8 +132,6 @@ class PlayerFadeOut:
             self.current_step += 1
             return False
         else:
-            self.ma_player.pause()
-            logger.info("Paused Music Assistant playback")
             return True
 
 
@@ -188,18 +186,20 @@ class PlayerFadeUp:
         return abs(vol1 - vol2) <= threshold
 
 
-def fade_out(ma_players: List[MusicAssistantPlayer], duration: float, steps: int = 10):
-    """Gradually fade out the volume of the given Music Assistant players over the specified duration and steps, then stop them.
+def fade_out(ma_players: List[MusicAssistantPlayer], duration: float, steps: int = 10, target_volume:float = 0.0):
+    """Gradually fade out the volume of the given Music Assistant players over the specified duration and steps.
 
     Args:
         mpd_processes: List of MusicAssistantPlayer instances to fade out
         duration: Total duration in seconds for the fade out
         steps: Number of volume steps for the fade out
     """
+    faded_players = []
     fade_outs = []
     for player in ma_players:
         if player.get_original_state().playing():
-            fade_outs.append(PlayerFadeOut(player, target_volume=0, num_steps=steps))
+            faded_players.append(player)
+            fade_outs.append(PlayerFadeOut(player, target_volume, num_steps=steps))
 
     if not fade_outs:
         logger.info("No Music Assistant players to pause")
@@ -212,6 +212,8 @@ def fade_out(ma_players: List[MusicAssistantPlayer], duration: float, steps: int
                 fade_outs.remove(fade)
         if fade_outs:
             time.sleep(step_time)
+
+    return faded_players
 
 
 def fade_up(players_and_target_volumes: List[Tuple[MusicAssistantPlayer, float]], duration: float, steps: int = 10):
@@ -244,7 +246,17 @@ class MusicAssistant:
             player.fetch_state()
 
     def fade_out_and_pause(self):
-        fade_out(self.players, duration=4, steps=10)
+        faded_players = fade_out(self.players, duration=4, steps=10)
+        for player in faded_players:
+            logger.info(f"Pausing Music Assistant player {player.name}")
+            player.pause()
+
+    def dip_volume(self):
+        fade_out(self.players, 2, 4, 0.3)
+
+    def restore_volume(self):
+        playing_players = [player for player in self.players if player.get_original_state().playing()]
+        fade_up([(player, player.get_original_state().get_volume()) for player in playing_players], duration=3, steps=4)
 
     def restore_original_state(self):
         playing_players = [player for player in self.players if player.get_original_state().playing()]

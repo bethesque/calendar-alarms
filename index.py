@@ -24,7 +24,7 @@ class AlarmController(object):
         while True:
             self.queue.get()
             try:
-                stop_alarm(Scene.restore)
+                stop_alarm(Scene.restore_after_alarm)
             finally:
                 with self._lock:
                     self._pending = False

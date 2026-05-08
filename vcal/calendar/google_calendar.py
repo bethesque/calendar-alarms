@@ -35,7 +35,7 @@ class Event:
     start_time: datetime.datetime = None
     end_time: datetime.datetime = None
     recurring: bool = False
-    _alarm_offset: int | None = None
+    _notification_offset: int | None = None
 
     def notification_time(self):
         if self.has_notification():
@@ -51,15 +51,15 @@ class Event:
             return None
 
     def notification_offset(self):
-        if self._alarm_offset is None:
-            self._alarm_offset = 0
+        if self._notification_offset is None:
+            self._notification_offset = 0
 
             if self.has_notification():
                 match = re.search(r"#(?:alarm|announce)(\d+)", self.description)
                 if match:
-                    self._alarm_offset = int(match.group(1))
+                    self._notification_offset = int(match.group(1))
 
-        return self._alarm_offset
+        return self._notification_offset
 
     def has_alarm(self):
         return "#alarm" in (self.description or "") and self.start_time is not None

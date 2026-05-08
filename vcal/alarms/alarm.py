@@ -9,6 +9,7 @@ from vcal.select_item import select_item_by_date
 from vcal.alarms import ALARMS_DIRECTORY
 from vcal.env import OUTPUT_AUDIO_DIRECTORY, INITIAL_VOLUME, ANNOUNCEMENT_VOLUME
 from vcal.alarms.sound import track_length
+from vcal.scene import SceneProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,7 @@ class AlarmFinder:
 
         for day in self.calendar_days:
             for event in day.timed_events:
-                if event.has_alarm() and event.alarm_time_within_window(start_time, end_time):
+                if event.has_alarm() and event.notification_time_within_window(start_time, end_time):
                     matching_events.append(event)
 
         return matching_events
@@ -57,7 +58,7 @@ class AlarmFinder:
 
         for day in self.calendar_days:
             for event in day.timed_events:
-                if event.has_announcement() and event.alarm_time_within_window(start_time, end_time):
+                if event.has_announcement() and event.notification_time_within_window(start_time, end_time):
                     matching_events.append(event)
 
         return matching_events
@@ -102,8 +103,8 @@ class AlarmAudio:
 
     def _announcement_for_event(self, event):
         summary = event.summary if event.summary else "an event"
-        if event.alarm_offset() > 0:
-            return f"It will be time for {summary} in {event.alarm_offset()} minutes"
+        if event.notification_offset() > 0:
+            return f"It will be time for {summary} in {event.notification_offset()} minutes"
         else:
             return f"It's time for {summary}"
 
@@ -143,8 +144,8 @@ class AnnouncementAudio:
 
     def _announcement_for_event(self, event):
         summary = event.summary if event.summary else "an event"
-        if event.alarm_offset() > 0:
-            return f"It will be time for {summary} in {event.alarm_offset()} minutes"
+        if event.notification_offset() > 0:
+            return f"It will be time for {summary} in {event.notification_offset()} minutes"
         else:
             return f"It's time for {summary}"
 
@@ -152,34 +153,35 @@ class AnnouncementAudio:
     def _deduplicate_list(self, items):
         return list(dict.fromkeys(items))
 
-def play_notifications(announcements_file, alarms_file, before_alarm_hook=None, after_alarm_hook=None):
-    if before_alarm_hook:
-        before_alarm_hook()
-    with mpd_connection() as alarm_player:
-        if announcements_file:
-            logger.info(f"Playing announcements {announcements_file}")
-            alarm_player.set_volume(ANNOUNCEMENT_VOLUME)
-            alarm_player.play_file(announcements_file)
-            time.sleep(track_length(announcements_file))
-            if alarms_file is None and after_alarm_hook:
-                after_alarm_hook()
+def play_notifications(announcements_file, alarms_file, scene: SceneProtocol):
+    scene.save()
+    if announcements_file:
+        scene.prepare_for_announcement()
+        _play_announcement(announcements_file)
+        if alarms_file is None:
+            scene.restore_after_announcement()
 
-        if alarms_file:
-            logger.info(f"Playing alarm {alarms_file}")
-            if announcements_file is None:
-                alarm_player.set_volume(INITIAL_VOLUME)
-            alarm_player.play_file(alarms_file)
-            fade_up([(alarm_player, 100)], 45, 10)
+    if announcements_file and alarms_file:
+        time.sleep(2)
 
-def play_alarm(audio_file, before_alarm_hook=None):
-    if before_alarm_hook:
-        before_alarm_hook()
+    if alarms_file:
+        scene.prepare_for_alarm()
+        _play_alarm(alarms_file, announcements_file is not None)
+
+def _play_announcement(announcements_file):
     with mpd_connection() as alarm_player:
-        logger.info(f"Playing alarm {audio_file}")
-        alarm_player.set_volume(INITIAL_VOLUME)
-        alarm_player.play_file(audio_file)
+        logger.info(f"Playing announcements {announcements_file}")
+        alarm_player.set_volume(ANNOUNCEMENT_VOLUME)
+        alarm_player.play_file(announcements_file)
+    time.sleep(track_length(announcements_file))
+
+def _play_alarm(alarms_file, announcement_present : bool):
+    with mpd_connection() as alarm_player:
+        logger.info(f"Playing alarm {alarms_file}")
+        if not announcement_present:
+            alarm_player.set_volume(INITIAL_VOLUME)
+        alarm_player.play_file(alarms_file)
         fade_up([(alarm_player, 100)], 45, 10)
-    # after alarm hook if nobody stops it?
 
 def stop_alarm(after_alarm_hook=None):
     # Stop alarm
@@ -200,7 +202,7 @@ def stop_alarm(after_alarm_hook=None):
 
     after_alarm_hook() if after_alarm_hook else None
 
-def check_for_alarms(base_time, window, calendar_data, before_alarm_hook=None, after_alarm_hook=None):
+def check_for_notifications(base_time, window, calendar_data, scene:SceneProtocol):
     alarm_finder = AlarmFinder(calendar_data, base_time, window)
     alarm_events = alarm_finder.find_alarm_events()
     announcement_events = alarm_finder.find_announcement_events()
@@ -208,5 +210,5 @@ def check_for_alarms(base_time, window, calendar_data, before_alarm_hook=None, a
     if alarm_events or announcement_events:
         alarm_audio_file = AlarmAudio(alarm_events, base_time).build_alarm_file() if alarm_events else None
         announcements_file = AnnouncementAudio(announcement_events, base_time).build_announcement_file() if announcement_events else None
-        play_notifications(announcements_file, alarm_audio_file, before_alarm_hook, after_alarm_hook)
+        play_notifications(announcements_file, alarm_audio_file, scene)
 
