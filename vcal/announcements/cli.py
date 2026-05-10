@@ -33,11 +33,14 @@ def play_morning_announcements():
     args = parser.parse_args()
     base_time = args.base_time or datetime.now().astimezone()
 
+    scene = Scene()
+
     if args.cached:
         play_morning_announcements_cached()
     else:
-        do_play_morning_announcements(args.calendar_file, base_time, Scene.prepare, Scene.restore)
+        do_play_morning_announcements(args.calendar_file, base_time, scene.prepare_for_alarm, scene.restore_after_alarm)
 
 
 def play_morning_announcements_cached():
-    play_morning_announcements_audio_file(MORNING_ANNOUNCEMENTS_AUDIO_FILE, Scene.prepare, Scene.restore)
+    scene = Scene()
+    play_morning_announcements_audio_file(MORNING_ANNOUNCEMENTS_AUDIO_FILE, scene.prepare_for_alarm, scene.restore_after_alarm)
