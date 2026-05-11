@@ -179,6 +179,8 @@ https://github.com/snapcast/snapcast/issues/1094
 https://whynot.guide/posts/howtos/multiroom-media/
 https://www.hietala.org/multi-room-audio-with-mpd-and-snapcast.html
 https://www.instructables.com/From-Record-Player-to-Multi-room-Spotify-Controler/
+https://berthaamelia.github.io/blog/python/raspberrypi/2020/08/20/connect-bluetooth-speaker-to-raspi-zero.html
+https://community.home-assistant.io/t/perfect-and-free-synchronous-multiroom-audio-with-snapcast/386871
 
 
 
