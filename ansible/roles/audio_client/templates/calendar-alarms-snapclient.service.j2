@@ -9,6 +9,9 @@ ExecStart=/usr/bin/snapclient tcp://{{ snapserver_host }}:{{ snapserver_stream_p
 Restart=always
 RestartSec=5
 SyslogIdentifier=calendar-alarms-snapclient
+RuntimeDirectory=calendar-alarms-snapclient
+RuntimeDirectoryMode=0755
+
 
 [Install]
 WantedBy=default.target

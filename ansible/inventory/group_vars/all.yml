@@ -2,5 +2,6 @@ snapserver_stream_port: 1804
 snapserver_tcp_port: 1805
 snapserver_http_port: 1880
 snapserver_host:  192.168.20.3
+snapserver_rpc_url: "http://{{ snapserver_host }}:{{ snapserver_http_port }}/jsonrpc"
 
 host_distro: "{{ ansible_facts['distribution_release'] | lower }}"

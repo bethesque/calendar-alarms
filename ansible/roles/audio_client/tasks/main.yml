@@ -13,6 +13,9 @@
 - name: Configure Snapclient service
   ansible.builtin.import_tasks: snapclient_service.yml
 
+- name: Configure Snapclient Identification service
+  ansible.builtin.import_tasks: snapclient_identify.yml
+
 - name: Install alsa-utils
   become: true
   ansible.builtin.package:
@@ -26,3 +29,6 @@
     owner: "{{ snapclient_user }}"
     group: "{{ snapclient_user }}"
     mode: "0755"
+
+- name: Install HTTP service
+  ansible.builtin.import_tasks: http.yml

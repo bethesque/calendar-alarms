@@ -1,0 +1,34 @@
+- name: Ensure calendar alarms directory exists
+  ansible.builtin.file:
+    path: "{{ http_index_file | dirname }}"
+    state: directory
+    owner: "{{ snapclient_user }}"
+    group: "{{ snapclient_user }}"
+    mode: "0755"
+
+- name: Copy index.py
+  ansible.builtin.template:
+    src: index.py.j2
+    dest: "{{ http_index_file }}"
+    owner: "{{ snapclient_user }}"
+    group: "{{ snapclient_user }}"
+    mode: "0644"
+
+# Logs can be viewed with `journalctl SYSLOG_IDENTIFIER=calendar-alarms-http`
+- name: Install http service
+  ansible.builtin.template:
+    src: calendar-alarms-http.service.j2
+    dest: "/home/{{ snapclient_user }}/.config/systemd/user/calendar-alarms-http.service"
+    owner: "{{ snapclient_user }}"
+    group: "{{ snapclient_user }}"
+    mode: "0644"
+
+- name: Reload user systemd daemon
+  ansible.builtin.command: systemctl --user daemon-reload
+
+- name: Restart http service
+  ansible.builtin.systemd:
+    name: calendar-alarms-http.service
+    scope: user
+    state: restarted
+    enabled: true

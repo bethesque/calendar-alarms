@@ -1,0 +1,12 @@
+[Unit]
+Description=Resolve Snapclient ID from Snapserver
+After=calendar-alarms-snapclient.service network-online.target
+Requires=calendar-alarms-snapclient.service
+PartOf=calendar-alarms-snapclient.service
+
+[Service]
+Type=oneshot
+ExecStart=/home/{{ snapclient_user }}/.local/bin/calendar-alarms-snapclient-identify.sh
+
+[Install]
+WantedBy=calendar-alarms-snapclient.service

@@ -1,0 +1,12 @@
+[Unit]
+Description=Calendar Alarms HTTP
+After=network.target
+
+[Service]
+WorkingDirectory={{ http_index_file | dirname }}
+ExecStart={{ ansible_python_interpreter }} {{ http_index_file }}
+SyslogIdentifier=calendar-alarms-http
+Restart=always
+
+[Install]
+WantedBy=default.target

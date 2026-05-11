@@ -33,11 +33,9 @@
 - name: Reload user systemd daemon
   ansible.builtin.command: systemctl --user daemon-reload
 
-- name: Enable snapclient user service
-  ansible.builtin.command: systemctl --user enable calendar-alarms-snapclient
-
-- name: Enable snapclient user service
-  ansible.builtin.command: systemctl --user stop calendar-alarms-snapclient
-
-- name: Start or restart snapclient user service
-  ansible.builtin.command: systemctl --user start calendar-alarms-snapclient
+- name: Restart user snapclient service
+  ansible.builtin.systemd:
+    name: calendar-alarms-snapclient.service
+    scope: user
+    state: restarted
+    enabled: true

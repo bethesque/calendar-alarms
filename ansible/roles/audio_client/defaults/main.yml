@@ -2,8 +2,9 @@ snapclient_version: "0.35.0"
 snapclient_deb: "snapclient_{{ snapclient_version }}-1_{{ snapclient_arch }}_{{ host_distro }}.deb"
 snapclient_url: "https://github.com/snapcast/snapcast/releases/download/v{{ snapclient_version }}/{{ snapclient_deb }}"
 snapclient_tmp: "/tmp/{{ snapclient_deb }}"
-
 snapclient_user: "{{ ansible_user }}"
+snapclient_client_id_file: "/run/user/{{ ansible_user_uid }}/calendar-alarms-snapclient/client_id.txt"
+http_index_file: "/home/{{ snapclient_user }}/calendar-alarms/index.py"
 
 snapclient_arch: >-
   {{

@@ -1,0 +1,46 @@
+- name: Install jq
+  become: true
+  ansible.builtin.package:
+    name: jq
+    state: present
+
+- name: Ensure user bin directory exists
+  ansible.builtin.file:
+    path: "/home/{{ snapclient_user }}/.local/bin/"
+    state: directory
+    owner: "{{ snapclient_user }}"
+    group: "{{ snapclient_user }}"
+    mode: '0755'
+
+- name: Install snapclient identify script
+  template:
+    src: calendar-alarms-snapclient-identify.sh.j2
+    dest: "/home/{{ snapclient_user }}/.local/bin/calendar-alarms-snapclient-identify.sh"
+    mode: '0755'
+
+- name: Ensure user systemd directory exists
+  ansible.builtin.file:
+    path: "/home/{{ snapclient_user }}/.config/systemd/user"
+    state: directory
+    owner: "{{ snapclient_user }}"
+    group: "{{ snapclient_user }}"
+    mode: "0755"
+
+# Logs can be viewed with `journalctl SYSLOG_IDENTIFIER=calendar-alarms-snapclient-identify`
+- name: Install service to identify the snapclient ID from the snapclient server
+  ansible.builtin.template:
+    src: calendar-alarms-snapclient-identify.service.j2
+    dest: "/home/{{ snapclient_user }}/.config/systemd/user/calendar-alarms-snapclient-identify.service"
+    owner: "{{ snapclient_user }}"
+    group: "{{ snapclient_user }}"
+    mode: "0644"
+
+- name: Reload user systemd daemon
+  ansible.builtin.command: systemctl --user daemon-reload
+
+- name: Restart service
+  ansible.builtin.systemd:
+    name: calendar-alarms-snapclient-identify.service
+    scope: user
+    state: restarted
+    enabled: true
