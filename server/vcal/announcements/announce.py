@@ -3,7 +3,7 @@ import glob
 import time
 from datetime import datetime
 from vcal.alarms.mpd import fade_up, mpd_connection
-from vcal.calendar.google_calendar import WeatherForecast, load_data_from_file
+from vcal.cal.google_calendar import WeatherForecast, load_data_from_file
 from vcal.alarms.text_to_voice import text_to_voice_file_daily_summary
 from vcal.alarms.sound import mix_announcement_audio, track_length
 from vcal.random_text import select_text

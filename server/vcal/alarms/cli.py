@@ -8,7 +8,7 @@ from vcal.alarms.alarm import _play_alarm
 from vcal.env import LOG_LEVEL
 from vcal.alarms.mpd import fade_out, fade_up, mpd_connection
 from vcal.log_config import setup_logging_for_alarms
-from vcal.calendar.google_calendar import CalendarSource
+from vcal.cal.google_calendar import CalendarSource
 from vcal.scene import Scene, NullScene
 
 from vcal.env import DATA_DIRECTORY
