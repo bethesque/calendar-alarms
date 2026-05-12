@@ -27,3 +27,19 @@ function calendar-alarms-snapserver-test {
     sleep 5
     mpc clear
 }
+
+function calendar-alarms-http-status {
+    sudo systemctl status calendar-alarms-http
+}
+
+function calendar-alarms-http-start {
+    sudo systemctl start calendar-alarms-http
+}
+
+function calendar-alarms-http-restart {
+    sudo systemctl restart calendar-alarms-http
+}
+
+function calendar-alarms-http-stop {
+    sudo systemctl stop calendar-alarms-http
+}

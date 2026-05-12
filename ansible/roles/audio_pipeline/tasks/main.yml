@@ -1,9 +1,16 @@
+- name: Install project code
+  ansible.builtin.import_tasks: codebase.yml
+
+- name: End play
+  ansible.builtin.meta: end_play
+
 - name: Install packages
   apt:
     name:
       - mpd
       - ffmpeg
       - alsa-utils
+      - git
     state: present
     update_cache: yes
 
@@ -41,4 +48,3 @@
     dest: "/home/{{ ansible_user }}/calendar-alarms-server-utils.sh"
     owner: "{{ ansible_user }}"
     mode: "0755"
-

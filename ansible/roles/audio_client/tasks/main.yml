@@ -1,4 +1,7 @@
-# - name: End play for host if version matches
+- name: Checkout code
+  ansible.builtin.import_tasks: codebase.yml
+
+# - name: Stop
 #   ansible.builtin.meta: end_play
 
 - name: Configure sound

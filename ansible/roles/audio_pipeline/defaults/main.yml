@@ -20,3 +20,6 @@ snapcast_version: v0.35.0
 snapcast_src_dir: /opt/snapcast
 
 snapweb_doc_root: /usr/share/snapserver/snapweb
+
+project_root: /home/{{ ansible_user }}/calendar-alarms-2
+server_root: "{{ project_root }}/server"

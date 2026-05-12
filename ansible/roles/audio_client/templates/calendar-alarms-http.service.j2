@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 WorkingDirectory={{ http_index_file | dirname }}
-ExecStart={{ ansible_python_interpreter }} {{ http_index_file }}
+ExecStart={{ ansible_python_interpreter }} {{ http_index_file }} --snapserver_rpc_url {{ snapserver_rpc_url }} --client_id_file {{ snapclient_client_id_file }}
 SyslogIdentifier=calendar-alarms-http
 Restart=always
 
