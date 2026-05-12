@@ -72,16 +72,20 @@ class VolumeController:
 
         with self._lock:
             current_volume = self.get_current_volume()
-            self._stored_volume = current_volume
+            if current_volume > 0:
+                self._stored_volume = current_volume
 
-            logging.info(
-                "Stored volume before mute: %s",
-                self._stored_volume,
-            )
+                logging.info(
+                    "Stored volume before mute: %s",
+                    self._stored_volume,
+                )
 
-        self.set_volume(0)
+                self.set_volume(0)
 
-        logging.info("Speaker muted")
+                logging.info("Speaker muted")
+            else:
+                logging.info("Speaker already muted")
+
 
     def unmute_slowly(
         self,
@@ -123,7 +127,7 @@ class VolumeController:
                 (volume_difference * step) / steps
             )
 
-            logging.info(
+            logging.debug(
                 "Step %s/%s: setting volume to %s",
                 step,
                 steps,
