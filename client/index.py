@@ -1,62 +1,57 @@
-#from _socket import _RetAddress
+import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
-import json
-from socketserver import BaseServer
 import threading
-from urllib.request import Request, urlopen
 from pathlib import Path
-import argparse
 from functools import partial
 import logging
 import http.client
+from amixer_control import VolumeController
+from snapserver import mute_client
+from music_assistant import pause_player
+from contextlib import contextmanager
+import argparse
 
 http.client.HTTPConnection.debuglevel = 1
 logger = logging.getLogger(__name__)
 
-# Global lock to prevent concurrent mute operations
-mute_lock = threading.Lock()
 
 
-def mute_client(snapserver_rpc_url, client_id_file):
-    logger.info(f"Muting, snapserver_rpc_url={snapserver_rpc_url}, client_id_file={client_id_file}")
-    with mute_lock:
-        try:
-            client_id = Path(client_id_file).read_text().strip()
-            if not client_id:
-                logger.warning(f"No client ID found in {client_id_file}")
-                return
+def mute(mute_config):
+    with muted_alsa():
+        mute_snapclient(mute_config["snapserver_url"], mute_config["client_id_file"])
+        pause_music_assistant_player(mute_config)
 
-            payload = {
-                "id": 1,
-                "jsonrpc": "2.0",
-                "method": "Client.SetVolume",
-                "params": {
-                    "id": client_id,
-                    "volume": {
-                        "muted": True,
-                        "percent": 0
-                    }
-                }
-            }
+def mute_snapclient(ca_snapserver_rpc_url, client_id_file):
+    try:
+        client_id = Path(client_id_file).read_text().strip()
+        if not client_id:
+            logger.warning(f"No client ID found in {client_id_file}")
+        else:
+            mute_client(ca_snapserver_rpc_url, client_id)
+    except Exception:
+        logger.exception("Error muting snapclient")
 
-            req = Request(
-                snapserver_rpc_url,
-                data=json.dumps(payload).encode("utf-8"),
-                headers={"Content-Type": "application/json"},
-                method="POST",
-            )
+def pause_music_assistant_player(mute_config):
+    try:
+        pause_player(mute_config["home_assistant_url"], mute_config["home_assistant_token"], mute_config["home_assistant_player_entity"])
+    except Exception:
+        logger.exception("Error pausing Music Assistant player")
 
-            with urlopen(req, timeout=5) as resp:
-                resp.read()
 
-        except Exception as e:
-            print(f"mute_client error: {e}")
+@contextmanager
+def muted_alsa():
+    try:
+        volume_controller = VolumeController()
+        #volume_controller.mute()
+        yield
+        #volume_controller.unmute_slowly()
+    except Exception:
+        logger.exception("Exception muting/unmuting volume using amixer")
 
 
 class Handler(BaseHTTPRequestHandler):
-    def __init__(self, *args, snapserver_rpc_url=None, client_id_file=None, **kwargs):
-        self.snapserver_rpc_url = snapserver_rpc_url
-        self.client_id_file = client_id_file
+    def __init__(self, *args, mute_config,  **kwargs):
+        self.mute_config = mute_config
         super().__init__(*args, **kwargs)
 
     def do_POST(self):
@@ -72,7 +67,7 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(b"Muting\n")
 
         # Async execution
-        threading.Thread(target=mute_client, args=(self.snapserver_rpc_url, self.client_id_file), daemon=True).start()
+        threading.Thread(target=mute, args=(self.mute_config,), daemon=True).start()
 
     def log_message(self, format, *args):
         return
@@ -81,28 +76,30 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Audio control service")
     parser.add_argument(
-        "--snapserver_rpc_url",
-        type=str,
-        required=True,
-        help="The Snapserver RPC URL"
-    )
-
-    parser.add_argument(
-        "--client_id_file",
-        type=str,
-        required=True,
-        help="The path to a text file containing the ID of the snapclient"
-    )
-
-    parser.add_argument(
         "--port",
         type=int,
         default=8080,
         help="The port to run the server on."
     )
 
-
     args = parser.parse_args()
-    handler_class = partial(Handler, snapserver_rpc_url=args.snapserver_rpc_url, client_id_file=args.client_id_file)
+
+    snapserver_url = os.environ["SNAPSERVER_RPC_URL"]
+    client_id_file = os.environ["SNAPCLIENT_CLIENT_ID_FILE"]
+    home_assistant_url = os.environ["HOME_ASSISTANT_URL"]
+    home_assistant_token = os.environ["HOME_ASSISTANT_TOKEN"]
+    home_assistant_player_entity = os.environ["HOME_ASSISTANT_PLAYER_ENTITY"]
+
+    mute_config = {
+        "snapserver_url": snapserver_url,
+        "client_id_file": client_id_file,
+        "home_assistant_url": home_assistant_url,
+        "home_assistant_token": home_assistant_token,
+        "home_assistant_player_entity": home_assistant_player_entity
+    }
+
+    logger.info(f"Starting mute handler with config {mute_config}")
+
+    handler_class = partial(Handler, mute_config=mute_config)
 
     HTTPServer(("0.0.0.0", args.port), handler_class).serve_forever()

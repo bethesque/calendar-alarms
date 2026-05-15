@@ -10,8 +10,8 @@ logger = logging.getLogger(__name__)
 class SnapserverError(Exception):
     pass
 
-def set_clients_to_max_volume(snapserver_rpc_url):
-    clients = get_clients(snapserver_rpc_url)
+def set_clients_to_max_volume(ca_snapserver_rpc_url):
+    clients = get_clients(ca_snapserver_rpc_url)
 
     logger.info("Connected clients:")
     for client in clients:
@@ -30,7 +30,7 @@ def set_clients_to_max_volume(snapserver_rpc_url):
         logger.debug(result)
 
 def _rpc_call(
-    snapserver_rpc_url: str,
+    ca_snapserver_rpc_url: str,
     method: str,
     params: dict[str, Any] | None = None,
     request_id: int = 1,
@@ -44,7 +44,7 @@ def _rpc_call(
     if params is not None:
         payload["params"] = params
 
-    response = requests.post(snapserver_rpc_url, json=payload)
+    response = requests.post(ca_snapserver_rpc_url, json=payload)
     response.raise_for_status()
 
     data = response.json()
@@ -55,13 +55,13 @@ def _rpc_call(
     return data["result"]
 
 
-def get_clients(snapserver_rpc_url: str) -> list[dict[str, Any]]:
+def get_clients(ca_snapserver_rpc_url: str) -> list[dict[str, Any]]:
     """
     Return all connected Snapserver clients.
     """
 
     result = _rpc_call(
-        snapserver_rpc_url,
+        ca_snapserver_rpc_url,
         "Server.GetStatus",
     )
 
@@ -75,7 +75,7 @@ def get_clients(snapserver_rpc_url: str) -> list[dict[str, Any]]:
 
 
 def set_all_client_volumes(
-    snapserver_rpc_url: str,
+    ca_snapserver_rpc_url: str,
     percent: int = 100,
     muted: bool = False,
 ) -> list[dict[str, Any]]:
@@ -83,7 +83,7 @@ def set_all_client_volumes(
     Set the volume for all connected clients.
     """
 
-    clients = get_clients(snapserver_rpc_url)
+    clients = get_clients(ca_snapserver_rpc_url)
 
     batch_payload = []
 
@@ -102,7 +102,7 @@ def set_all_client_volumes(
         })
 
     response = requests.post(
-        snapserver_rpc_url,
+        ca_snapserver_rpc_url,
         json=batch_payload,
     )
     response.raise_for_status()

@@ -1,3 +1,4 @@
+import argparse
 import logging
 import cherrypy
 import google_auth_oauthlib.flow
@@ -124,4 +125,14 @@ class CalendarWebServer(object):
         return "The Calendar Alarms credentials have been updated."
 
 if __name__ == "__main__":
-    cherrypy.quickstart(CalendarWebServer(), config="server.conf")
+    parser = argparse.ArgumentParser(description="Audio control service")
+    parser.add_argument(
+        "--conf",
+        type=str,
+        default="server.conf",
+        help="The configuration file for the server."
+    )
+
+    args = parser.parse_args()
+
+    cherrypy.quickstart(CalendarWebServer(), config=args.conf)
