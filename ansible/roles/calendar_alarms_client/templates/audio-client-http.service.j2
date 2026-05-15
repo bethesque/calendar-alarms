@@ -1,0 +1,13 @@
+[Unit]
+Description=Audio Client HTTP
+After=network.target
+
+[Service]
+WorkingDirectory={{ client_root }}
+ExecStart={{ ansible_python_interpreter }} {{ http_index_file }} --port 8081
+EnvironmentFile={{ client_root }}/.env
+SyslogIdentifier=audio-client-http
+Restart=always
+
+[Install]
+WantedBy=default.target

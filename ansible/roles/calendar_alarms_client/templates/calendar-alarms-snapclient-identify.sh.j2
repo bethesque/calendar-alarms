@@ -3,8 +3,8 @@
 set -euo pipefail
 
 HOSTNAME="$(hostname)"
-SNAPCLIENT_HOST_ID="{{ snapclient_host_id }}"
-SNAPSERVER="{{ snapserver_rpc_url }}"
+SNAPCLIENT_HOST_ID="{{ ca_snapclient_host_id }}"
+SNAPSERVER="{{ ca_snapserver_rpc_url }}"
 OUTFILE="${XDG_RUNTIME_DIR}/calendar-alarms-snapclient/client_id.txt"
 
 mkdir -p "$(dirname "$OUTFILE")"
@@ -15,14 +15,14 @@ for i in {1..15}; do
     -d '{"id":1,"jsonrpc":"2.0","method":"Server.GetStatus"}')
 
   # Match client by host/name/id field (Snapcast varies by version)
-  client_id=$(echo "$response" | jq -r --arg hostname "$HOSTNAME" --arg snapclient_host_id "$SNAPCLIENT_HOST_ID" '
+  client_id=$(echo "$response" | jq -r --arg hostname "$HOSTNAME" --arg ca_snapclient_host_id "$SNAPCLIENT_HOST_ID" '
     .result.server.groups[]?.clients[]
     | select(
         .connected == true
         and .host.name == $hostname
         and (
-              .id == $snapclient_host_id
-              or select(.id | startswith($snapclient_host_id + "#"))
+              .id == $ca_snapclient_host_id
+              or select(.id | startswith($ca_snapclient_host_id + "#"))
             )
       )
     | .id

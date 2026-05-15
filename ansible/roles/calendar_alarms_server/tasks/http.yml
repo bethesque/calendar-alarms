@@ -1,0 +1,26 @@
+- name: Install server conf file for Calendar Alarms http service
+  ansible.builtin.template:
+    src: calendar-alarms-server.conf.j2
+    dest: "/home/{{ ansible_user }}/calendar-alarms-server.conf"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+
+# Logs can be viewed with `journalctl SYSLOG_IDENTIFIER=calendar-alarms-http`
+- name: Install Calendar Alarms http service (provides login and alarm stop endpoints)
+  ansible.builtin.template:
+    src: calendar-alarms-http.service.j2
+    dest: "/home/{{ ansible_user }}/.config/systemd/user/calendar-alarms-http.service"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+
+- name: Reload user systemd daemon
+  ansible.builtin.command: systemctl --user daemon-reload
+
+- name: Restart http service
+  ansible.builtin.systemd:
+    name: calendar-alarms-http.service
+    scope: user
+    state: restarted
+    enabled: true

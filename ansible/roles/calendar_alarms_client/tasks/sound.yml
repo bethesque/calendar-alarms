@@ -50,8 +50,5 @@
     mode: "0644"
 
 - name: Reboot if ALSA config was created for the first time
-  become: true
-  ansible.builtin.reboot:
-    msg: "Rebooting to apply initial ALSA configuration"
-    reboot_timeout: 300
+  ansible.builtin.import_tasks: reboot.yml
   when: is_pi and not asound_conf_stat.stat.exists

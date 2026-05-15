@@ -1,23 +1,34 @@
-- name: Checkout code
-  ansible.builtin.import_tasks: codebase.yml
-
 # - name: Stop
 #   ansible.builtin.meta: end_play
 
+- name: Checkout code
+  ansible.builtin.import_tasks: codebase.yml
+
 - name: Configure sound
   ansible.builtin.import_tasks: sound.yml
+  when: is_pi
 
 - name: Configure snapclient_user (the ansible user)
   ansible.builtin.import_tasks: snapclient_user.yml
+  tags: snapclient
 
 - name: Install Snapclient
   ansible.builtin.import_tasks: snapclient_install.yml
+  when: is_pi # Snapcast is custom built on travnas
+  tags:
+    - snapclient
 
-- name: Configure Snapclient service
+- name: Configure Calendar Alarms Snapclient service
   ansible.builtin.import_tasks: snapclient_service.yml
+  tags:
+    - calendar_alarms
+    - snapclient
 
 - name: Configure Snapclient Identification service
   ansible.builtin.import_tasks: snapclient_identify.yml
+  tags:
+    - calendar_alarms
+    - snapclient
 
 - name: Install alsa-utils
   become: true
@@ -32,6 +43,7 @@
     owner: "{{ snapclient_user }}"
     group: "{{ snapclient_user }}"
     mode: "0755"
+    tags: calendar_alarms
 
 - name: Install HTTP service
   ansible.builtin.import_tasks: http.yml

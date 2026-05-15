@@ -5,7 +5,7 @@ Wants=network-online.target
 
 [Service]
 ExecStartPre=/bin/sleep 2
-ExecStart=/usr/bin/snapclient tcp://{{ snapserver_host }}:{{ snapserver_stream_port }} --hostID={{ snapclient_host_id }} --instance 2 --latency {{ snapclient_latency }}
+ExecStart=/usr/bin/snapclient tcp://{{ ca_snapserver_host }}:{{ ca_snapserver_stream_port }} --hostID={{ ca_snapclient_host_id }} --instance 2 --latency {{ ca_snapclient_latency }}
 Restart=always
 RestartSec=5
 SyslogIdentifier=calendar-alarms-snapclient

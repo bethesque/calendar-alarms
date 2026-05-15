@@ -24,3 +24,11 @@
     chdir: "{{ project_root | dirname }}"
     creates: "{{ client_root }}"
   when: not calendar_alarms_client.stat.exists
+
+- name: Add .env file
+  ansible.builtin.template:
+    src: .env.j2
+    dest: "{{ client_root }}/.env"
+    owner: "{{ snapclient_user }}"
+    group: "{{ snapclient_user }}"
+    mode: "0755"

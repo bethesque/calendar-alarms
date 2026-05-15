@@ -1,13 +1,8 @@
-snapclient_version: "0.35.0"
-snapclient_deb: "snapclient_{{ snapclient_version }}-1_{{ snapclient_arch }}_{{ host_distro }}.deb"
+snapclient_version: "0.35.0-1"
+snapclient_deb: "snapclient_{{ snapclient_version }}_{{ snapclient_arch }}_{{ host_distro }}.deb"
 snapclient_url: "https://github.com/snapcast/snapcast/releases/download/v{{ snapclient_version }}/{{ snapclient_deb }}"
 snapclient_tmp: "/tmp/{{ snapclient_deb }}"
 snapclient_user: "{{ ansible_user }}"
-snapclient_client_id_file: "/run/user/{{ ansible_user_uid }}/calendar-alarms-snapclient/client_id.txt"
-project_root: "/home/{{ snapclient_user }}/calendar-alarms"
-client_root: "{{ project_root }}/client"
-http_index_file: "{{ client_root }}/index.py"
-
 snapclient_arch: >-
   {{
     'armhf' if ansible_facts['architecture'] == 'armv7l'
@@ -16,3 +11,8 @@ snapclient_arch: >-
     else 'x86_64' if ansible_facts['architecture'] in ['x86_64', 'amd64']
     else ansible_facts['architecture']
   }}
+
+ca_snapclient_client_id_file: "/run/user/{{ ansible_user_uid }}/calendar-alarms-snapclient/client_id.txt"
+project_root: "/home/{{ snapclient_user }}/calendar-alarms"
+client_root: "{{ project_root }}/client"
+http_index_file: "{{ client_root }}/index.py"

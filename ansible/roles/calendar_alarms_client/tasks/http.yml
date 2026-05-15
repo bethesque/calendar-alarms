@@ -1,8 +1,8 @@
-# Logs can be viewed with `journalctl SYSLOG_IDENTIFIER=calendar-alarms-http`
+# Logs can be viewed with `journalctl SYSLOG_IDENTIFIER=audio-client-http`
 - name: Install http service
   ansible.builtin.template:
-    src: calendar-alarms-http.service.j2
-    dest: "/home/{{ snapclient_user }}/.config/systemd/user/calendar-alarms-http.service"
+    src: audio-client-http.service.j2
+    dest: "/home/{{ snapclient_user }}/.config/systemd/user/audio-client-http.service"
     owner: "{{ snapclient_user }}"
     group: "{{ snapclient_user }}"
     mode: "0644"
@@ -12,7 +12,7 @@
 
 - name: Restart http service
   ansible.builtin.systemd:
-    name: calendar-alarms-http.service
+    name: audio-client-http.service
     scope: user
     state: restarted
     enabled: true

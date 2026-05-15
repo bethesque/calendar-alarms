@@ -1,3 +1,3 @@
 - hosts: audio_host
   roles:
-    - audio_pipeline
+    - calendar_alarms_server

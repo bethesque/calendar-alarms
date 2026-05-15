@@ -1,0 +1,120 @@
+#!/usr/bin/env python3
+
+import argparse
+import json
+import sys
+from urllib import request, error
+
+SERVER = "http://{{ ma_snapserver_host }}:{{ ma_snapserver_control_port }}/jsonrpc"
+CLIENT = "{{ ma_snapclient_host_id }}"
+LATENCY = {{ ma_snapclient_latency }}
+
+
+def rpc_call(server_url: str, method: str, params: dict) -> dict:
+    payload = {
+        "id": 1,
+        "jsonrpc": "2.0",
+        "method": method,
+        "params": params,
+    }
+
+    req = request.Request(
+        server_url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+    )
+
+    with request.urlopen(req, timeout=10) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def get_clients(server_url: str) -> list[dict]:
+    response = rpc_call(server_url, "Server.GetStatus", {})
+
+    if "result" not in response:
+        raise RuntimeError(f"Invalid response: {response}")
+
+    return response["result"]["server"]["groups"]
+
+
+def set_latency(server_url: str, client_id: str, latency: int) -> None:
+    rpc_call(
+        server_url,
+        "Client.SetLatency",
+        {
+            "id": client_id,
+            "latency": latency,
+        },
+    )
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--server",
+        default=SERVER,
+        help="Snapserver JSON-RPC endpoint",
+    )
+
+    parser.add_argument(
+        "--client",
+        default=CLIENT,
+        help="Snapclient identifier (hostname or client ID)",
+    )
+
+    parser.add_argument(
+        "--latency",
+        default=LATENCY,
+        type=int,
+        help="Latency in milliseconds",
+    )
+
+    args = parser.parse_args()
+
+    try:
+        groups = get_clients(args.server)
+
+        matched_client = None
+
+        for group in groups:
+            for client in group.get("clients", []):
+                host = client.get("host", {}).get("name")
+                client_id = client.get("id")
+
+                if args.client in (host, client_id) and client.get("connected", False) == True:
+                    matched_client = client
+                    break
+
+            if matched_client:
+                break
+
+        if not matched_client:
+            print(
+                f"ERROR: Could not find snapclient '{args.client}'",
+                file=sys.stderr,
+            )
+            return 1
+
+        client_id = matched_client["id"]
+
+        set_latency(args.server, client_id, args.latency)
+
+        print(
+            f"Set latency for client '{args.client}' "
+            f"(id={client_id}) to {args.latency} ms"
+        )
+
+        return 0
+
+    except error.URLError as exc:
+        print(f"Connection error: {exc}", file=sys.stderr)
+        return 2
+
+    except Exception as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 3
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,47 @@
+# Relies on the fact that snapclient has already been installed by the calendar alarms project
+
+# Logs can be viewed with `journalctl SYSLOG_IDENTIFIER=music-assistant-snapclient`
+- name: Install snapclient user service
+  ansible.builtin.template:
+      # Give it a custom service name so multiple snapclient instances can be run if needed
+    # (e.g. one for calendar alarms, one for general music)
+    src: music-assistant-snapclient.service.j2
+    dest: "/home/{{ snapclient_user }}/.config/systemd/user/music-assistant-snapclient.service"
+    owner: "{{ snapclient_user }}"
+    group: "{{ snapclient_user }}"
+    mode: "0644"
+
+- name: Reload user systemd daemon
+  ansible.builtin.command: systemctl --user daemon-reload
+
+- name: Restart user snapclient service
+  ansible.builtin.systemd:
+    name: music-assistant-snapclient.service
+    scope: user
+    state: restarted
+    enabled: true
+
+- name: Add snapclient utils file
+  ansible.builtin.template:
+    src: music-assistant-snapclient-utils.sh.j2
+    dest: "/home/{{ snapclient_user }}/music-assistant-snapclient-utils.sh"
+    owner: "{{ snapclient_user }}"
+    group: "{{ snapclient_user }}"
+    mode: "0755"
+
+- name: Add script to set the snapclient latency
+  ansible.builtin.template:
+    src: set_snapclient_latency.py.j2
+    dest: "/home/{{ snapclient_user }}/set_snapclient_latency.py"
+    owner: "{{ snapclient_user }}"
+    group: "{{ snapclient_user }}"
+    mode: "0755"
+
+
+# The --latency option in the snapclient startup command seems to be overridden by the last one that the snapserver
+# knew about, so set the latency via the snapserver instead of using the --latency option.
+- name: Set snapclient latency
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_python_interpreter }}"
+      - set_snapclient_latency.py

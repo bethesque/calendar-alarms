@@ -1,7 +1,0 @@
-- hosts: audio_host
-  become: yes
-  roles:
-    - audio_pipeline
-- hosts: audio_clients
-  roles:
-    - audio_client

@@ -1,0 +1,10 @@
+[Unit]
+Description=Calendar Alarms HTTP
+After=multi-user.target
+
+[Service]
+WorkingDirectory=/home/{{ ansible_user }}/calendar-alarms/server
+ExecStart=/usr/bin/python3.13 index.py
+
+[Install]
+WantedBy=multi-user.target

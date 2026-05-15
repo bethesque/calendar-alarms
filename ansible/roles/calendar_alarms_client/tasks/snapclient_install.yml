@@ -8,13 +8,17 @@
   failed_when: false
   changed_when: false
 
+- name: debug raw installed version
+  ansible.builtin.debug:
+    msg: "Installed: {{ snapclient_version_raw.stdout }}"
+
 - name: Set installed version without trailing revision
   ansible.builtin.set_fact:
-    installed_snapclient_version: >-
-      {{
-        snapclient_version_raw.stdout | default('')
-        | regex_replace('-[0-9]+$', '')
-      }}
+    installed_snapclient_version: "{{ snapclient_version_raw.stdout }}"
+      # {{
+      #   snapclient_version_raw.stdout | default('')
+      #   | regex_replace('-[0-9]+$', '')
+      # }}
 
 - name: Debug installed version
   ansible.builtin.debug:
