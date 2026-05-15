@@ -1,20 +1,20 @@
-- name: Check if calendar-alarms server checkout exists
+- name: Check if calendar-alarms project checkout exists
   ansible.builtin.stat:
-    path: "{{ server_root }}"
+    path: "{{ project_root }}"
   register: calendar_alarms_server
-
-- name: Update existing checkout
-  ansible.builtin.command:
-    cmd: git pull
-    chdir: "{{ project_root }}"
-  when: calendar_alarms_server.stat.exists
 
 - name: Clone sparse checkout if missing
   ansible.builtin.shell: |
     git clone --filter=blob:none --sparse https://github.com/bethesque/calendar-alarms.git "{{ project_root }}"
-    cd "{{ project_root }}"
-    git sparse-checkout set server
   args:
     chdir: "{{ project_root | dirname }}"
-    creates: "{{ server_root }}"
+    creates: "{{ project_root }}"
   when: not calendar_alarms_server.stat.exists
+
+- name: Update existing checkout
+  ansible.builtin.shell: |
+    git sparse-checkout set server
+    git pull
+  args:
+    chdir: "{{ project_root }}"
+    creates: "{{ server_root }}"

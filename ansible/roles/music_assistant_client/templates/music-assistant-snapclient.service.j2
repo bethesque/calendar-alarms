@@ -4,7 +4,7 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-ExecStart=/usr/bin/snapclient tcp://{{ ma_snapserver_host }}:{{ ma_snapserver_stream_port }} --hostID={{ ma_snapclient_host_id }} --instance 1
+ExecStart={{ snapclient_path }} tcp://{{ ma_snapserver_host }}:{{ ma_snapserver_stream_port }} --hostID={{ ma_snapclient_host_id }} --instance 1
 Restart=always
 RestartSec=5
 SyslogIdentifier=music-assistant-snapclient

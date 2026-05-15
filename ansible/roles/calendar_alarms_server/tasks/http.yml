@@ -1,10 +1,18 @@
 - name: Install server conf file for Calendar Alarms http service
   ansible.builtin.template:
     src: calendar-alarms-server.conf.j2
-    dest: "/home/{{ ansible_user }}/calendar-alarms-server.conf"
+    dest: "{{ calendar_alarms_server_conf }}"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0644"
+
+- name: Ensure user systemd directory exists
+  ansible.builtin.file:
+    path: "/home/{{ ansible_user }}/.config/systemd/user"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
 
 # Logs can be viewed with `journalctl SYSLOG_IDENTIFIER=calendar-alarms-http`
 - name: Install Calendar Alarms http service (provides login and alarm stop endpoints)

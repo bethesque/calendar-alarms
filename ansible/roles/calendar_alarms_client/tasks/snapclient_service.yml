@@ -6,6 +6,16 @@
     enabled: false
   failed_when: false
 
+- name: Find snapclient binary
+  ansible.builtin.command: which snapclient
+  register: snapclient_which
+  changed_when: false
+  failed_when: false
+
+- name: Store snapclient path
+  ansible.builtin.set_fact:
+    snapclient_path: "{{ snapclient_which.stdout }}"
+
 # Configure snapclient systemd service for user
 # Best to do it as a user service rather than a system service to avoid permissions
 # issues with audio devices. The Bluetooth audio sink is owned by the user,

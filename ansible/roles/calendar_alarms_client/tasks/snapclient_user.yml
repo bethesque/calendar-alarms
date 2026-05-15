@@ -18,6 +18,6 @@
   register: snapclient_user_update
 
 - name: Reset connection if group membership changed
+  ansible.builtin.import_tasks: reboot.yml
   when: snapclient_user_update.changed | bool
-  block:
-    - ansible.builtin.meta: reset_connection
+

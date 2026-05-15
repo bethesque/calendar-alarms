@@ -1,8 +1,9 @@
 - name: Install project code
   ansible.builtin.import_tasks: codebase.yml
+  tags: http
 
-- name: End play
-  ansible.builtin.meta: end_play
+# - name: End play
+#   ansible.builtin.meta: end_play
 
 - name: Install packages
   apt:
@@ -40,7 +41,9 @@
 - name: Configure mpd
   ansible.builtin.import_tasks: mpd_configure.yml
 
-# TODO - Add calendar-alarms-http.service
+- name: Install http service
+  ansible.builtin.import_tasks: http.yml
+  tags: http
 
 - name: Add calendar alarms utils file
   ansible.builtin.template:

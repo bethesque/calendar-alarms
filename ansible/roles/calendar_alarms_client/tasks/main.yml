@@ -23,6 +23,7 @@
   tags:
     - calendar_alarms
     - snapclient
+    - snapclient_service
 
 - name: Configure Snapclient Identification service
   ansible.builtin.import_tasks: snapclient_identify.yml
@@ -47,3 +48,15 @@
 
 - name: Install HTTP service
   ansible.builtin.import_tasks: http.yml
+
+- name: Check if calendar-alarms-snapclient.service is active
+  ansible.builtin.command:
+    cmd: systemctl --user is-active calendar-alarms-snapclient.service
+  changed_when: false
+  failed_when: false
+
+- name: Check if audio-client-http.service is active
+  ansible.builtin.command:
+    cmd: systemctl --user is-active audio-client-http.service
+  changed_when: false
+  failed_when: false

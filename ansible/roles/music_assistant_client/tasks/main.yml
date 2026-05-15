@@ -1,5 +1,15 @@
 # Relies on the fact that snapclient has already been installed by the calendar alarms project
 
+- name: Find snapclient binary
+  ansible.builtin.command: which snapclient
+  register: snapclient_which
+  changed_when: false
+  failed_when: false
+
+- name: Store snapclient path
+  ansible.builtin.set_fact:
+    snapclient_path: "{{ snapclient_which.stdout }}"
+
 # Logs can be viewed with `journalctl SYSLOG_IDENTIFIER=music-assistant-snapclient`
 - name: Install snapclient user service
   ansible.builtin.template:

@@ -1,10 +1,13 @@
 [Unit]
 Description=Calendar Alarms HTTP
-After=multi-user.target
+After=network-online.target
+Wants=network-online.target
 
 [Service]
-WorkingDirectory=/home/{{ ansible_user }}/calendar-alarms/server
-ExecStart=/usr/bin/python3.13 index.py
+WorkingDirectory={{ server_root }}
+ExecStart=/usr/bin/python3.13 index.py --conf {{ calendar_alarms_server_conf }}
+SyslogIdentifier=calendar-alarms-http
+Restart=always
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target

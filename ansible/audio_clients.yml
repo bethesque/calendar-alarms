@@ -1,4 +1,4 @@
 - hosts: audio_clients
   roles:
-    - calendar_alarms_client
+    #- calendar_alarms_client
     - music_assistant_client
