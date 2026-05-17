@@ -3,6 +3,7 @@
 
 - name: Checkout code
   ansible.builtin.import_tasks: codebase.yml
+  tags: codebase
 
 - name: Configure sound
   ansible.builtin.import_tasks: sound.yml

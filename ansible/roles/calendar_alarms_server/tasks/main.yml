@@ -1,6 +1,8 @@
 - name: Install project code
   ansible.builtin.import_tasks: codebase.yml
-  tags: http
+  tags:
+    - http
+    - codebase
 
 # - name: End play
 #   ansible.builtin.meta: end_play

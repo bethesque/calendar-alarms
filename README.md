@@ -105,15 +105,16 @@ python3.13 -m pip install -e .
 
 On develoment machine
 1. Install ansible.
-1. Create `ansible/secrets.yml` with `travnas_pass` and `pi_pass` values.
+1. Create `ansible/secrets.yml` with:
+    * `travnas_pass`
+    * `pi_pass`
+    * `home_assisstant_token`
 1. Run `script/deploy/audio_host.sh`
 1. Run `script/deploy/audio_clients.sh`
 
 #### HTTP service
 
 The HTTP service provides two functions - allowing the calendar to get/update Google credentials for fetching the calendar data, and providing an endpoint to stop the alarm.
-
-
 
 ```
 
