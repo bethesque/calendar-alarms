@@ -7,10 +7,10 @@
     - codebase
     - http
 
-
 - name: Configure sound
   ansible.builtin.import_tasks: sound.yml
   when: is_pi
+  tags: audio
 
 - name: Configure snapclient_user (the ansible user)
   ansible.builtin.import_tasks: snapclient_user.yml
@@ -41,6 +41,12 @@
     name: alsa-utils
     state: present
 
+- name: Set amixer volume
+  ansible.builtin.command:
+    cmd: "amixer set Speaker {{ default_speaker_volume }}"
+  tags: audio
+  when: not is_bluetooth_audio
+
 - name: Add calendar alarms utils file
   ansible.builtin.template:
     src: calendar-alarms-client-utils.sh.j2
@@ -68,3 +74,10 @@
   register: script_result
   failed_when: "'active' not in script_result.stdout"
   tags: http
+
+- name: Test audio
+  ansible.builtin.command:
+    cmd: speaker-test -c 2 -t wav -l 1
+  changed_when: false
+  tags: audio
+

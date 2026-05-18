@@ -55,3 +55,17 @@
     dest: "/home/{{ ansible_user }}/calendar-alarms-server-utils.sh"
     owner: "{{ ansible_user }}"
     mode: "0755"
+
+- name: Test snapcast
+  ansible.builtin.shell: |
+    mpc clear
+    mpc add /usr/share/sounds/alsa/Front_Center.wav
+    mpc volume 50
+    mpc play
+    sleep 5
+    mpc clear
+  environment:
+    MPD_HOST: "{{ mpd_bind_address }}"
+  tags:
+    - audio
+    - pvt

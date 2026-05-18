@@ -1,3 +1,3 @@
 #!/bin/bash
 
-ansible-playbook -i ansible/inventory/hosts.yml --limit audio_clients ansible/audio_clients.yml -e @ansible/secrets.yml
+ansible-playbook -i ansible/inventory/hosts.yml --limit audio_clients ansible/audio_clients.yml -e @ansible/secrets.yml "$@"
