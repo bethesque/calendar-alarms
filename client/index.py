@@ -14,12 +14,20 @@ import argparse
 http.client.HTTPConnection.debuglevel = 1
 logger = logging.getLogger(__name__)
 
+"""
+This service listens for POST requests to /audio/mute and mutes the audio output when triggered. It does this by:
+1. Muting the ALSA output using amixer (via VolumeController) for an immediate response.
+2. Muting the Snapclient by calling the Snapserver JSON-RPC API.
+3. Pausing the Music Assistant player via Home Assistant webhook.
+4. Restoring the ALSA volume gradually.
+The service responds immediately to the HTTP request and performs the muting operations asynchronously to avoid blocking the client.
+It uses only native Python libraries without any additional dependencies.
+"""
 
-
-def mute(mute_config):
+def mute(audio_config):
     with muted_alsa():
-        mute_snapclient(mute_config["snapserver_url"], mute_config["client_id_file"])
-        pause_music_assistant_player(mute_config)
+        mute_snapclient(audio_config["snapserver_url"], audio_config["client_id_file"])
+        pause_music_assistant_player(audio_config)
 
 def mute_snapclient(ca_snapserver_rpc_url, client_id_file):
     try:
@@ -31,9 +39,9 @@ def mute_snapclient(ca_snapserver_rpc_url, client_id_file):
     except Exception:
         logger.exception("Error muting snapclient")
 
-def pause_music_assistant_player(mute_config):
+def pause_music_assistant_player(audio_config):
     try:
-        pause_player(mute_config["home_assistant_url"], mute_config["home_assistant_token"], mute_config["home_assistant_player_entity"])
+        pause_player(audio_config["home_assistant_url"], audio_config["home_assistant_player_entity"])
     except Exception:
         logger.exception("Error pausing Music Assistant player")
 
@@ -42,20 +50,20 @@ def pause_music_assistant_player(mute_config):
 def muted_alsa():
     try:
         volume_controller = VolumeController()
-        #volume_controller.mute()
+        volume_controller.mute()
         yield
-        #volume_controller.unmute_slowly()
+        volume_controller.unmute_slowly()
     except Exception:
         logger.exception("Exception muting/unmuting volume using amixer")
 
 
 class Handler(BaseHTTPRequestHandler):
-    def __init__(self, *args, mute_config,  **kwargs):
-        self.mute_config = mute_config
+    def __init__(self, *args, audio_config,  **kwargs):
+        self.audio_config = audio_config
         super().__init__(*args, **kwargs)
 
     def do_POST(self):
-        if self.path != "/alarm/mute":
+        if self.path != "/audio/mute":
             self.send_response(404)
             self.end_headers()
             return
@@ -67,10 +75,7 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(b"Muting\n")
 
         # Async execution
-        threading.Thread(target=mute, args=(self.mute_config,), daemon=True).start()
-
-    def log_message(self, format, *args):
-        return
+        threading.Thread(target=mute, args=(self.audio_config,), daemon=True).start()
 
 
 if __name__ == "__main__":
@@ -90,16 +95,15 @@ if __name__ == "__main__":
     home_assistant_token = os.environ["HOME_ASSISTANT_TOKEN"]
     home_assistant_player_entity = os.environ["HOME_ASSISTANT_PLAYER_ENTITY"]
 
-    mute_config = {
+    audio_config = {
         "snapserver_url": snapserver_url,
         "client_id_file": client_id_file,
         "home_assistant_url": home_assistant_url,
-        "home_assistant_token": home_assistant_token,
         "home_assistant_player_entity": home_assistant_player_entity
     }
 
-    logger.info(f"Starting mute handler with config {mute_config}")
+    logger.info(f"Starting mute handler with config {audio_config}")
 
-    handler_class = partial(Handler, mute_config=mute_config)
+    handler_class = partial(Handler, audio_config=audio_config)
 
     HTTPServer(("0.0.0.0", args.port), handler_class).serve_forever()

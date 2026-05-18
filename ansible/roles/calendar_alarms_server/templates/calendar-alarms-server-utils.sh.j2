@@ -43,3 +43,7 @@ function calendar-alarms-http-restart {
 function calendar-alarms-http-stop {
     sudo systemctl stop calendar-alarms-http
 }
+
+function calendar-alarms-http-logs {
+    journalctl SYSLOG_IDENTIFIER=calendar-alarms-http "$@"
+}

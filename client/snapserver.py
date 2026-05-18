@@ -1,7 +1,6 @@
 import json
 import threading
 from urllib.request import Request, urlopen
-from pathlib import Path
 import logging
 import http.client
 
