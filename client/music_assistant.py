@@ -1,6 +1,9 @@
 import json
 from urllib import request, error
 
+"""
+Calls a webhook on Home Assistant to ungroup and pause playback for the given player.
+"""
 def pause_player(home_assistant_url, player):
     url = f"{home_assistant_url}/api/webhook/media_player_pause"
 

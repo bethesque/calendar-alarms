@@ -24,11 +24,15 @@ The service responds immediately to the HTTP request and performs the muting ope
 It uses only native Python libraries without any additional dependencies.
 """
 
-def mute(audio_config):
+def stop(audio_config):
     with muted_alsa():
         mute_snapclient(audio_config["snapserver_url"], audio_config["client_id_file"])
         pause_music_assistant_player(audio_config)
 
+"""
+For alarms/announcements, mute the snapclient rather than trying to stop the stream.
+The next alarm/announcement will set the volume back to 100%.
+"""
 def mute_snapclient(ca_snapserver_rpc_url, client_id_file):
     try:
         client_id = Path(client_id_file).read_text().strip()
@@ -44,7 +48,6 @@ def pause_music_assistant_player(audio_config):
         pause_player(audio_config["home_assistant_url"], audio_config["home_assistant_player_entity"])
     except Exception:
         logger.exception("Error pausing Music Assistant player")
-
 
 @contextmanager
 def muted_alsa():
@@ -63,7 +66,7 @@ class Handler(BaseHTTPRequestHandler):
         super().__init__(*args, **kwargs)
 
     def do_POST(self):
-        if self.path != "/audio/mute":
+        if self.path != "/audio/stop":
             self.send_response(404)
             self.end_headers()
             return
@@ -72,10 +75,10 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(202)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
-        self.wfile.write(b"Muting\n")
+        self.wfile.write(b"Stopping\n")
 
         # Async execution
-        threading.Thread(target=mute, args=(self.audio_config,), daemon=True).start()
+        threading.Thread(target=stop, args=(self.audio_config,), daemon=True).start()
 
 
 if __name__ == "__main__":
