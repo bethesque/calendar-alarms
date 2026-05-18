@@ -1,9 +1,11 @@
 - name: Reload systemd daemon
   ansible.builtin.systemd:
     daemon_reload: true
+  become: true
 
 - name: Restart snapserver
   ansible.builtin.systemd:
     name: snapserver
     state: restarted
     enabled: true
+  become: true

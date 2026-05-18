@@ -18,3 +18,9 @@
     git pull
   args:
     chdir: "{{ project_root }}"
+
+- name: Install package in editable mode
+  ansible.builtin.pip:
+    name: .
+    editable: true
+  tags: slow

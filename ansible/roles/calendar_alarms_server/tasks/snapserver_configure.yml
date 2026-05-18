@@ -20,7 +20,7 @@
     group: root
     mode: "0644"
 
-- name: Configure Snapweb (use the custom build from https://github.com/bethesque/snapweb)
+- name: Install Snapweb (use the custom build from https://github.com/bethesque/snapweb)
   copy:
     src: "{{ playbook_dir }}/../snapweb/"
     dest: "{{ snapweb_doc_root }}"

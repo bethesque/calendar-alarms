@@ -29,19 +29,19 @@ function calendar-alarms-snapserver-test {
 }
 
 function calendar-alarms-http-status {
-    sudo systemctl status calendar-alarms-http
+    systemctl --user status calendar-alarms-http
 }
 
 function calendar-alarms-http-start {
-    sudo systemctl start calendar-alarms-http
+    systemctl --user start calendar-alarms-http
 }
 
 function calendar-alarms-http-restart {
-    sudo systemctl restart calendar-alarms-http
+    systemctl --user restart calendar-alarms-http
 }
 
 function calendar-alarms-http-stop {
-    sudo systemctl stop calendar-alarms-http
+    systemctl --user stop calendar-alarms-http
 }
 
 function calendar-alarms-http-logs {

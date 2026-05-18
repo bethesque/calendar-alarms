@@ -14,8 +14,10 @@
       - ffmpeg
       - alsa-utils
       - git
+      - python3-pip
     state: present
     update_cache: yes
+  become: yes
 
 # MPD FIFO
 - name: Ensure FIFO exists

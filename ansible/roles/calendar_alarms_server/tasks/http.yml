@@ -32,3 +32,10 @@
     scope: user
     state: restarted
     enabled: true
+
+- name: Check if http service is active
+  ansible.builtin.command:
+    cmd: systemctl --user is-active calendar-alarms-http.service
+  changed_when: false
+  register: script_result
+  failed_when: "'active' not in script_result.stdout"
