@@ -3,7 +3,10 @@
 
 - name: Checkout code
   ansible.builtin.import_tasks: codebase.yml
-  tags: codebase
+  tags:
+    - codebase
+    - http
+
 
 - name: Configure sound
   ansible.builtin.import_tasks: sound.yml
@@ -61,3 +64,4 @@
     cmd: systemctl --user is-active audio-client-http.service
   changed_when: false
   failed_when: false
+  tags: http

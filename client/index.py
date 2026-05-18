@@ -92,7 +92,6 @@ if __name__ == "__main__":
     snapserver_url = os.environ["SNAPSERVER_RPC_URL"]
     client_id_file = os.environ["SNAPCLIENT_CLIENT_ID_FILE"]
     home_assistant_url = os.environ["HOME_ASSISTANT_URL"]
-    home_assistant_token = os.environ["HOME_ASSISTANT_TOKEN"]
     home_assistant_player_entity = os.environ["HOME_ASSISTANT_PLAYER_ENTITY"]
 
     audio_config = {

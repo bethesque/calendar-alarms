@@ -108,7 +108,6 @@ On develoment machine
 1. Create `ansible/secrets.yml` with:
     * `travnas_pass`
     * `pi_pass`
-    * `home_assisstant_token`
 1. Run `script/deploy/audio_host.sh`
 1. Run `script/deploy/audio_clients.sh`
 
