@@ -22,22 +22,22 @@ function calendar-alarms-speaker-test {
     speaker-test -c 2 -t wav -l 1
 }
 
-function calendar-alarms-http-logs {
-    journalctl SYSLOG_IDENTIFIER=calendar-alarms-http "$@"
+function audio-client-http-logs {
+    journalctl SYSLOG_IDENTIFIER=audio-client-http "$@"
 }
 
-function calendar-alarms-http-status {
-    systemctl --user status calendar-alarms-http
+function audio-client-http-status {
+    systemctl --user status audio-client-http
 }
 
-function calendar-alarms-http-start {
-    systemctl --user start calendar-alarms-http
+function audio-client-http-start {
+    systemctl --user start audio-client-http
 }
 
-function calendar-alarms-http-restart {
-    systemctl --user restart calendar-alarms-http
+function audio-client-http-restart {
+    systemctl --user restart audio-client-http
 }
 
-function calendar-alarms-http-stop {
-    systemctl --user stop calendar-alarms-http
+function audio-client-http-stop {
+    systemctl --user stop audio-client-http
 }
