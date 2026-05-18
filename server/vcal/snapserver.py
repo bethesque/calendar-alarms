@@ -6,22 +6,22 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
 class SnapserverError(Exception):
     pass
 
 def set_clients_to_max_volume(ca_snapserver_rpc_url):
-    clients = get_clients(ca_snapserver_rpc_url)
+    clients = get_connected_clients(ca_snapserver_rpc_url)
 
-    logger.info("Connected clients:")
-    for client in clients:
-        logger.info(
-            f"- {client['host']['name']} "
-            f"({client['id']})"
-        )
+    logger.info(
+        "Connected snapclients: %s",
+        ", ".join(
+            f"{client['host']['name']} ({client['id']})"
+            for client in clients
+        ),
+    )
 
     results = set_all_client_volumes(
-        SNAPSERVER_RPC_URL,
+        ca_snapserver_rpc_url,
         percent=100,
     )
 
@@ -55,7 +55,7 @@ def _rpc_call(
     return data["result"]
 
 
-def get_clients(ca_snapserver_rpc_url: str) -> list[dict[str, Any]]:
+def get_connected_clients(ca_snapserver_rpc_url: str) -> list[dict[str, Any]]:
     """
     Return all connected Snapserver clients.
     """
@@ -69,7 +69,8 @@ def get_clients(ca_snapserver_rpc_url: str) -> list[dict[str, Any]]:
 
     for group in result["server"]["groups"]:
         for client in group["clients"]:
-            clients.append(client)
+            if client['connected']:
+                clients.append(client)
 
     return clients
 
@@ -83,7 +84,7 @@ def set_all_client_volumes(
     Set the volume for all connected clients.
     """
 
-    clients = get_clients(ca_snapserver_rpc_url)
+    clients = get_connected_clients(ca_snapserver_rpc_url)
 
     batch_payload = []
 
@@ -101,6 +102,16 @@ def set_all_client_volumes(
             },
         })
 
+    logger.info(
+        "Setting volume to %d%% and muted to %s for snapclients: %s",
+        percent,
+        muted,
+        ", ".join(
+            f"{client['host']['name']} ({client['id']})"
+            for client in clients
+        ),
+    )
+
     response = requests.post(
         ca_snapserver_rpc_url,
         json=batch_payload,
@@ -108,8 +119,3 @@ def set_all_client_volumes(
     response.raise_for_status()
 
     return response.json()
-
-
-if __name__ == "__main__":
-    SNAPSERVER_RPC_URL = "http://localhost:1780/jsonrpc"
-    set_clients_to_max_volume(SNAPSERVER_RPC_URL)

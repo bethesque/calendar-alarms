@@ -2,12 +2,13 @@ import logging
 import glob
 import time
 from datetime import timedelta
-from vcal.alarms.sound import build_alarm_audio, join_mp3s_to_wav, mix_announcement_audio
+from vcal.alarms.sound import build_alarm_audio, join_mp3s_to_wav
 from vcal.alarms.text_to_voice import text_to_voice_file
 from vcal.alarms.mpd import fade_up, fade_out, mpd_connection
 from vcal.select_item import select_item_by_date
 from vcal.alarms import ALARMS_DIRECTORY, AUDIO_DIRECTORY
-from vcal.env import OUTPUT_AUDIO_DIRECTORY, INITIAL_VOLUME, ANNOUNCEMENT_VOLUME
+from vcal.env import OUTPUT_AUDIO_DIRECTORY, INITIAL_VOLUME, ANNOUNCEMENT_VOLUME, SNAPSERVER_RPC_URL
+from vcal.snapserver import set_clients_to_max_volume
 from vcal.alarms.sound import track_length
 from vcal.scene import SceneProtocol
 
@@ -158,6 +159,7 @@ class AnnouncementAudio:
 
 def play_notifications(announcements_file, alarms_file, scene: SceneProtocol):
     scene.save()
+    set_snapclients_to_max_volume()
     if announcements_file:
         scene.prepare_for_announcement()
         _play_announcement(announcements_file)
@@ -170,6 +172,12 @@ def play_notifications(announcements_file, alarms_file, scene: SceneProtocol):
     if alarms_file:
         scene.prepare_for_alarm()
         _play_alarm(alarms_file, announcements_file is not None)
+
+def set_snapclients_to_max_volume():
+    try:
+        set_clients_to_max_volume(SNAPSERVER_RPC_URL)
+    except Exception:
+        logger.exception("Error setting clients to max volume - audio may not be heard")
 
 def _play_announcement(announcements_file):
     with mpd_connection() as alarm_player:
