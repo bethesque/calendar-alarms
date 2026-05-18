@@ -24,7 +24,6 @@
     git pull
   args:
     chdir: "{{ project_root }}"
-    creates: "{{ client_root }}"
 
 - name: Add .env file
   ansible.builtin.template:

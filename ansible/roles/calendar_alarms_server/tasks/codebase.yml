@@ -18,4 +18,3 @@
     git pull
   args:
     chdir: "{{ project_root }}"
-    creates: "{{ server_root }}"
