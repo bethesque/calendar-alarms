@@ -55,6 +55,7 @@ def callback(button_mac, service_uuid, endpoints, device, advertisement_data):
 
     # filter device
     if not device.address == button_mac:
+        logging.info(f"Expected device mac {button_mac} but got {device.address}. Ignoring.")
         return
 
     sd = advertisement_data.service_data

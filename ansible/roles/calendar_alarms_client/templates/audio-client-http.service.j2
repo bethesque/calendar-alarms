@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 WorkingDirectory={{ client_root }}
-ExecStart={{ ansible_python_interpreter }} {{ http_index_file }} --port 8082
+ExecStart={{ ansible_python_interpreter }} {{ http_index_file }} --port {{ audio_client_http_port }}
 EnvironmentFile={{ client_root }}/.env
 SyslogIdentifier=audio-client-http
 Restart=always

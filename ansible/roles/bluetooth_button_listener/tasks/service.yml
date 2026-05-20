@@ -24,10 +24,3 @@
     scope: user
     state: restarted
     enabled: true
-
-- name: Check if service is active
-  ansible.builtin.command:
-    cmd: systemctl --user is-active bluetooth-button-listener.service
-  changed_when: false
-  register: script_result
-  failed_when: "'active' not in script_result.stdout"

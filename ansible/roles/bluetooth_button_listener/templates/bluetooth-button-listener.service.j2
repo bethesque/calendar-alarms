@@ -5,11 +5,12 @@ Wants=network-online.target
 
 [Service]
 WorkingDirectory={{ bbl_root }}
-ExecStart={{ ansible_python_interpreter}} btb/listen.py
+ExecStart={{ bbl_root }}/script/listen.sh
 EnvironmentFile={{ bbl_root }}/.env
 
 SyslogIdentifier=bluetooth-button-listener
 Restart=always
+RestartSec=60s
 
 [Install]
 WantedBy=default.target

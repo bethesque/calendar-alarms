@@ -6,7 +6,7 @@
 - name: Clone sparse checkout if missing
   ansible.builtin.shell: |
     git clone --filter=blob:none --sparse https://github.com/bethesque/calendar-alarms.git "{{ project_root }}"
-    git sparse-checkout set bluetooth-listener
+    git sparse-checkout set bluetooth-button-listener
   args:
     chdir: "{{ project_root | dirname }}"
     creates: "{{ project_root }}"
@@ -14,7 +14,15 @@
 
 - name: Update existing checkout
   ansible.builtin.shell: |
-    git sparse-checkout add bluetooth-listener
+    git sparse-checkout add bluetooth-button-listener
     git pull
   args:
     chdir: "{{ project_root }}"
+
+- name: Add .env file
+  ansible.builtin.template:
+    src: .env.j2
+    dest: "{{ bbl_root }}/.env"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"

@@ -1,9 +1,29 @@
+- name: Unblock Bluetooth
+  become: true
+  ansible.builtin.command:
+    cmd: rfkill unblock bluetooth
+
 - name: Checkout code
   ansible.builtin.import_tasks: codebase.yml
   tags:
     - codebase
 
-- name: Install service
+# It won't run the first time as it requires the 30 minute pip install.
+- name: Install service.
   ansible.builtin.import_tasks: service.yml
   tags:
     - codebase
+
+# # Hopefully the service will have enough retries to start after the install is done.
+# - name: Start pip install asynchronously. This task will take 30+ minutes.
+#   ansible.builtin.shell: |
+#     {{ ansible_python_interpreter }} -m venv .venv
+#     source .venv/bin/activate
+#     python -m pip install . -e
+#   args:
+#     chdir: "{{ bbl_root }}"
+#   async: 7200
+#   poll: 0
+#   register: pip_install_job
+#   tags:
+#     - slow
