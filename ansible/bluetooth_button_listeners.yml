@@ -1,3 +1,4 @@
 - hosts: bluetooth_button_listeners
   roles:
+    - common
     - bluetooth_button_listener

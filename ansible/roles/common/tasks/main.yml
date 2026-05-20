@@ -1,0 +1,31 @@
+- name: Ensure bash functions directory exists
+  ansible.builtin.file:
+    path: "{{ bash_functions_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+  tags:
+    - bash_functions
+
+- name: Ensure bash function loader exists in .bashrc
+  ansible.builtin.blockinfile:
+    path: "/home/{{ ansible_user }}/.bashrc"
+    marker: "# {mark} ANSIBLE MANAGED BASH FUNCTIONS"
+    block: |
+      # Load custom bash functions
+      if [ -d "$HOME/.bash_functions" ]; then
+        for f in "$HOME/.bash_functions"/*.sh; do
+          [ -r "$f" ] && source "$f"
+        done
+      fi
+  tags:
+    - bash_functions
+
+- name: Ensure user systemd directory exists
+  ansible.builtin.file:
+    path: "/home/{{ ansible_user }}/.config/systemd/user"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"

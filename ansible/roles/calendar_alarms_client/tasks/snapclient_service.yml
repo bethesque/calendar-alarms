@@ -21,14 +21,6 @@
 # issues with audio devices. The Bluetooth audio sink is owned by the user,
 # so its easiest if the snapclient service runs as the user as well.
 
-- name: Ensure user systemd directory exists
-  ansible.builtin.file:
-    path: "/home/{{ snapclient_user }}/.config/systemd/user"
-    state: directory
-    owner: "{{ snapclient_user }}"
-    group: "{{ snapclient_user }}"
-    mode: "0755"
-
 # Logs can be viewed with `journalctl SYSLOG_IDENTIFIER=calendar-alarms-snapclient`
 - name: Install snapclient user service
   ansible.builtin.template:

@@ -1,0 +1,15 @@
+- name: Set MPD_HOST globally
+  ansible.builtin.copy:
+    dest: /etc/profile.d/mpd-host.sh
+    mode: "0644"
+    content: |
+      export MPD_HOST="{{ mpd_bind_address }}"
+  become: true
+
+- name: Copy bash function files
+  ansible.builtin.copy:
+    src: "bash_functions/"
+    dest: "{{ bash_functions_dir }}/"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"

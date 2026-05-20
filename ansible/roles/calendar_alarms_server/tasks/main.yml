@@ -49,12 +49,10 @@
   ansible.builtin.import_tasks: http.yml
   tags: http
 
-- name: Add calendar alarms utils file
-  ansible.builtin.template:
-    src: calendar-alarms-server-utils.sh.j2
-    dest: "/home/{{ ansible_user }}/calendar-alarms-server-utils.sh"
-    owner: "{{ ansible_user }}"
-    mode: "0755"
+- name: Install bash functions
+  ansible.builtin.import_tasks: bash_functions.yml
+  tags:
+    - bash_functions
 
 - name: Test snapcast
   ansible.builtin.shell: |

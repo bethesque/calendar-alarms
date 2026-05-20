@@ -7,6 +7,11 @@
     - codebase
     - http
 
+- name: Install bash functions
+  ansible.builtin.import_tasks: bash_functions.yml
+  tags:
+    - bash_functions
+
 - name: Configure sound
   ansible.builtin.import_tasks: sound.yml
   when: is_pi
@@ -46,15 +51,6 @@
     cmd: "amixer set Speaker {{ default_speaker_volume }}"
   tags: audio
   when: not is_bluetooth_audio
-
-- name: Add calendar alarms utils file
-  ansible.builtin.template:
-    src: calendar-alarms-client-utils.sh.j2
-    dest: "/home/{{ snapclient_user }}/calendar-alarms-client-utils.sh"
-    owner: "{{ snapclient_user }}"
-    group: "{{ snapclient_user }}"
-    mode: "0755"
-  tags: calendar_alarms
 
 - name: Install HTTP service
   ansible.builtin.import_tasks: http.yml

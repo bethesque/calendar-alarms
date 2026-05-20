@@ -13,3 +13,5 @@ ma_snapserver_stream_port: 1704
 home_assistant_url: http://nas.dixon.net.au:8123
 
 audio_client_http_port: 8082
+
+bash_functions_dir: "/home/{{ ansible_user }}/.bash_functions"

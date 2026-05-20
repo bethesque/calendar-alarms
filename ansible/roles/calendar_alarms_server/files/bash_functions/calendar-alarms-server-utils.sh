@@ -19,7 +19,6 @@ function calendar-alarms-snapserver-restart {
 }
 
 function calendar-alarms-snapserver-test {
-    export MPD_HOST="{{ mpd_bind_address }}"
     mpc clear
     mpc add /usr/share/sounds/alsa/Front_Center.wav
     mpc volume 50

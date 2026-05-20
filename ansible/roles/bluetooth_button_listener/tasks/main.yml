@@ -8,6 +8,11 @@
   tags:
     - codebase
 
+- name: Install bash functions
+  ansible.builtin.import_tasks: bash_functions.yml
+  tags:
+    - bash_functions
+
 # It won't run the first time as it requires the 30 minute pip install.
 - name: Install service.
   ansible.builtin.import_tasks: service.yml

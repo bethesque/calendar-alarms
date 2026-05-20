@@ -1,3 +1,4 @@
 - hosts: audio_host
   roles:
+    - common
     - calendar_alarms_server

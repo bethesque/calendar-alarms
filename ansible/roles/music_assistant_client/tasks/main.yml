@@ -31,13 +31,10 @@
     state: restarted
     enabled: true
 
-- name: Add snapclient utils file
-  ansible.builtin.template:
-    src: music-assistant-snapclient-utils.sh.j2
-    dest: "/home/{{ snapclient_user }}/music-assistant-snapclient-utils.sh"
-    owner: "{{ snapclient_user }}"
-    group: "{{ snapclient_user }}"
-    mode: "0755"
+- name: Install bash functions
+  ansible.builtin.import_tasks: bash_functions.yml
+  tags:
+    - bash_functions
 
 - name: Add script to set the snapclient latency
   ansible.builtin.template:

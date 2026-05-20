@@ -18,14 +18,6 @@
     dest: "/home/{{ snapclient_user }}/.local/bin/calendar-alarms-snapclient-identify.sh"
     mode: '0755'
 
-- name: Ensure user systemd directory exists
-  ansible.builtin.file:
-    path: "/home/{{ snapclient_user }}/.config/systemd/user"
-    state: directory
-    owner: "{{ snapclient_user }}"
-    group: "{{ snapclient_user }}"
-    mode: "0755"
-
 # Logs can be viewed with `journalctl SYSLOG_IDENTIFIER=calendar-alarms-snapclient-identify`
 - name: Install service to identify the snapclient ID from the snapclient server
   ansible.builtin.template:

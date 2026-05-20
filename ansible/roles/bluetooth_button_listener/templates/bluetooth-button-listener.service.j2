@@ -1,9 +1,9 @@
 [Unit]
 Description=Bluetooth Button Listener
 After=network-online.target
-Wants=network-online.target
 
 [Service]
+ExecStartPre=/usr/bin/bash -c 'until bluetoothctl show; do sleep 2; done'
 WorkingDirectory={{ bbl_root }}
 ExecStart={{ bbl_root }}/script/listen.sh
 EnvironmentFile={{ bbl_root }}/.env
