@@ -1,9 +1,3 @@
-- name: Install git
-  become: true
-  ansible.builtin.package:
-    name: git
-    state: present
-
 - name: Check if calendar-alarms client checkout exists
   ansible.builtin.stat:
     path: "{{ project_root }}"

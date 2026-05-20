@@ -1,0 +1,33 @@
+- name: Ensure user systemd directory exists
+  ansible.builtin.file:
+    path: "/home/{{ ansible_user }}/.config/systemd/user"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+# Logs can be viewed with `journalctl SYSLOG_IDENTIFIER=bluetooth-button-listener`
+- name: Install service
+  ansible.builtin.template:
+    src: bluetooth-button-listener.service.j2
+    dest: "/home/{{ ansible_user }}/.config/systemd/user/bluetooth-button-listener.service"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+
+- name: Reload user systemd daemon
+  ansible.builtin.command: systemctl --user daemon-reload
+
+- name: Restart service
+  ansible.builtin.systemd:
+    name: bluetooth-button-listener.service
+    scope: user
+    state: restarted
+    enabled: true
+
+- name: Check if service is active
+  ansible.builtin.command:
+    cmd: systemctl --user is-active bluetooth-button-listener.service
+  changed_when: false
+  register: script_result
+  failed_when: "'active' not in script_result.stdout"

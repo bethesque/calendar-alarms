@@ -1,3 +1,0 @@
-- hosts: bluetooth_listeners
-  roles:
-    - bluetooth_listener

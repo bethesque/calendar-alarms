@@ -31,6 +31,8 @@ def select_text(default_text: str | None,
 
     selection_history = os.path.join(choice_history_dir, os.path.splitext(text_choices)[0] + "_history" + os.path.splitext(text_choices)[1])
 
+    logger.debug(f"Randomly selecting text from {text_choices_full_path}, excluding recent choices in {selection_history}")
+
     rand_val = random.random()
 
     if rand_val > threshold:

@@ -1,0 +1,2 @@
+project_root: "/home/{{ ansible_user }}/calendar-alarms"
+bbl_root: "{{ project_root}}/bluetooth-button-listener"

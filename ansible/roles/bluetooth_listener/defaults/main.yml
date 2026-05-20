@@ -1,1 +1,0 @@
-project_root: "/home/{{ ansible_user }}/calendar-alarms"

@@ -1,0 +1,15 @@
+[Unit]
+Description=Bluetooth Button Listener
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory={{ bbl_root }}
+ExecStart={{ ansible_python_interpreter}} btb/listen.py
+EnvironmentFile={{ bbl_root }}/.env
+
+SyslogIdentifier=bluetooth-button-listener
+Restart=always
+
+[Install]
+WantedBy=default.target

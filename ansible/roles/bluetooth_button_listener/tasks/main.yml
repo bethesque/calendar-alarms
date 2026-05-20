@@ -1,0 +1,9 @@
+- name: Checkout code
+  ansible.builtin.import_tasks: codebase.yml
+  tags:
+    - codebase
+
+- name: Install service
+  ansible.builtin.import_tasks: service.yml
+  tags:
+    - codebase
