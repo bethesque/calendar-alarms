@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bluetooth-button"
+version = "0.1.0"
+description = "Handles clicks from a Shelly BLU Tough 1 to control audio playing on a Raspberry Pi"
+dependencies = [
+    "bleak==3.0.2",
+    "requests==2.33.1",
+]
+requires-python = ">=3.8"
+
+[tool.setuptools]
+packages = ["btb"]

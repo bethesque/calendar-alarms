@@ -11,7 +11,7 @@ from music_assistant import pause_player
 from contextlib import contextmanager
 import argparse
 
-http.client.HTTPConnection.debuglevel = 1
+http.client.HTTPConnection.debuglevel = int(os.getenv("HTTP_LOG_LEVEL", "0") or 0) # 0: disabled, 1: enabled
 logger = logging.getLogger(__name__)
 
 """
@@ -51,14 +51,21 @@ def pause_music_assistant_player(audio_config):
 
 @contextmanager
 def muted_alsa():
+    volume_controller = VolumeController()
+    muted = False
     try:
-        volume_controller = VolumeController()
         volume_controller.mute()
-        yield
-        volume_controller.unmute_slowly()
+        muted = True
     except Exception:
-        logger.exception("Exception muting/unmuting volume using amixer")
+        logger.exception("Exception muting volume using amixer")
 
+    yield
+
+    if muted:
+        try:
+            volume_controller.unmute_slowly()
+        except Exception:
+            logger.exception("Exception unmuting volume using amixer")
 
 class Handler(BaseHTTPRequestHandler):
     def __init__(self, *args, audio_config,  **kwargs):
@@ -80,7 +87,6 @@ class Handler(BaseHTTPRequestHandler):
         # Async execution
         threading.Thread(target=stop, args=(self.audio_config,), daemon=True).start()
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Audio control service")
     parser.add_argument(
@@ -88,6 +94,13 @@ if __name__ == "__main__":
         type=int,
         default=8080,
         help="The port to run the server on."
+    )
+
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="0.0.0.0",
+        help="The host to run the server on."
     )
 
     args = parser.parse_args()
@@ -104,8 +117,9 @@ if __name__ == "__main__":
         "home_assistant_player_entity": home_assistant_player_entity
     }
 
-    logger.info(f"Starting mute handler with config {audio_config}")
+    url = f"http://{args.host}:{args.port}/audio/stop"
+    logger.info(f"Starting stop handler at {url} with config {audio_config}")
 
     handler_class = partial(Handler, audio_config=audio_config)
 
-    HTTPServer(("0.0.0.0", args.port), handler_class).serve_forever()
+    HTTPServer((args.host, args.port), handler_class).serve_forever()
