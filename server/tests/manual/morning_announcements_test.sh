@@ -10,4 +10,4 @@ else
   PYTH="python"
 fi
 
-$PYTH morning_announcements.py --base_time "2026-04-04T19:30:00+10:00" --calendar_file tests/manual/calendar.json
+$PYTH morning_announcements.py --base_time "2026-04-06T19:30:00+10:00" --calendar_file tests/manual/calendar.json

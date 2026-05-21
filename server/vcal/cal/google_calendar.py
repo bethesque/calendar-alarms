@@ -2,9 +2,11 @@ from __future__ import print_function
 
 import datetime
 import re
+from typing import Any
 from zoneinfo import ZoneInfo
 import os.path
 from dataclasses import dataclass, field
+from enum import Enum
 from operator import attrgetter
 import logging
 import json
@@ -26,6 +28,19 @@ class GoogleCalendar:
     id: str
     name: str
 
+class NotificationType(Enum):
+    ALARM = 1
+    ANNOUNCE = 2
+
+@dataclass
+class EventNotification:
+    event: "Event"
+    type: NotificationType
+    offset: int
+    notification_time: datetime.datetime = field(init=False)
+
+    def __post_init__(self):
+        self.notification_time = self.event.start_time - datetime.timedelta(minutes=self.offset)
 
 @dataclass
 class Event:
@@ -35,43 +50,25 @@ class Event:
     start_time: datetime.datetime = None
     end_time: datetime.datetime = None
     recurring: bool = False
-    _notification_offset: int | None = None
 
-    def notification_time(self):
-        if self.has_notification():
-            return self.start_time - datetime.timedelta(minutes=self.notification_offset())
-        else:
-            return None
+    def notifications(self) -> list[EventNotification]:
+        notifications = []
+        if self.description and self.start_time:
+            matches = re.findall(r"#(alarm|announce)(\d+)?", self.description)
+            if matches:
+                for match in matches:
+                    type, offset = match
+                    type_enum = NotificationType[type.upper()]
+                    offset_int = int(offset) if offset else 0
+                    notifications.append(EventNotification(type=type_enum, offset=offset_int, event=self))
+        return notifications
 
-    def notification_time_within_window(self, start_time, end_time):
-        alarm_time = self.notification_time()
-        if alarm_time and start_time <= alarm_time < end_time:
-            return True
-        else:
-            return None
-
-    def notification_offset(self):
-        if self._notification_offset is None:
-            self._notification_offset = 0
-
-            if self.has_notification():
-                match = re.search(r"#(?:alarm|announce)(\d+)", self.description)
-                if match:
-                    self._notification_offset = int(match.group(1))
-
-        return self._notification_offset
-
-    def has_alarm(self):
-        return "#alarm" in (self.description or "") and self.start_time is not None
-
-    def has_announcement(self):
-        return "#announce" in (self.description or "") and self.start_time is not None
-
-    def has_notification(self):
-        return self.has_alarm() or self.has_announcement()
-
-
-
+    def notifications_within_window(self, start_time, end_time):
+        notifications_in_window = []
+        for event_notification in self.notifications():
+            if start_time <= event_notification.notification_time < end_time:
+                notifications_in_window.append(event_notification)
+        return notifications_in_window
 
 @dataclass
 class WeatherForecast(Event):

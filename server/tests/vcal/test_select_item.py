@@ -1,8 +1,7 @@
 from datetime import date
 import pytest
 
-from vcal import select_item
-from vcal.select_item import select_item_by_date  # adjust import
+from vcal.select_item import select_item_by_date
 
 
 def test_basic_progression():
