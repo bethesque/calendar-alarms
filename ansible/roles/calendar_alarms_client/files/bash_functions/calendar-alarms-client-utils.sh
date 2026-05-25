@@ -41,3 +41,7 @@ function audio-client-http-restart {
 function audio-client-http-stop {
     systemctl --user stop audio-client-http
 }
+
+function audio-client-http-test {
+    curl -X POST "${AUDIO_CLIENT_URL}/audio/stop"
+}
