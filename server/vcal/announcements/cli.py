@@ -6,8 +6,19 @@ import os
 from vcal.announcements.announce import play_morning_announcements as do_play_morning_announcements, play_morning_announcements_audio_file, SPEECH_FILE
 from vcal.log_config import setup_logging_for_announcements
 from vcal.scene import Scene
+from vcal.announcements.announce import play_announcement as play_announcement_func
 
 setup_logging_for_announcements(str(LOG_LEVEL))
+
+def play_announcement():
+    parser = argparse.ArgumentParser(description="Play a one-off announcement")
+    parser.add_argument(
+        "--message",
+        help="The message to announce"
+    )
+    args = parser.parse_args()
+    print(f"Playing announcement: {args.message}")
+    play_announcement_func(args.message, Scene())
 
 def play_morning_announcements():
     parser = argparse.ArgumentParser(description="Check for alarms in calendar events")

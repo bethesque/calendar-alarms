@@ -8,6 +8,7 @@ import threading
 from vcal.scene import Scene
 from vcal.alarms.alarm import stop_alarm
 from queue import Queue
+from vcal.announcements.index import AnnouncementController
 
 setup_logging_for_http_server(logging.INFO)
 
@@ -83,8 +84,11 @@ class AlarmController(object):
                 self._pending = False
             return "Alarm currently being stopped"
 
+cherrypy.tools.trailing_slash = cherrypy.Tool('before_handler', lambda: None)
+
 class CalendarWebServer(object):
     alarm = AlarmController()
+    announce = AnnouncementController()
 
     @cherrypy.expose
     def index(self):
