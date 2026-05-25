@@ -39,9 +39,12 @@ def play_announcement(message: str, scene: Scene):
         scene.save()
         scene.prepare_for_announcement()
 
-    with mpd_connection() as alarm_player:
-        alarm_player.set_volume(ANNOUNCEMENT_VOLUME)
-        alarm_player.play_file(announcement_file)
+    try:
+        with mpd_connection() as alarm_player:
+            alarm_player.set_volume(ANNOUNCEMENT_VOLUME)
+            alarm_player.play_file(announcement_file)
+    except Exception:
+        logger.exception("Error playing announcement audio file")
 
     if scene:
         time.sleep(track_length(announcement_file))

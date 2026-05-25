@@ -1,5 +1,5 @@
 from vcal.music_assistant import MusicAssistant, MusicAssistantState
-from vcal.env import CACHE_DIRECTORY, PLAYERS
+from vcal.env import PLAYERS
 from typing import Protocol
 import logging
 
