@@ -6,6 +6,8 @@ ca_snapserver_http_port: 1880
 ca_snapserver_host:  192.168.20.3
 ca_snapserver_rpc_url: "http://{{ ca_snapserver_host }}:{{ ca_snapserver_http_port }}/jsonrpc"
 
+ma_sendspin_host:  nas.dixon.net.au
+
 ma_snapserver_host:  nas.dixon.net.au
 ma_snapserver_control_port: 1780
 ma_snapserver_stream_port: 1704

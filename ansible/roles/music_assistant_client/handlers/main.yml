@@ -1,0 +1,12 @@
+- name: Reload systemd
+  ansible.builtin.systemd:
+    scope: user
+    daemon_reload: true
+  become_user: "{{ sendspin_user }}"
+
+- name: Restart sendspin
+  ansible.builtin.systemd:
+    scope: user
+    name: "{{ sendspin_service }}"
+    state: restarted
+  become_user: "{{ sendspin_user }}"

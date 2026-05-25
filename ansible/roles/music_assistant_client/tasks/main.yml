@@ -1,5 +1,4 @@
 # Relies on the fact that snapclient has already been installed by the calendar alarms project
-
 - name: Find snapclient binary
   ansible.builtin.command: which snapclient
   register: snapclient_which
@@ -52,3 +51,11 @@
     argv:
       - "{{ ansible_python_interpreter }}"
       - set_snapclient_latency.py
+
+# Not working yet. Can't run sendspin and snapclient at the same time, probably because they both want to use the same audio output device.
+# Sendpin stops snapclient from working.
+- name: Install sendspin-armv6
+  ansible.builtin.import_tasks: sendspin.yml
+  tags:
+    - sendspin
+  when: host_distro == "trixie"

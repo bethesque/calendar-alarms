@@ -1,0 +1,36 @@
+# Sendspin ARMv6 configuration
+# See README.md for details.
+
+# Required: WebSocket URL of your Sendspin server.
+# Find the IP of the machine running the Sendspin server and set it here.
+# The default port is 8928 and path is /sendspin.
+server_url = ws://{{ ma_sendspin_host }}:8927/sendspin
+
+# Optional: Friendly name shown in the Sendspin UI.
+name = {{ ansible_hostname }} sendspin client
+
+# Optional: Log level (none, error, warn, info, debug, verbose).
+log_level = info
+
+# ALSA device for audio output.
+# The Pi Zero W has no built-in 3.5mm jack — you need an external USB soundcard.
+# Find available devices with: aplay -l
+# Then set the device to the matching card/device number, e.g.:
+#   plughw:1,0   (USB soundcard, card 1, device 0)
+#   plughw:CARD=Device,DEV=0   (by card name)
+# Leave commented out to use the system default device.
+# device = plughw:0,0
+
+# Optional: Startup volume (0–100).
+# Sets the hardware volume at power-up, before the server issues its first
+# VOLUME command.  Useful for devices where the ALSA default is too loud or
+# too quiet.  The server may override this once a connection is established.
+# Leave commented out to let the server control volume from the start.
+
+initial_volume = 60
+
+# Optional: Initial static playback delay in milliseconds (0–5000).
+# Adds a fixed delay before playback starts, which can help keep multiple
+# players in sync across the network.  The server may adjust this at runtime.
+# Leave commented out for no initial static delay.
+initial_static_delay = {{ ma_sendspin_initial_delay }}

@@ -1,0 +1,114 @@
+- name: Ensure version directory exists
+  ansible.builtin.file:
+    path: /var/lib/sendspin
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: Read installed version file
+  ansible.builtin.slurp:
+    src: "{{ sendspin_version_file }}"
+  register: sendspin_version_slurp
+  failed_when: false
+  become: true
+
+- name: Define installed version
+  ansible.builtin.set_fact:
+    sendspin_installed_version: >-
+      {{
+        (sendspin_version_slurp.content | default('') | b64decode | trim)
+        if sendspin_version_slurp is defined and sendspin_version_slurp.content is defined
+        else '0.0.0'
+      }}
+
+- name: Decide if install/upgrade is required
+  ansible.builtin.set_fact:
+    sendspin_install_required: >-
+      {{
+        sendspin_installed_version is version(sendspin_version_clean, '<')
+      }}
+
+- name: Install or upgrade sendspin
+  when: sendspin_install_required
+  block:
+
+    - name: Create temporary directory
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: sendspin-
+      register: sendspin_tmpdir
+
+    - name: Download release archive
+      ansible.builtin.get_url:
+        url: "{{ sendspin_download_url }}"
+        dest: "{{ sendspin_tmpdir.path }}/{{ sendspin_archive }}"
+        mode: "0644"
+
+    - name: Extract archive
+      ansible.builtin.unarchive:
+        src: "{{ sendspin_tmpdir.path }}/{{ sendspin_archive }}"
+        dest: "{{ sendspin_tmpdir.path }}"
+        remote_src: true
+
+    - name: Install binary
+      ansible.builtin.copy:
+        src: "{{ sendspin_tmpdir.path }}/sendspin-armv6"
+        dest: "{{ sendspin_binary }}"
+        owner: root
+        group: root
+        mode: "0755"
+        remote_src: true
+      notify: Restart sendspin
+      become: true
+
+    - name: Write installed version file
+      ansible.builtin.copy:
+        dest: "{{ sendspin_version_file }}"
+        content: "{{ sendspin_version_clean }}\n"
+        owner: root
+        group: root
+        mode: "0644"
+      become: true
+
+    - name: Remove temporary directory
+      ansible.builtin.file:
+        path: "{{ sendspin_tmpdir.path }}"
+        state: absent
+
+- name: Install config file
+  ansible.builtin.template:
+    src: sendspin-armv6.conf.j2
+    dest: "{{ sendspin_config }}"
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+
+- name: Ensure user systemd directory exists
+  ansible.builtin.file:
+    path: "{{ sendspin_user_home }}/.config/systemd/user"
+    state: directory
+    owner: "{{ sendspin_user }}"
+    group: "{{ sendspin_user }}"
+    mode: "0755"
+
+# Use a user service because of bluetooth audio.
+- name: Install sendspin user service
+  ansible.builtin.template:
+    src: sendspin-armv6.service.j2
+    dest: "/home/{{ sendspin_user }}/.config/systemd/user/sendspin-armv6.service"
+    owner: "{{ sendspin_user }}"
+    group: "{{ sendspin_user }}"
+    mode: "0644"
+  notify:
+        - Reload systemd
+        - Restart sendspin
+
+- name: Enable user service
+  ansible.builtin.command:
+    cmd: systemctl --user enable {{ sendspin_user_service }}
+  become_user: "{{ sendspin_user }}"
+  changed_when: false
+

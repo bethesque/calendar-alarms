@@ -1,1 +1,28 @@
 snapclient_user: "{{ ansible_user }}"
+
+sendspin_repo: bethesque/sendspin-armv6
+sendspin_package_version: v0.0.2
+# Custom built for travcal
+#sendspin_package_version: v0.0.3+bullseye
+
+sendspin_archive: sendspin-armv6-linux-armv6-release.tar.gz
+# Custom built for travcal
+#sendspin_archive: sendspin-armv6-linux-armv6-bullseye-release.tar.gz
+
+sendspin_binary: /usr/local/bin/sendspin-armv6
+sendspin_config: /etc/sendspin-armv6.conf
+sendspin_service_file: /etc/systemd/system/sendspin-armv6.service
+sendspin_service: sendspin-armv6
+
+sendspin_download_url: >-
+  https://github.com/{{ sendspin_repo }}/releases/download/{{ sendspin_package_version }}/{{ sendspin_archive }}
+
+sendspin_version_file: /var/lib/sendspin/version
+sendspin_version_clean: "{{ sendspin_package_version | regex_replace('^v','') }}"
+
+# systemd user unit
+sendspin_user_service: sendspin-armv6.service
+
+# target user (adjust if needed)
+sendspin_user: "{{ ansible_user }}"
+sendspin_user_home: "/home/{{ sendspin_user }}"
