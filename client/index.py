@@ -45,6 +45,7 @@ def mute_snapclient(ca_snapserver_rpc_url, client_id_file):
 
 def pause_music_assistant_player(audio_config):
     try:
+        logger.info(f"Pausing Music Assistant player {audio_config['home_assistant_player_entity']} at {audio_config['home_assistant_url']} ")
         pause_player(audio_config["home_assistant_url"], audio_config["home_assistant_player_entity"])
     except Exception:
         logger.exception("Error pausing Music Assistant player")
