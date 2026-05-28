@@ -5,7 +5,7 @@ from vcal.env import DATA_DIRECTORY, LOG_LEVEL
 import os
 from vcal.announcements.announce import play_morning_announcements as do_play_morning_announcements, play_morning_announcements_audio_file, SPEECH_FILE
 from vcal.log_config import setup_logging_for_announcements
-from vcal.scene import Scene
+from vcal.scene import Scene, Scene2
 from vcal.announcements.announce import play_announcement as play_announcement_func
 
 setup_logging_for_announcements(str(LOG_LEVEL))
@@ -18,7 +18,7 @@ def play_announcement():
     )
     args = parser.parse_args()
     print(f"Playing announcement: {args.message}")
-    play_announcement_func(args.message, Scene())
+    play_announcement_func(args.message, Scene2())
 
 def play_morning_announcements():
     parser = argparse.ArgumentParser(description="Check for alarms in calendar events")
@@ -44,7 +44,7 @@ def play_morning_announcements():
     args = parser.parse_args()
     base_time = args.base_time or datetime.now().astimezone()
 
-    scene = Scene()
+    scene = Scene2()
     scene.save()
 
     if args.cached:
@@ -54,6 +54,6 @@ def play_morning_announcements():
 
 
 def play_morning_announcements_cached():
-    scene = Scene()
+    scene = Scene2()
     scene.save()
     play_morning_announcements_audio_file(MORNING_ANNOUNCEMENTS_AUDIO_FILE, scene.prepare_for_alarm, scene.restore_after_alarm)

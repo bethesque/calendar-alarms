@@ -1,43 +1,37 @@
-#!/usr/bin/env python3
-
-import requests
-import time
+import asyncio
 import logging
-import sys
 
-from typing import Optional, List, Tuple
+logging.basicConfig(level=logging.DEBUG)
 
-from vcal.env import PLAYERS, LOG_LEVEL
-from vcal.log_config import setup_logging_for_alarms
-
-# Configure the root logger to output to stdout
-logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+from music_assistant_client import MusicAssistantClient
+from vcal.env import MUSIC_ASSISTANT_URL, MUSIC_ASSISTANT_TOKEN
 
 
+async def main():
+    async with MusicAssistantClient(
+        MUSIC_ASSISTANT_URL,
+        None,
+        token=MUSIC_ASSISTANT_TOKEN,
+    ) as client:
 
-logger = logging.getLogger(__name__)
+        print("Connected")
 
+        listener = asyncio.create_task(client.start_listening())
 
-from vcal.music_assistant import MusicAssistant, MusicAssistantPlayer, MusicAssistantState
+        # wait for players to arrive via websocket
+        for _ in range(50):
+            players = list(client.players)
+            if players:
+                break
+            await asyncio.sleep(0.1)
 
-setup_logging_for_alarms(LOG_LEVEL, None)
+        print(f"Found {len(players)} players")
 
-def main():
-    players = [MusicAssistantPlayer(f"media_player.{name}") for name in PLAYERS]
-    ma = MusicAssistant(players)
+        for p in players:
+            print(p.player_id, p.name)
 
-    ma.fetch_current_state()
-    ma_state = MusicAssistantState()
-    ma_state.save(ma)
-
-    ma.fade_out_and_pause()
-
-    time.sleep(3)
-
-    ma = ma_state.load()
-
-    ma.restore_original_state()
+        listener.cancel()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
