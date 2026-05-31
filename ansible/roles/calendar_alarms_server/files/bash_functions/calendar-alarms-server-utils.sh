@@ -1,5 +1,5 @@
 function calendar-alarms-snapserver-logs {
-    journalctl SYSLOG_IDENTIFIER=calendar-alarms-snapserver "$@"
+    sudo journalctl -u snapserver "$@"
 }
 
 function calendar-alarms-snapserver-status {

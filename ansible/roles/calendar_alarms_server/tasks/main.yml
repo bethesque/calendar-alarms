@@ -19,20 +19,6 @@
     update_cache: yes
   become: yes
 
-# MPD FIFO
-- name: Ensure FIFO exists
-  command: mkfifo {{ mpd_fifo_path }}
-  args:
-    creates: "{{ mpd_fifo_path }}"
-
-- name: Set FIFO permissions
-  file:
-    path: "{{ mpd_fifo_path }}"
-    owner: "{{ mpd_user }}"
-    group: audio
-    mode: "0660"
-
-
 - name: Install Snapserver
   ansible.builtin.import_tasks: snapserver_install.yml
 
