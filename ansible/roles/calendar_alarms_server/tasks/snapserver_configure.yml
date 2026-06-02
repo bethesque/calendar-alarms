@@ -2,9 +2,25 @@
   file:
     path: /run/snapserver
     state: directory
-    owner: "{{ mpd_user }}"
+    owner: _snapserver
     group: audio
     mode: "0755"
+  become: true
+
+# MPD FIFO
+- name: Ensure FIFO exists
+  command: mkfifo {{ mpd_fifo_path }}
+  args:
+    creates: "{{ mpd_fifo_path }}"
+  become: true
+
+- name: Set FIFO permissions
+  file:
+    path: "{{ mpd_fifo_path }}"
+    owner: root
+    group: audio
+    mode: "0660"
+  become: true
 
 - name: Ensure snapserver user is in audio group
   ansible.builtin.user:

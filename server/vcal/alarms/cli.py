@@ -9,7 +9,7 @@ from vcal.env import LOG_LEVEL
 from vcal.alarms.mpd import fade_out, fade_up, mpd_connection
 from vcal.log_config import setup_logging_for_alarms
 from vcal.cal.google_calendar import CalendarSource
-from vcal.scene import Scene, NullScene
+from vcal.scene import NullScene, Scene2
 
 from vcal.env import DATA_DIRECTORY
 from vcal.alarms.alarm import check_for_notifications
@@ -51,7 +51,7 @@ def check_alarms():
     base_time = args.base_time or datetime.now().astimezone()
     calendar_data = load_events(args.calendar_file)
 
-    scene = Scene() if args.handle_music_assistant else NullScene()
+    scene = Scene2() if args.handle_music_assistant else NullScene()
 
     check_for_notifications(base_time, args.window, calendar_data, scene)
 

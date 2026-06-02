@@ -4,9 +4,6 @@ from urllib.request import Request, urlopen
 import logging
 import http.client
 
-http.client.HTTPConnection.debuglevel = 1
-logger = logging.getLogger(__name__)
-
 # Global lock to prevent concurrent mute operations
 mute_lock = threading.Lock()
 

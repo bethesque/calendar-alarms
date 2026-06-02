@@ -3,14 +3,14 @@ import glob
 import time
 from datetime import datetime
 from vcal.alarms.alarm import set_snapclients_to_max_volume
-from vcal.scene import Scene
+from vcal.scene import SceneProtocol
 from vcal.alarms.mpd import fade_up, mpd_connection
 from vcal.cal.google_calendar import WeatherForecast, load_data_from_file
-from vcal.alarms.text_to_voice import text_to_voice_file_daily_summary
+from vcal.alarms.text_to_voice import text_to_voice_file_daily_summary, text_to_voice_file
 from vcal.alarms.sound import mix_announcement_audio, track_length, join_mp3s_to_wav
 from vcal.random_text import select_text
 from vcal.select_item import select_item_by_date
-from vcal.env import DATA_DIRECTORY, CACHE_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, INITIAL_VOLUME, ANNOUNCEMENT_VOLUME
+from vcal.env import DATA_DIRECTORY, CACHE_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, INITIAL_ALARM_VOLUME, ANNOUNCEMENT_VOLUME
 from vcal.alarms import BACKGROUND_MUSIC_DIRECTORY, AUDIO_DIRECTORY
 
 CALENDAR_FILE = f"{DATA_DIRECTORY}/calendar.json"
@@ -27,26 +27,27 @@ class MissingCalendarDataException(Exception):
     pass
 
 
-def play_announcement(message: str, scene: Scene):
-    speech_file = text_to_voice_file_daily_summary(message)
+def play_announcement(message: str, scene: SceneProtocol):
+    announcement_file = _build_one_off_announcement_file(message)
+    set_snapclients_to_max_volume()
+
+    def play():
+        try:
+            with mpd_connection() as alarm_player:
+                alarm_player.set_volume(ANNOUNCEMENT_VOLUME)
+                alarm_player.play_file(announcement_file)
+                time.sleep(track_length(announcement_file))
+        except Exception:
+            logger.exception(f"Error playing announcement audio file {announcement_file}")
+
+    scene.around_announcement(play)
+
+def _build_one_off_announcement_file(message: str):
+    speech_file = text_to_voice_file(message)
     announcement_file = OUTPUT_AUDIO_DIRECTORY + "/one_off_announcement.wav"
     files = [PRE_ANNOUNCEMENT_BELL, speech_file, SILENCE_1_SEC]
     join_mp3s_to_wav(files, announcement_file)
-
-    set_snapclients_to_max_volume()
-
-    if scene:
-        scene.save()
-        scene.prepare_for_announcement()
-
-    with mpd_connection() as alarm_player:
-        alarm_player.set_volume(ANNOUNCEMENT_VOLUME)
-        alarm_player.play_file(announcement_file)
-
-    if scene:
-        time.sleep(track_length(announcement_file))
-        scene.restore_after_announcement()
-
+    return announcement_file
 
 """
 Top level entry point. Generate a summary of today's events, convert them to voice, and play them.
@@ -64,7 +65,7 @@ def play_morning_announcements_audio_file(audio_file, before_announcement_hook=N
 
     # Play the mixed audio file
     with mpd_connection() as alarm_player:
-        alarm_player.set_volume(INITIAL_VOLUME)
+        alarm_player.set_volume(INITIAL_ALARM_VOLUME)
         alarm_player.play_file(audio_file)
         fade_up([(alarm_player, ANNOUNCEMENT_VOLUME)], 5, 10)
 

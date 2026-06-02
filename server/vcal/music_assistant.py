@@ -9,7 +9,7 @@ import logging
 from dataclasses import dataclass
 
 
-from vcal.env import HOME_ASSISTANT_URL, HOME_ASSISTANT_TOKEN, CACHE_DIRECTORY
+from vcal.env import HOME_ASSISTANT_URL, HOME_ASSISTANT_TOKEN, CACHE_DIRECTORY, DIP_TARGET_VOLUME
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +99,7 @@ class PlayerFadeOut:
     def __init__(self, ma_player: MusicAssistantPlayer, target_volume: float = 0.0, num_steps: int = 10):
         self.ma_player = ma_player
         self.initial_volume = ma_player.get_volume()
+        self.target_volume = target_volume
         self.volumes = PlayerFadeOut.calculate_volume_steps(num_steps, self.initial_volume, target_volume)
         self.current_step = 0
 
@@ -125,7 +126,11 @@ class PlayerFadeOut:
             logger.info(f"Initial volume is already 0 for Music Assistant player, skipping fade out")
             return True
         if self.current_step == 0:
-            logger.info(f"Starting fade out of {self.ma_player.name} from {self.volumes[0]} to {self.volumes[-1]}")
+            if self.initial_volume <= self.target_volume:
+                logger.debug(f"Initial volume {self.initial_volume} is already at or below target volume {self.target_volume} for Music Assistant player, skipping fade out")
+                return True
+            else:
+                logger.info(f"Starting fade out of {self.ma_player.name} from {self.volumes[0]} to {self.volumes[-1]}")
         if self.current_step < len(self.volumes):
             new_volume = self.volumes[self.current_step]
             self.ma_player.set_volume(new_volume)
@@ -140,6 +145,7 @@ class PlayerFadeUp:
 
     def __init__(self, ma_player: MusicAssistantPlayer, target_volume: float = 1.0, num_steps: int = 10):
         self.ma_player = ma_player
+        self.target_volume = target_volume
         self.last_known_volume = ma_player.get_volume() or 0
         self.volumes = PlayerFadeUp.calculate_volume_steps(num_steps, self.last_known_volume, target_volume)
         self.current_step = 0
@@ -160,7 +166,11 @@ class PlayerFadeUp:
     def step(self) -> bool:
         """Execute one step of the fade up. Returns True when complete."""
         if self.current_step == 0:
-            logger.info(f"Starting fade up of {self.ma_player.name} from {self.volumes[0]} to {self.volumes[-1]}")
+            if self.last_known_volume >= self.target_volume:
+                logger.info(f"Current volume {self.last_known_volume} is already at or above target volume {self.target_volume} for Music Assistant player, skipping fade up")
+                return True
+            else:
+                logger.info(f"Starting fade up of {self.ma_player.name} from {self.volumes[0]} to {self.volumes[-1]}")
         if self.current_step < len(self.volumes):
             # if the current volume has changed since the last step, return True to indicate we're done,
             # as something else has changed the volume
@@ -252,7 +262,7 @@ class MusicAssistant:
             player.pause()
 
     def dip_volume(self):
-        fade_out(self.players, 2, 4, 0.3)
+        fade_out(self.players, 2, 4, DIP_TARGET_VOLUME)
 
     def restore_volume(self):
         playing_players = [player for player in self.players if player.get_original_state().playing()]
