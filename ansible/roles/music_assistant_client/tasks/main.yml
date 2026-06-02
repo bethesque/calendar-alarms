@@ -36,19 +36,19 @@
   tags:
     - bash_functions
 
-- name: Add script to set the snapclient latency
-  ansible.builtin.template:
-    src: set_snapclient_latency.py.j2
-    dest: "/home/{{ snapclient_user }}/set_snapclient_latency.py"
-    owner: "{{ snapclient_user }}"
-    group: "{{ snapclient_user }}"
-    mode: "0755"
-
+# Disabled this because we want to keep whatever the server currently thinks the latency is
+# - name: Add script to set the snapclient latency
+#   ansible.builtin.template:
+#     src: set_snapclient_latency.py.j2
+#     dest: "/home/{{ snapclient_user }}/set_snapclient_latency.py"
+#     owner: "{{ snapclient_user }}"
+#     group: "{{ snapclient_user }}"
+#     mode: "0755"
 
 # The --latency option in the snapclient startup command seems to be overridden by the last one that the snapserver
 # knew about, so set the latency via the snapserver instead of using the --latency option.
-- name: Set snapclient latency
-  ansible.builtin.command:
-    argv:
-      - "{{ ansible_python_interpreter }}"
-      - set_snapclient_latency.py
+# - name: Set snapclient latency
+#   ansible.builtin.command:
+#     argv:
+#       - "{{ ansible_python_interpreter }}"
+#       - set_snapclient_latency.py
