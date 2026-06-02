@@ -8,7 +8,7 @@ from vcal.alarms.text_to_voice import text_to_voice_file
 from vcal.alarms.mpd import fade_up, fade_out, mpd_connection
 from vcal.select_item import select_item_by_date
 from vcal.alarms import ALARMS_DIRECTORY, AUDIO_DIRECTORY
-from vcal.env import OUTPUT_AUDIO_DIRECTORY, INITIAL_VOLUME, ANNOUNCEMENT_VOLUME, SNAPSERVER_RPC_URL
+from vcal.env import OUTPUT_AUDIO_DIRECTORY, INITIAL_ALARM_VOLUME, MAX_ALARM_VOLUME, ANNOUNCEMENT_VOLUME, SNAPSERVER_RPC_URL
 from vcal.snapserver import set_clients_to_max_volume
 from vcal.alarms.sound import track_length
 from vcal.scene import SceneProtocol
@@ -150,21 +150,23 @@ class AnnouncementAudio:
     def preannouncement_bell(self):
         return AUDIO_DIRECTORY + "/preannounce_0_3_vol.mp3"
 
-def play_notifications(announcements_file, alarms_file, scene: SceneProtocol):
-    scene.save()
+def play_notifications(announcements_file: str, alarms_file: str, scene: SceneProtocol):
     set_snapclients_to_max_volume()
+
+    if announcements_file and not alarms_file:
+        scene.around_announcement(lambda: _play_announcement(announcements_file))
+        return
+
+    scene.prepare_for_alarm()
     if announcements_file:
-        scene.prepare_for_announcement()
         _play_announcement(announcements_file)
-        if alarms_file is None:
-            scene.restore_after_announcement()
 
     if announcements_file and alarms_file:
         time.sleep(2)
 
     if alarms_file:
-        scene.prepare_for_alarm()
-        _play_alarm(alarms_file, announcements_file is not None)
+        initital_volume = ANNOUNCEMENT_VOLUME if announcements_file else INITIAL_ALARM_VOLUME
+        _play_alarm(alarms_file, initital_volume)
 
 def set_snapclients_to_max_volume():
     try:
@@ -179,13 +181,12 @@ def _play_announcement(announcements_file):
         alarm_player.play_file(announcements_file)
     time.sleep(track_length(announcements_file))
 
-def _play_alarm(alarms_file, announcement_present : bool):
+def _play_alarm(alarms_file, initial_volume):
     with mpd_connection() as alarm_player:
         logger.info(f"Playing alarm {alarms_file}")
-        if not announcement_present:
-            alarm_player.set_volume(INITIAL_VOLUME)
+        alarm_player.set_volume(initial_volume)
         alarm_player.play_file(alarms_file)
-        fade_up([(alarm_player, 100)], 45, 10)
+        fade_up([(alarm_player, MAX_ALARM_VOLUME)], 45, 10)
 
 def stop_alarm(after_alarm_hook=None):
     # Stop alarm

@@ -10,7 +10,7 @@ from vcal.alarms.text_to_voice import text_to_voice_file_daily_summary, text_to_
 from vcal.alarms.sound import mix_announcement_audio, track_length, join_mp3s_to_wav
 from vcal.random_text import select_text
 from vcal.select_item import select_item_by_date
-from vcal.env import DATA_DIRECTORY, CACHE_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, INITIAL_VOLUME, ANNOUNCEMENT_VOLUME
+from vcal.env import DATA_DIRECTORY, CACHE_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, INITIAL_ALARM_VOLUME, ANNOUNCEMENT_VOLUME
 from vcal.alarms import BACKGROUND_MUSIC_DIRECTORY, AUDIO_DIRECTORY
 
 CALENDAR_FILE = f"{DATA_DIRECTORY}/calendar.json"
@@ -65,7 +65,7 @@ def play_morning_announcements_audio_file(audio_file, before_announcement_hook=N
 
     # Play the mixed audio file
     with mpd_connection() as alarm_player:
-        alarm_player.set_volume(INITIAL_VOLUME)
+        alarm_player.set_volume(INITIAL_ALARM_VOLUME)
         alarm_player.play_file(audio_file)
         fade_up([(alarm_player, ANNOUNCEMENT_VOLUME)], 5, 10)
 

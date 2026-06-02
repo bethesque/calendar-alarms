@@ -5,7 +5,7 @@ import google_auth_oauthlib.flow
 from vcal.env import SERVER_ADDRESS, SCOPE, login_hint
 from vcal.log_config import setup_logging_for_http_server
 import threading
-from vcal.scene import Scene
+from vcal.scene import Scene2
 from vcal.alarms.alarm import stop_alarm
 from queue import Queue
 from vcal.announcements.index import AnnouncementController
@@ -26,7 +26,7 @@ class AlarmController(object):
         while True:
             self.queue.get()
             try:
-                stop_alarm(Scene.restore_after_alarm)
+                stop_alarm(Scene2.restore_after_alarm)
             finally:
                 with self._lock:
                     self._pending = False

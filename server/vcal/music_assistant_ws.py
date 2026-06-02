@@ -2,6 +2,7 @@ import asyncio
 import logging
 import functools
 from contextlib import asynccontextmanager
+from time import time
 from music_assistant_client import MusicAssistantClient
 from music_assistant_models.enums import PlayerState
 
@@ -171,8 +172,10 @@ class MusicAssistant:
     def fetch_current_state(self) -> list[dict]:
         return [{ "player_id": p.player_id, "volume_level": p.volume_level } for p in self.playing_players()]
 
-    async def dip_voume(self):
-        await self.fade_down(target_volume=0, duration_seconds=3, intervals=20)
+    @log_duration
+    async def fade_down_and_pause(self, duration_seconds=3, intervals=20):
+        await self.fade_down(target_volume=0, duration_seconds=duration_seconds, intervals=intervals)
+        await self.pause()
 
     @log_duration
     async def fade_down(
@@ -252,8 +255,18 @@ class MusicAssistant:
         except asyncio.TimeoutError:
             log.warning("Pause timed out after %.1fs, continuing anyway.", timeout)
 
+
+
+
     @log_duration
-    async def fade_up_restore(
+    async def resume_and_fade_up(self, state: list[dict], duration_seconds: float, intervals: int):
+        player_ids = [p["player_id"] for p in state]
+        await self.play(player_ids)
+        await asyncio.sleep(2) # wait for buffers to fill so that players don't immediately pause again when we set volume back up
+        await self.fade_up(state, duration_seconds=duration_seconds, intervals=intervals)
+
+    @log_duration
+    async def fade_up(
         self,
         player_volumes: list[dict],
         duration_seconds: float,

@@ -6,7 +6,7 @@ from pathlib import Path
 
 from vcal.music_assistant import MusicAssistant, MusicAssistantState
 from vcal.music_assistant_ws import MusicAssistant as MusicAssistantWS
-from vcal.env import CACHE_DIRECTORY, MUSIC_ASSISTANT_URL, MUSIC_ASSISTANT_TOKEN, PLAYERS, DIP_TARGET_VOLUME
+from vcal.env import CACHE_DIRECTORY, MUSIC_ASSISTANT_URL, MUSIC_ASSISTANT_TOKEN, PLAYERS, DIP_TARGET_VOLUME, DIP_VOLUME
 from typing import Protocol
 import logging
 
@@ -124,11 +124,10 @@ class AsyncScene:
         try:
             async with MusicAssistantWS(MUSIC_ASSISTANT_URL, MUSIC_ASSISTANT_TOKEN) as ma:
                 if ma.playing():
-                    state = ma.fetch_current_state()
-                    SceneState(state).save()
-                    await ma.fade_down(target_volume=0, duration_seconds=3, intervals=20)
-                    await ma.pause()
+                    SceneStateFile().save(ma.fetch_current_state())
+                    await ma.fade_down_and_pause(duration_seconds=3, intervals=20)
                 else:
+                    SceneStateFile().clear()
                     logger.info("No Music Assistant players to pause")
         except Exception:
             logger.exception(f"Error pausing Music Assistant players")
@@ -137,34 +136,44 @@ class AsyncScene:
     @staticmethod
     async def restore_after_alarm():
         try:
-            state = SceneState().load()
-            if any(state):
-                async with MusicAssistantWS(MUSIC_ASSISTANT_URL, MUSIC_ASSISTANT_TOKEN) as ma:
-                    player_ids = [p["player_id"] for p in state]
-                    await ma.play(player_ids)
-                    time.sleep(2) # wait for buffers to fill so that players don't immediately pause again when we set volume back up
-                    await ma.fade_up_restore(state, duration_seconds=5, intervals=20)
+            state_file = SceneStateFile()
+            if state_file.fresh():
+                state = SceneStateFile().load()
+                if any(state):
+                    async with MusicAssistantWS(MUSIC_ASSISTANT_URL, MUSIC_ASSISTANT_TOKEN) as ma:
+                        await ma.resume_and_fade_up(state, duration_seconds=5, intervals=20)
+            else:
+                logger.info("Not restoring Music Assistant state as the state file is either too old or does not exist")
         except Exception:
             logger.exception(f"Error restoring Music Assistant players")
 
     async def prepare_for_announcement(self):
+        music_assistant_available = False
         try:
             async with MusicAssistantWS(MUSIC_ASSISTANT_URL, MUSIC_ASSISTANT_TOKEN) as ma:
+                music_assistant_available = True
                 if ma.playing():
-                    state = ma.fetch_current_state()
-                    SceneState(state).save()
-                    await ma.fade_down(target_volume=DIP_TARGET_VOLUME, duration_seconds=3, intervals=15)
+                    SceneStateFile().save(state = ma.fetch_current_state())
+                    await ma.fade_down(target_volume=DIP_VOLUME, duration_seconds=3, intervals=15)
                 else:
+                    SceneStateFile().clear()
                     logger.info("No Music Assistant players to dip")
-        except Exception:
-            logger.exception(f"Error dipping volume of Music Assistant players")
+        except Exception as e:
+            if not music_assistant_available:
+                 logger.info(f"Music Assistant is not available at {MUSIC_ASSISTANT_URL} ({type(e).__name__} - {e}) — proceeding with announcement without dipping volume")
+            else:
+                logger.exception(f"Error dipping volume of Music Assistant players")
 
-    async def restore_after_announcement(self, state):
+    async def restore_after_announcement(self):
         try:
-            async with MusicAssistantWS(MUSIC_ASSISTANT_URL, MUSIC_ASSISTANT_TOKEN) as ma:
-                await ma.fade_up_restore(state, duration_seconds=3, intervals=20)
+            state_file = SceneStateFile()
+            if state_file.fresh():
+                state = state_file.load()
+                if any(state):
+                    async with MusicAssistantWS(MUSIC_ASSISTANT_URL, MUSIC_ASSISTANT_TOKEN) as ma:
+                        await ma.fade_up(state, duration_seconds=3, intervals=20)
         except Exception:
-            logger.exception(f"Error dipping volume of Music Assistant players")
+            logger.exception(f"Error restoring state of Music Assistant players")
 
     async def around_announcement(self, announcement_func):
         music_assistant_available = False
@@ -175,7 +184,7 @@ class AsyncScene:
                 if ma.playing():
                     state = ma.fetch_current_state()
                     try:
-                        await ma.fade_down(target_volume=DIP_TARGET_VOLUME, duration_seconds=3, intervals=15)
+                        await ma.fade_down(target_volume=DIP_VOLUME, duration_seconds=2, intervals=10)
                     except Exception:
                         logger.exception(f"Error dipping volume of Music Assistant players")
                 else:
@@ -185,7 +194,7 @@ class AsyncScene:
 
                 if any(state):
                     try:
-                        await ma.fade_up_restore(state, duration_seconds=5, intervals=20)
+                        await ma.fade_up(state, duration_seconds=4, intervals=20)
                     except Exception:
                         logger.exception(f"Error restoring volume of Music Assistant players")
 
@@ -197,39 +206,35 @@ class AsyncScene:
                 logger.exception(f"Error dipping volume of Music Assistant players")
 
 
-class SceneState:
+class SceneStateFile:
     MUSIC_ASSISTANT_STATE_FILE = CACHE_DIRECTORY + "/music_assistant_state_2.json"
 
-    def __init__(self, music_assistant_state: dict | None = None) -> None:
-        self.state = music_assistant_state or {}
+    def __init__(self, path: str = MUSIC_ASSISTANT_STATE_FILE) -> None:
+        self.path = path
 
-    def save(self):
-        print("Saving Music Assistant state:", self.state)
-        os.makedirs(os.path.dirname(self.MUSIC_ASSISTANT_STATE_FILE), exist_ok=True)
-        with open(self.MUSIC_ASSISTANT_STATE_FILE, "w") as f:
-            json.dump(self.state, f)
+    def save(self, state):
+        os.makedirs(os.path.dirname(self.path), exist_ok=True)
+        with open(self.path, "w") as f:
+            json.dump(state, f)
 
     def load(self):
         try:
-            with open(self.MUSIC_ASSISTANT_STATE_FILE, "r") as f:
+            with open(self.path, "r") as f:
                 return json.load(f)
         except Exception:
             logger.exception("Error loading Music Assistant state from file")
             return {}
 
-    @staticmethod
-    def clear():
+    def clear(self):
         try:
-            # delete the state file to clear it
-            Path(SceneState.MUSIC_ASSISTANT_STATE_FILE).unlink(missing_ok=True)
+            Path(self.path).unlink(missing_ok=True)
         except Exception:
             logger.exception("Error clearing Music Assistant state from file")
 
-    @staticmethod
-    def fresh( max_age_mins = 5) -> bool:
+    def fresh(self, max_age_mins=5) -> bool:
         max_age_seconds = max_age_mins * 60
         try:
-            mtime = os.path.getmtime(SceneState.MUSIC_ASSISTANT_STATE_FILE)
+            mtime = os.path.getmtime(self.path)
         except FileNotFoundError:
             return False
         return (time.time() - mtime) < max_age_seconds
@@ -250,19 +255,13 @@ class Scene2:
     # This method gets called from the HTTP endpoint, so has no shared state with the other methods
     @staticmethod
     def restore_after_alarm():
-        if SceneState.fresh():
-            asyncio.run(AsyncScene.restore_after_alarm())
-        else:
-            logger.info("Not restoring Music Assistant state as the state file is either too old or does not exist")
+        asyncio.run(AsyncScene.restore_after_alarm())
 
     def prepare_for_announcement(self):
         asyncio.run(AsyncScene().prepare_for_announcement())
 
     def restore_after_announcement(self):
-        if SceneState.fresh():
-            state = SceneState().load()
-            if any(state):
-                asyncio.run(AsyncScene().restore_after_announcement(state))
+        asyncio.run(AsyncScene().restore_after_announcement())
 
     def around_announcement(self, announcement_func):
         asyncio.run(AsyncScene().around_announcement(announcement_func))

@@ -5,7 +5,7 @@ from vcal.env import DATA_DIRECTORY, LOG_LEVEL
 import os
 from vcal.announcements.announce import play_morning_announcements as do_play_morning_announcements, play_morning_announcements_audio_file, SPEECH_FILE
 from vcal.log_config import setup_logging_for_announcements
-from vcal.scene import Scene, Scene2
+from vcal.scene import Scene2
 from vcal.announcements.announce import play_announcement as play_announcement_func
 
 setup_logging_for_announcements(str(LOG_LEVEL))
