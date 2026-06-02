@@ -1,11 +1,28 @@
+pcm.usb_hw {
+    type hw
+    card Device
+    device 0
+}
+
+pcm.usb_dmix {
+    type dmix
+    ipc_key 1024
+
+    slave {
+        pcm "usb_hw"
+        rate 48000
+        channels 2
+    }
+}
+
 pcm.usb {
     type plug
-    slave.pcm "hw:CARD=Device,DEV=0"
+    slave.pcm "usb_dmix"
 }
 
 pcm.!default {
     type plug
-    slave.pcm "usb"
+    slave.pcm "usb_dmix"
 }
 
 ctl.!default {

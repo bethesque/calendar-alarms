@@ -5,7 +5,7 @@ Wants=network-online.target
 
 [Service]
 ExecStartPre=/bin/sleep 2
-ExecStart={{ snapclient_path }} tcp://{{ ca_snapserver_host }}:{{ ca_snapserver_stream_port }} --hostID={{ ca_snapclient_host_id }} --instance 2
+ExecStart={{ snapclient_path }} tcp://{{ ca_snapserver_host }}:{{ ca_snapserver_stream_port }} --hostID={{ ca_snapclient_host_id }} --instance 2 --soundcard usb
 Restart=always
 RestartSec=5
 SyslogIdentifier=calendar-alarms-snapclient

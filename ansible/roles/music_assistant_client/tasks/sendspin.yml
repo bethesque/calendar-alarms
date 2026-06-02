@@ -1,4 +1,4 @@
-- name: Ensure version directory exists
+- name: Ensure sendspin version directory exists
   ansible.builtin.file:
     path: /var/lib/sendspin
     state: directory
@@ -7,14 +7,14 @@
     mode: "0755"
   become: true
 
-- name: Read installed version file
+- name: Read installed sendspin version file
   ansible.builtin.slurp:
     src: "{{ sendspin_version_file }}"
   register: sendspin_version_slurp
   failed_when: false
   become: true
 
-- name: Define installed version
+- name: Define installed sendspin version
   ansible.builtin.set_fact:
     sendspin_installed_version: >-
       {{
@@ -77,7 +77,7 @@
         path: "{{ sendspin_tmpdir.path }}"
         state: absent
 
-- name: Install config file
+- name: Install sendspin config file
   ansible.builtin.template:
     src: sendspin-armv6.conf.j2
     dest: "{{ sendspin_config }}"
@@ -106,7 +106,7 @@
         - Reload systemd
         - Restart sendspin
 
-- name: Enable user service
+- name: Enable sendspin user service
   ansible.builtin.command:
     cmd: systemctl --user enable {{ sendspin_user_service }}
   become_user: "{{ sendspin_user }}"
