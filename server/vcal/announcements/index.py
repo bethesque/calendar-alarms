@@ -6,7 +6,10 @@ from vcal.announcements.announce import play_announcement
 class AnnouncementController(object):
     @cherrypy.expose
     @cherrypy.tools.allow(methods=['POST'])
-    def index(self, message=None, **kwargs):
+    @cherrypy.tools.json_in()
+    def index(self, **kwargs):
+
+        message = cherrypy.request.json.get("message", None)
 
         if message:
             import threading
