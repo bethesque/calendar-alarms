@@ -6,6 +6,7 @@ from pathlib import Path
 
 from vcal.music_assistant import MusicAssistant, MusicAssistantState
 from vcal.music_assistant_ws import MusicAssistant as MusicAssistantWS
+from vcal.music_assistant_utils import any_players_playing
 from vcal.env import CACHE_DIRECTORY, MUSIC_ASSISTANT_URL, MUSIC_ASSISTANT_TOKEN, PLAYERS, DIP_TARGET_VOLUME, DIP_VOLUME
 from typing import Protocol
 import logging
@@ -126,9 +127,6 @@ class AsyncScene:
                 if ma.playing():
                     SceneStateFile().save(ma.fetch_current_state())
                     await ma.fade_down_and_pause(duration_seconds=3, intervals=20)
-                else:
-                    SceneStateFile().clear()
-                    logger.info("No Music Assistant players to pause")
         except Exception:
             logger.exception(f"Error pausing Music Assistant players")
 
@@ -250,7 +248,12 @@ class Scene2:
         pass
 
     def prepare_for_alarm(self):
-        asyncio.run(AsyncScene().prepare_for_alarm_async())
+        if any_players_playing(MUSIC_ASSISTANT_URL, MUSIC_ASSISTANT_TOKEN):
+            asyncio.run(AsyncScene().prepare_for_alarm_async())
+        else:
+            SceneStateFile().clear()
+            logger.info("No Music Assistant players to pause")
+
 
     # This method gets called from the HTTP endpoint, so has no shared state with the other methods
     @staticmethod
@@ -258,11 +261,19 @@ class Scene2:
         asyncio.run(AsyncScene.restore_after_alarm())
 
     def prepare_for_announcement(self):
-        asyncio.run(AsyncScene().prepare_for_announcement())
+        if any_players_playing(MUSIC_ASSISTANT_URL, MUSIC_ASSISTANT_TOKEN):
+            asyncio.run(AsyncScene().prepare_for_alarm_async())
+        else:
+            SceneStateFile().clear()
+            logger.info("No Music Assistant players to fade down")
 
     def restore_after_announcement(self):
         asyncio.run(AsyncScene().restore_after_announcement())
 
     def around_announcement(self, announcement_func):
-        asyncio.run(AsyncScene().around_announcement(announcement_func))
+        if any_players_playing(MUSIC_ASSISTANT_URL, MUSIC_ASSISTANT_TOKEN):
+            asyncio.run(AsyncScene().around_announcement(announcement_func))
+        else:
+            logger.info("No Music Assistant players to dip for announcement")
+            announcement_func()
 
