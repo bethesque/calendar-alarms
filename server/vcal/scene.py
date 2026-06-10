@@ -14,9 +14,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 class SceneProtocol(Protocol):
-    def save(self):
-        ...
-
     def prepare_for_alarm(self):
         ...
 
@@ -34,9 +31,6 @@ class SceneProtocol(Protocol):
         ...
 
 class NullScene:
-    def save(self):
-        pass
-
     def prepare_for_alarm(self):
         pass
 
@@ -58,19 +52,8 @@ class Scene:
     def __init__(self) -> None:
         pass
 
-    def save(self):
-        try:
-            ma_state = MusicAssistantState()
-            self._ma = MusicAssistant.build_for_players_with_names(PLAYERS)
-            self._ma.fetch_current_state()
-            if self._ma.playing():
-                ma_state.save(self._ma)
-            else:
-                ma_state.clear()
-        except Exception:
-            logger.exception(f"Exception determining or saving Music Assistant state")
-
     def prepare_for_alarm(self):
+        self._save()
         try:
             if self._ma.playing():
                 logger.info("Pausing Music Assistant players...")
@@ -79,7 +62,6 @@ class Scene:
                 logger.info("No Music Assistant players to pause")
         except Exception:
             logger.exception(f"Error pausing Music Assistant players")
-
 
     # This method gets called from the HTTP endpoint, so has no shared state with the other methods
     @staticmethod
@@ -97,6 +79,7 @@ class Scene:
             logger.exception(f"Error restoring Music Assistant state")
 
     def prepare_for_announcement(self):
+        self._save()
         try:
             if self._ma.playing():
                 logger.info("Dipping Music Assistant volume...")
@@ -111,14 +94,25 @@ class Scene:
         self._ma.restore_volume()
 
     def around_announcement(self, announcement_func):
-        pass
+        self.prepare_for_announcement()
+        announcement_func()
+        self.restore_after_announcement()
+
+    def _save(self):
+        try:
+            ma_state = MusicAssistantState()
+            self._ma = MusicAssistant.build_for_players_with_names(PLAYERS)
+            self._ma.fetch_current_state()
+            if self._ma.playing():
+                ma_state.save(self._ma)
+            else:
+                ma_state.clear()
+        except Exception:
+            logger.exception(f"Exception determining or saving Music Assistant state")
 
 
 class AsyncScene:
     def __init__(self) -> None:
-        pass
-
-    async def save(self):
         pass
 
     async def prepare_for_alarm_async(self):
@@ -242,9 +236,6 @@ class Scene2:
     _state: dict
 
     def __init__(self) -> None:
-        pass
-
-    def save(self):
         pass
 
     def prepare_for_alarm(self):
