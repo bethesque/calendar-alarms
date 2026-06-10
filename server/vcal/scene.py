@@ -7,7 +7,7 @@ from pathlib import Path
 from vcal.music_assistant import MusicAssistant, MusicAssistantState
 from vcal.music_assistant_ws import MusicAssistant as MusicAssistantWS
 from vcal.music_assistant_utils import any_players_playing
-from vcal.env import CACHE_DIRECTORY, MUSIC_ASSISTANT_URL, MUSIC_ASSISTANT_TOKEN, PLAYERS, DIP_TARGET_VOLUME, DIP_VOLUME
+from vcal.env import CACHE_DIRECTORY, MUSIC_ASSISTANT_URL, MUSIC_ASSISTANT_TOKEN, PLAYERS, DIP_VOLUME
 from typing import Protocol
 import logging
 
