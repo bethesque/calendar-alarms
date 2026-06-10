@@ -2,7 +2,7 @@ import os
 import logging
 from gtts import gTTS
 from vcal.string_utils import sanitise_filename
-from vcal.random_text import select_text
+from vcal.random_text import TextFileOptionsSource, select_text
 from vcal.env import CACHE_DIRECTORY, GOOGLE_TRANSLATE_LANG, DEFAULT_GOOGLE_TRANSLATE_TLD
 
 DEFAULT_ANNOUCEMENT_FILE = "audio/default_announcement.mp3"
@@ -66,7 +66,7 @@ def get_file_path_for_text(text, tld, cache_directory=AUDIO_CACHE_DIR):
 
 def gtts_tld():
     # Randomly select a tld to keep things interesting.
-    tld = select_text(DEFAULT_GOOGLE_TRANSLATE_TLD, 1/5, "accent_tld_choices.txt")
+    tld = select_text(DEFAULT_GOOGLE_TRANSLATE_TLD, 1/5, TextFileOptionsSource(file_name="accent_tld_choices.txt"))
     return tld if tld else DEFAULT_GOOGLE_TRANSLATE_TLD
 
 if __name__ == "__main__":

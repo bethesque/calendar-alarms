@@ -1,3 +1,5 @@
+import logging
+
 from vcal.announcements.announce import play_morning_announcements_audio_file, MORNING_ANNOUNCEMENTS_AUDIO_FILE
 from datetime import datetime
 import argparse
@@ -10,6 +12,8 @@ from vcal.announcements.announce import play_announcement as play_announcement_f
 
 setup_logging_for_announcements(str(LOG_LEVEL))
 
+logger = logging.getLogger(__name__)
+
 def play_announcement():
     parser = argparse.ArgumentParser(description="Play a one-off announcement")
     parser.add_argument(
@@ -17,7 +21,7 @@ def play_announcement():
         help="The message to announce"
     )
     args = parser.parse_args()
-    print(f"Playing announcement: {args.message}")
+    logger.info(f"Playing announcement: {args.message}")
     play_announcement_func(args.message, Scene2())
 
 def play_morning_announcements():

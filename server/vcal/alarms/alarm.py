@@ -98,7 +98,7 @@ class AlarmAudio:
     def _announcement_for_event(self, event_notification: EventNotification):
         summary = event_notification.event.summary if event_notification.event.summary else "an event"
         if event_notification.offset > 0:
-            return f"It will be time for {summary} in {event_notification.offset} in minutes"
+            return f"It will be time for {summary} in {event_notification.offset} minutes"
         else:
             return f"It's time for {summary}"
 
@@ -140,7 +140,7 @@ class AnnouncementAudio:
     def _announcement_for_event(self, event_notification: EventNotification):
         summary = event_notification.event.summary if event_notification.event.summary else "an event"
         if event_notification.offset > 0:
-            return f"It will be time for {summary} in {event_notification.offset} in minutes"
+            return f"It will be time for {summary} in {event_notification.offset} minutes"
         else:
             return f"It's time for {summary}"
 
@@ -148,6 +148,7 @@ class AnnouncementAudio:
         return list(dict.fromkeys(items))
 
     def preannouncement_bell(self):
+
         return AUDIO_DIRECTORY + "/preannounce_0_3_vol.mp3"
 
 def play_notifications(announcements_file: str, alarms_file: str, scene: SceneProtocol):

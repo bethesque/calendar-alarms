@@ -1,5 +1,6 @@
 import logging
 import glob
+import random
 import time
 from datetime import datetime
 from vcal.alarms.alarm import set_snapclients_to_max_volume
@@ -8,7 +9,7 @@ from vcal.alarms.mpd import fade_up, mpd_connection
 from vcal.cal.google_calendar import WeatherForecast, load_data_from_file
 from vcal.alarms.text_to_voice import text_to_voice_file_daily_summary, text_to_voice_file
 from vcal.alarms.sound import mix_announcement_audio, track_length, join_mp3s_to_wav
-from vcal.random_text import select_text
+from vcal.random_text import FileListOptionsSource, TextFileOptionsSource, select_text
 from vcal.select_item import select_item_by_date
 from vcal.env import DATA_DIRECTORY, CACHE_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, INITIAL_ALARM_VOLUME, ANNOUNCEMENT_VOLUME
 from vcal.alarms import BACKGROUND_MUSIC_DIRECTORY, AUDIO_DIRECTORY
@@ -18,6 +19,7 @@ SPEECH_FILE = CACHE_DIRECTORY + "/audio/morning_annoucements_speech.mp3"
 MORNING_ANNOUNCEMENTS_AUDIO_FILE = f"{OUTPUT_AUDIO_DIRECTORY}/morning_announcements.wav"
 SILENCE_5_SEC = "audio/silence_5s.mp3"
 SILENCE_1_SEC = "audio/silence_1s.mp3"
+SILENCE_HALF_SEC = "audio/silence_500ms.mp3"
 MORNING_ANNOUNCEMENTS_PRELUDE_CHOICES = "morning_announcements_prelude_choices.txt"
 PRE_ANNOUNCEMENT_BELL = AUDIO_DIRECTORY + "/preannounce_0_3_vol.mp3"
 
@@ -25,7 +27,6 @@ logger = logging.getLogger(__name__)
 
 class MissingCalendarDataException(Exception):
     pass
-
 
 def play_announcement(message: str, scene: SceneProtocol):
     announcement_file = _build_one_off_announcement_file(message)
@@ -45,9 +46,17 @@ def play_announcement(message: str, scene: SceneProtocol):
 def _build_one_off_announcement_file(message: str):
     speech_file = text_to_voice_file(message)
     announcement_file = OUTPUT_AUDIO_DIRECTORY + "/one_off_announcement.wav"
-    files = [PRE_ANNOUNCEMENT_BELL, speech_file, SILENCE_1_SEC]
+    files = get_pre_announcement_files() + [speech_file, SILENCE_1_SEC]
     join_mp3s_to_wav(files, announcement_file)
     return announcement_file
+
+def get_pre_announcement_files()-> list[str]:
+    files = [PRE_ANNOUNCEMENT_BELL]
+    sound_effect = select_text(None, 1/5, FileListOptionsSource(directory=AUDIO_DIRECTORY + "/sound_effects", extensions=[".mp3"]))
+    if sound_effect:
+        files.append(sound_effect)
+        files.append(SILENCE_HALF_SEC)
+    return files
 
 """
 Top level entry point. Generate a summary of today's events, convert them to voice, and play them.
@@ -118,7 +127,7 @@ def build_sentences(all_events):
 
     sentences = ["Good morning!"]
 
-    extra_text = select_text(None, 1, MORNING_ANNOUNCEMENTS_PRELUDE_CHOICES)
+    extra_text = select_text(None, 1, TextFileOptionsSource(file_name=MORNING_ANNOUNCEMENTS_PRELUDE_CHOICES) )
     if extra_text:
         sentences.append(extra_text)
 
