@@ -1,5 +1,6 @@
 import logging
 import glob
+import os
 import random
 import time
 from datetime import datetime
@@ -28,8 +29,8 @@ logger = logging.getLogger(__name__)
 class MissingCalendarDataException(Exception):
     pass
 
-def play_announcement(message: str, scene: SceneProtocol):
-    announcement_file = _build_one_off_announcement_file(message)
+def play_announcement(message: str, scene: SceneProtocol, sound_effect_file_name = None):
+    announcement_file = _build_one_off_announcement_file(message, sound_effect_file_name)
     set_snapclients_to_max_volume()
 
     def play():
@@ -43,19 +44,30 @@ def play_announcement(message: str, scene: SceneProtocol):
 
     scene.around_announcement(play)
 
-def _build_one_off_announcement_file(message: str):
+def _build_one_off_announcement_file(message: str, sound_effect_file_name: str = None):
     speech_file = text_to_voice_file(message)
     announcement_file = OUTPUT_AUDIO_DIRECTORY + "/one_off_announcement.wav"
-    files = get_pre_announcement_files() + [speech_file, SILENCE_1_SEC]
+    files = get_pre_announcement_files(sound_effect_file_name) + [speech_file, SILENCE_1_SEC]
     join_mp3s_to_wav(files, announcement_file)
     return announcement_file
 
-def get_pre_announcement_files()-> list[str]:
+def get_pre_announcement_files(sound_effect_file_name: str = None)-> list[str]:
     files = [PRE_ANNOUNCEMENT_BELL]
-    sound_effect = select_text(None, ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY, FileListOptionsSource(directory=AUDIO_DIRECTORY + "/sound_effects", extensions=[".mp3"]))
-    if sound_effect:
-        files.append(sound_effect)
-        files.append(SILENCE_HALF_SEC)
+    if not sound_effect_file_name is None:
+        if sound_effect_file_name != "":
+            sound_effect_file_path = os.path.join(AUDIO_DIRECTORY, "sound_effects", sound_effect_file_name)
+            if os.path.isfile(sound_effect_file_path):
+                files.append(sound_effect_file_path)
+            else:
+                logger.warning(f"Sound effect file {sound_effect_file_path} does not exist. Skipping sound effect.")
+            files.append(SILENCE_HALF_SEC)
+        else:
+            logger.info("Empty sound effect file name provided, skipping sound effect.")
+    else:
+        sound_effect = select_text(None, ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY, FileListOptionsSource(directory=AUDIO_DIRECTORY + "/sound_effects", extensions=[".mp3"]))
+        if sound_effect:
+            files.append(sound_effect)
+            files.append(SILENCE_HALF_SEC)
     return files
 
 """

@@ -18,11 +18,17 @@ def play_announcement():
     parser = argparse.ArgumentParser(description="Play a one-off announcement")
     parser.add_argument(
         "--message",
+        required=True,
         help="The message to announce"
+    )
+
+    parser.add_argument(
+        "--sound_effect_file_name",
+        help="The name of the sound effect file to play"
     )
     args = parser.parse_args()
     logger.info(f"Playing announcement: {args.message}")
-    play_announcement_func(args.message, Scene2())
+    play_announcement_func(args.message, Scene2(), args.sound_effect_file_name)
 
 def play_morning_announcements():
     parser = argparse.ArgumentParser(description="Check for alarms in calendar events")

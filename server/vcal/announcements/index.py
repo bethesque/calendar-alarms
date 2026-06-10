@@ -9,11 +9,13 @@ class AnnouncementController(object):
     @cherrypy.tools.json_in()
     def index(self, **kwargs):
 
-        message = cherrypy.request.json.get("message", None)
+        json = cherrypy.request.json
+        message = json.get("message", None)
+        sound_effect_file_name = json.get("sound_effect_file_name", None)
 
         if message:
             import threading
-            threading.Thread(target=play_announcement, args=(message, Scene2())).start()
+            threading.Thread(target=play_announcement, args=(message, Scene2(), sound_effect_file_name)).start()
             cherrypy.response.status = 202
             return "Announcement received"
         else:
