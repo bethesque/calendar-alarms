@@ -12,6 +12,7 @@
 - name: Clone sparse checkout if missing
   ansible.builtin.shell: |
     git clone --filter=blob:none --sparse https://github.com/bethesque/calendar-alarms.git "{{ project_root }}"
+    cd "{{ project_root }}"
     git sparse-checkout set client
   args:
     chdir: "{{ project_root | dirname }}"
