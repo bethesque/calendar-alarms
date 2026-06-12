@@ -55,7 +55,6 @@ def play_morning_announcements():
     base_time = args.base_time or datetime.now().astimezone()
 
     scene = Scene()
-    scene.save()
 
     if args.cached:
         play_morning_announcements_cached()
@@ -65,5 +64,5 @@ def play_morning_announcements():
 
 def play_morning_announcements_cached():
     scene = Scene()
-    scene.save()
+
     play_morning_announcements_audio_file(MORNING_ANNOUNCEMENTS_AUDIO_FILE, scene.prepare_for_alarm, scene.restore_after_alarm)
