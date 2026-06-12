@@ -68,7 +68,7 @@ class VolumeController:
         logging.info("amixer set output:\n%s", result.stdout)
 
     def mute(self):
-        logging.info("Handling mute request")
+        logging.info("Handling amixer mute request")
 
         with self._lock:
             current_volume = self.get_current_volume()
@@ -92,7 +92,7 @@ class VolumeController:
         duration_seconds: int = RAMP_DURATION_SECONDS,
         steps: int = RAMP_STEPS,
     ):
-        logging.info("Handling unmute_slowly request")
+        logging.info("Handling amixer unmute_slowly request")
 
         with self._lock:
             target_volume = self._stored_volume
@@ -100,7 +100,7 @@ class VolumeController:
         logging.info("Stored target volume: %s", target_volume)
 
         if target_volume is None:
-            logging.warning("No stored volume available")
+            logging.warning("No stored amixer volume available")
             return
 
         current_volume = self.get_current_volume()
@@ -109,7 +109,7 @@ class VolumeController:
 
         if current_volume >= target_volume:
             logging.info(
-                "Current volume already >= target volume"
+                "Current amixer volume already >= target volume"
             )
             return
 
@@ -117,7 +117,7 @@ class VolumeController:
         sleep_time = duration_seconds / steps
 
         logging.info(
-            "Gradually restoring volume over %s seconds in %s steps",
+            "Gradually restoring amixer volume over %s seconds in %s steps",
             duration_seconds,
             steps,
         )

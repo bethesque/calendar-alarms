@@ -26,11 +26,11 @@ It uses only native Python libraries without any additional dependencies.
 
 def toggle(audio_config):
     with muted_alsa():
-        client_id = Path(client_id_file).read_text().strip() if Path(client_id_file).exists() else None
-        is_snap_playing = is_snapclient_playing(audio_config, client_id)
+        snapclient_id = Path(client_id_file).read_text().strip() if Path(client_id_file).exists() else None
+        is_snap_playing = is_snapclient_playing(audio_config, snapclient_id)
 
         if is_snap_playing:
-            mute_snapclient(audio_config["snapserver_url"], audio_config["client_id_file"])
+            mute_snapclient(audio_config["snapserver_url"], snapclient_id)
         else:
             toggle_music_assistant_player(audio_config)
 
@@ -50,19 +50,16 @@ def is_snapclient_playing(audio_config, client_id):
 For alarms/announcements, mute the snapclient rather than trying to stop the stream.
 The next alarm/announcement will set the volume back to 100%.
 """
-def mute_snapclient(ca_snapserver_rpc_url, client_id_file):
+def mute_snapclient(ca_snapserver_rpc_url, client_id):
+    logger.info(f"Snapclient {client_id} is playing, muting snapclient at {ca_snapserver_rpc_url}")
     try:
-        client_id = Path(client_id_file).read_text().strip()
-        if not client_id:
-            logger.warning(f"No client ID found in {client_id_file}")
-        else:
-            mute_client(ca_snapserver_rpc_url, client_id)
+        mute_client(ca_snapserver_rpc_url, client_id)
     except Exception:
         logger.exception("Error muting snapclient")
 
 def toggle_music_assistant_player(audio_config):
     try:
-        logger.info(f"Toggle pause/play Music Assistant player {audio_config['home_assistant_player_entity']} at {audio_config['home_assistant_url']} ")
+        logger.info(f"Toggling pause/play Music Assistant player {audio_config['home_assistant_player_entity']} at {audio_config['home_assistant_url']} ")
         toggle_pause_play(audio_config["home_assistant_url"], audio_config["home_assistant_player_entity"])
     except Exception:
         logger.exception("Error toggling pause/play Music Assistant player")
@@ -135,8 +132,8 @@ if __name__ == "__main__":
         "home_assistant_player_entity": home_assistant_player_entity
     }
 
-    url = f"http://{args.host}:{args.port}/audio/stop"
-    logger.info(f"Starting stop handler at {url} with config {audio_config}")
+    url = f"http://{args.host}:{args.port}/audio/toggle"
+    logger.info(f"Starting audio controller at {url} with config {audio_config}")
 
     handler_class = partial(Handler, audio_config=audio_config)
 
