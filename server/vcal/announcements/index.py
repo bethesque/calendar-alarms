@@ -15,7 +15,7 @@ class AnnouncementController(object):
 
         if message:
             import threading
-            threading.Thread(target=play_announcement, args=(message, Scene, sound_effect_file_name)).start()
+            threading.Thread(target=play_announcement, args=(message, Scene(), sound_effect_file_name)).start()
             cherrypy.response.status = 202
             return "Announcement received"
         else:
