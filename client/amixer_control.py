@@ -12,7 +12,7 @@ import time
 SOCKET_PATH = "/tmp/volume_control.sock"
 
 # Configurable ramp settings
-RAMP_DURATION_SECONDS = 5
+RAMP_DURATION_SECONDS = 3
 RAMP_STEPS = 10
 
 
