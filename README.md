@@ -1,7 +1,5 @@
 # Google calendar alarms
 
-
-
 ## Deployment
 
 ### Requirements
@@ -75,36 +73,24 @@ journalctl -u calendar-alarms-http -f # view logs
 
 ### Clients
 
+Make sure a speaker is plugged in when deploying, or the snapclient services won't start.
+
+On mac, install:
+* ansible
+* ts (`brew install moreutils`)
+
+```shell
+script/deploy/audio_clients.sh
 ```
-sudo apt install pipewire pipewire-audio pipewire-pulse wireplumber
 
-# reboot (don't know why, just following what chatgpt says)
+First time, it might time out waiting for the reboot. Start the script again.
 
-# connect to bluetooth device (follow script/connect_bluetooth_speaker.sh)
-
-# Test audio
-pw-play /usr/share/sounds/alsa/Front_Center.wav
-
-# OR try
-paplay /usr/share/sounds/alsa/Front_Center.wav
-
-
-sudo apt install snapcast
-sudo systemctl start snapclient
-sudo systemctl enable snapclient # enable at startup
-
-
-export SNAPSERVER_IP="192.168.20.3" # use your own server's IP here
-export SNAPCLIENT_NAME="vcal" # give your client a unique name
-echo "SNAPCLIENT_OPTS=\"-h ${SNAPSERVER_IP} --soundcard pulse --hostID=${SNAPCLIENT_NAME}\"" | sudo tee /etc/default/snapclient > /dev/null
-cat /etc/default/snapclient # sanity check
-
-sudo systemctl restart snapclient
-
-journalctl -u snapclient -f # view logs
-cat /lib/systemd/system/snapclient.service # view systemd config file
 
 ```
+[Error] (Alsa) Exception: Can't open sysdefault, error: Unknown error 524, code: -524
+```
+
+Rebooting with the speaker plugged in and starting again seems to fix this problem.
 
 # Useful links
 
