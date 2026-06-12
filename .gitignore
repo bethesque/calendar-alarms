@@ -5,6 +5,7 @@ pyvenv.cfg
 /bin
 /lib
 /share
+build
 
 .vscode
 
