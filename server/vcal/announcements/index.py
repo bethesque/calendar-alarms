@@ -1,6 +1,6 @@
 import argparse
 import cherrypy
-from vcal.scene import Scene2
+from vcal.scene import Scene
 from vcal.announcements.announce import play_announcement
 
 class AnnouncementController(object):
@@ -15,7 +15,7 @@ class AnnouncementController(object):
 
         if message:
             import threading
-            threading.Thread(target=play_announcement, args=(message, Scene2(), sound_effect_file_name)).start()
+            threading.Thread(target=play_announcement, args=(message, Scene, sound_effect_file_name)).start()
             cherrypy.response.status = 202
             return "Announcement received"
         else:
