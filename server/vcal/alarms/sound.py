@@ -3,6 +3,7 @@ import logging
 import subprocess
 import tempfile
 import os
+import math
 
 logger = logging.getLogger(__name__)
 
@@ -78,20 +79,33 @@ def mix_announcement_audio(
     music_file: str,
     output_file: str,
 ):
+
+    delay = 5
+    fade_duration = 3
+    speech_file_length = track_length(speech_file)
+    full_duration_seconds = speech_file_length + delay + fade_duration
+    music_loops = num_loops(full_duration_seconds, music_file)
+
+    fade_start = full_duration_seconds - fade_duration
+    size=track_length(music_file) * 48000
+
     filter_complex = (
         # Announcement (delay + smooth start)
         "[0:a]aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo,"
-        "volume=1.5,adelay=5000|5000[ann];"
+        f"volume=1.5,adelay={delay * 1000}|{delay * 1000}[ann];"
 
         # Music
-        "[1:a]aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo,"
-        "volume=0.5[music];"
+        "[1:a]aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo,volume=0.5,"
+        f"aloop=loop={music_loops}:size={size},"
+        "asetpts=N/SR/TB,"
+        f"atrim=start=0:end={full_duration_seconds:.2f},"
+        "afade=t=in:st=0:d=1.5,"
+        f"afade=t=out:st={fade_start:.2f}:d={fade_duration}[music];"
 
         # Mix
-        "[music][ann]amix=inputs=2:duration=longest:weights='1 1.2',"
+        f"[music][ann]amix=inputs=2:weights='1 1.2',"
 
         # Initial fade-in + limiter
-        "afade=t=in:st=0:d=1.5,"
         "alimiter=limit=0.9"
     )
 
@@ -117,8 +131,9 @@ def mix_announcement_audio(
                 text=True)
     logger.debug(f"FFmpeg output: {result.stderr}")
 
+
 def num_loops(max_length: float, *file_paths: str) -> int:
-        """Calculate the number of loops needed to play files for max_length seconds."""
+        """Calculate the number of loops needed to play files for max_length seconds, rounding DOWN so that it is less than the max."""
         total_length = sum(track_length(fp) for fp in file_paths)
         return max(1, int(max_length // total_length))
 
