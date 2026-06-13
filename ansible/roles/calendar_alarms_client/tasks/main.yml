@@ -76,5 +76,8 @@
 - name: Set default amixer volume
   ansible.builtin.command:
     cmd: "amixer set Speaker {{ default_speaker_volume }}"
-  tags: audio
+  tags:
+    - audio
+    - default_volume
   when: not is_bluetooth_audio
+
