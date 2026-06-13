@@ -12,16 +12,23 @@ class AnnouncementController(object):
         json = cherrypy.request.json
         message = json.get("message", None)
         sound_effect_file_name = json.get("sound_effect_file_name", None)
+        players = json.get("players", None)
+        players = ensure_list(players) if players else None
 
         if message:
             import threading
-            threading.Thread(target=play_announcement, args=(message, Scene(), sound_effect_file_name)).start()
+            threading.Thread(target=play_announcement, args=(message, Scene(), sound_effect_file_name, players)).start()
             cherrypy.response.status = 202
             return "Announcement received"
         else:
             cherrypy.log("No message provided for announcement")
             cherrypy.response.status = 400
             return "Error: No message provided"
+
+def ensure_list(x):
+    if isinstance(x, list):
+        return x
+    return [x]
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Basic CherryPy announcement server")

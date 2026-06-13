@@ -5,6 +5,7 @@ import random
 import time
 from datetime import datetime
 from vcal.alarms.alarm import set_snapclients_to_max_volume
+from vcal.snapserver import Snapserver
 from vcal.scene import SceneProtocol
 from vcal.alarms.mpd import fade_up, mpd_connection
 from vcal.cal.google_calendar import WeatherForecast, load_data_from_file
@@ -12,7 +13,7 @@ from vcal.alarms.text_to_voice import text_to_voice_file_daily_summary, text_to_
 from vcal.alarms.sound import mix_announcement_audio, track_length, join_mp3s_to_wav
 from vcal.random_text import FileListOptionsSource, TextFileOptionsSource, select_text
 from vcal.select_item import select_item_by_date
-from vcal.env import DATA_DIRECTORY, CACHE_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, INITIAL_ALARM_VOLUME, ANNOUNCEMENT_VOLUME, ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY
+from vcal.env import DATA_DIRECTORY, CACHE_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, INITIAL_ALARM_VOLUME, ANNOUNCEMENT_VOLUME, ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY, SNAPSERVER_RPC_URL
 from vcal.alarms import BACKGROUND_MUSIC_DIRECTORY, AUDIO_DIRECTORY
 
 CALENDAR_FILE = f"{DATA_DIRECTORY}/calendar.json"
@@ -29,9 +30,12 @@ logger = logging.getLogger(__name__)
 class MissingCalendarDataException(Exception):
     pass
 
-def play_announcement(message: str, scene: SceneProtocol, sound_effect_file_name = None):
+def play_announcement(message: str, scene: SceneProtocol, sound_effect_file_name = None, players: list[str] = []):
     announcement_file = _build_one_off_announcement_file(message, sound_effect_file_name)
-    set_snapclients_to_max_volume()
+
+    snapserver = Snapserver(SNAPSERVER_RPC_URL)
+
+    snapserver.set_connected_full_volume(players)
 
     def play():
         try:
@@ -43,15 +47,18 @@ def play_announcement(message: str, scene: SceneProtocol, sound_effect_file_name
             logger.exception(f"Error playing announcement audio file {announcement_file}")
 
     scene.around_announcement(play)
+    snapserver.set_all_connected_full_volume()
 
-def _build_one_off_announcement_file(message: str, sound_effect_file_name: str = None):
+
+
+def _build_one_off_announcement_file(message: str, sound_effect_file_name: str | None = None):
     speech_file = text_to_voice_file(message)
     announcement_file = OUTPUT_AUDIO_DIRECTORY + "/one_off_announcement.wav"
     files = get_pre_announcement_files(sound_effect_file_name) + [speech_file, SILENCE_1_SEC]
     join_mp3s_to_wav(files, announcement_file)
     return announcement_file
 
-def get_pre_announcement_files(sound_effect_file_name: str = None)-> list[str]:
+def get_pre_announcement_files(sound_effect_file_name: str | None)-> list[str]:
     files = [PRE_ANNOUNCEMENT_BELL]
     if not sound_effect_file_name is None:
         if sound_effect_file_name != "":
