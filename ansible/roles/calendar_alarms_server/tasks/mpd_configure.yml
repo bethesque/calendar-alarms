@@ -70,4 +70,6 @@
   systemd:
     name: mpd
     enabled: yes
+    daemon_reload: true
     state: restarted
+  become: yes
