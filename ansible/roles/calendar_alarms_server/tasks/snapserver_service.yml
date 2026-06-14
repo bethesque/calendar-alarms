@@ -1,3 +1,24 @@
+- name: Ensure snapserver override directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/system/snapserver.service.d
+    state: directory
+    mode: "0755"
+  become: true
+
+# This ensures that snapserver can read from the mpd
+- name: Install snapserver systemd override
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/snapserver.service.d/override.conf
+    mode: "0644"
+    content: |
+      [Service]
+      RuntimeDirectory=snapserver
+      RuntimeDirectoryMode=0755
+      User=_snapserver
+      Group=audio
+
+  become: true
+
 - name: Reload systemd daemon
   ansible.builtin.systemd:
     daemon_reload: true
