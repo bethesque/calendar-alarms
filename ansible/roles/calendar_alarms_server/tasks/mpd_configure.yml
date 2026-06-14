@@ -40,8 +40,34 @@
     mode: "0644"
   notify: restart mpd
 
+- name: Ensure mpd override directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/system/mpd.service.d
+    state: directory
+    mode: "0755"
+  become: true
+
+- name: Install mpd systemd override
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/mpd.service.d/override.conf
+    mode: "0644"
+    content: |
+      [Unit]
+      Requires=snapserver.service
+      After=snapserver.service
+
+  become: true
+
+# Needs both mpd and snapserver installed
+# Must restart mpd after this change
+- name: Add mpd user to _snapserver group
+  ansible.builtin.user:
+    name: mpd
+    groups: _snapserver
+    append: true
+
 - name: Ensure MPD is enabled and running
   systemd:
     name: mpd
     enabled: yes
-    state: started
+    state: restarted
