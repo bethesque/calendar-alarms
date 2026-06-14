@@ -68,7 +68,7 @@ def get_pre_announcement_files(sound_effect: str | None)-> list[str]:
             files.append(SILENCE_HALF_SEC)
         else:
             logger.info("Random selection returned no sound effect")
-    elif sound_effect:
+    elif sound_effect and sound_effect != "none":
         sound_effect_file_path = os.path.join(AUDIO_DIRECTORY, "sound_effects", sound_effect)
         if os.path.isfile(sound_effect_file_path):
             logger.info(f"Using specified sound effect {sound_effect_file_path}")
