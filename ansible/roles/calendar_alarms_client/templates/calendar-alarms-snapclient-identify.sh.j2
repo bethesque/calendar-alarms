@@ -18,8 +18,7 @@ for i in {1..15}; do
   client_id=$(echo "$response" | jq -r --arg hostname "$HOSTNAME" --arg ca_snapclient_host_id "$SNAPCLIENT_HOST_ID" '
     .result.server.groups[]?.clients[]
     | select(
-        .connected == true
-        and .host.name == $hostname
+        .host.name == $hostname
         and (
               .id == $ca_snapclient_host_id
               or select(.id | startswith($ca_snapclient_host_id + "#"))
