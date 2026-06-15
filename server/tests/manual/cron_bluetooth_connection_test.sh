@@ -5,7 +5,7 @@
 # bluetoothctl
 #   disconnect
 # crontab -e
-# * * * * * cd /home/thetrav/calendar && tests/manual/cron_bluetooth_connection_test.sh <DEVICE_MAC> >> /home/thetrav/calendar/logs/cron.log  2>&1
+# * * * * * cd /home/pi/calendar && tests/manual/cron_bluetooth_connection_test.sh <DEVICE_MAC> >> /home/pi/calendar/logs/cron.log  2>&1
 
 set -Eeuo pipefail
 
