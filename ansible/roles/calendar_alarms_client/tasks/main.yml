@@ -80,4 +80,3 @@
     - audio
     - default_volume
   when: not is_bluetooth_audio
-
