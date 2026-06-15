@@ -1,0 +1,78 @@
+# Tasks to ensure that the calendar alarms don't go off in the office during Trav's working hours
+
+- name: Create calendar-alarms-snapclient stop service
+  ansible.builtin.copy:
+    dest: "/home/{{ snapclient_user }}/.config/systemd/user/calendar-alarms-snapclient-stop.service"
+    owner: "{{ snapclient_user }}"
+    group: "{{ snapclient_user }}"
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Stop calender-alarms-snapclient
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/bin/systemctl --user stop calendar-alarms-snapclient.service
+
+- name: Create calendar-alarms-snapclient stop timer
+  ansible.builtin.copy:
+    dest: "/home/{{ snapclient_user }}/.config/systemd/user/calendar-alarms-snapclient-stop.timer"
+    owner: "{{ snapclient_user }}"
+    group: "{{ snapclient_user }}"
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Stop calendar-alarms-snapclient at 8:35am weekdays
+
+      [Timer]
+      OnCalendar=Mon..Fri 08:35
+
+      [Install]
+      WantedBy=timers.target
+
+- name: Create calendar-alarms-snapclient start service
+  ansible.builtin.copy:
+    dest: "/home/{{ snapclient_user }}/.config/systemd/user/calendar-alarms-snapclient-start.service"
+    owner: "{{ snapclient_user }}"
+    group: "{{ snapclient_user }}"
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Start calendar-alarms-snapclient
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/bin/systemctl --user start calendar-alarms-snapclient.service
+
+- name: Create calendar-alarms-snapclient start timer
+  ansible.builtin.copy:
+    dest: "/home/{{ snapclient_user }}/.config/systemd/user/calendar-alarms-snapclient-start.timer"
+    owner: "{{ snapclient_user }}"
+    group: "{{ snapclient_user }}"
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Start calendar-alarms-snapclient at 5pm weekdays
+
+      [Timer]
+      OnCalendar=Mon..Fri 17:00
+
+      [Install]
+      WantedBy=timers.target
+
+- name: Reload user systemd daemon
+  ansible.builtin.command: systemctl --user daemon-reload
+
+- name: Enable and start stop timer
+  ansible.builtin.systemd:
+    name: calendar-alarms-snapclient-stop.timer
+    enabled: true
+    state: started
+    scope: user
+
+- name: Enable and start start timer
+  ansible.builtin.systemd:
+    name: calendar-alarms-snapclient-start.timer
+    enabled: true
+    state: started
+    scope: user

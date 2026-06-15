@@ -41,3 +41,9 @@
     scope: user
     state: restarted
     enabled: true
+
+- name: Setup start/stop timers for officepi
+  ansible.builtin.import_tasks: snapclient_officepi.yml
+  tags:
+    - officepi
+  when: inventory_hostname == 'officepi'
