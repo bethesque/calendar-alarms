@@ -6,16 +6,14 @@ from pathlib import Path
 
 from vcal.music_assistant import MusicAssistant, MusicAssistantState
 from vcal.music_assistant_ws import MusicAssistant as MusicAssistantWS
-from vcal.env import CACHE_DIRECTORY, MUSIC_ASSISTANT_URL, MUSIC_ASSISTANT_TOKEN, PLAYERS, DIP_TARGET_VOLUME, DIP_VOLUME
+from vcal.music_assistant_utils import any_players_playing
+from vcal.env import CACHE_DIRECTORY, MUSIC_ASSISTANT_URL, MUSIC_ASSISTANT_TOKEN, PLAYERS, DIP_VOLUME
 from typing import Protocol
 import logging
 
 logger = logging.getLogger(__name__)
 
 class SceneProtocol(Protocol):
-    def save(self):
-        ...
-
     def prepare_for_alarm(self):
         ...
 
@@ -33,9 +31,6 @@ class SceneProtocol(Protocol):
         ...
 
 class NullScene:
-    def save(self):
-        pass
-
     def prepare_for_alarm(self):
         pass
 
@@ -57,19 +52,8 @@ class Scene:
     def __init__(self) -> None:
         pass
 
-    def save(self):
-        try:
-            ma_state = MusicAssistantState()
-            self._ma = MusicAssistant.build_for_players_with_names(PLAYERS)
-            self._ma.fetch_current_state()
-            if self._ma.playing():
-                ma_state.save(self._ma)
-            else:
-                ma_state.clear()
-        except Exception:
-            logger.exception(f"Exception determining or saving Music Assistant state")
-
     def prepare_for_alarm(self):
+        self._save()
         try:
             if self._ma.playing():
                 logger.info("Pausing Music Assistant players...")
@@ -78,7 +62,6 @@ class Scene:
                 logger.info("No Music Assistant players to pause")
         except Exception:
             logger.exception(f"Error pausing Music Assistant players")
-
 
     # This method gets called from the HTTP endpoint, so has no shared state with the other methods
     @staticmethod
@@ -96,6 +79,7 @@ class Scene:
             logger.exception(f"Error restoring Music Assistant state")
 
     def prepare_for_announcement(self):
+        self._save()
         try:
             if self._ma.playing():
                 logger.info("Dipping Music Assistant volume...")
@@ -110,14 +94,25 @@ class Scene:
         self._ma.restore_volume()
 
     def around_announcement(self, announcement_func):
-        pass
+        self.prepare_for_announcement()
+        announcement_func()
+        self.restore_after_announcement()
+
+    def _save(self):
+        try:
+            ma_state = MusicAssistantState()
+            self._ma = MusicAssistant.build_for_players_with_names(PLAYERS)
+            self._ma.fetch_current_state()
+            if self._ma.playing():
+                ma_state.save(self._ma)
+            else:
+                ma_state.clear()
+        except Exception:
+            logger.exception(f"Exception determining or saving Music Assistant state")
 
 
 class AsyncScene:
     def __init__(self) -> None:
-        pass
-
-    async def save(self):
         pass
 
     async def prepare_for_alarm_async(self):
@@ -126,9 +121,6 @@ class AsyncScene:
                 if ma.playing():
                     SceneStateFile().save(ma.fetch_current_state())
                     await ma.fade_down_and_pause(duration_seconds=3, intervals=20)
-                else:
-                    SceneStateFile().clear()
-                    logger.info("No Music Assistant players to pause")
         except Exception:
             logger.exception(f"Error pausing Music Assistant players")
 
@@ -246,11 +238,13 @@ class Scene2:
     def __init__(self) -> None:
         pass
 
-    def save(self):
-        pass
-
     def prepare_for_alarm(self):
-        asyncio.run(AsyncScene().prepare_for_alarm_async())
+        if any_players_playing(MUSIC_ASSISTANT_URL, MUSIC_ASSISTANT_TOKEN):
+            asyncio.run(AsyncScene().prepare_for_alarm_async())
+        else:
+            SceneStateFile().clear()
+            logger.info("No Music Assistant players to pause")
+
 
     # This method gets called from the HTTP endpoint, so has no shared state with the other methods
     @staticmethod
@@ -258,11 +252,19 @@ class Scene2:
         asyncio.run(AsyncScene.restore_after_alarm())
 
     def prepare_for_announcement(self):
-        asyncio.run(AsyncScene().prepare_for_announcement())
+        if any_players_playing(MUSIC_ASSISTANT_URL, MUSIC_ASSISTANT_TOKEN):
+            asyncio.run(AsyncScene().prepare_for_alarm_async())
+        else:
+            SceneStateFile().clear()
+            logger.info("No Music Assistant players to fade down")
 
     def restore_after_announcement(self):
         asyncio.run(AsyncScene().restore_after_announcement())
 
     def around_announcement(self, announcement_func):
-        asyncio.run(AsyncScene().around_announcement(announcement_func))
+        if any_players_playing(MUSIC_ASSISTANT_URL, MUSIC_ASSISTANT_TOKEN):
+            asyncio.run(AsyncScene().around_announcement(announcement_func))
+        else:
+            logger.info("No Music Assistant players to dip for announcement")
+            announcement_func()
 

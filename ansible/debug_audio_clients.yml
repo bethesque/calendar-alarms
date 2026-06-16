@@ -1,0 +1,9 @@
+- hosts: audio_clients
+  gather_facts: false
+
+  roles:
+    - debug_audio_clients
+
+
+
+

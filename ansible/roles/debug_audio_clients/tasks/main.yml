@@ -1,0 +1,39 @@
+- name: Run status commands
+  ansible.builtin.command: "{{ item.cmd }}"
+  loop:
+    - { name: "calendar alarms service", cmd: "systemctl --user status calendar-alarms-snapclient" }
+    - { name: "music assistant service", cmd: "systemctl --user status music-assistant-snapclient" }
+    - { name: "sendspin service",         cmd: "systemctl --user status sendspin-armv6.service" }
+
+    - { name: "amixer",             cmd: "amixer" }
+  register: results
+  failed_when: false
+  changed_when: false
+
+- name: Display results
+  ansible.builtin.debug:
+    msg: "{{ ['=== ' + item.item.name + ' ==='] + item.stdout_lines }}"
+  loop: "{{ results.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+
+- name: Run status commands
+  ansible.builtin.command: "{{ item.cmd }}"
+  loop:
+    - { name: "calendar alarms service", cmd: "systemctl --user is-active calendar-alarms-snapclient" }
+    - { name: "music assistant service", cmd: "systemctl --user is-active music-assistant-snapclient" }
+    - { name: "sendspin service", cmd: "systemctl --user is-active sendspin-armv6.service" }
+
+  register: results
+  failed_when: false
+  ignore_errors: true
+  changed_when: false
+
+- name: Show stopped services
+  ansible.builtin.debug:
+    msg: "⚠️ {{ item.item.name }} is not running on {{ inventory_hostname }}"
+  loop: "{{ results.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when: item.rc != 0
+

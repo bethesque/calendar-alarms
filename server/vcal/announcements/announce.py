@@ -1,16 +1,19 @@
 import logging
 import glob
+import os
+import random
 import time
 from datetime import datetime
 from vcal.alarms.alarm import set_snapclients_to_max_volume
+from vcal.snapserver import Snapserver
 from vcal.scene import SceneProtocol
 from vcal.alarms.mpd import fade_up, mpd_connection
 from vcal.cal.google_calendar import WeatherForecast, load_data_from_file
 from vcal.alarms.text_to_voice import text_to_voice_file_daily_summary, text_to_voice_file
 from vcal.alarms.sound import mix_announcement_audio, track_length, join_mp3s_to_wav
-from vcal.random_text import select_text
+from vcal.random_text import FileListOptionsSource, TextFileOptionsSource, select_text
 from vcal.select_item import select_item_by_date
-from vcal.env import DATA_DIRECTORY, CACHE_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, INITIAL_ALARM_VOLUME, ANNOUNCEMENT_VOLUME
+from vcal.env import DATA_DIRECTORY, CACHE_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, INITIAL_ALARM_VOLUME, ANNOUNCEMENT_VOLUME, ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY, SNAPSERVER_RPC_URL
 from vcal.alarms import BACKGROUND_MUSIC_DIRECTORY, AUDIO_DIRECTORY
 
 CALENDAR_FILE = f"{DATA_DIRECTORY}/calendar.json"
@@ -18,6 +21,7 @@ SPEECH_FILE = CACHE_DIRECTORY + "/audio/morning_annoucements_speech.mp3"
 MORNING_ANNOUNCEMENTS_AUDIO_FILE = f"{OUTPUT_AUDIO_DIRECTORY}/morning_announcements.wav"
 SILENCE_5_SEC = "audio/silence_5s.mp3"
 SILENCE_1_SEC = "audio/silence_1s.mp3"
+SILENCE_HALF_SEC = "audio/silence_500ms.mp3"
 MORNING_ANNOUNCEMENTS_PRELUDE_CHOICES = "morning_announcements_prelude_choices.txt"
 PRE_ANNOUNCEMENT_BELL = AUDIO_DIRECTORY + "/preannounce_0_3_vol.mp3"
 
@@ -26,10 +30,12 @@ logger = logging.getLogger(__name__)
 class MissingCalendarDataException(Exception):
     pass
 
+def play_announcement(message: str, scene: SceneProtocol, sound_effect = None, players: list[str] = []):
+    announcement_file = _build_one_off_announcement_file(message, sound_effect)
 
-def play_announcement(message: str, scene: SceneProtocol):
-    announcement_file = _build_one_off_announcement_file(message)
-    set_snapclients_to_max_volume()
+    snapserver = Snapserver(SNAPSERVER_RPC_URL)
+
+    snapserver.set_connected_full_volume(players)
 
     def play():
         try:
@@ -41,13 +47,39 @@ def play_announcement(message: str, scene: SceneProtocol):
             logger.exception(f"Error playing announcement audio file {announcement_file}")
 
     scene.around_announcement(play)
+    snapserver.set_all_connected_full_volume()
 
-def _build_one_off_announcement_file(message: str):
+
+
+def _build_one_off_announcement_file(message: str, sound_effect: str | None = None):
     speech_file = text_to_voice_file(message)
     announcement_file = OUTPUT_AUDIO_DIRECTORY + "/one_off_announcement.wav"
-    files = [PRE_ANNOUNCEMENT_BELL, speech_file, SILENCE_1_SEC]
+    files = get_pre_announcement_files(sound_effect) + [speech_file, SILENCE_1_SEC]
     join_mp3s_to_wav(files, announcement_file)
     return announcement_file
+
+def get_pre_announcement_files(sound_effect: str | None)-> list[str]:
+    files = [PRE_ANNOUNCEMENT_BELL]
+    if sound_effect == "random":
+        sound_effect = select_text(None, ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY, FileListOptionsSource(directory=AUDIO_DIRECTORY + "/sound_effects", extensions=[".mp3"]))
+        if sound_effect:
+            logger.info(f"Selected random sound effect {sound_effect}")
+            files.append(sound_effect)
+            files.append(SILENCE_HALF_SEC)
+        else:
+            logger.info("Random selection returned no sound effect")
+    elif sound_effect and sound_effect != "none":
+        sound_effect_file_path = os.path.join(AUDIO_DIRECTORY, "sound_effects", sound_effect)
+        if os.path.isfile(sound_effect_file_path):
+            logger.info(f"Using specified sound effect {sound_effect_file_path}")
+            files.append(sound_effect_file_path)
+            files.append(SILENCE_HALF_SEC)
+        else:
+            logger.warning(f"Sound effect file {sound_effect_file_path} does not exist. Skipping sound effect.")
+    else:
+        logger.info("No sound effect specified")
+
+    return files
 
 """
 Top level entry point. Generate a summary of today's events, convert them to voice, and play them.
@@ -118,7 +150,7 @@ def build_sentences(all_events):
 
     sentences = ["Good morning!"]
 
-    extra_text = select_text(None, 1, MORNING_ANNOUNCEMENTS_PRELUDE_CHOICES)
+    extra_text = select_text(None, 1, TextFileOptionsSource(file_name=MORNING_ANNOUNCEMENTS_PRELUDE_CHOICES) )
     if extra_text:
         sentences.append(extra_text)
 

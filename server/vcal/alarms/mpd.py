@@ -125,7 +125,7 @@ class MpdClient:
             self.client.clear()
             self.client.add(full_path)
             self.client.play()
-            logger.debug(f"Playing file: {full_path}")
+            logger.info(f"Playing file: {full_path}")
         except musicpd.CommandError as e:
             logger.error(f"Failed to play file {full_path}: {e}")
             raise e
@@ -146,7 +146,7 @@ class MpdClient:
             self.client.stop()
             self.client.clear()
             self.client.repeat(0)  # Disable repeat mode
-            logger.debug("Stopped MPD playback")
+            logger.info("Stopped MPD playback")
         except musicpd.CommandError as e:
             logger.error(f"Failed to stop MPD: {e}")
 

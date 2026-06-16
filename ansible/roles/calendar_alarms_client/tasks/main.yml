@@ -46,12 +46,6 @@
     name: alsa-utils
     state: present
 
-- name: Set amixer volume
-  ansible.builtin.command:
-    cmd: "amixer set Speaker {{ default_speaker_volume }}"
-  tags: audio
-  when: not is_bluetooth_audio
-
 - name: Install HTTP service
   ansible.builtin.import_tasks: http.yml
   tags: http
@@ -72,8 +66,17 @@
   tags: http
 
 - name: Test audio
-  ansible.builtin.command:
-    cmd: speaker-test -c 2 -t wav -l 1
+  ansible.builtin.shell: |
+    amixer set Speaker 10
+    speaker-test -c 2 -t wav -l 1
   changed_when: false
   tags: audio
+  when: not is_bluetooth_audio
 
+- name: Set default amixer volume
+  ansible.builtin.command:
+    cmd: "amixer set Speaker {{ default_speaker_volume }}"
+  tags:
+    - audio
+    - default_volume
+  when: not is_bluetooth_audio

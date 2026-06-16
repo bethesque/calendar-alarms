@@ -43,5 +43,5 @@ function audio-client-http-stop {
 }
 
 function audio-client-http-test {
-    curl -X POST "${AUDIO_CLIENT_URL}/audio/stop"
+    curl -X POST "${AUDIO_CLIENT_URL}/audio/toggle"
 }

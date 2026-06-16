@@ -1,3 +1,12 @@
+# If the nas gets rebooted, the /run/snapserver directory gets recreated by the starting of the snapserver
+# service (RuntimeDirectory=snapserver). The fifo then gets created by _snapserver.
+# ls -la /run/snapserver
+# total 0
+# drwxr-xr-x  2 _snapserver audio   60 Jun 14 09:56 .
+# drwxr-xr-x 37 root        root  1100 Jun 14 09:56 ..
+# prw-rw-rw-  1 _snapserver audio    0 Jun 14 09:57 snapfifo
+# This means that root doesn't own the snapfifo any more (it's owned by _snapserver/audio). However - it all still seems to work, shrug.
+
 - name: Ensure snapserver runtime directory exists
   file:
     path: /run/snapserver

@@ -1,5 +1,38 @@
 - hosts: audio_clients
+  gather_facts: false
+
+  pre_tasks:
+    - name: Gather only needed facts
+      ansible.builtin.setup:
+        filter:
+          - ansible_distribution_release
+          - ansible_architecture
+      tags:
+        - always
+
+    - name: Get UID of ansible_user
+      ansible.builtin.command: id -u {{ ansible_user }}
+      register: ansible_user_uid_cmd
+      changed_when: false
+      tags:
+        - always
+
+    - name: Set UID as fact
+      ansible.builtin.set_fact:
+        ansible_user_uid: "{{ ansible_user_uid_cmd.stdout | int }}"
+      tags:
+        - always
+
+    - name: debug
+      ansible.builtin.debug:
+        var: ansible_facts
+      tags:
+        - always
+
   roles:
     - common
     - calendar_alarms_client
     - music_assistant_client
+
+
+

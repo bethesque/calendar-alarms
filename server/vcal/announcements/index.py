@@ -1,22 +1,34 @@
 import argparse
 import cherrypy
-from vcal.scene import Scene2
+from vcal.scene import Scene
 from vcal.announcements.announce import play_announcement
 
 class AnnouncementController(object):
     @cherrypy.expose
     @cherrypy.tools.allow(methods=['POST'])
-    def index(self, message=None, **kwargs):
+    @cherrypy.tools.json_in()
+    def index(self, **kwargs):
+
+        json = cherrypy.request.json
+        message = json.get("message", None)
+        sound_effect = json.get("sound_effect", None)
+        players = json.get("players", None)
+        players = ensure_list(players) if players else None
 
         if message:
             import threading
-            threading.Thread(target=play_announcement, args=(message, Scene2())).start()
+            threading.Thread(target=play_announcement, args=(message, Scene(), sound_effect, players)).start()
             cherrypy.response.status = 202
             return "Announcement received"
         else:
             cherrypy.log("No message provided for announcement")
             cherrypy.response.status = 400
             return "Error: No message provided"
+
+def ensure_list(x):
+    if isinstance(x, list):
+        return x
+    return [x]
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Basic CherryPy announcement server")

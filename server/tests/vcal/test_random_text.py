@@ -1,8 +1,9 @@
+import logging
 import random
 import os
 from pathlib import Path
 
-from vcal.random_text import select_text
+from vcal.random_text import OptionsSource, TextFileOptionsSource, select_text
 
 def write_file(path: Path, lines):
     os.makedirs(path.parent, exist_ok=True)
@@ -16,18 +17,19 @@ def read_file(path: Path):
 
 
 def test_returns_default_when_above_threshold(tmp_path, monkeypatch):
-    text_choices = "choices.txt"
+    text_choices_file_name = "choices.txt"
     previously_chosen = tmp_path / "random_text_selection_history" / "choices_history.txt"
 
-    write_file(tmp_path / text_choices, ["A", "B", "C"])
+    write_file(tmp_path / text_choices_file_name, ["A", "B", "C"])
 
     monkeypatch.setattr(random, "random", lambda: 0.6)
+
+    options_source = TextFileOptionsSource(file_name=text_choices_file_name, resources_directory=str(tmp_path))
 
     result = select_text(
         default_text="DEFAULT",
         threshold=0.3,
-        text_choices=str(text_choices),
-        resources_directory=str(tmp_path),  # Use tmp_path as resources directory for testing
+        options_source=options_source,
         choice_history_dir=str(tmp_path / "random_text_selection_history"),
     )
 
@@ -36,20 +38,21 @@ def test_returns_default_when_above_threshold(tmp_path, monkeypatch):
 
 
 def test_selects_and_appends_when_below_threshold(tmp_path, monkeypatch):
-    text_choices = "choices.txt"
+    text_choices_file_name = "choices.txt"
     previously_chosen = tmp_path / "random_text_selection_history" / "choices_history.txt"
 
-    write_file(tmp_path / text_choices, ["A", "B", "C"])
+    write_file(tmp_path / text_choices_file_name, ["A", "B", "C"])
 
     monkeypatch.setattr(random, "random", lambda: 0.1)
     # Always pick the first in the sequence, which should be "A"
     monkeypatch.setattr(random, "choice", lambda seq: seq[0])
 
+    options_source = TextFileOptionsSource(file_name=text_choices_file_name, resources_directory=str(tmp_path))
+
     result = select_text(
         default_text="DEFAULT",
         threshold=0.3,
-        text_choices=str(text_choices),
-        resources_directory=str(tmp_path),
+        options_source=options_source,
         choice_history_dir=str(tmp_path / "random_text_selection_history"),
     )
 
@@ -58,18 +61,23 @@ def test_selects_and_appends_when_below_threshold(tmp_path, monkeypatch):
 
 
 def test_excludes_previously_chosen(tmp_path, monkeypatch):
-    text_choices = "choices.txt"
+    text_choices_file_name = "choices.txt"
     previously_chosen = tmp_path / "random_text_selection_history" / "choices_history.txt"
 
-    write_file(tmp_path / text_choices, ["A", "B", "C"])
+    write_file(tmp_path / text_choices_file_name, ["A", "B", "C"])
     write_file(previously_chosen, ["A"])
 
     monkeypatch.setattr(random, "random", lambda: 0.2)
     # Always pick the first in the sequence, which should be "B" after "A" is excluded
     monkeypatch.setattr(random, "choice", lambda seq: seq[0])
 
+    options_source = TextFileOptionsSource(file_name=text_choices_file_name, resources_directory=str(tmp_path))
+
     result = select_text(
-        "DEFAULT", 0.3, str(text_choices), resources_directory=str(tmp_path), choice_history_dir=str(tmp_path / "random_text_selection_history")
+        default_text="DEFAULT",
+        threshold=0.3,
+        options_source=options_source,
+        choice_history_dir=str(tmp_path / "random_text_selection_history")
     )
 
     assert result == "B"
@@ -78,18 +86,23 @@ def test_excludes_previously_chosen(tmp_path, monkeypatch):
 
 
 def test_resets_when_all_used(tmp_path, monkeypatch):
-    text_choices = "choices.txt"
+    text_choices_file_name = "choices.txt"
     previously_chosen = tmp_path / "random_text_selection_history" / "choices_history.txt"
 
-    write_file(tmp_path / text_choices, ["A", "B"])
+    write_file(tmp_path / text_choices_file_name, ["A", "B"])
     write_file(previously_chosen, ["A", "B"])
 
     monkeypatch.setattr(random, "random", lambda: 0.2)
     # Always pick the first in the sequence, which should be "A" after reset
     monkeypatch.setattr(random, "choice", lambda seq: "A")
 
+    options_source = TextFileOptionsSource(file_name=text_choices_file_name, resources_directory=str(tmp_path))
+
     result = select_text(
-        "DEFAULT", 0.3, str(text_choices), resources_directory=str(tmp_path), choice_history_dir=str(tmp_path / "random_text_selection_history")
+        default_text="DEFAULT",
+        threshold=0.3,
+        options_source=options_source,
+        choice_history_dir=str(tmp_path / "random_text_selection_history")
     )
 
     assert result == "A"
@@ -97,10 +110,10 @@ def test_resets_when_all_used(tmp_path, monkeypatch):
 
 
 def test_multiset_behavior(tmp_path, monkeypatch):
-    text_choices = "choices.txt"
+    text_choices_file_name = "choices.txt"
     previously_chosen = tmp_path / "random_text_selection_history" / "choices_history.txt"
 
-    write_file(tmp_path / text_choices, ["A", "A", "B"])
+    write_file(tmp_path / text_choices_file_name, ["A", "A", "B"])
     write_file(previously_chosen, ["A"])
 
     monkeypatch.setattr(random, "random", lambda: 0.2)
@@ -114,8 +127,13 @@ def test_multiset_behavior(tmp_path, monkeypatch):
 
     monkeypatch.setattr(random, "choice", fake_choice)
 
+    options_source = TextFileOptionsSource(file_name=text_choices_file_name, resources_directory=str(tmp_path))
+
     select_text(
-        "DEFAULT", 0.3, str(text_choices), resources_directory=str(tmp_path), choice_history_dir=str(tmp_path / "random_text_selection_history")
+        default_text="DEFAULT",
+        threshold=0.3,
+        options_source=options_source,
+        choice_history_dir=str(tmp_path / "random_text_selection_history")
     )
 
     # Remaining should be ["A", "B"] (one A removed)
@@ -123,16 +141,21 @@ def test_multiset_behavior(tmp_path, monkeypatch):
 
 
 def test_missing_previously_chosen_file(tmp_path, monkeypatch):
-    text_choices = "choices.txt"
+    text_choices_file_name = "choices.txt"
     previously_chosen = tmp_path / "random_text_selection_history" / "choices_history.txt"
 
-    write_file(tmp_path / text_choices, ["X"])
+    write_file(tmp_path / text_choices_file_name, ["X"])
 
     monkeypatch.setattr(random, "random", lambda: 0.2)
     monkeypatch.setattr(random, "choice", lambda seq: "X")
 
+    options_source = TextFileOptionsSource(file_name=text_choices_file_name, resources_directory=str(tmp_path))
+
     result = select_text(
-        "DEFAULT", 0.3, str(text_choices), resources_directory=str(tmp_path), choice_history_dir=str(tmp_path / "random_text_selection_history")
+        default_text="DEFAULT",
+        threshold=0.3,
+        options_source=options_source,
+        choice_history_dir=str(tmp_path / "random_text_selection_history")
     )
 
     assert result == "X"

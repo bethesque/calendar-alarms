@@ -42,37 +42,57 @@ def trigger(event, endpoints):
         logging.exception(f"Exception invoking endpoint {url}")
 
 
+SHELLY_BLU1_OBJECT_ID = 0x3A  # BTHome object ID for Shelly BLU1 button event
+
 def callback(button_mac, service_uuid, endpoints, device, advertisement_data):
     global last_trigger_time
 
-    # filter device - Shelly Bluetooth Button Tough -> SBBT
+    # 1. MAC address check FIRST — cheapest and most specific filter
+    if device.address != button_mac:
+        return
+
+    # 2. Name sanity check
     if not device.name or not device.name.startswith("SBBT"):
+        logging.warning(f"MAC matched but unexpected device name: {device.name}")
         return
 
-    sd = advertisement_data.service_data
-    if service_uuid not in sd:
-        return
-
-    # filter device
-    if not device.address == button_mac:
-        logging.info(f"Expected device mac {button_mac} but got {device.address}. Ignoring.")
-        return
-
+    # 3. Service UUID check
     sd = advertisement_data.service_data
     if service_uuid not in sd:
         return
 
     payload = sd[service_uuid]
-    event = payload[-1]
 
-    now = time.time()
-
-    # EDGE TRIGGER: only first packet in burst
-    if now - last_trigger_time < LOCKOUT:
+    # 4. Validate payload length
+    if len(payload) < 2:
+        logging.warning(f"Payload too short: {payload.hex()}")
         return
 
+    # 5. Validate BTHome object ID — ensures this is a button event, not
+    #    some other Shelly BLE device that happens to share the service UUID
+    if payload[-2] != SHELLY_BLU1_OBJECT_ID:
+        logging.warning(f"Unexpected object ID: {payload[-2]:#x}, full payload: {payload.hex()}")
+        return
+
+    event = payload[-1]
+
+    # 6. Validate event value is one we recognise
+    if event not in endpoints:
+        logging.warning(f"Unknown event value: {event}, ignoring")
+        return
+
+    now = time.time()
+    if now - last_trigger_time < LOCKOUT:
+        return
     last_trigger_time = now
 
+    logging.info(
+        f"Packet from {device.address} ({device.name}) | "
+        f"RSSI: {advertisement_data.rssi} | "
+        f"Payload: {payload.hex()} | "
+        f"Object ID: {payload[-2]:#x} | "
+        f"Event: {payload[-1]}"
+        )
     trigger(event, endpoints)
 
 

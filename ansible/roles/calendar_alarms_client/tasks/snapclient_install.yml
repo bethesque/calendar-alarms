@@ -22,11 +22,11 @@
 
 - name: Debug installed version
   ansible.builtin.debug:
-    msg: "Installed: {{ installed_snapclient_version | default('none') }} | Desired: {{ snapclient_version }}"
+    msg: "Installed: {{ installed_snapclient_version | default('none') }} | Desired: {{ snapclient_version_release }}"
 
 - name: Decide if install/upgrade is needed
   ansible.builtin.set_fact:
-    snapclient_needs_install: "{{ installed_snapclient_version != snapclient_version }}"
+    snapclient_needs_install: "{{ installed_snapclient_version != snapclient_version_release }}"
 
 - name: Download Snapclient .deb if version mismatch
   ansible.builtin.get_url:
@@ -40,4 +40,5 @@
     deb: "{{ snapclient_tmp }}"
     state: present
   when: snapclient_needs_install
+  become: true
 

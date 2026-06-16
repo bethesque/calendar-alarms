@@ -6,8 +6,8 @@ from functools import partial
 import logging
 import http.client
 from amixer_control import VolumeController
-from snapserver import mute_client
-from music_assistant import pause_player
+from snapserver import mute_client, is_client_playing
+from music_assistant import pause_player, toggle_pause_play
 from contextlib import contextmanager
 import argparse
 
@@ -24,31 +24,58 @@ The service responds immediately to the HTTP request and performs the muting ope
 It uses only native Python libraries without any additional dependencies.
 """
 
+def toggle(audio_config):
+    with muted_alsa():
+        snapclient_id = Path(client_id_file).read_text().strip() if Path(client_id_file).exists() else None
+        is_snap_playing = is_snapclient_playing(audio_config, snapclient_id)
+
+        if is_snap_playing:
+            mute_snapclient(audio_config["snapserver_url"], snapclient_id)
+        else:
+            toggle_music_assistant_player(audio_config)
+
 def stop(audio_config):
     with muted_alsa():
-        mute_snapclient(audio_config["snapserver_url"], audio_config["client_id_file"])
+        snapclient_id = Path(client_id_file).read_text().strip() if Path(client_id_file).exists() else None
+        mute_snapclient(audio_config["snapserver_url"], snapclient_id)
         pause_music_assistant_player(audio_config)
+
+
+def is_snapclient_playing(audio_config, client_id):
+    is_snapclient_playing = False
+    if client_id:
+        try:
+            is_snapclient_playing = is_client_playing(audio_config["snapserver_url"], client_id)
+        except Exception:
+            logger.exception("Error checking if snapclient is playing")
+    else:
+        logger.warning(f"No client ID found in {client_id_file}, cannot determine if snapclient is playing")
+    return is_snapclient_playing
 
 """
 For alarms/announcements, mute the snapclient rather than trying to stop the stream.
 The next alarm/announcement will set the volume back to 100%.
 """
-def mute_snapclient(ca_snapserver_rpc_url, client_id_file):
+def mute_snapclient(ca_snapserver_rpc_url, client_id):
+    logger.info(f"Snapclient {client_id} is playing, muting snapclient at {ca_snapserver_rpc_url}")
     try:
-        client_id = Path(client_id_file).read_text().strip()
-        if not client_id:
-            logger.warning(f"No client ID found in {client_id_file}")
-        else:
-            mute_client(ca_snapserver_rpc_url, client_id)
+        mute_client(ca_snapserver_rpc_url, client_id)
     except Exception:
         logger.exception("Error muting snapclient")
+
+def toggle_music_assistant_player(audio_config):
+    try:
+        logger.info(f"Toggling pause/play Music Assistant player {audio_config['home_assistant_player_entity']} at {audio_config['home_assistant_url']} ")
+        toggle_pause_play(audio_config["home_assistant_url"], audio_config["home_assistant_player_entity"])
+    except Exception:
+        logger.exception("Error toggling pause/play Music Assistant player")
 
 def pause_music_assistant_player(audio_config):
     try:
         logger.info(f"Pausing Music Assistant player {audio_config['home_assistant_player_entity']} at {audio_config['home_assistant_url']} ")
         pause_player(audio_config["home_assistant_url"], audio_config["home_assistant_player_entity"])
     except Exception:
-        logger.exception("Error pausing Music Assistant player")
+        logger.exception("Error toggling pause/play Music Assistant player")
 
 @contextmanager
 def muted_alsa():
@@ -74,19 +101,23 @@ class Handler(BaseHTTPRequestHandler):
         super().__init__(*args, **kwargs)
 
     def do_POST(self):
-        if self.path != "/audio/stop":
+        if self.path != "/audio/stop" and self.path != "/audio/toggle":
             self.send_response(404)
             self.end_headers()
             return
+
+        response = b"Toggling audio\n" if self.path == "/audio/toggle" else b"Stopping audio\n"
 
         # Respond immediately
         self.send_response(202)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
-        self.wfile.write(b"Stopping\n")
+        self.wfile.write(response)
+
+        target = toggle if self.path == "/audio/toggle" else stop
 
         # Async execution
-        threading.Thread(target=stop, args=(self.audio_config,), daemon=True).start()
+        threading.Thread(target=target, args=(self.audio_config,), daemon=True).start()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Audio control service")
@@ -118,8 +149,9 @@ if __name__ == "__main__":
         "home_assistant_player_entity": home_assistant_player_entity
     }
 
-    url = f"http://{args.host}:{args.port}/audio/stop"
-    logger.info(f"Starting stop handler at {url} with config {audio_config}")
+    toggle_url = f"http://{args.host}:{args.port}/audio/toggle"
+    stop_url = f"http://{args.host}:{args.port}/audio/stop"
+    logger.info(f"Starting audio controller endpoints at {toggle_url} and {stop_url} with config {audio_config}")
 
     handler_class = partial(Handler, audio_config=audio_config)
 
