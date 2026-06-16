@@ -12,11 +12,6 @@
   tags:
     - bash_functions
 
-- name: Configure sound
-  ansible.builtin.import_tasks: sound.yml
-  when: is_pi
-  tags: audio
-
 - name: Configure snapclient_user (the ansible user)
   ansible.builtin.import_tasks: snapclient_user.yml
   tags: snapclient

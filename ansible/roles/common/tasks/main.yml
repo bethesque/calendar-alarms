@@ -29,3 +29,10 @@
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0755"
+
+- name: Configure sound
+  ansible.builtin.import_tasks: sound.yml
+  when: is_pi
+  tags:
+    - audio
+    - sendspin

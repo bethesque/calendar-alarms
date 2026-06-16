@@ -53,8 +53,6 @@
 #       - set_snapclient_latency.py
 
 
-# Not working yet. Can't run sendspin and snapclient at the same time, probably because they both want to use the same audio output device.
-# Sendpin stops snapclient from working.
 - name: Install sendspin-armv6
   ansible.builtin.import_tasks: sendspin.yml
   tags:
