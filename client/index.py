@@ -95,10 +95,18 @@ def muted_alsa():
         except Exception:
             logger.exception("Exception unmuting volume using amixer")
 
+
 class Handler(BaseHTTPRequestHandler):
     def __init__(self, *args, audio_config,  **kwargs):
         self.audio_config = audio_config
         super().__init__(*args, **kwargs)
+
+    def do_GET(self):
+        if self.path == "/audio/status":
+            return status(self)
+        else:
+            self.send_response(404)
+            self.end_headers()
 
     def do_POST(self):
         if self.path != "/audio/stop" and self.path != "/audio/toggle":
@@ -118,6 +126,56 @@ class Handler(BaseHTTPRequestHandler):
 
         # Async execution
         threading.Thread(target=target, args=(self.audio_config,), daemon=True).start()
+
+def status(handler: Handler):
+    import subprocess
+    import json
+    import re
+
+    try:
+        def system(command: list[str]):
+            try:
+                return subprocess.run(
+                    command,
+                    capture_output=True,
+                    text=True,
+                ).stdout.strip()
+            except Exception:
+                logger.exception(f"Error running command {command}")
+                return "error"
+
+
+        def write_response(body:str):
+            handler.send_response(200)
+            handler.send_header("Content-Type", "application/json")
+            handler.end_headers()
+            handler.wfile.write(body.encode("utf-8"))
+
+        amixer_result = system(["amixer"])
+        match = re.search(r'Front Left: Playback (\d+) \[(\d+%)\]', amixer_result)
+        amixer_volume = f"{match.group(1)} ({match.group(2)})" if match else None
+
+        body = {
+            "calendar-alarms-snapclient.service": {
+                "status": system(["systemctl", "--user", "is-active", "calendar-alarms-snapclient.service"])
+            },
+            "music-assistant-snapclient.service": {
+                "status": system(["systemctl", "--user", "is-active", "music-assistant-snapclient.service"])
+            },
+            "sendspin-armv6.service": {
+                "status": system(["systemctl", "--user", "is-active", "systemctl --user is-active sendspin-armv6.service"])
+            },
+            "amixer": { "volume" : amixer_volume }
+        }
+
+        write_response(json.dumps(body))
+
+    except Exception:
+        logger.exception("Error getting status")
+        handler.send_response(500)
+        handler.end_headers()
+        handler.wfile.write(b"error")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Audio control service")
@@ -151,7 +209,8 @@ if __name__ == "__main__":
 
     toggle_url = f"http://{args.host}:{args.port}/audio/toggle"
     stop_url = f"http://{args.host}:{args.port}/audio/stop"
-    logger.info(f"Starting audio controller endpoints at {toggle_url} and {stop_url} with config {audio_config}")
+    status_url = f"http://{args.host}:{args.port}/audio/status"
+    logger.info(f"Starting audio client endpoints at {toggle_url}, {stop_url} and {status_url} with config {audio_config}")
 
     handler_class = partial(Handler, audio_config=audio_config)
 
