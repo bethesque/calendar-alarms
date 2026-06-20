@@ -4,10 +4,14 @@
   register: snapclient_which
   changed_when: false
   failed_when: false
+  tags:
+    - music_assistant_service
 
 - name: Store snapclient path
   ansible.builtin.set_fact:
     snapclient_path: "{{ snapclient_which.stdout }}"
+  tags:
+    - music_assistant_service
 
 # Logs can be viewed with `journalctl SYSLOG_IDENTIFIER=music-assistant-snapclient`
 - name: Install snapclient user service
@@ -19,9 +23,13 @@
     owner: "{{ snapclient_user }}"
     group: "{{ snapclient_user }}"
     mode: "0644"
+  tags:
+    - music_assistant_service
 
 - name: Reload user systemd daemon
   ansible.builtin.command: systemctl --user daemon-reload
+  tags:
+    - music_assistant_service
 
 - name: Restart user snapclient service
   ansible.builtin.systemd:
@@ -29,6 +37,8 @@
     scope: user
     state: restarted
     enabled: true
+  tags:
+    - music_assistant_service
 
 - name: Install bash functions
   ansible.builtin.import_tasks: bash_functions.yml
