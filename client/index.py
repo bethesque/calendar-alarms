@@ -163,7 +163,7 @@ def status(handler: Handler):
                 "status": system(["systemctl", "--user", "is-active", "music-assistant-snapclient.service"])
             },
             "sendspin-armv6.service": {
-                "status": system(["systemctl", "--user", "is-active", "systemctl --user is-active sendspin-armv6.service"])
+                "status": system(["systemctl", "--user", "is-active", "sendspin-armv6.service"])
             },
             "amixer": { "volume" : amixer_volume }
         }
