@@ -43,7 +43,8 @@
 
 - name: Install HTTP service
   ansible.builtin.import_tasks: http.yml
-  tags: http
+  tags:
+    - http
 
 - name: Check if calendar-alarms-snapclient.service is active
   ansible.builtin.command:
