@@ -36,3 +36,24 @@
   tags:
     - audio
     - sendspin
+
+# ssh keys to allow Home Assistant to get the sevice status
+- name: Add local public SSH key to remote authorized_keys
+  ansible.posix.authorized_key:
+    user: "{{ ansible_user }}"
+    state: present
+    key: "{{ travnas_ssh_public_key }}" # from secrets.yaml
+  become: yes
+  tags:
+    - authorized_keys
+
+- name: Install rmate
+  ansible.builtin.copy:
+    src: "rmate"
+    dest: "/usr/local/bin/rmate"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+  become: true
+  tags:
+    - rmate
