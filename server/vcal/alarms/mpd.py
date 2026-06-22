@@ -130,7 +130,17 @@ class MpdClient:
             logger.error(f"Failed to play file {full_path}: {e}")
             raise e
 
-
+    def play_files(self, file_paths: list[str]):
+        try:
+            self.client.clear()
+            for file_path in file_paths:
+                full_path = f"file://{os.path.abspath(file_path)}"
+                logger.info(f"Adding file: {full_path}")
+                self.client.add(full_path)
+            self.client.play()
+        except musicpd.CommandError as e:
+            logger.error(f"Failed to play files {file_paths}: {e}")
+            raise e
 
     def set_volume(self, vol: int):
         try:

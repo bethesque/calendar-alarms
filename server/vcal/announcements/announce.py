@@ -32,7 +32,13 @@ class MissingCalendarDataException(Exception):
 
 def play_announcement(message: str, scene: SceneProtocol, sound_effect = None, players: list[str] = []):
     announcement_file = _build_one_off_announcement_file(message, sound_effect)
+    play_audio_files([announcement_file], scene, players)
 
+def play_audio_file_as_announcement(audio_file, scene: SceneProtocol, sound_effect = None, players: list[str] = []):
+    pre_announce_files = get_pre_announcement_files(sound_effect)
+    play_audio_files(pre_announce_files + [audio_file], scene, players)
+
+def play_audio_files(audio_files: list[str], scene: SceneProtocol, players: list[str] = []):
     snapserver = Snapserver(SNAPSERVER_RPC_URL)
 
     snapserver.set_connected_full_volume(players)
@@ -41,14 +47,13 @@ def play_announcement(message: str, scene: SceneProtocol, sound_effect = None, p
         try:
             with mpd_connection() as alarm_player:
                 alarm_player.set_volume(ANNOUNCEMENT_VOLUME)
-                alarm_player.play_file(announcement_file)
-                time.sleep(track_length(announcement_file))
+                alarm_player.play_files(audio_files)
+                time.sleep(sum(track_length(f) for f in audio_files))
         except Exception:
-            logger.exception(f"Error playing announcement audio file {announcement_file}")
+            logger.exception(f"Error playing announcement audio file(s) {audio_files}")
 
     scene.around_announcement(play)
     snapserver.set_all_connected_full_volume()
-
 
 
 def _build_one_off_announcement_file(message: str, sound_effect: str | None = None):

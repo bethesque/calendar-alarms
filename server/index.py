@@ -9,6 +9,7 @@ from vcal.scene import Scene
 from vcal.alarms.alarm import stop_alarm
 from queue import Queue
 from vcal.announcements.index import AnnouncementController
+from vcal.announcements.housie_talkie import HousieTalkieController
 
 setup_logging_for_http_server(logging.INFO)
 
@@ -89,6 +90,7 @@ cherrypy.tools.trailing_slash = cherrypy.Tool('before_handler', lambda: None)
 class CalendarWebServer(object):
     alarm = AlarmController()
     announce = AnnouncementController()
+    talkie = HousieTalkieController()
 
     @cherrypy.expose
     def index(self):
