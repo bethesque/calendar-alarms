@@ -22,6 +22,25 @@
   tags:
     - bash_functions
 
+- name: Ensure bash aliases file exists
+  ansible.builtin.file:
+    path: "/home/{{ ansible_user }}/.bash_aliases"
+    state: touch
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+  tags:
+    - bash_functions
+
+- name: Bash aliases
+  ansible.builtin.blockinfile:
+    path: "/home/{{ ansible_user }}/.bash_aliases"
+    marker: "# {mark} ANSIBLE MANAGED BASH ALIASES"
+    block: |
+      alias g='git status'
+  tags:
+    - bash_functions
+
 - name: Ensure user systemd directory exists
   ansible.builtin.file:
     path: "/home/{{ ansible_user }}/.config/systemd/user"
