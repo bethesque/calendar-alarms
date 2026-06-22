@@ -1,7 +1,7 @@
 import argparse
 import cherrypy
 from vcal.scene import Scene
-from vcal.announcements.announce import play_announcement
+from vcal.announcements.announce import play_announcement, list_sound_effects
 
 class AnnouncementController(object):
     @cherrypy.expose
@@ -24,6 +24,14 @@ class AnnouncementController(object):
             cherrypy.log("No message provided for announcement")
             cherrypy.response.status = 400
             return "Error: No message provided"
+
+
+    @cherrypy.expose
+    @cherrypy.tools.allow(methods=['GET'])
+    @cherrypy.tools.json_out()
+    def sound_effects(self, **kwargs):
+        return list_sound_effects()
+
 
 def ensure_list(x):
     if isinstance(x, list):

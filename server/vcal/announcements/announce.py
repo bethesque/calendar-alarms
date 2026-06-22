@@ -55,6 +55,8 @@ def play_audio_files(audio_files: list[str], scene: SceneProtocol, players: list
     scene.around_announcement(play)
     snapserver.set_all_connected_full_volume()
 
+def list_sound_effects():
+    return [os.path.basename(path) for path in sound_effects_options_source().get_choices()]
 
 def _build_one_off_announcement_file(message: str, sound_effect: str | None = None):
     speech_file = text_to_voice_file(message)
@@ -66,7 +68,7 @@ def _build_one_off_announcement_file(message: str, sound_effect: str | None = No
 def get_pre_announcement_files(sound_effect: str | None)-> list[str]:
     files = [PRE_ANNOUNCEMENT_BELL]
     if sound_effect == "random":
-        sound_effect = select_text(None, ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY, FileListOptionsSource(directory=AUDIO_DIRECTORY + "/sound_effects", extensions=[".mp3"]))
+        sound_effect = select_text(None, ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY, sound_effects_options_source())
         if sound_effect:
             logger.info(f"Selected random sound effect {sound_effect}")
             files.append(sound_effect)
@@ -85,6 +87,9 @@ def get_pre_announcement_files(sound_effect: str | None)-> list[str]:
         logger.info("No sound effect specified")
 
     return files
+
+def sound_effects_options_source():
+    return FileListOptionsSource(directory=AUDIO_DIRECTORY + "/sound_effects", extensions=[".mp3"])
 
 """
 Top level entry point. Generate a summary of today's events, convert them to voice, and play them.
