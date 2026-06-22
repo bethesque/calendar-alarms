@@ -5,6 +5,7 @@ from typing import Optional, List, Tuple
 import os
 from contextlib import contextmanager
 from vcal.env import MPD_HOST, MPD_PORT
+import shutil
 
 logger = logging.getLogger(__name__)
 
@@ -135,6 +136,10 @@ class MpdClient:
             self.client.clear()
             for file_path in file_paths:
                 full_path = f"file://{os.path.abspath(file_path)}"
+
+                if not file_path.startswith("/tmp/"):
+                    full_path = f"file://{shutil.copy(file_path, "/tmp")}"
+
                 logger.info(f"Adding file: {full_path}")
                 self.client.add(full_path)
             self.client.play()
