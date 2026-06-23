@@ -27,8 +27,13 @@ def play_announcement():
         help="The name of the sound effect file to play"
     )
     args = parser.parse_args()
-    logger.info(f"Playing announcement: {args.message}")
-    play_announcement_func(args.message, Scene(), args.sound_effect_file_name)
+
+    try:
+        logger.info(f"Playing announcement: {args.message}")
+        play_announcement_func(args.message, Scene(), args.sound_effect_file_name)
+    except Exception:
+        logger.exception("Error playing announcements")
+        exit(1)
 
 def play_morning_announcements():
     parser = argparse.ArgumentParser(description="Check for alarms in calendar events")
@@ -52,14 +57,19 @@ def play_morning_announcements():
     )
 
     args = parser.parse_args()
-    base_time = args.base_time or datetime.now().astimezone()
 
-    scene = Scene()
+    try:
+        base_time = args.base_time or datetime.now().astimezone()
 
-    if args.cached:
-        play_morning_announcements_cached()
-    else:
-        do_play_morning_announcements(args.calendar_file, base_time, scene.prepare_for_alarm, scene.restore_after_alarm)
+        scene = Scene()
+
+        if args.cached:
+            play_morning_announcements_cached()
+        else:
+            do_play_morning_announcements(args.calendar_file, base_time, scene.prepare_for_alarm, scene.restore_after_alarm)
+    except Exception:
+        logger.exception("Error playing morning announcements")
+        exit(1)
 
 
 def play_morning_announcements_cached():

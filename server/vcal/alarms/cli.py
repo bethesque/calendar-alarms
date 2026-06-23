@@ -46,14 +46,18 @@ def check_alarms():
 
     args = parser.parse_args()
 
-    logger.info(f"Checking for alarms in {args.calendar_file}...")
+    try:
+        logger.info(f"Checking for alarms in {args.calendar_file}...")
 
-    base_time = args.base_time or datetime.now().astimezone()
-    calendar_data = load_events(args.calendar_file)
+        base_time = args.base_time or datetime.now().astimezone()
+        calendar_data = load_events(args.calendar_file)
 
-    scene = Scene() if args.handle_music_assistant else NullScene()
+        scene = Scene() if args.handle_music_assistant else NullScene()
 
-    check_for_notifications(base_time, args.window, calendar_data, scene)
+        check_for_notifications(base_time, args.window, calendar_data, scene)
+    except Exception:
+        logger.exception("Error checking for alarms")
+        exit(1)
 
 def test_alarm():
     try:
