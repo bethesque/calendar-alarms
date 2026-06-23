@@ -55,8 +55,8 @@ def play_audio_files(audio_files: list[str], scene: SceneProtocol, players: list
     scene.around_announcement(play)
     snapserver.set_all_connected_full_volume()
 
-def list_sound_effects():
-    return [os.path.basename(path) for path in sound_effects_options_source().get_choices()]
+def list_sound_effects()-> list[str]:
+    return ["random"] + sorted([os.path.basename(path) for path in sound_effects_options_source().get_choices()])
 
 def _build_one_off_announcement_file(message: str, sound_effect: str | None = None):
     speech_file = text_to_voice_file(message)
@@ -88,7 +88,7 @@ def get_pre_announcement_files(sound_effect: str | None)-> list[str]:
 
     return files
 
-def sound_effects_options_source():
+def sound_effects_options_source() -> FileListOptionsSource:
     return FileListOptionsSource(directory=AUDIO_DIRECTORY + "/sound_effects", extensions=[".mp3"])
 
 """
