@@ -42,7 +42,7 @@ def check_alarms():
         help=f"Path to the calendar JSON file (default: {os.path.join(DATA_DIRECTORY, 'calendar.json')})"
     )
 
-    parser.add_argument('--handle-music-assistant', action='store_true', help="Fade out music assistant before playing alarms")
+    parser.add_argument('--ignore-music-assistant', action='store_true', help="Do not fade out Music Assistant before playing alarms")
 
     args = parser.parse_args()
 
@@ -52,7 +52,7 @@ def check_alarms():
         base_time = args.base_time or datetime.now().astimezone()
         calendar_data = load_events(args.calendar_file)
 
-        scene = Scene() if args.handle_music_assistant else NullScene()
+        scene = NullScene() if args.ignore_music_assistant else Scene()
 
         check_for_notifications(base_time, args.window, calendar_data, scene)
     except Exception:

@@ -44,7 +44,7 @@ class NullScene:
         pass
 
     def around_announcement(self, announcement_func):
-        pass
+        announcement_func()
 
 
 class Scene:

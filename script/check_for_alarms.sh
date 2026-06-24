@@ -21,4 +21,4 @@ else
   PYTH="python"
 fi
 
-"$PYTH" check_for_alarms.py --window "$WINDOW" --handle-music-assistant
+"$PYTH" check_for_alarms.py --window "$WINDOW"
