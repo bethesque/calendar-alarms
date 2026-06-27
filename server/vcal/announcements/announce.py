@@ -15,6 +15,7 @@ from vcal.random_text import FileListOptionsSource, TextFileOptionsSource, selec
 from vcal.select_item import select_item_by_date
 from vcal.env import DATA_DIRECTORY, CACHE_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, INITIAL_ALARM_VOLUME, ANNOUNCEMENT_VOLUME, ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY, SNAPSERVER_RPC_URL
 from vcal.alarms import BACKGROUND_MUSIC_DIRECTORY, AUDIO_DIRECTORY
+from vcal.settings import SnapcastSettings, MpdSettings
 
 CALENDAR_FILE = f"{DATA_DIRECTORY}/calendar.json"
 SPEECH_FILE = CACHE_DIRECTORY + "/audio/morning_annoucements_speech.mp3"
@@ -24,29 +25,39 @@ SILENCE_1_SEC = "audio/silence_1s.mp3"
 SILENCE_HALF_SEC = "audio/silence_500ms.mp3"
 MORNING_ANNOUNCEMENTS_PRELUDE_CHOICES = "morning_announcements_prelude_choices.txt"
 PRE_ANNOUNCEMENT_BELL = AUDIO_DIRECTORY + "/preannounce_0_3_vol.mp3"
+from enum import Enum
 
 logger = logging.getLogger(__name__)
+
+class AnnouncementUsecase(Enum):
+    TTS = 1
+    TALKIE = 2
 
 class MissingCalendarDataException(Exception):
     pass
 
 def play_announcement(message: str, scene: SceneProtocol, sound_effect = None, players: list[str] = []):
     announcement_file = _build_one_off_announcement_file(message, sound_effect)
-    play_audio_files([announcement_file], scene, players)
+    play_audio_files([announcement_file], scene, AnnouncementUsecase.TTS, players)
 
 def play_audio_file_as_announcement(audio_file, scene: SceneProtocol, sound_effect = None, players: list[str] = []):
     pre_announce_files = get_pre_announcement_files(sound_effect)
-    play_audio_files(pre_announce_files + [audio_file], scene, players)
+    play_audio_files(pre_announce_files + [audio_file], scene, AnnouncementUsecase.TALKIE, players)
 
-def play_audio_files(audio_files: list[str], scene: SceneProtocol, players: list[str] = []):
-    snapserver = Snapserver(SNAPSERVER_RPC_URL)
+def play_audio_files(audio_files: list[str], scene: SceneProtocol, usecase: AnnouncementUsecase, players: list[str] = []):
+    snapcast_settings = SnapcastSettings()
+    snapserver = Snapserver(snapcast_settings.snapserver_rpc_url())
 
-    snapserver.set_connected_full_volume(players)
+    players = players or snapserver.connected_client_hosts()
+
+    snapserver.set_volumes(snapcast_settings.volumes_for_players(players, usecase.name.lower()))
+
+    mpd_settings = MpdSettings()
 
     def play():
         try:
             with mpd_connection() as alarm_player:
-                alarm_player.set_volume(ANNOUNCEMENT_VOLUME)
+                alarm_player.set_volume(mpd_settings.volumes[usecase.name.lower()])
                 alarm_player.play_files(audio_files)
                 time.sleep(sum(track_length(f) for f in audio_files))
         except Exception:

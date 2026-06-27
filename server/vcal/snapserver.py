@@ -20,6 +20,7 @@ class Snapserver:
     def __init__(self, base_url: str):
         self.base_url = base_url.rstrip("/")
         self._rpc_id = 1
+        self._connected_clients = None
 
     # -------------------------
     # RPC
@@ -65,24 +66,33 @@ class Snapserver:
     def _get_status(self) -> dict:
         return self._rpc("Server.GetStatus")
 
-    def _clients(self, only_connected: bool = False) -> list[Client]:
+    def connected_clients(self) -> list[Client]:
+        if self._connected_clients is None:
+            self._connected_clients = self._get_clients(only_connected=True)
+
+        return self._connected_clients
+
+    def _get_clients(self, only_connected: bool = False) -> list[Client]:
         status = self._get_status()
 
-        out: list[Client] = []
+        clients: list[Client] = []
 
         for group in status["server"]["groups"]:
             for c in group.get("clients", []):
                 if only_connected and c.get("connected") is not True:
                     continue
 
-                out.append(
+                clients.append(
                     Client(
                         id=c["id"],
                         host=c["host"]["name"],
                     )
                 )
 
-        return out
+        return clients
+
+    def connected_client_hosts(self) -> list[str]:
+        return [ client.host for client in self.connected_clients() ]
 
     # def _clients_by_host(
     #     self,
@@ -116,8 +126,25 @@ class Snapserver:
             },
         }
 
+    def set_volumes(self, host_volumes: dict) -> None:
+        clients = self.connected_clients()
+        logger.info(f"Setting clients volumes to {host_volumes} (others are muted)")
+        allowed_hosts = host_volumes.keys()
+
+        calls = [
+            self._set_client(
+                c.id,
+                host_volumes.get(c.host, 0),
+                c.host not in allowed_hosts,
+            )
+            for c in clients
+        ]
+
+        if calls:
+            self._batch_rpc(calls)
+
     def set_all_connected_full_volume(self) -> None:
-        clients = self._clients(only_connected=True)
+        clients = self._get_clients(only_connected=True)
         logger.info(f"Setting clients {', '.join(c.host for c in clients)} to full volume")
 
         calls = [
@@ -137,7 +164,7 @@ class Snapserver:
 
         logger.info(f"Setting clients {", ".join(allowed_client_hosts)} to full volume, others are muted")
         allowed_hosts = self._resolve_hosts(allowed_client_hosts)
-        clients = self._clients(only_connected=True)
+        clients = self._get_clients(only_connected=True)
 
         calls = [
             self._set_client(
@@ -157,7 +184,7 @@ class Snapserver:
     @contextmanager
     def only_players(self, *allowed_client_hosts: str):
         allowed_hosts = set(allowed_client_hosts)
-        clients = self._clients(only_connected=True)
+        clients = self._get_clients(only_connected=True)
 
         # ENTER
         enter_calls = [
