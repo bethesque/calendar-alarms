@@ -262,7 +262,7 @@ class MusicAssistant:
             player.pause()
 
     def dip_volume(self):
-        fade_out(self.players, 2, 4, DIP_TARGET_VOLUME)
+        fade_out(self.players, 2, 8, DIP_TARGET_VOLUME)
 
     def restore_volume(self):
         playing_players = [player for player in self.players if player.get_original_state().playing()]
