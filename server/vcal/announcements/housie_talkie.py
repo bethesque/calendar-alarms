@@ -17,7 +17,7 @@ def ensure_list(x):
 
 class HousieTalkieController(object):
     @cherrypy.expose
-    def index(self, audio, sound_effect = None, players = None):
+    def index(self, audio, sound_effect = None, players = []):
         filename = getattr(audio, "filename", None) or "recording.m4a"
         audio_file_path = os.path.join("/tmp", os.path.basename(filename))
 
