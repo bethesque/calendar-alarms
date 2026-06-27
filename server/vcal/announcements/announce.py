@@ -56,7 +56,7 @@ def play_audio_files(audio_files: list[str], scene: SceneProtocol, players: list
     snapserver.set_all_connected_full_volume()
 
 def list_sound_effects()-> list[str]:
-    return ["random", "none"] + sorted([os.path.basename(path) for path in sound_effects_options_source().get_choices()])
+    return ["none", "random"] + sorted([os.path.basename(path) for path in sound_effects_options_source().get_choices()])
 
 def _build_one_off_announcement_file(message: str, sound_effect: str | None = None):
     speech_file = text_to_voice_file(message)
