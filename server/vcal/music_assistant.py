@@ -266,7 +266,7 @@ class MusicAssistant:
 
     def restore_volume(self):
         playing_players = [player for player in self.players if player.get_original_state().playing()]
-        fade_up([(player, player.get_original_state().get_volume()) for player in playing_players], duration=3, steps=9)
+        fade_up([(player, player.get_original_state().get_volume()) for player in playing_players], duration=4, steps=9)
 
     def restore_original_state(self):
         playing_players = [player for player in self.players if player.get_original_state().playing()]
@@ -277,7 +277,7 @@ class MusicAssistant:
             # give the buffers time to get their glitches out
             time.sleep(1)
 
-            fade_up([(player, player.get_original_state().get_volume()) for player in playing_players], duration=3, steps=9)
+            fade_up([(player, player.get_original_state().get_volume()) for player in playing_players], duration=4, steps=9)
 
     def playing(self) -> bool:
         return any(player.get_original_state().playing() for player in self.players)
