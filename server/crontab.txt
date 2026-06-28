@@ -31,8 +31,11 @@ IS_CRON=true
 
 # ====== ALARMS ======
 
-# Between 7am (inclusive) and 9pm (exclusive) check for alarms every 5 minutes from 0 to 45 minutes past the hour
-*/5 7-20 * * * cd /home/beth/calendar-alarms && ./script/check_for_alarms.sh "5" >> /home/beth/calendar-alarms/logs/cron.log  2>&1
+# Weekdays, between 7am (inclusive) and 9pm (exclusive) check for alarms every 5 minutes from 0 to 45 minutes past the hour
+*/5 7-20 * * 1-5 cd /home/beth/calendar-alarms && ./script/check_for_alarms.sh "5" >> /home/beth/calendar-alarms/logs/cron.log  2>&1
+
+# Weekends, start at 8am
+*/5 8-20 * * 0,6 cd /home/beth/calendar-alarms && ./script/check_for_alarms.sh "5" >> /home/beth/calendar-alarms/logs/cron.log  2>&1
 
 # ====== ANNOUNCEMENTS ======
 
