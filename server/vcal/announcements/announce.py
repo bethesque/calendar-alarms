@@ -4,7 +4,7 @@ import os
 import random
 import time
 from datetime import datetime
-from vcal.alarms.alarm import set_snapclients_to_max_volume
+from vcal.alarms.alarm import set_snapclient_volumes
 from vcal.snapserver import Snapserver
 from vcal.scene import SceneProtocol
 from vcal.alarms.mpd import fade_up, mpd_connection
@@ -13,8 +13,8 @@ from vcal.alarms.text_to_voice import text_to_voice_file_daily_summary, text_to_
 from vcal.alarms.sound import mix_announcement_audio, track_length, join_mp3s_to_wav
 from vcal.random_text import FileListOptionsSource, TextFileOptionsSource, select_text
 from vcal.select_item import select_item_by_date
-from vcal.env import DATA_DIRECTORY, CACHE_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, INITIAL_ALARM_VOLUME, ANNOUNCEMENT_VOLUME, ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY, SNAPSERVER_RPC_URL
-from vcal.alarms import BACKGROUND_MUSIC_DIRECTORY, AUDIO_DIRECTORY
+from vcal.env import DATA_DIRECTORY, CACHE_DIRECTORY, INITIAL_ALARM_VOLUME, ANNOUNCEMENT_VOLUME, ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY, SNAPSERVER_RPC_URL
+from vcal.alarms import BACKGROUND_MUSIC_DIRECTORY, AUDIO_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
 from vcal.settings import SnapcastSettings, MpdSettings
 
 CALENDAR_FILE = f"{DATA_DIRECTORY}/calendar.json"

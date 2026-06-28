@@ -7,9 +7,7 @@ from vcal.alarms.sound import build_alarm_audio, join_mp3s_to_wav
 from vcal.alarms.text_to_voice import text_to_voice_file
 from vcal.alarms.mpd import fade_up, fade_out, mpd_connection
 from vcal.select_item import select_item_by_date
-from vcal.alarms import ALARMS_DIRECTORY, AUDIO_DIRECTORY
-from vcal.env import OUTPUT_AUDIO_DIRECTORY, INITIAL_ALARM_VOLUME, MAX_ALARM_VOLUME, ANNOUNCEMENT_VOLUME, SNAPSERVER_RPC_URL
-from vcal.snapserver import set_clients_to_max_volume
+from vcal.alarms import ALARMS_DIRECTORY, AUDIO_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
 from vcal.alarms.sound import track_length
 from vcal.scene import SceneProtocol
 

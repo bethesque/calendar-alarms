@@ -59,7 +59,6 @@ pytest
 For mac, in `vcal/env.py` set
 
 ```py
-OUTPUT_AUDIO_DIRECTORY = "/tmp"
 MPD_HOST = "/tmp/mpd.socket"
 MPD_PORT = 0
 ```
