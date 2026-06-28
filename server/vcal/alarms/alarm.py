@@ -196,7 +196,7 @@ def stop_alarm(after_alarm_hook=None):
     try:
         with mpd_connection() as alarm_player:
             if alarm_player.is_running():
-                fade_out([alarm_player], 3)
+                #fade_out([alarm_player], 3)
                 alarm_player.stop()
                 message = "Alarm stopped."
             else:
