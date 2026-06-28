@@ -32,8 +32,8 @@ class MainSettings(YAMLSettings):
     )
 
 class MpdVolumeConfig(BaseModel):
-    tts: int = Field(default=80, ge=0, le=100)
-    talkie: int = Field(default=80, ge=0, le=100)
+    tts: int = Field(default=100, ge=0, le=100)
+    talkie: int = Field(default=100, ge=0, le=100)
     alarm_start: int = Field(default=50, ge=0, le=100)
     alarm_end: int = Field(default=100, ge=0, le=100)
 
