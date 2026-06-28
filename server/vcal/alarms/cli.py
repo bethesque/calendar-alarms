@@ -10,6 +10,7 @@ from vcal.alarms.mpd import fade_out, fade_up, mpd_connection
 from vcal.log_config import setup_logging_for_alarms
 from vcal.cal.google_calendar import CalendarSource
 from vcal.scene import NullScene, Scene
+from vcal.settings import MainSettings
 
 from vcal.env import DATA_DIRECTORY
 from vcal.alarms.alarm import check_for_notifications
@@ -22,6 +23,10 @@ def load_events(file_path):
     return CalendarSource(cache_file_path=file_path).load_data_from_file()
 
 def check_alarms():
+    if not MainSettings().enabled:
+        logger.info("Calendar Alarms are disabled in main settings, exiting.")
+        exit(0)
+
     parser = argparse.ArgumentParser(description="Check for alarms in calendar events")
     parser.add_argument(
         "--base_time",

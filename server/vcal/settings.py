@@ -4,23 +4,9 @@ from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 from pydantic import field_validator
 
-class MpdVolumeConfig(BaseModel):
-    tts: int = Field(default=80, ge=0, le=100)
-    talkie: int = Field(default=80, ge=0, le=100)
-    alarm_start: int = Field(default=50, ge=0, le=100)
-    alarm_end: int = Field(default=100, ge=0, le=100)
-
-    def __getitem__(self, key: str) -> int:
-        return getattr(self, key)
 
 
-class MpdSettings(BaseSettings):
-    volumes: MpdVolumeConfig = Field(default_factory=MpdVolumeConfig)
-
-    model_config = SettingsConfigDict(
-        yaml_file="mpd.yaml"
-    )
-
+class YAMLSettings(BaseSettings):
     @classmethod
     def settings_customise_sources(
         cls,
@@ -38,6 +24,30 @@ class MpdSettings(BaseSettings):
             file_secret_settings,
         )
 
+class MainSettings(YAMLSettings):
+    enabled: bool = Field(default=True)
+
+    model_config = SettingsConfigDict(
+        yaml_file="main.yaml"
+    )
+
+class MpdVolumeConfig(BaseModel):
+    tts: int = Field(default=80, ge=0, le=100)
+    talkie: int = Field(default=80, ge=0, le=100)
+    alarm_start: int = Field(default=50, ge=0, le=100)
+    alarm_end: int = Field(default=100, ge=0, le=100)
+
+    def __getitem__(self, key: str) -> int:
+        return getattr(self, key)
+
+
+class MpdSettings(YAMLSettings):
+    volumes: MpdVolumeConfig = Field(default_factory=MpdVolumeConfig)
+
+    model_config = SettingsConfigDict(
+        yaml_file="mpd.yaml"
+    )
+
 class VolumeConfig(BaseModel):
     tts: int = Field(default=80, ge=0, le=100)
     talkie: int = Field(default=80, ge=0, le=100)
@@ -51,7 +61,7 @@ class SnapclientConfig(BaseModel):
     host: str
     volumes: VolumeConfig = Field(default_factory=VolumeConfig)
 
-class SnapcastSettings(BaseSettings):
+class SnapcastSettings(YAMLSettings):
     snapserver: str
     snapclients: dict[str, SnapclientConfig] = Field(default_factory=dict)
     default_volumes: VolumeConfig = Field(default_factory=VolumeConfig)
@@ -88,23 +98,6 @@ class SnapcastSettings(BaseSettings):
             out[name] = cfg
 
         return out
-
-    @classmethod
-    def settings_customise_sources(
-        cls,
-        settings_cls,
-        init_settings,
-        env_settings,
-        dotenv_settings,
-        file_secret_settings,
-    ):
-        return (
-            init_settings,
-            YamlConfigSettingsSource(settings_cls),
-            env_settings,
-            dotenv_settings,
-            file_secret_settings,
-        )
 
 class Settings(BaseSettings):
     snapcast: dict[str, SnapclientConfig] = {}

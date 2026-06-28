@@ -9,6 +9,7 @@ from vcal.announcements.announce import play_morning_announcements as do_play_mo
 from vcal.log_config import setup_logging_for_announcements
 from vcal.scene import Scene
 from vcal.announcements.announce import play_announcement as play_announcement_func
+from vcal.settings import MainSettings
 
 setup_logging_for_announcements(str(LOG_LEVEL))
 
@@ -36,6 +37,10 @@ def play_announcement():
         exit(1)
 
 def play_morning_announcements():
+    if not MainSettings().enabled:
+        logger.info("Calendar Alarms are disabled in main settings, exiting.")
+        exit(0)
+
     parser = argparse.ArgumentParser(description="Check for alarms in calendar events")
     parser.add_argument(
         "--cached",
