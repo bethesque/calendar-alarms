@@ -28,7 +28,7 @@ class MainSettings(YAMLSettings):
     enabled: bool = Field(default=True)
 
     model_config = SettingsConfigDict(
-        yaml_file="main.yaml"
+        yaml_file="config/main.yaml"
     )
 
 class MpdVolumeConfig(BaseModel):
@@ -45,7 +45,7 @@ class MpdSettings(YAMLSettings):
     volumes: MpdVolumeConfig = Field(default_factory=MpdVolumeConfig)
 
     model_config = SettingsConfigDict(
-        yaml_file="mpd.yaml"
+        yaml_file="config/mpd.yaml"
     )
 
 class VolumeConfig(BaseModel):
@@ -67,7 +67,7 @@ class SnapcastSettings(YAMLSettings):
     default_volumes: VolumeConfig = Field(default_factory=VolumeConfig)
 
     model_config = SettingsConfigDict(
-        yaml_file="snapcast.yaml"
+        yaml_file="config/snapcast.yaml"
     )
 
     def snapserver_rpc_url(self):
