@@ -169,8 +169,7 @@ def play_notifications(announcements_file: str, alarms_file: str, scene: ScenePr
     if alarms_file:
         set_snapclient_volumes("alarm")
         vols = MpdSettings().volumes
-        initital_volume = vols.tts if announcements_file else vols.alarm_start
-        _play_alarm(alarms_file, initital_volume, vols.alarm_end)
+        _play_alarm(alarms_file, vols.alarm_start, vols.alarm_end)
 
 def set_snapclient_volumes(usecase: str):
     try:
