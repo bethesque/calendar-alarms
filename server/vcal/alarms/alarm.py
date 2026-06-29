@@ -152,7 +152,8 @@ class AnnouncementAudio:
         return AUDIO_DIRECTORY + "/preannounce_0_3_vol.mp3"
 
 def play_notifications(announcements_file: str, alarms_file: str, scene: SceneProtocol):
-    set_snapclient_volumes()
+    if announcements_file:
+        set_snapclient_volumes("tts")
 
     if announcements_file and not alarms_file:
         scene.around_announcement(lambda: _play_announcement(announcements_file))
@@ -166,19 +167,20 @@ def play_notifications(announcements_file: str, alarms_file: str, scene: ScenePr
         time.sleep(2)
 
     if alarms_file:
+        set_snapclient_volumes("alarm")
         vols = MpdSettings().volumes
         initital_volume = vols.tts if announcements_file else vols.alarm_start
         _play_alarm(alarms_file, initital_volume, vols.alarm_end)
 
-def set_snapclient_volumes():
+def set_snapclient_volumes(usecase: str):
     try:
         snapcast_settings = SnapcastSettings()
         snapserver = Snapserver(snapcast_settings.snapserver_rpc_url())
         players = snapserver.connected_client_hosts()
-        snapserver.set_volumes(snapcast_settings.volumes_for_players(players, "tts"))
+        snapserver.set_volumes(snapcast_settings.volumes_for_players(players, usecase))
 
     except Exception:
-        logger.exception("Error setting clients to TTS volume - audio may not be heard")
+        logger.exception(f"Error setting clients to {usecase} volume - audio may not be heard")
 
 def _play_announcement(announcements_file):
     with mpd_connection() as alarm_player:
