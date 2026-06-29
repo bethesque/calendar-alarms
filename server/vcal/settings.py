@@ -1,10 +1,8 @@
 from pathlib import Path
-
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 from pydantic import field_validator
-
-
+import yaml
 
 class YAMLSettings(BaseSettings):
     @classmethod
@@ -24,6 +22,17 @@ class YAMLSettings(BaseSettings):
             file_secret_settings,
         )
 
+    def save(self) -> None:
+        path = Path(self.model_config["yaml_file"])
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        with path.open("w") as f:
+            yaml.safe_dump(
+                self.model_dump(mode="python"),
+                f,
+                sort_keys=True,
+            )
+
 class MainSettings(YAMLSettings):
     enabled: bool = Field(default=True)
 
@@ -32,7 +41,7 @@ class MainSettings(YAMLSettings):
     )
 
 class MpdVolumeConfig(BaseModel):
-    tts: int = Field(default=100, ge=0, le=100)
+    tts: int = Field(default=100, ge=0, le=100, title="TTS")
     talkie: int = Field(default=100, ge=0, le=100)
     alarm_start: int = Field(default=50, ge=0, le=100)
     alarm_end: int = Field(default=100, ge=0, le=100)
@@ -49,10 +58,9 @@ class MpdSettings(YAMLSettings):
     )
 
 class VolumeConfig(BaseModel):
-    tts: int = Field(default=80, ge=0, le=100)
+    tts: int = Field(default=80, ge=0, le=100, title="TTS")
     talkie: int = Field(default=80, ge=0, le=100)
-    alarm_start: int = Field(default=50, ge=0, le=100)
-    alarm_end: int = Field(default=100, ge=0, le=100)
+    alarm: int = Field(default=100, ge=0, le=100, description="Alarm end volume")
 
     def __getitem__(self, key: str) -> int:
         return getattr(self, key)
@@ -63,7 +71,7 @@ class SnapclientConfig(BaseModel):
 
 class SnapcastSettings(YAMLSettings):
     snapserver: str
-    snapclients: dict[str, SnapclientConfig] = Field(default_factory=dict)
+    snapclients: list[SnapclientConfig] = Field(default_factory=list)
     default_volumes: VolumeConfig = Field(default_factory=VolumeConfig)
 
     model_config = SettingsConfigDict(
@@ -77,7 +85,7 @@ class SnapcastSettings(YAMLSettings):
     def volumes_for_players(self, hosts, usecase: str) -> dict[str, int]:
         volumes = {
             client.host: client.volumes
-            for client in self.snapclients.values()
+            for client in self.snapclients
         }
 
         return {
@@ -85,20 +93,18 @@ class SnapcastSettings(YAMLSettings):
             for host in hosts
         }
 
-    @field_validator("snapclients", mode="before")
-    @classmethod
-    def normalize_clients(cls, v):
-        if not isinstance(v, dict):
-            return {}
-
-        out = {}
-        for name, cfg in v.items():
-            cfg = cfg or {}
-            cfg.setdefault("host", name)
-            out[name] = cfg
-
-        return out
 
 class Settings(BaseSettings):
     snapcast: dict[str, SnapclientConfig] = {}
 
+
+class AppSettings(BaseSettings):
+    main_settings: MainSettings = Field(default_factory=MainSettings, description="Main settings")
+    mpd_settings: MpdSettings = Field(default_factory=MpdSettings, description="MPD settings")
+    snapcast_settings: SnapcastSettings = Field(default_factory=SnapcastSettings, description="Snapcast settings")
+
+    def save(self) -> None:
+        print("Saving models")
+        self.main_settings.save()
+        self.mpd_settings.save()
+        self.snapcast_settings.save()
