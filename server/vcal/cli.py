@@ -1,7 +1,7 @@
 from vcal.env import DATA_DIRECTORY, LOG_LEVEL
 from vcal.cal.google_calendar import CalendarSource
-from vcal.env import filter
 from vcal.log_config import setup_logging_for_data_refresh
+from vcal.settings import GoogleCalendarSettings
 
 """
 This script refreshes the calendar data and saves it to a local file.
@@ -12,8 +12,9 @@ DATA_FILE = DATA_DIRECTORY + "/calendar.json"
 setup_logging_for_data_refresh(str(LOG_LEVEL))
 
 def refresh_calendar_data():
+
     print(f"Refreshing calendar data in {DATA_FILE}...")
     calendar_source = CalendarSource(cache_file_path=DATA_FILE)
     calendar_source.load_creds()
-    calendar_source.fetch_data(filter)
+    calendar_source.fetch_data(GoogleCalendarSettings().calendar_filter)
     calendar_source.save_data_to_file()

@@ -15,9 +15,8 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from vcal.settings import GoogleCalendarSettings
 
-# If modifying these scopes, delete the file token.json.
-SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
 TIMEZONE = "Australia/Melbourne"
 
 logger = logging.getLogger(__name__)
@@ -94,9 +93,10 @@ def load_google_creds():
     # The file token.json stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
     # time.
+    settings = GoogleCalendarSettings()
     token_filename = "token.json"
     if os.path.exists(token_filename):
-        creds = Credentials.from_authorized_user_file(token_filename, SCOPES)
+        creds = Credentials.from_authorized_user_file(token_filename, [settings.scope])
 
     if creds and creds.expired and creds.refresh_token:
         try:

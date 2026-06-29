@@ -13,7 +13,7 @@ from vcal.alarms.text_to_voice import text_to_voice_file_daily_summary, text_to_
 from vcal.alarms.sound import mix_announcement_audio, track_length, join_mp3s_to_wav
 from vcal.random_text import FileListOptionsSource, TextFileOptionsSource, select_text
 from vcal.select_item import select_item_by_date
-from vcal.env import DATA_DIRECTORY, CACHE_DIRECTORY, INITIAL_ALARM_VOLUME, ANNOUNCEMENT_VOLUME, ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY, SNAPSERVER_RPC_URL
+from vcal.env import DATA_DIRECTORY, CACHE_DIRECTORY, ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY
 from vcal.alarms import BACKGROUND_MUSIC_DIRECTORY, AUDIO_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
 from vcal.settings import SnapcastSettings, MpdSettings
 
@@ -118,9 +118,10 @@ def play_morning_announcements_audio_file(audio_file, before_announcement_hook=N
 
     # Play the mixed audio file
     with mpd_connection() as alarm_player:
-        alarm_player.set_volume(INITIAL_ALARM_VOLUME)
+        volumes = MpdSettings().volumes
+        alarm_player.set_volume(volumes.alarm_start)
         alarm_player.play_file(audio_file)
-        fade_up([(alarm_player, ANNOUNCEMENT_VOLUME)], 5, 10)
+        fade_up([(alarm_player, volumes.tts)], 5, 10)
 
     if after_announcement_hook:
         time.sleep(track_length(MORNING_ANNOUNCEMENTS_AUDIO_FILE))

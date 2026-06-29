@@ -2,7 +2,6 @@ import argparse
 import logging
 import cherrypy
 import google_auth_oauthlib.flow
-from vcal.env import SERVER_ADDRESS, SCOPE, login_hint
 from vcal.log_config import setup_logging_for_http_server
 import threading
 from vcal.scene import Scene
@@ -10,6 +9,7 @@ from vcal.alarms.alarm import stop_alarm
 from queue import Queue
 from vcal.announcements.index import AnnouncementController
 from vcal.announcements.housie_talkie import HousieTalkieController
+from vcal.settings import GoogleCalendarSettings
 
 setup_logging_for_http_server(logging.INFO)
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 class AlarmController(object):
     def __init__(self):
-        self.queue = Queue(maxsize=1)  # <- key trick
+        self.queue = Queue(maxsize=1)
         self._pending = False
         self._lock = threading.Lock()
 
@@ -94,18 +94,20 @@ class CalendarWebServer(object):
 
     @cherrypy.expose
     def index(self):
+        settings = GoogleCalendarSettings()
+
         flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
             "client_secret.json",
-            scopes=[SCOPE],
+            scopes=[settings.scope],
             state="alwaysTheSame",
         )
-        flow.redirect_uri = f"{SERVER_ADDRESS}/auth"
+        flow.redirect_uri = f"{settings.redirect_server}/auth"
 
         authorization_url, state = flow.authorization_url(
             access_type="offline",
             include_granted_scopes="true",
             state="alwaysTheSame",
-            login_hint=login_hint,
+            login_hint=settings.login_hint,
             prompt="consent",
         )
 
@@ -113,16 +115,18 @@ class CalendarWebServer(object):
 
     @cherrypy.expose
     def auth(self, code=None, state=None, error=None, **kwargs):
+        settings = GoogleCalendarSettings()
+
         if state != "alwaysTheSame":
             return f"Something is up with your state: {state}"
         if error:
             return f"Something went wrong! {error}"
         flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
             "client_secret.json",
-            scopes=[SCOPE],
+            scopes=[settings.scope],
             state=state,
         )
-        flow.redirect_uri = f"{SERVER_ADDRESS}/auth"
+        flow.redirect_uri = f"{settings.redirect_server}/auth"
         flow.fetch_token(code=code)
 
         with open("token.json", "w") as text_file:

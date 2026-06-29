@@ -94,17 +94,32 @@ class SnapcastSettings(YAMLSettings):
         }
 
 
-class Settings(BaseSettings):
-    snapcast: dict[str, SnapclientConfig] = {}
+class CalendarSetting(BaseSettings):
+    id: str
+    name: str
 
+class GoogleCalendarSettings(YAMLSettings):
+    scope: str = Field(default="https://www.googleapis.com/auth/calendar.readonly", description="Permissions scope")
+    redirect_server: str = Field(description="The local server to which the redirect should be sent after authentication with Google")
+    login_hint: str = Field(description="The default email address to put in the login form")
+    calendars: list[CalendarSetting] = Field(default_factor=list)
+
+    def calendar_filter(self)-> list[tuple]:
+        return [(cal.id, cal.name) for cal in self.calendars]
+
+    model_config = SettingsConfigDict(
+        yaml_file="config/google_calendar.yaml"
+    )
 
 class AppSettings(BaseSettings):
     main_settings: MainSettings = Field(default_factory=MainSettings, description="Main settings")
     mpd_settings: MpdSettings = Field(default_factory=MpdSettings, description="MPD settings")
     snapcast_settings: SnapcastSettings = Field(default_factory=SnapcastSettings, description="Snapcast settings")
+    google_calendar_settings: GoogleCalendarSettings = Field(default_factory=GoogleCalendarSettings, description="Google Calendar settings")
 
     def save(self) -> None:
         print("Saving models")
         self.main_settings.save()
         self.mpd_settings.save()
         self.snapcast_settings.save()
+        self.google_calendar_settings.save()
