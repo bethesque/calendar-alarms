@@ -167,11 +167,31 @@ if __name__ == "__main__":
         help="Port to bind to",
     )
 
+    parser.add_argument(
+        "--ssl_certfile",
+        type=str
+    )
+
+    parser.add_argument(
+        "--ssl_keyfile",
+        type=str
+    )
+
     args = parser.parse_args()
+
+    opts = {
+        "host": args.host,
+        "port": args.port,
+        "log_level": "info",
+    }
+
+    if args.ssl_certfile:
+        opts["ssl_certfile"] = args.ssl_certfile
+
+    if args.ssl_keyfile:
+        opts["ssl_keyfile"] = args.ssl_keyfile
 
     uvicorn.run(
         app,
-        host=args.host,
-        port=args.port,
-        log_level="info",
+        **opts
     )
