@@ -23,7 +23,6 @@ dependencies = [
     "google-api-python-client==2.99.0",
     "google-auth-httplib2==0.1.1",
     "google-auth-oauthlib==1.1.0",
-    "CherryPy==18.10.0",
     "requests==2.31.0",
     "tzdata",
     "gtts==2.5.4",
