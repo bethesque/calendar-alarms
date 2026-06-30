@@ -64,5 +64,23 @@ class GoogleCalendarAuthRoutes:
             f.write(flow.credentials.to_json())
 
         return HTMLResponse(
-            "The Calendar Alarms credentials have been updated."
+            """
+            <html>
+                <head>
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Calendar Auth</title>
+                    <link rel="stylesheet" href="/static/style.css">
+                </head>
+                <body>
+                    <div class="card">
+                        <h1>Success</h1>
+                        <p>The Calendar Alarms credentials have been updated.</p>
+                    </div>
+                    <div class="card">
+                        <a href="/">Home</a>
+                    </div>
+                </body>
+            </html>
+            """,
+            status_code=200,
         )

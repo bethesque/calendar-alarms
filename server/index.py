@@ -3,6 +3,7 @@ import logging
 import yaml
 import uvicorn
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from pydantic_settings import BaseSettings
 from vcal.log_config import setup_logging_for_http_server
@@ -26,13 +27,14 @@ def index():
             <meta name="viewport"
                   content="width=device-width, initial-scale=1.0">
             <title>Calendar Alarms</title>
+            <link rel="stylesheet" href="/static/style.css">
         </head>
         <body>
             <h1>Calendar Alarms</h1>
             <ul>
                 <li><a href="/login">Login</a></li>
-                <li><a href="/admin">Admin</a></li>
                 <li><a href="/alarm">Alarm</a></li>
+                <li><a href="/admin">Admin</a></li>
             </ul>
         </body>
     </html>
@@ -43,6 +45,7 @@ app.include_router(AnnouncementRoutes().router, prefix="/announce")
 app.include_router(HousieTalkieRoutes().router, prefix="/talkie")
 app.include_router(AlarmRoutes().router, prefix="/alarm")
 app.include_router(AdminRoutes().router, prefix="/admin")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 if __name__ == "__main__":
 
