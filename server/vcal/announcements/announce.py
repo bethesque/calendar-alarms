@@ -45,17 +45,11 @@ def play_audio_file_as_announcement(audio_file, scene: SceneProtocol, sound_effe
     play_audio_files(pre_announce_files + [audio_file], scene, AnnouncementUsecase.TALKIE, players)
 
 def play_audio_files(audio_files: list[str], scene: SceneProtocol, usecase: AnnouncementUsecase, players: list[str] = []):
-    snapcast_settings = SnapcastSettings()
-    snapserver = Snapserver(snapcast_settings.snapserver_rpc_url())
-
-    players = players or snapserver.connected_client_hosts()
-
-    snapserver.set_volumes(snapcast_settings.volumes_for_players(players, usecase.name.lower()))
-
-    mpd_settings = MpdSettings()
+    set_snapclient_volumes(usecase.name.lower(), players)
 
     def play():
         try:
+            mpd_settings = MpdSettings()
             with mpd_connection() as alarm_player:
                 alarm_player.set_volume(mpd_settings.volumes[usecase.name.lower()])
                 alarm_player.play_files(audio_files)
@@ -64,7 +58,12 @@ def play_audio_files(audio_files: list[str], scene: SceneProtocol, usecase: Anno
             logger.exception(f"Error playing announcement audio file(s) {audio_files}")
 
     scene.around_announcement(play)
-    snapserver.set_all_connected_full_volume()
+
+def set_snapclient_volumes(usecase: str, players: list | None = None):
+    snapcast_settings = SnapcastSettings()
+    snapserver = Snapserver(snapcast_settings.snapserver_rpc_url())
+    players = players or snapserver.connected_client_hosts()
+    snapserver.set_volumes(snapcast_settings.volumes_for_players(players, usecase))
 
 def list_sound_effects()-> list[str]:
     return ["none", "random"] + sorted([os.path.basename(path) for path in sound_effects_options_source().get_options()])
@@ -113,6 +112,8 @@ def play_morning_announcements(calendar_file, base_time, before_announcement_hoo
 Helper method to play the cached announcement speech audio file to avoid a round trip to the text-to-speech service.
 """
 def play_morning_announcements_audio_file(audio_file, before_announcement_hook=None, after_announcement_hook=None):
+
+    set_snapclient_volumes("tts", None)
 
     before_announcement_hook() if before_announcement_hook else None
 
