@@ -114,12 +114,20 @@ class GoogleCalendarSettings(YAMLSettings):
         yaml_file="config/google_calendar.yaml"
     )
 
+class MorningAnnouncementsSettings(YAMLSettings):
+    prelude_options: list[str] = Field(default_factory=list, description="Text to read after 'Good morning' and before the day's events")
+    prelude_probability: float = Field(default=1, description="The probability that a prelude will be included")
+
+    model_config = SettingsConfigDict(
+        yaml_file="config/morning_announcements.yaml"
+    )
 
 class AppSettings(BaseSettings):
     main_settings: MainSettings = Field(default_factory=MainSettings, description="Main settings")
     mpd_settings: MpdSettings = Field(default_factory=MpdSettings, description="MPD settings")
     snapcast_settings: SnapcastSettings = Field(default_factory=SnapcastSettings, description="Snapcast settings")
     google_calendar_settings: GoogleCalendarSettings = Field(default_factory=GoogleCalendarSettings, description="Google Calendar settings")
+    morning_announcements_settings: MorningAnnouncementsSettings = Field(default_factory=MorningAnnouncementsSettings, description="Morning announcements settings")
 
     def save(self) -> None:
         logger.info("Saving settings")
@@ -127,3 +135,4 @@ class AppSettings(BaseSettings):
         self.mpd_settings.save()
         self.snapcast_settings.save()
         self.google_calendar_settings.save()
+        self.morning_announcements_settings.save()

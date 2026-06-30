@@ -11,11 +11,11 @@ from vcal.alarms.mpd import fade_up, mpd_connection
 from vcal.cal.google_calendar import WeatherForecast, load_data_from_file
 from vcal.alarms.text_to_voice import text_to_voice_file_daily_summary, text_to_voice_file
 from vcal.alarms.sound import mix_announcement_audio, track_length, join_mp3s_to_wav
-from vcal.random_text import FileListOptionsSource, TextFileOptionsSource, select_text
+from vcal.random_text import FileListOptionsSource, TextFileOptionsSource, ListOptionsSource, select_text
 from vcal.select_item import select_item_by_date
 from vcal.env import DATA_DIRECTORY, CACHE_DIRECTORY, ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY
 from vcal.alarms import BACKGROUND_MUSIC_DIRECTORY, AUDIO_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
-from vcal.settings import SnapcastSettings, MpdSettings
+from vcal.settings import SnapcastSettings, MpdSettings, MorningAnnouncementsSettings
 
 CALENDAR_FILE = f"{DATA_DIRECTORY}/calendar.json"
 SPEECH_FILE = CACHE_DIRECTORY + "/audio/morning_annoucements_speech.mp3"
@@ -67,7 +67,7 @@ def play_audio_files(audio_files: list[str], scene: SceneProtocol, usecase: Anno
     snapserver.set_all_connected_full_volume()
 
 def list_sound_effects()-> list[str]:
-    return ["none", "random"] + sorted([os.path.basename(path) for path in sound_effects_options_source().get_choices()])
+    return ["none", "random"] + sorted([os.path.basename(path) for path in sound_effects_options_source().get_options()])
 
 def _build_one_off_announcement_file(message: str, sound_effect: str | None = None):
     speech_file = text_to_voice_file(message)
@@ -172,7 +172,10 @@ def build_sentences(all_events):
 
     sentences = ["Good morning!"]
 
-    extra_text = select_text(None, 1, TextFileOptionsSource(file_name=MORNING_ANNOUNCEMENTS_PRELUDE_CHOICES) )
+    settings = MorningAnnouncementsSettings()
+    prelude_options = ListOptionsSource("MorningAnnouncementsSettings.prelude_options", settings.prelude_options)
+
+    extra_text = select_text(None, settings.prelude_probability, prelude_options)
     if extra_text:
         sentences.append(extra_text)
 
