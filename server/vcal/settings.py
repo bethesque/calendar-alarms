@@ -1,8 +1,11 @@
+import logging
 from pathlib import Path
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 from pydantic import field_validator
 import yaml
+
+logger = logging.getLogger(__name__)
 
 class YAMLSettings(BaseSettings):
     @classmethod
@@ -119,7 +122,7 @@ class AppSettings(BaseSettings):
     google_calendar_settings: GoogleCalendarSettings = Field(default_factory=GoogleCalendarSettings, description="Google Calendar settings")
 
     def save(self) -> None:
-        print("Saving models")
+        logger.info("Saving settings")
         self.main_settings.save()
         self.mpd_settings.save()
         self.snapcast_settings.save()

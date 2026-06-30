@@ -1,148 +1,76 @@
 import argparse
 import logging
-import cherrypy
-import google_auth_oauthlib.flow
+import yaml
+import uvicorn
+from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
+from pydantic_settings import BaseSettings
 from vcal.log_config import setup_logging_for_http_server
-import threading
-from vcal.scene import Scene
-from vcal.alarms.alarm import stop_alarm
-from queue import Queue
-from vcal.announcements.index import AnnouncementController
-from vcal.announcements.housie_talkie import HousieTalkieController
-from vcal.settings import GoogleCalendarSettings
+from vcal.cal.ui import GoogleCalendarAuthRoutes
+from vcal.announcements.api import AnnouncementRoutes
+from vcal.announcements.housie_talkie import HousieTalkieRoutes
+from vcal.admin_ui import AdminRoutes
+from vcal.alarms.ui import AlarmRoutes
 
 setup_logging_for_http_server(logging.INFO)
 
 logger = logging.getLogger(__name__)
 
-class AlarmController(object):
-    def __init__(self):
-        self.queue = Queue(maxsize=1)
-        self._pending = False
-        self._lock = threading.Lock()
+app = FastAPI()
 
-        threading.Thread(target=self._worker, daemon=True).start()
+@app.get("/", response_class=HTMLResponse)
+def index():
+    return """
+    <html>
+        <head>
+            <meta name="viewport"
+                  content="width=device-width, initial-scale=1.0">
+            <title>Calendar Alarms</title>
+        </head>
+        <body>
+            <h1>Calendar Alarms</h1>
+            <ul>
+                <li><a href="/login">Login</a></li>
+                <li><a href="/admin">Admin</a></li>
+                <li><a href="/alarm">Alarm</a></li>
+            </ul>
+        </body>
+    </html>
+    """
 
-    def _worker(self):
-        while True:
-            self.queue.get()
-            try:
-                stop_alarm(Scene.restore_after_alarm)
-            finally:
-                with self._lock:
-                    self._pending = False
-                self.queue.task_done()
-
-    @cherrypy.expose
-    def index(self):
-        # HTML page with a single button
-        return """
-        <html>
-            <head>
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Alarm Control</title>
-            </head>
-            <body>
-                <h1>Alarm Control</h1>
-                <form method="post" action="/alarm/stop">
-                    <button type="submit">Stop Alarm</button>
-                </form>
-            </body>
-        </html>
-        """
-
-    @cherrypy.expose
-    def stop(self):
-        message = self.do_thing()
-        cherrypy.response.status = 202
-
-        return f"""
-        <html>
-            <head>
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Alarm Control</title>
-            </head>
-            <body>
-                <h2>{message}</h2>
-                <a href="/alarm">Go back</a>
-            </body>
-        </html>
-        """
-
-    def do_thing(self) -> str:
-        with self._lock:
-            if self._pending:
-                return "Alarm currently being stopped"
-
-            self._pending = True
-
-        try:
-            self.queue.put_nowait(None)
-            return "Stopping alarm..."
-        except:
-            # extremely rare race safety net
-            with self._lock:
-                self._pending = False
-            return "Alarm currently being stopped"
-
-cherrypy.tools.trailing_slash = cherrypy.Tool('before_handler', lambda: None)
-
-class CalendarWebServer(object):
-    alarm = AlarmController()
-    announce = AnnouncementController()
-    talkie = HousieTalkieController()
-
-    @cherrypy.expose
-    def index(self):
-        settings = GoogleCalendarSettings()
-
-        flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
-            "client_secret.json",
-            scopes=[settings.scope],
-            state="alwaysTheSame",
-        )
-        flow.redirect_uri = f"{settings.redirect_server}/auth"
-
-        authorization_url, state = flow.authorization_url(
-            access_type="offline",
-            include_granted_scopes="true",
-            state="alwaysTheSame",
-            login_hint=settings.login_hint,
-            prompt="consent",
-        )
-
-        raise cherrypy.HTTPRedirect(authorization_url)
-
-    @cherrypy.expose
-    def auth(self, code=None, state=None, error=None, **kwargs):
-        settings = GoogleCalendarSettings()
-
-        if state != "alwaysTheSame":
-            return f"Something is up with your state: {state}"
-        if error:
-            return f"Something went wrong! {error}"
-        flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
-            "client_secret.json",
-            scopes=[settings.scope],
-            state=state,
-        )
-        flow.redirect_uri = f"{settings.redirect_server}/auth"
-        flow.fetch_token(code=code)
-
-        with open("token.json", "w") as text_file:
-            print(flow.credentials.to_json(), file=text_file)
-
-        return "The Calendar Alarms credentials have been updated."
+app.include_router(GoogleCalendarAuthRoutes().router, prefix="")
+app.include_router(AnnouncementRoutes().router, prefix="/announce")
+app.include_router(HousieTalkieRoutes().router, prefix="/talkie")
+app.include_router(AlarmRoutes().router, prefix="/alarm")
+app.include_router(AdminRoutes().router, prefix="/admin")
 
 if __name__ == "__main__":
+
+    class UvicornSettings(BaseSettings):
+        host: str = "0.0.0.0"
+        port: int = 8081
+        ssl_certfile: str | None = None
+        ssl_keyfile: str | None = None
+        log_level: str = "info"
+        timeout_graceful_shutdown: int = 1
+
+
+        def uvicorn_kwargs(self) -> dict:
+            return self.model_dump(exclude_none=True)
+
     parser = argparse.ArgumentParser(description="Audio control service")
+
     parser.add_argument(
         "--conf",
-        type=str,
-        default="server.conf",
-        help="The configuration file for the server."
+        default="config/uvicorn.yaml",
     )
 
     args = parser.parse_args()
 
-    cherrypy.quickstart(CalendarWebServer(), config=args.conf)
+    uvicorn_args = {}
+
+    if args.conf:
+        with open(args.conf) as f:
+            uvicorn_args = UvicornSettings(**yaml.safe_load(f)).uvicorn_kwargs()
+
+    uvicorn.run(app, **uvicorn_args)
