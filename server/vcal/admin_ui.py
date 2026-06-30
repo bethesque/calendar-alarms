@@ -20,6 +20,7 @@ class AdminRoutes:
                 xyz="foo",
             ),
             data_saver=self._save_settings,
+            data_loader=lambda: AppSettings()
         )
 
         self.router.include_router(self.ui_router)
