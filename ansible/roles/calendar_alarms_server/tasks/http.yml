@@ -1,6 +1,6 @@
 - name: Install server conf file for Calendar Alarms http service
   ansible.builtin.template:
-    src: calendar-alarms-server.conf.j2
+    src: uvicorn.yaml.j2
     dest: "{{ calendar_alarms_server_conf }}"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
