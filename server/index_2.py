@@ -1,6 +1,7 @@
 import argparse
 import logging
 import threading
+import yaml
 from queue import Queue
 
 import google_auth_oauthlib.flow
@@ -11,9 +12,10 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from vcal.log_config import setup_logging_for_http_server
 from vcal.scene import Scene
 from vcal.alarms.alarm import stop_alarm
-from vcal.announcements.index import AnnouncementController
-from vcal.announcements.housie_talkie import HousieTalkieController
+from vcal.announcements.index import AnnouncementController, AnnouncementController2
+from vcal.announcements.housie_talkie import HousieTalkieController, HousieTalkieController2
 from vcal.settings import GoogleCalendarSettings
+from pydantic_settings import BaseSettings
 
 setup_logging_for_http_server(logging.INFO)
 
@@ -59,9 +61,27 @@ alarm_controller = AlarmHandler()
 announce_controller = AnnouncementController()
 talkie_controller = HousieTalkieController()
 
-
-@app.get("/", include_in_schema=False)
+@app.get("/", response_class=HTMLResponse)
 def index():
+    return """
+    <html>
+        <head>
+            <meta name="viewport"
+                  content="width=device-width, initial-scale=1.0">
+            <title>Calendar Alarms</title>
+        </head>
+        <body>
+            <h1>Calendar Alarms</h1>
+            <ul>
+                <li><a href="/login">Login</a></ul>
+            </ul>
+        </body>
+    </html>
+    """
+
+
+@app.get("/login")
+def login():
     settings = GoogleCalendarSettings()
 
     flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
@@ -152,46 +172,35 @@ def stop_alarm_endpoint():
         status_code=202,
     )
 
+app.include_router(AnnouncementController2().router, prefix="/announce")
+app.include_router(HousieTalkieController2().router, prefix="/talkie")
 
 if __name__ == "__main__":
+
+    class UvicornSettings(BaseSettings):
+        host: str = "0.0.0.0"
+        port: int = 8081
+        ssl_certfile: str | None = None
+        ssl_keyfile: str | None = None
+        log_level: str = "info"
+
+
+        def uvicorn_kwargs(self) -> dict:
+            return self.model_dump(exclude_none=True)
+
     parser = argparse.ArgumentParser(description="Audio control service")
-    parser.add_argument(
-        "--host",
-        default="0.0.0.0",
-        help="Host to bind to",
-    )
-    parser.add_argument(
-        "--port",
-        type=int,
-        default=8080,
-        help="Port to bind to",
-    )
 
     parser.add_argument(
-        "--ssl_certfile",
-        type=str
-    )
-
-    parser.add_argument(
-        "--ssl_keyfile",
-        type=str
+        "--conf",
+        default="config/uvicorn.yaml",
     )
 
     args = parser.parse_args()
 
-    opts = {
-        "host": args.host,
-        "port": args.port,
-        "log_level": "info",
-    }
+    uvicorn_args = {}
 
-    if args.ssl_certfile:
-        opts["ssl_certfile"] = args.ssl_certfile
+    if args.conf:
+        with open(args.conf) as f:
+            uvicorn_args = UvicornSettings(**yaml.safe_load(f)).uvicorn_kwargs()
 
-    if args.ssl_keyfile:
-        opts["ssl_keyfile"] = args.ssl_keyfile
-
-    uvicorn.run(
-        app,
-        **opts
-    )
+    uvicorn.run(app, **uvicorn_args)

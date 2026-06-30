@@ -32,6 +32,49 @@ class HousieTalkieController(object):
 
 
 
+from fastapi import APIRouter, File, Form, UploadFile
+
+class HousieTalkieController2:
+    def __init__(self):
+        self.router = APIRouter()
+
+        self.router.add_api_route(
+            "",
+            self.index,
+            methods=["POST"],
+            status_code=202
+        )
+
+    async def index(
+        self,
+        audio: UploadFile = File(...),
+        sound_effect: str | None = Form(None),
+        players: list[str] | None = Form(None),
+    ):
+        filename = audio.filename or "recording.m4a"
+        audio_file_path = os.path.join(
+            "/tmp",
+            os.path.basename(filename),
+        )
+
+        with open(audio_file_path, "wb") as f:
+            while chunk := await audio.read(65536):
+                f.write(chunk)
+
+        threading.Thread(
+            target=play_audio_file_as_announcement,
+            args=(
+                audio_file_path,
+                Scene(),
+                sound_effect,
+                ensure_list(players),
+            ),
+            daemon=True,
+        ).start()
+
+        return "OK"
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="HousieTalkie server")
     parser.add_argument(

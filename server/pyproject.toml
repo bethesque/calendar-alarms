@@ -32,7 +32,8 @@ dependencies = [
     "websockets==16.0",
     "pydantic-settings==2.14.2",
     "pydantic-settings[yaml]",
-    "pydantic-ui==0.5.4"
+    "pydantic-ui==0.5.4",
+    "python-multipart==0.0.32"
 ]
 
 [project.optional-dependencies]

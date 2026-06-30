@@ -102,7 +102,7 @@ class GoogleCalendarSettings(YAMLSettings):
     scope: str = Field(default="https://www.googleapis.com/auth/calendar.readonly", description="Permissions scope")
     redirect_server: str = Field(description="The local server to which the redirect should be sent after authentication with Google")
     login_hint: str = Field(description="The default email address to put in the login form")
-    calendars: list[CalendarSetting] = Field(default_factor=list)
+    calendars: list[CalendarSetting] = Field(default_factory=list)
 
     def calendar_filter(self)-> list[tuple]:
         return [(cal.id, cal.name) for cal in self.calendars]
@@ -110,6 +110,7 @@ class GoogleCalendarSettings(YAMLSettings):
     model_config = SettingsConfigDict(
         yaml_file="config/google_calendar.yaml"
     )
+
 
 class AppSettings(BaseSettings):
     main_settings: MainSettings = Field(default_factory=MainSettings, description="Main settings")
