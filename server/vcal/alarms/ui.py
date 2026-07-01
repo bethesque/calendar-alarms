@@ -68,7 +68,7 @@ class AlarmRoutes:
                 <meta name="viewport"
                       content="width=device-width, initial-scale=1.0">
                 <title>Alarm Control</title>
-                <link rel="stylesheet" href="/static/style.css">
+                <link rel="stylesheet" href="/static/styles.css">
             </head>
             <body>
                 <h1>Alarm Control</h1>
@@ -91,7 +91,7 @@ class AlarmRoutes:
                     <meta name="viewport"
                           content="width=device-width, initial-scale=1.0">
                     <title>Alarm Control</title>
-                    <link rel="stylesheet" href="/static/style.css">
+                    <link rel="stylesheet" href="/static/styles.css">
                 </head>
                 <body>
                     <h2>{message}</h2>
