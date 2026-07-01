@@ -109,7 +109,7 @@ def load_google_creds():
 
 def list_google_calendars(creds):
     try:
-        service = build("calendar", "v3", credentials=creds)
+        service = build("calendar", "v3", credentials=creds, cache_discovery=False)
         result = service.calendarList().list().execute()
         return [GoogleCalendar(c["id"], c["summary"]) for c in result.get("items", [])]
     except HttpError as error:
@@ -119,7 +119,7 @@ def list_google_calendars(creds):
 
 def list_google_events(creds, calendar_id, min, max):
     try:
-        service = build("calendar", "v3", credentials=creds)
+        service = build("calendar", "v3", credentials=creds, cache_discovery=False)
         events_result = (
             service.events()
             .list(
