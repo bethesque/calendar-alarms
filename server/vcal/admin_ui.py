@@ -2,8 +2,6 @@ from fastapi import APIRouter
 from vcal.settings import AppSettings
 from pydantic_ui import create_pydantic_ui, UIConfig
 
-
-
 class AdminRoutes:
     def __init__(self):
         self.router = APIRouter()
