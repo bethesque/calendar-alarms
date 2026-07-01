@@ -95,3 +95,16 @@ button:disabled {
     background-color: #bdc3c7;
     cursor: not-allowed;
 }
+
+pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+
+    max-width: 100%;
+    box-sizing: border-box;
+
+    padding: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fafafa;
+}
