@@ -12,7 +12,7 @@ from vcal.announcements.api import AnnouncementRoutes
 from vcal.announcements.housie_talkie import HousieTalkieRoutes
 from vcal.admin_ui import AdminRoutes
 from vcal.alarms.ui import AlarmRoutes
-from vcal.logs_ui import LogsRoutes
+from vcal.logs_ui import CalendarAlarmsStatusRoutes, LogRoutes
 
 setup_logging_for_http_server(logging.INFO)
 
@@ -36,7 +36,12 @@ def index():
                 <li><a href="/login">Login</a></li>
                 <li><a href="/alarm">Alarm</a></li>
                 <li><a href="/admin">Admin</a></li>
-                <li><a href="/logs">Logs</a></li>
+                <li><a href="/status/calendar-alarms-service">Calendar Alarms HTTP Service Status</a></li>
+                <li><a href="/logs/server">Calendar Alarms HTTP Service logs</a></li>
+                <li><a href="/logs/alarms">Alarms logs</a></li>
+                <li><a href="/logs/announcements">Announcements logs</a></li>
+                <li><a href="/logs/data-refresh">Data Refresh logs</a></li>
+                <li><a href="/logs/cron">Cron logs</a></li>
             </ul>
         </body>
     </html>
@@ -47,7 +52,12 @@ app.include_router(AnnouncementRoutes().router, prefix="/announce")
 app.include_router(HousieTalkieRoutes().router, prefix="/talkie")
 app.include_router(AlarmRoutes().router, prefix="/alarm")
 app.include_router(AdminRoutes().router, prefix="/admin")
-app.include_router(LogsRoutes().router, prefix="/logs")
+app.include_router(CalendarAlarmsStatusRoutes().router, prefix="/status/calendar-alarms-service")
+app.include_router(LogRoutes(file_path="logs/server.log", route="/server").router, prefix="/logs")
+app.include_router(LogRoutes(file_path="logs/alarms.log", route="/alarms").router, prefix="/logs")
+app.include_router(LogRoutes(file_path="logs/announcements.log", route="/announcements").router, prefix="/logs")
+app.include_router(LogRoutes(file_path="logs/data_refresh.log", route="/data-refresh").router, prefix="/logs")
+app.include_router(LogRoutes(file_path="logs/cron.log", route="/cron").router, prefix="/logs")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 if __name__ == "__main__":
