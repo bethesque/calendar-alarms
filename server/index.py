@@ -33,7 +33,7 @@ def index():
         <body>
             <h1>Calendar Alarms</h1>
             <ul>
-                <li><a href="/login">Login</a></li>
+                <li><a href="/login">Google Login</a></li>
                 <li><a href="/alarm">Alarm</a></li>
                 <li><a href="/admin">Admin</a></li>
                 <li><a href="/status/calendar-alarms-service">Calendar Alarms HTTP Service Status</a></li>
