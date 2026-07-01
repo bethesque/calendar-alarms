@@ -37,7 +37,7 @@ def index():
                 <li><a href="/alarm">Alarm</a></li>
                 <li><a href="/admin">Admin</a></li>
                 <li><a href="/status/calendar-alarms-service">Calendar Alarms HTTP Service Status</a></li>
-                <li><a href="/logs/server">Calendar Alarms HTTP Service logs</a></li>
+                <li><a href="/logs/server">Calendar Alarms HTTP Server logs</a></li>
                 <li><a href="/logs/alarms">Alarms logs</a></li>
                 <li><a href="/logs/announcements">Announcements logs</a></li>
                 <li><a href="/logs/data-refresh">Data Refresh logs</a></li>
