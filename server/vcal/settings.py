@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field
@@ -114,13 +115,34 @@ class GoogleCalendarSettings(YAMLSettings):
         yaml_file="config/google_calendar.yaml"
     )
 
+class Option(BaseModel):
+    text: str
+    last_used: str | None = None
+
+    def last_used_datetime(self) -> datetime | None:
+        if self.last_used is None:
+            return None
+        return datetime.fromisoformat(self.last_used)
+
+    def update_last_used(self, dt: datetime | None = None):
+        dt = dt or datetime.now()
+        self.last_used = dt.isoformat()
+
+    def never_used(self) -> bool:
+        return self.last_used is None
+
 class MorningAnnouncementsSettings(YAMLSettings):
     prelude_options: list[str] = Field(default_factory=list, description="Text to read after 'Good morning' and before the day's events")
     prelude_probability: float = Field(default=1, description="The probability that a prelude will be included")
+    facts: list[Option] = Field(default_factory=list, description="List of facts to read after the day's events")
 
     model_config = SettingsConfigDict(
         yaml_file="config/morning_announcements.yaml"
     )
+
+    @property
+    def unused_facts(self) -> list[Option]:
+        return [fact for fact in self.facts if fact.never_used()]
 
 class AppSettings(BaseSettings):
     main_settings: MainSettings = Field(default_factory=MainSettings, description="Main settings")

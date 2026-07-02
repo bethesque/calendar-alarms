@@ -1,5 +1,8 @@
 from datetime import date
 import logging
+from vcal.settings import Option
+from datetime import datetime
+import random
 
 logger = logging.getLogger(__name__)
 
@@ -28,3 +31,37 @@ def select_item_by_date(items, d: date, period_days: int):
     logger.debug(f"Selecting item for date {d}: day_of_year={day_of_year}, period_index={period_index}, selected_index={index}")
 
     return items[index]
+
+
+def select_option(items: list[Option], now: datetime | None = None) -> Option:
+    if not items:
+        raise ValueError("No items available")
+
+    now = now or datetime.now()
+
+    never_used = [item for item in items if item.last_used is None]
+
+    if never_used:
+        selected = random.choice(never_used)
+        selected.update_last_used(now)
+        return selected
+
+
+    sorted_items = sorted(items, key=lambda x: x.last_used_datetime(), reverse=True)
+
+    exclude_count = min(
+        len(sorted_items) // 4,
+        len(sorted_items) - 1,
+    )
+
+    candidates = sorted_items[exclude_count:]
+
+    weights = [
+        max((now - item.last_used_datetime()).total_seconds(), 1.0) ** 1.5
+        for item in candidates
+    ]
+
+    selected = random.choices(candidates, weights=weights, k=1)[0]
+    selected.update_last_used(now)
+
+    return selected

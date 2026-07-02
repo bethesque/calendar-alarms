@@ -12,7 +12,7 @@ from vcal.cal.google_calendar import WeatherForecast, load_data_from_file
 from vcal.alarms.text_to_voice import text_to_voice_file_daily_summary, text_to_voice_file
 from vcal.alarms.sound import mix_announcement_audio, track_length, join_mp3s_to_wav
 from vcal.random_text import FileListOptionsSource, TextFileOptionsSource, ListOptionsSource, select_text
-from vcal.select_item import select_item_by_date
+from vcal.select_item import select_item_by_date, select_option
 from vcal.env import DATA_DIRECTORY, CACHE_DIRECTORY, ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY
 from vcal.alarms import BACKGROUND_MUSIC_DIRECTORY, AUDIO_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
 from vcal.settings import SnapcastSettings, MpdSettings, MorningAnnouncementsSettings
@@ -173,12 +173,9 @@ def build_sentences(all_events):
 
     sentences = ["Good morning!"]
 
-    settings = MorningAnnouncementsSettings()
-    prelude_options = ListOptionsSource("MorningAnnouncementsSettings.prelude_options", settings.prelude_options)
-
-    extra_text = select_text(None, settings.prelude_probability, prelude_options)
-    if extra_text:
-        sentences.append(extra_text)
+    prelude = get_prelude()
+    if prelude:
+        sentences.append(prelude)
 
     if weather_forecast:
         sentences.append(f"The weather forecast for today is: {weather_forecast.summary}.")
@@ -191,9 +188,27 @@ def build_sentences(all_events):
     else:
         sentences.append("There are no events scheduled for today.")
 
+    sentences.extend(get_postlude())
+
     sentences.append("Have a lovely day.")
 
     return sentences
+
+def get_prelude()-> str | None:
+    settings = MorningAnnouncementsSettings()
+    prelude_options = ListOptionsSource("MorningAnnouncementsSettings.prelude_options", settings.prelude_options)
+    return select_text(None, settings.prelude_probability, prelude_options)
+
+def get_postlude()-> list[str]:
+    settings = MorningAnnouncementsSettings()
+    unused_facts = settings.unused_facts
+    if unused_facts:
+        fact_text = select_option(unused_facts).text
+        settings.save()  # Save the updated last_used timestamps for the selected facts
+        return [f"Your fun fact for today is:", fact_text]
+    else:
+        logger.info("All facts have been used.")
+        return []
 
 def get_non_weather_forecast_events(events):
     return [event for event in events if not isinstance(event, WeatherForecast)]
