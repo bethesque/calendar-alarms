@@ -25,6 +25,9 @@ class PlayerState:
     def playing(self) -> bool:
         return self.state.get("state", "") in ["playing", "buffering"]
 
+    def muted(self) -> bool:
+        return self.state.get("attributes", {}).get("is_volume_muted", False)
+
 
 class MusicAssistantPlayer:
     def __init__(self, player_name: str, ha_url: str = HOME_ASSISTANT_URL, token: str = HOME_ASSISTANT_TOKEN):
@@ -207,7 +210,7 @@ def fade_out(ma_players: List[MusicAssistantPlayer], duration: float, steps: int
     faded_players = []
     fade_outs = []
     for player in ma_players:
-        if player.get_original_state().playing():
+        if player.get_original_state().playing() and not player.get_original_state().muted():
             faded_players.append(player)
             fade_outs.append(PlayerFadeOut(player, target_volume, num_steps=steps))
 
