@@ -9,7 +9,7 @@ import logging
 from dataclasses import dataclass
 
 
-from vcal.env import HOME_ASSISTANT_URL, HOME_ASSISTANT_TOKEN, CACHE_DIRECTORY, DIP_TARGET_VOLUME
+from vcal.env import CACHE_DIRECTORY, DIP_TARGET_VOLUME
 
 logger = logging.getLogger(__name__)
 
@@ -30,11 +30,11 @@ class PlayerState:
 
 
 class MusicAssistantPlayer:
-    def __init__(self, player_name: str, ha_url: str = HOME_ASSISTANT_URL, token: str = HOME_ASSISTANT_TOKEN):
+    def __init__(self, player_name: str, hass_url: str, hass_token: str):
         self.name = player_name
-        self.ha_url = ha_url
+        self.hass_url = hass_url
         self.headers = {
-            "Authorization": f"Bearer {token}",
+            "Authorization": f"Bearer {hass_token}",
             "Content-Type": "application/json",
         }
         self.session = requests.Session()
@@ -48,13 +48,13 @@ class MusicAssistantPlayer:
         self._original_state = state
 
     def _call_service(self, domain: str, service: str, data: dict):
-        url = f"{self.ha_url}/api/services/{domain}/{service}"
+        url = f"{self.hass_url}/api/services/{domain}/{service}"
         response = self.session.post(url, json=data, timeout=40)
         response.raise_for_status()
         return response
 
     def get_state(self) -> PlayerState:
-        url = f"{self.ha_url}/api/states/{self.name}"
+        url = f"{self.hass_url}/api/states/{self.name}"
         response = self.session.get(url, timeout=10)
         response.raise_for_status()
         return PlayerState(response.json())
@@ -251,7 +251,7 @@ def fade_up(players_and_target_volumes: List[Tuple[MusicAssistantPlayer, float]]
             time.sleep(step_time)
 
 class MusicAssistant:
-    def __init__(self, players: list[MusicAssistantPlayer], ha_url: str = HOME_ASSISTANT_URL, token: str = HOME_ASSISTANT_TOKEN):
+    def __init__(self, players: list[MusicAssistantPlayer]):
         self.players = players
 
     def fetch_current_state(self):
@@ -286,8 +286,8 @@ class MusicAssistant:
         return any(player.get_original_state().playing() for player in self.players)
 
     @staticmethod
-    def build_for_players_with_names(names):
-        players = [MusicAssistantPlayer(f"media_player.{name}") for name in names]
+    def build_for_players_with_names(names, hass_url: str, hass_token: str):
+        players = [MusicAssistantPlayer(f"media_player.{name}", hass_url, hass_token) for name in names]
         return MusicAssistant(players)
 
 @dataclass
@@ -302,17 +302,17 @@ class MusicAssistantState:
         with open(self.file_path, "w") as f:
             f.write(data_json)
 
-    def load(self) -> MusicAssistant:
+    def load(self, hass_url: str, hass_token: str) -> MusicAssistant:
         with open(self.file_path, "r") as f:
             music_assistant_state = json.load(f)
         playing_players = music_assistant_state["playing_players"]
         if playing_players and isinstance(playing_players, list):
             players = []
             for player_dict in playing_players:
-                player = MusicAssistantPlayer(player_dict["name"])
+                player = MusicAssistantPlayer(player_dict["name"], hass_url, hass_token)
                 player.set_original_state(PlayerState(player_dict["original_state"]))
                 players.append(player)
-            return MusicAssistant(players=players)
+            return MusicAssistant(players)
         else:
             logger.warning("Could not load playing players from saved state. Returning MusicAssistant with no players")
             logger.warning(music_assistant_state)

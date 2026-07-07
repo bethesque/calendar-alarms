@@ -71,6 +71,7 @@ class VolumeConfig(BaseModel):
 
 class SnapclientConfig(BaseModel):
     host: str
+    area: str | None = Field(default=None, description="The area of the house where the snapclient is located")
     volumes: VolumeConfig = Field(default_factory=VolumeConfig)
 
 class SnapcastSettings(YAMLSettings):
@@ -144,12 +145,30 @@ class MorningAnnouncementsSettings(YAMLSettings):
     def unused_facts(self) -> list[Option]:
         return [fact for fact in self.facts if fact.never_used()]
 
+class MusicAssistantPlayer(BaseModel):
+    name: str = Field(description="The name of the Music Assistant player in Home Assistant (excluding the 'media_player.' prefix)")
+    area: str | None = Field(default=None, description="The area of the house where the Music Assistant player is located")
+
+class HomeAssistantSettings(YAMLSettings):
+    hass_url: str = Field(default="http://localhost:8095", description="The URL of the Home Assistant server", title="Home Assistant URL")
+    hass_token: str = Field(default="", description="The API token for the Home Assistant server", title="Home Assistant Token")
+    players: list[MusicAssistantPlayer] = Field(default_factory=list, description="List of Music Assistant players to dip volume for announcements")
+
+    @property
+    def player_names(self) -> list[str]:
+        return [player.name for player in self.players]
+
+    model_config = SettingsConfigDict(
+        yaml_file="config/home_assistant.yaml"
+    )
+
 class AppSettings(BaseSettings):
     main_settings: MainSettings = Field(default_factory=MainSettings, description="Main settings")
     mpd_settings: MpdSettings = Field(default_factory=MpdSettings, description="MPD settings")
     snapcast_settings: SnapcastSettings = Field(default_factory=SnapcastSettings, description="Snapcast settings")
     google_calendar_settings: GoogleCalendarSettings = Field(default_factory=GoogleCalendarSettings, description="Google Calendar settings")
     morning_announcements_settings: MorningAnnouncementsSettings = Field(default_factory=MorningAnnouncementsSettings, description="Morning announcements settings")
+    home_assistant_settings: HomeAssistantSettings = Field(default_factory=HomeAssistantSettings, description="Home Assistant settings")
 
     def save(self) -> None:
         logger.info("Saving settings")
@@ -158,3 +177,4 @@ class AppSettings(BaseSettings):
         self.snapcast_settings.save()
         self.google_calendar_settings.save()
         self.morning_announcements_settings.save()
+        self.home_assistant_settings.save()

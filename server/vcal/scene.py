@@ -7,7 +7,8 @@ from pathlib import Path
 from vcal.music_assistant import MusicAssistant, MusicAssistantState
 from vcal.music_assistant_ws import MusicAssistant as MusicAssistantWS
 from vcal.music_assistant_utils import any_players_playing
-from vcal.env import CACHE_DIRECTORY, MUSIC_ASSISTANT_URL, MUSIC_ASSISTANT_TOKEN, PLAYERS, DIP_VOLUME
+from vcal.env import CACHE_DIRECTORY, MUSIC_ASSISTANT_URL, MUSIC_ASSISTANT_TOKEN, DIP_VOLUME
+from vcal.settings import HomeAssistantSettings
 from typing import Protocol
 import logging
 
@@ -67,9 +68,10 @@ class Scene:
     @staticmethod
     def restore_after_alarm():
         try:
+            settings = HomeAssistantSettings()
             ma_state = MusicAssistantState()
             if ma_state.fresh():
-                ma = ma_state.load()
+                ma = ma_state.load(settings.hass_url, settings.hass_token)
                 ma.restore_original_state()
                 logger.info("Restored saved Music Assistant state")
                 ma_state.clear()
@@ -100,8 +102,9 @@ class Scene:
 
     def _save(self):
         try:
+            settings = HomeAssistantSettings()
             ma_state = MusicAssistantState()
-            self._ma = MusicAssistant.build_for_players_with_names(PLAYERS)
+            self._ma = MusicAssistant.build_for_players_with_names(settings.player_names, settings.hass_url, settings.hass_token)
             self._ma.fetch_current_state()
             if self._ma.playing():
                 ma_state.save(self._ma)
