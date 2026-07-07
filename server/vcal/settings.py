@@ -70,8 +70,8 @@ class VolumeConfig(BaseModel):
         return getattr(self, key)
 
 class SnapclientConfig(BaseModel):
-    host: str
-    area: str | None = Field(default=None, description="The area of the house where the snapclient is located")
+    host: str = Field(description="The hostname of the snapclient")
+    area: str = Field(description="The area of the house where the snapclient is located")
     volumes: VolumeConfig = Field(default_factory=VolumeConfig)
 
 class SnapcastSettings(YAMLSettings):
@@ -147,7 +147,7 @@ class MorningAnnouncementsSettings(YAMLSettings):
 
 class MusicAssistantPlayer(BaseModel):
     name: str = Field(description="The name of the Music Assistant player in Home Assistant (excluding the 'media_player.' prefix)")
-    area: str | None = Field(default=None, description="The area of the house where the Music Assistant player is located")
+    area: str = Field(description="The area of the house where the Music Assistant player is located")
 
 class HomeAssistantSettings(YAMLSettings):
     hass_url: str = Field(default="http://localhost:8095", description="The URL of the Home Assistant server", title="Home Assistant URL")

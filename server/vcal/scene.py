@@ -22,13 +22,13 @@ class SceneProtocol(Protocol):
     def restore_after_alarm():
         ...
 
-    def prepare_for_announcement(self):
+    def prepare_for_announcement(self, areas: set[str] | None = None):
         ...
 
     def restore_after_announcement(self):
         ...
 
-    def around_announcement(self, announcement_func):
+    def around_announcement(self, announcement_func, areas: set[str] | None = None):
         ...
 
 class NullScene:
@@ -38,13 +38,13 @@ class NullScene:
     def restore_after_alarm(self):
         pass
 
-    def prepare_for_announcement(self):
+    def prepare_for_announcement(self, areas: set[str] | None = None):
         pass
 
     def restore_after_announcement(self):
         pass
 
-    def around_announcement(self, announcement_func):
+    def around_announcement(self, announcement_func, areas: set[str] | None = None):
         announcement_func()
 
 
@@ -54,8 +54,9 @@ class Scene:
         pass
 
     def prepare_for_alarm(self):
-        self._save()
         try:
+            self._build_ma()
+            self._save_state()
             if self._ma.playing():
                 logger.info("Pausing Music Assistant players...")
                 self._ma.fade_out_and_pause()
@@ -80,11 +81,12 @@ class Scene:
         except Exception:
             logger.exception(f"Error restoring Music Assistant state")
 
-    def prepare_for_announcement(self):
-        self._save()
+    def prepare_for_announcement(self, areas: set[str] | None = None):
         try:
+            self._build_ma(areas)
+            self._save_state()
             if self._ma.playing():
-                logger.info("Dipping Music Assistant volume...")
+                logger.info(f"Dipping Music Assistant volume in areas {areas}")
                 self._ma.dip_volume()
             else:
                 logger.info("No Music Assistant players to dip")
@@ -95,17 +97,20 @@ class Scene:
     def restore_after_announcement(self):
         self._ma.restore_volume()
 
-    def around_announcement(self, announcement_func):
-        self.prepare_for_announcement()
+    def around_announcement(self, announcement_func, areas: set[str] | None = None):
+        self.prepare_for_announcement(areas)
         announcement_func()
         self.restore_after_announcement()
 
-    def _save(self):
+    def _build_ma(self, areas: set[str] | None = None):
+        settings = HomeAssistantSettings()
+        player_names_to_dip = [player.name for player in settings.players if areas is None or player.area in areas]
+        self._ma = MusicAssistant.build_for_players_with_names(player_names_to_dip, settings.hass_url, settings.hass_token)
+        self._ma.fetch_current_state()
+
+    def _save_state(self):
         try:
-            settings = HomeAssistantSettings()
             ma_state = MusicAssistantState()
-            self._ma = MusicAssistant.build_for_players_with_names(settings.player_names, settings.hass_url, settings.hass_token)
-            self._ma.fetch_current_state()
             if self._ma.playing():
                 ma_state.save(self._ma)
             else:
@@ -142,7 +147,7 @@ class AsyncScene:
         except Exception:
             logger.exception(f"Error restoring Music Assistant players")
 
-    async def prepare_for_announcement(self):
+    async def prepare_for_announcement(self, areas: set[str] | None = None):
         music_assistant_available = False
         try:
             async with MusicAssistantWS(MUSIC_ASSISTANT_URL, MUSIC_ASSISTANT_TOKEN) as ma:
@@ -170,7 +175,7 @@ class AsyncScene:
         except Exception:
             logger.exception(f"Error restoring state of Music Assistant players")
 
-    async def around_announcement(self, announcement_func):
+    async def around_announcement(self, announcement_func, areas: set[str] | None = None):
         music_assistant_available = False
         state = []
         try:
@@ -254,7 +259,7 @@ class Scene2:
     def restore_after_alarm():
         asyncio.run(AsyncScene.restore_after_alarm())
 
-    def prepare_for_announcement(self):
+    def prepare_for_announcement(self, areas: set[str] | None = None):
         if any_players_playing(MUSIC_ASSISTANT_URL, MUSIC_ASSISTANT_TOKEN):
             asyncio.run(AsyncScene().prepare_for_alarm_async())
         else:
@@ -264,9 +269,9 @@ class Scene2:
     def restore_after_announcement(self):
         asyncio.run(AsyncScene().restore_after_announcement())
 
-    def around_announcement(self, announcement_func):
+    def around_announcement(self, announcement_func, areas: set[str] | None = None):
         if any_players_playing(MUSIC_ASSISTANT_URL, MUSIC_ASSISTANT_TOKEN):
-            asyncio.run(AsyncScene().around_announcement(announcement_func))
+            asyncio.run(AsyncScene().around_announcement(announcement_func, areas))
         else:
             logger.info("No Music Assistant players to dip for announcement")
             announcement_func()

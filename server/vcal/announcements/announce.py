@@ -36,16 +36,16 @@ class AnnouncementUsecase(Enum):
 class MissingCalendarDataException(Exception):
     pass
 
-def play_announcement(message: str, scene: SceneProtocol, sound_effect = None, players: list[str] = []):
+def play_announcement(message: str, scene: SceneProtocol, sound_effect = None, player_hostnames: list[str] = []):
     announcement_file = _build_one_off_announcement_file(message, sound_effect)
-    play_audio_files([announcement_file], scene, AnnouncementUsecase.TTS, players)
+    play_audio_files([announcement_file], scene, AnnouncementUsecase.TTS, player_hostnames)
 
-def play_audio_file_as_announcement(audio_file, scene: SceneProtocol, sound_effect = None, players: list[str] = []):
+def play_audio_file_as_announcement(audio_file, scene: SceneProtocol, sound_effect = None, player_hostnames: list[str] = []):
     pre_announce_files = get_pre_announcement_files(sound_effect)
-    play_audio_files(pre_announce_files + [audio_file], scene, AnnouncementUsecase.TALKIE, players)
+    play_audio_files(pre_announce_files + [audio_file], scene, AnnouncementUsecase.TALKIE, player_hostnames)
 
-def play_audio_files(audio_files: list[str], scene: SceneProtocol, usecase: AnnouncementUsecase, players: list[str] = []):
-    set_snapclient_volumes(usecase.name.lower(), players)
+def play_audio_files(audio_files: list[str], scene: SceneProtocol, usecase: AnnouncementUsecase, player_hostnames: list[str] = []):
+    areas = set_snapclient_volumes(usecase.name.lower(), player_hostnames)
 
     def play():
         try:
@@ -57,13 +57,21 @@ def play_audio_files(audio_files: list[str], scene: SceneProtocol, usecase: Anno
         except Exception:
             logger.exception(f"Error playing announcement audio file(s) {audio_files}")
 
-    scene.around_announcement(play)
+    scene.around_announcement(play, areas)
 
-def set_snapclient_volumes(usecase: str, players: list | None = None):
+def set_snapclient_volumes(usecase: str, player_hostnames: list | None = None) -> set[str]:
+    """
+    Set the volumes of the Snapcast clients to the appropriate levels for the given usecase.
+    If player_hostnames is provided, only those players will be adjusted. Otherwise, all connected players will be adjusted.
+    Returns a set of areas containing that were adjusted.
+    """
+
     snapcast_settings = SnapcastSettings()
     snapserver = Snapserver(snapcast_settings.snapserver_rpc_url())
-    players = players or snapserver.connected_client_hosts()
-    snapserver.set_volumes(snapcast_settings.volumes_for_players(players, usecase))
+    player_hostnames = player_hostnames or snapserver.connected_client_hosts()
+    snapserver.set_volumes(snapcast_settings.volumes_for_players(player_hostnames, usecase))
+    return set([sc.area for sc in snapcast_settings.snapclients if sc.host in player_hostnames and sc.area is not None])
+
 
 def list_sound_effects()-> list[str]:
     return ["none", "random"] + sorted([os.path.basename(path) for path in sound_effects_options_source().get_options()])
