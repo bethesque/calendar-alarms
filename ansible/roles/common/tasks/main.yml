@@ -53,7 +53,7 @@
   ansible.builtin.import_tasks: sound.yml
   when: is_pi
   tags:
-    - audio
+    - sound
     - sendspin
 
 # ssh keys to allow Home Assistant to get the sevice status

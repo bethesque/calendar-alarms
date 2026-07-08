@@ -1,11 +1,11 @@
 [Unit]
 Description=Snapclient for Calendar Alarms
-After=network-online.target sound.target
-Wants=network-online.target
+After=network-online.target time-sync.target sound.target
+Wants=network-online.target time-sync.target
 
 [Service]
 ExecStartPre=/bin/sleep 2
-ExecStart={{ snapclient_path }} tcp://{{ ca_snapserver_host }}:{{ ca_snapserver_stream_port }} --hostID={{ ca_snapclient_host_id }} --instance 2 --soundcard usb
+ExecStart={{ snapclient_path }} tcp://{{ ca_snapserver_host }}:{{ ca_snapserver_stream_port }} --hostID={{ ca_snapclient_host_id }} --instance 2 --soundcard usb --player alsa:buffer_time=100,fragments=4
 Restart=always
 RestartSec=5
 SyslogIdentifier=calendar-alarms-snapclient
