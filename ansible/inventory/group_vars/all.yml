@@ -17,3 +17,6 @@ home_assistant_url: http://nas.dixon.net.au:8123
 audio_client_http_port: 8082
 
 bash_functions_dir: "/home/{{ ansible_user }}/.bash_functions"
+
+calendar_alarms_server_port: 8443
+calendar_alarms_server_url: "https://nas.dixon.net.au:{{ calendar_alarms_server_port }}"
