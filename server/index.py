@@ -9,7 +9,7 @@ from pydantic_settings import BaseSettings
 from vcal.log_config import setup_logging_for_http_server
 from vcal.cal.ui import GoogleCalendarAuthRoutes
 from vcal.announcements.api import AnnouncementRoutes
-from vcal.announcements.housie_talkie import HousieTalkieRoutes
+from vcal.housie_talkie.api import HousieTalkieRoutes
 from vcal.admin_ui import AdminRoutes
 from vcal.alarms.ui import AlarmRoutes
 from vcal.logs_ui import CalendarAlarmsStatusRoutes, LogRoutes

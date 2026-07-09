@@ -16,6 +16,7 @@ from vcal.select_item import select_item_by_date, select_option
 from vcal.env import DATA_DIRECTORY, CACHE_DIRECTORY, ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY
 from vcal.alarms import BACKGROUND_MUSIC_DIRECTORY, AUDIO_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
 from vcal.settings import SnapcastSettings, MpdSettings, MorningAnnouncementsSettings
+from vcal.housie_talkie.audio import normalize_audio
 
 CALENDAR_FILE = f"{DATA_DIRECTORY}/calendar.json"
 SPEECH_FILE = CACHE_DIRECTORY + "/audio/morning_annoucements_speech.mp3"
@@ -41,8 +42,10 @@ def play_announcement(message: str, scene: SceneProtocol, sound_effect = None, p
     play_audio_files([announcement_file], scene, AnnouncementUsecase.TTS, player_hostnames)
 
 def play_audio_file_as_announcement(audio_file, scene: SceneProtocol, sound_effect = None, player_hostnames: list[str] = []):
+    normalized_audio_file = _normalized_audio_file_path(audio_file)
+    normalize_audio(audio_file, normalized_audio_file)
     pre_announce_files = get_pre_announcement_files(sound_effect)
-    play_audio_files(pre_announce_files + [audio_file], scene, AnnouncementUsecase.TALKIE, player_hostnames)
+    play_audio_files(pre_announce_files + [normalized_audio_file], scene, AnnouncementUsecase.TALKIE, player_hostnames)
 
 def play_audio_files(audio_files: list[str], scene: SceneProtocol, usecase: AnnouncementUsecase, player_hostnames: list[str] = []):
     areas = set_snapclient_volumes(usecase.name.lower(), player_hostnames)
@@ -237,3 +240,7 @@ def get_background_music_files():
     if not background_music_files:
         raise FileNotFoundError(f"No background music files found in {BACKGROUND_MUSIC_DIRECTORY}")
     return background_music_files
+
+def _normalized_audio_file_path(audio_file):
+    normalized_file_path = os.path.splitext(audio_file)[0] + "_normalized" + os.path.splitext(audio_file)[1]
+    return normalized_file_path
