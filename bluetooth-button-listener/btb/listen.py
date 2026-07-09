@@ -198,12 +198,6 @@ def callback(button_mac, service_uuid, endpoints, capture_path, device, advertis
     if now - last_trigger_time < LOCKOUT:
         return
 
-    # 7. Shelly BLU buttons keep beaconing with a "no click" (0) button
-    #    value between presses. That's expected idle traffic, not an
-    #    error — skip quietly rather than warning every beacon.
-    if event == 0:
-        return
-
     # 8. Validate event value is one we recognise
     if event not in endpoints:
         logging.warning(f"Unknown event value: {event}, ignoring")
