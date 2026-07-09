@@ -18,6 +18,7 @@
   ansible.builtin.import_tasks: service.yml
   tags:
     - codebase
+    - service
 
 # # Hopefully the service will have enough retries to start after the install is done.
 # - name: Start pip install asynchronously. This task will take 30+ minutes.

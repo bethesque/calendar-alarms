@@ -1,4 +1,12 @@
 # Logs can be viewed with `journalctl SYSLOG_IDENTIFIER=bluetooth-button-listener`
+- name: Add .env file
+  ansible.builtin.template:
+    src: .env.j2
+    dest: "{{ bbl_root }}/.env"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
 - name: Install service
   ansible.builtin.template:
     src: bluetooth-button-listener.service.j2

@@ -65,3 +65,11 @@ On dev machine:
 dist
 ```
 
+## Running tests
+
+```
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev]"
+python -m pytest tests/test_listen.py
+```

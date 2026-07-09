@@ -20,10 +20,3 @@
   args:
     chdir: "{{ project_root }}"
 
-- name: Add .env file
-  ansible.builtin.template:
-    src: .env.j2
-    dest: "{{ bbl_root }}/.env"
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
-    mode: "0755"
