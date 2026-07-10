@@ -1,10 +1,8 @@
 import logging
 import glob
 import os
-import random
 import time
 from datetime import datetime
-from vcal.alarms.alarm import set_snapclient_volumes
 from vcal.snapserver import Snapserver
 from vcal.scene import SceneProtocol
 from vcal.alarms.mpd import fade_up, mpd_connection
@@ -37,18 +35,18 @@ class AnnouncementUsecase(Enum):
 class MissingCalendarDataException(Exception):
     pass
 
-def play_announcement(message: str, scene: SceneProtocol, sound_effect = None, player_hostnames: list[str] = []):
+def play_announcement(message: str, scene: SceneProtocol, sound_effect = None, player_names: list[str] = []):
     announcement_file = _build_one_off_announcement_file(message, sound_effect)
-    play_audio_files([announcement_file], scene, AnnouncementUsecase.TTS, player_hostnames)
+    play_audio_files([announcement_file], scene, AnnouncementUsecase.TTS, player_names)
 
-def play_audio_file_as_announcement(audio_file, scene: SceneProtocol, sound_effect = None, player_hostnames: list[str] = []):
+def play_audio_file_as_announcement(audio_file, scene: SceneProtocol, sound_effect = None, player_names: list[str] = []):
     normalized_audio_file = _normalized_audio_file_path(audio_file)
     normalize_audio(audio_file, normalized_audio_file)
     pre_announce_files = get_pre_announcement_files(sound_effect)
-    play_audio_files(pre_announce_files + [normalized_audio_file], scene, AnnouncementUsecase.TALKIE, player_hostnames)
+    play_audio_files(pre_announce_files + [normalized_audio_file], scene, AnnouncementUsecase.TALKIE, player_names)
 
-def play_audio_files(audio_files: list[str], scene: SceneProtocol, usecase: AnnouncementUsecase, player_hostnames: list[str] = []):
-    areas = set_snapclient_volumes(usecase.name.lower(), player_hostnames)
+def play_audio_files(audio_files: list[str], scene: SceneProtocol, usecase: AnnouncementUsecase, player_names: list[str] = []):
+    areas = _set_snapclient_volumes(usecase.name.lower(), player_names)
 
     def play():
         try:
@@ -62,18 +60,18 @@ def play_audio_files(audio_files: list[str], scene: SceneProtocol, usecase: Anno
 
     scene.around_announcement(play, areas)
 
-def set_snapclient_volumes(usecase: str, player_hostnames: list | None = None) -> set[str]:
+def _set_snapclient_volumes(usecase: str, player_names: list | None = None) -> set[str]:
     """
     Set the volumes of the Snapcast clients to the appropriate levels for the given usecase.
-    If player_hostnames is provided, only those players will be adjusted. Otherwise, all connected players will be adjusted.
+    If player_names is provided, only those players will be adjusted. Otherwise, all connected players will be adjusted.
     Returns a set of areas containing that were adjusted.
     """
 
     snapcast_settings = SnapcastSettings()
     snapserver = Snapserver(snapcast_settings.snapserver_rpc_url())
-    player_hostnames = player_hostnames or snapserver.connected_client_hosts()
-    snapserver.set_volumes(snapcast_settings.volumes_for_players(player_hostnames, usecase))
-    return set([sc.area for sc in snapcast_settings.snapclients if sc.host in player_hostnames and sc.area is not None])
+    player_names = player_names or snapserver.connected_client_names()
+    snapserver.set_volumes(snapcast_settings.volumes_for_players(player_names, usecase))
+    return set([sc.area for sc in snapcast_settings.snapclients if sc.host in player_names and sc.area is not None])
 
 
 def list_sound_effects()-> list[str]:
@@ -124,7 +122,7 @@ Helper method to play the cached announcement speech audio file to avoid a round
 """
 def play_morning_announcements_audio_file(audio_file, before_announcement_hook=None, after_announcement_hook=None):
 
-    set_snapclient_volumes("tts", None)
+    _set_snapclient_volumes("tts", None)
 
     before_announcement_hook() if before_announcement_hook else None
 

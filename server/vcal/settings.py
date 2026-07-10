@@ -86,16 +86,15 @@ class SnapcastSettings(YAMLSettings):
     def snapserver_rpc_url(self):
         return self.snapserver + "/jsonrpc"
 
-    # If no players specified, must use all players
-    def volumes_for_players(self, hosts, usecase: str) -> dict[str, int]:
+    def volumes_for_players(self, player_names, usecase: str) -> dict[str, int]:
         volumes = {
             client.host: client.volumes
             for client in self.snapclients
         }
 
         return {
-            host: volumes.get(host, self.default_volumes)[usecase]
-            for host in hosts
+            player_name: volumes.get(player_name, self.default_volumes)[usecase]
+            for player_name in player_names
         }
 
 

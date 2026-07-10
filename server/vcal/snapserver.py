@@ -10,10 +10,16 @@ logger = logging.getLogger(__name__)
 @dataclass(frozen=True)
 class Client:
     id: str
-    host: str
+    host_name: str
+    config_name: str
 
     def __str__(self) -> str:
-        return f"{self.id}:{self.host}"
+        return f"{self.id}:{self.host_name}"
+
+    @property
+    def name(self) -> str:
+        return self.config_name or self.host_name
+
 
 
 class Snapserver:
@@ -85,14 +91,15 @@ class Snapserver:
                 clients.append(
                     Client(
                         id=c["id"],
-                        host=c["host"]["name"],
+                        host_name=c["host"]["name"],
+                        config_name=c["config"]["name"],
                     )
                 )
 
         return clients
 
-    def connected_client_hosts(self) -> list[str]:
-        return [ client.host for client in self.connected_clients() ]
+    def connected_client_names(self) -> list[str]:
+        return [ client.name for client in self.connected_clients() ]
 
     # def _clients_by_host(
     #     self,
@@ -107,9 +114,6 @@ class Snapserver:
     #         mapping.setdefault(client.host, []).append(client.id)
 
     #     return mapping
-
-    def _resolve_hosts(self, allowed_hosts: list[str]) -> set[str]:
-        return set(allowed_hosts)
 
     # -------------------------
     # Control
@@ -134,8 +138,8 @@ class Snapserver:
         calls = [
             self._set_client(
                 c.id,
-                host_volumes.get(c.host, 0),
-                c.host not in allowed_hosts,
+                host_volumes.get(c.host_name, 0),
+                c.host_name not in allowed_hosts,
             )
             for c in clients
         ]
@@ -145,7 +149,7 @@ class Snapserver:
 
     def set_all_connected_full_volume(self) -> None:
         clients = self._get_clients(only_connected=True)
-        logger.info(f"Setting clients {', '.join(c.host for c in clients)} to full volume")
+        logger.info(f"Setting clients {', '.join(c.host_name for c in clients)} to full volume")
 
         calls = [
             self._set_client(c.id, 100, False)
@@ -157,20 +161,20 @@ class Snapserver:
 
     def set_connected_full_volume(
         self,
-        allowed_client_hosts: list[str] | None = None,
+        allowed_client_names: list[str] | None = None,
     ) -> None:
-        if not allowed_client_hosts:
+        if not allowed_client_names:
             return self.set_all_connected_full_volume()
 
-        logger.info(f"Setting clients {", ".join(allowed_client_hosts)} to full volume, others are muted")
-        allowed_hosts = self._resolve_hosts(allowed_client_hosts)
+        logger.info(f"Setting clients {", ".join(allowed_client_names)} to full volume, others are muted")
+        allowed_hosts = set(allowed_client_names)
         clients = self._get_clients(only_connected=True)
 
         calls = [
             self._set_client(
                 c.id,
                 100,
-                c.host not in allowed_hosts,
+                c.host_name not in allowed_hosts,
             )
             for c in clients
         ]
@@ -191,7 +195,7 @@ class Snapserver:
             self._set_client(
                 c.id,
                 100,
-                c.host not in allowed_hosts,
+                c.host_name not in allowed_hosts,
             )
             for c in clients
         ]

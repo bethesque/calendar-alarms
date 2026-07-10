@@ -175,7 +175,7 @@ def set_snapclient_volumes(usecase: str):
     try:
         snapcast_settings = SnapcastSettings()
         snapserver = Snapserver(snapcast_settings.snapserver_rpc_url())
-        players = snapserver.connected_client_hosts()
+        players = snapserver.connected_client_names()
         snapserver.set_volumes(snapcast_settings.volumes_for_players(players, usecase))
 
     except Exception:
