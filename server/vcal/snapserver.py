@@ -138,8 +138,8 @@ class Snapserver:
         calls = [
             self._set_client(
                 c.id,
-                host_volumes.get(c.host_name, 0),
-                c.host_name not in allowed_hosts,
+                host_volumes.get(c.name, 0),
+                c.name not in allowed_hosts,
             )
             for c in clients
         ]
