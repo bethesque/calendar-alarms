@@ -7,9 +7,11 @@ from vcal.announcements.announce import play_audio_file_as_announcement
 
 logger = logging.getLogger(__name__)
 
-def ensure_list(x):
+def ensure_list_or_none(x):
     if isinstance(x, list):
         return x
+    elif x is None:
+        return None
     else:
         return [x]
 
@@ -46,7 +48,7 @@ class HousieTalkieRoutes:
                 audio_file_path,
                 Scene(),
                 sound_effect,
-                ensure_list(players),
+                ensure_list_or_none(players),
             ),
             daemon=True,
         ).start()
