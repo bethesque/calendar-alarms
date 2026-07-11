@@ -1,15 +1,16 @@
 import logging
 
-from vcal.announcements.announce import play_morning_announcements_audio_file, MORNING_ANNOUNCEMENTS_AUDIO_FILE
+from vcal.announcements.morning_announcements import play_morning_announcements_audio_file
+from vcal.announcements.morning_announcements import MORNING_ANNOUNCEMENTS_AUDIO_FILE
 from datetime import datetime
 import argparse
 from vcal.env import DATA_DIRECTORY, LOG_LEVEL
 import os
-from vcal.announcements.announce import play_morning_announcements as do_play_morning_announcements, play_morning_announcements_audio_file, SPEECH_FILE
+from vcal.announcements.morning_announcements import play_morning_announcements as do_play_morning_announcements, play_morning_announcements_audio_file, SPEECH_FILE
 from vcal.log_config import setup_logging_for_announcements
 from vcal.scene import Scene
-from vcal.announcements.announce import play_announcement as play_announcement_func
-from vcal.settings import MainSettings
+from vcal.announcements.announce import play_announcement as play_announcement_func, AnnouncementRequest
+from vcal.settings import MainSettings, MpdSettings, SnapcastSettings
 
 setup_logging_for_announcements(str(LOG_LEVEL))
 
@@ -31,7 +32,7 @@ def play_announcement():
 
     try:
         logger.info(f"Playing announcement: {args.message}")
-        play_announcement_func(args.message, Scene(), args.sound_effect_file_name)
+        play_announcement_func(AnnouncementRequest(message=args.message, sound_effect=args.sound_effect_file_name,  scene= Scene()))
     except Exception:
         logger.exception("Error playing announcements")
         exit(1)
@@ -80,4 +81,4 @@ def play_morning_announcements():
 def play_morning_announcements_cached():
     scene = Scene()
 
-    play_morning_announcements_audio_file(MORNING_ANNOUNCEMENTS_AUDIO_FILE, scene.prepare_for_alarm, scene.restore_after_alarm)
+    play_morning_announcements_audio_file(MORNING_ANNOUNCEMENTS_AUDIO_FILE, SnapcastSettings(), MpdSettings() scene.prepare_for_alarm, scene.restore_after_alarm)

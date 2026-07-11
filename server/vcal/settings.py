@@ -3,7 +3,6 @@ import logging
 from pathlib import Path
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
-from pydantic import field_validator
 import yaml
 
 logger = logging.getLogger(__name__)
