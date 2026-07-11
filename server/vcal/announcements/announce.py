@@ -71,7 +71,7 @@ def _set_snapclient_volumes(usecase: str, player_names: list | None = None) -> s
     snapserver = Snapserver(snapcast_settings.snapserver_rpc_url())
     player_names = player_names or snapserver.connected_client_names()
     snapserver.set_volumes(snapcast_settings.volumes_for_players(player_names, usecase))
-    return set([sc.area for sc in snapcast_settings.snapclients if sc.host in player_names and sc.area is not None])
+    return set([sc.area for sc in snapcast_settings.snapclients if sc.name in player_names and sc.area and sc.area.strip()])
 
 
 def list_sound_effects()-> list[str]:

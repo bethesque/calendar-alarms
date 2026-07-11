@@ -70,8 +70,8 @@ class VolumeConfig(BaseModel):
         return getattr(self, key)
 
 class SnapclientConfig(BaseModel):
-    host: str = Field(description="The hostname of the snapclient")
-    area: str = Field(description="The area of the house where the snapclient is located")
+    name: str = Field(description="The config name or host name of the snapclient")
+    area: str | None = Field(default=None, description="The area of the house where the snapclient is located")
     volumes: VolumeConfig = Field(default_factory=VolumeConfig)
 
 class SnapcastSettings(YAMLSettings):
@@ -88,7 +88,7 @@ class SnapcastSettings(YAMLSettings):
 
     def volumes_for_players(self, player_names, usecase: str) -> dict[str, int]:
         volumes = {
-            client.host: client.volumes
+            client.name: client.volumes
             for client in self.snapclients
         }
 
