@@ -4,10 +4,10 @@ from typing import Optional, List
 from fastapi import APIRouter, HTTPException
 from fastapi import Query
 from pydantic import BaseModel
-from vcal.announcements.announce import play_announcement, list_sound_effects
+from vcal.announcements.announce import play_announcement, list_sound_effects, AnnouncementRequest
 from vcal.scene import Scene
 
-class AnnouncementRequest(BaseModel):
+class HttpAnnouncementRequest(BaseModel):
     message: Optional[str] = None
     sound_effect: Optional[str] = None
     players: Optional[List[str]] = None
@@ -32,7 +32,7 @@ class AnnouncementRoutes:
 
     async def index(
         self,
-        payload: Optional[AnnouncementRequest] = None,
+        payload: Optional[HttpAnnouncementRequest] = None,
         message: Optional[str] = Query(None),
         sound_effect: Optional[str] = Query(None),
         players: Optional[List[str]] = Query(None),
@@ -51,18 +51,18 @@ class AnnouncementRoutes:
 
         players = ensure_list(players) if players is not None else None
 
+        announcement_request = AnnouncementRequest(scene=Scene(), message=message, sound_effect=sound_effect, player_names=players)
+
         Thread(
             target=play_announcement,
             args=(
-                message,
-                Scene(),
-                sound_effect,
-                players,
+                announcement_request,
             ),
             daemon=True,
         ).start()
 
         return "Announcement received"
+
 
     async def sound_effects(self):
         return list_sound_effects()
