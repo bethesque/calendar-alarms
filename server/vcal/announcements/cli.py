@@ -9,7 +9,7 @@ import os
 from vcal.announcements.morning_announcements import play_morning_announcements as do_play_morning_announcements, play_morning_announcements_audio_file, SPEECH_FILE
 from vcal.log_config import setup_logging_for_announcements
 from vcal.scene import Scene
-from vcal.announcements.announce import play_announcement as play_announcement_func, AnnouncementRequest
+from vcal.announcements.announce import play_announcement as play_announcement_func, TextAnnouncementRequest
 from vcal.settings import MainSettings, MpdSettings, SnapcastSettings
 
 setup_logging_for_announcements(str(LOG_LEVEL))
@@ -32,7 +32,7 @@ def play_announcement():
 
     try:
         logger.info(f"Playing announcement: {args.message}")
-        play_announcement_func(AnnouncementRequest(message=args.message, sound_effect=args.sound_effect_file_name,  scene= Scene()))
+        play_announcement_func(TextAnnouncementRequest(message=args.message, sound_effect=args.sound_effect_file_name,  scene= Scene()))
     except Exception:
         logger.exception("Error playing announcements")
         exit(1)

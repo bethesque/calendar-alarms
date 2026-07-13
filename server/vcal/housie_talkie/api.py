@@ -3,7 +3,7 @@ import os
 import threading
 from fastapi import APIRouter, File, Form, UploadFile
 from vcal.scene import Scene
-from vcal.announcements.announce import play_audio_file_as_announcement
+from vcal.announcements.announce import play_audio_file_as_announcement, AudioFileAnnouncementRequest
 
 logger = logging.getLogger(__name__)
 
@@ -42,14 +42,16 @@ class HousieTalkieRoutes:
             while chunk := await audio.read(65536):
                 f.write(chunk)
 
+        talkie_request = AudioFileAnnouncementRequest(
+            audio_file=audio_file_path,
+            scene=Scene(),
+            sound_effect=sound_effect,
+            player_names=ensure_list_or_none(players)
+        )
+
         threading.Thread(
             target=play_audio_file_as_announcement,
-            args=(
-                audio_file_path,
-                Scene(),
-                sound_effect,
-                ensure_list_or_none(players),
-            ),
+            args=(talkie_request,),
             daemon=True,
         ).start()
 
