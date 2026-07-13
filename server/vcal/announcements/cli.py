@@ -81,4 +81,4 @@ def play_morning_announcements():
 def play_morning_announcements_cached():
     scene = Scene()
 
-    play_morning_announcements_audio_file(MORNING_ANNOUNCEMENTS_AUDIO_FILE, SnapcastSettings(), MpdSettings() scene.prepare_for_alarm, scene.restore_after_alarm)
+    play_morning_announcements_audio_file(MORNING_ANNOUNCEMENTS_AUDIO_FILE, SnapcastSettings(), MpdSettings(), scene.prepare_for_alarm, scene.restore_after_alarm)
