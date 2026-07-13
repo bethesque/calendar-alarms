@@ -33,3 +33,5 @@
     owner: "{{ snapclient_user }}"
     group: "{{ snapclient_user }}"
     mode: "0755"
+  tags:
+    - env
