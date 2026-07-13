@@ -6,10 +6,11 @@ from functools import partial
 import logging
 import http.client
 from amixer_control import VolumeController
-from snapserver import mute_client, is_client_playing
+from snapserver import get_client_status, mute_client, is_client_playing
 from music_assistant import pause_player, toggle_pause_play
 from contextlib import contextmanager
 import argparse
+import socket
 
 http.client.HTTPConnection.debuglevel = int(os.getenv("HTTP_LOG_LEVEL", "0") or 0) # 0: disabled, 1: enabled
 logger = logging.getLogger(__name__)
@@ -103,7 +104,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/audio/status":
-            return status(self)
+            return status(self, audio_config=self.audio_config)
         else:
             self.send_response(404)
             self.end_headers()
@@ -127,7 +128,7 @@ class Handler(BaseHTTPRequestHandler):
         # Async execution
         threading.Thread(target=target, args=(self.audio_config,), daemon=True).start()
 
-def status(handler: Handler):
+def status(handler: Handler, audio_config: dict):
     import subprocess
     import json
     import re
@@ -154,10 +155,12 @@ def status(handler: Handler):
         amixer_result = system(["amixer"])
         match = re.search(r'Front Left: Playback (\d+) \[(\d+%)\]', amixer_result)
         amixer_volume = f"{match.group(1)} ({match.group(2)})" if match else None
+        snapclient_status = get_client_status(audio_config["snapserver_url"], socket.gethostname())
 
         body = {
             "calendar-alarms-snapclient.service": {
-                "status": system(["systemctl", "--user", "is-active", "calendar-alarms-snapclient.service"])
+                "status": system(["systemctl", "--user", "is-active", "calendar-alarms-snapclient.service"]),
+                "snapclient_status": snapclient_status
             },
             "music-assistant-snapclient.service": {
                 "status": system(["systemctl", "--user", "is-active", "music-assistant-snapclient.service"])
