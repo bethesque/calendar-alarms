@@ -39,8 +39,8 @@ IS_CRON=true
 
 # ====== ANNOUNCEMENTS ======
 
-# 7:23 on weekdays (avoid any alarms)
-23 7 * * 1-5 cd /home/beth/calendar-alarms && ./script/morning_announcements.sh >> /home/beth/calendar-alarms/logs/cron.log  2>&1
+# 7:17 on weekdays (avoid any alarms)
+17 7 * * 1-5 cd /home/beth/calendar-alarms && ./script/morning_announcements.sh >> /home/beth/calendar-alarms/logs/cron.log  2>&1
 
 # 8:33 on weekends
 33 8 * * 0,6 cd /home/beth/calendar-alarms && ./script/morning_announcements.sh >> /home/beth/calendar-alarms/logs/cron.log  2>&1
