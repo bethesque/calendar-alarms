@@ -1,0 +1,19 @@
+[
+    {
+        "date": "2026-04-06",
+        "date_time": "2026-04-06T00:00:00+10:00",
+        "timed_events": [
+            {
+                "description": "#announce",
+                "end_time": null,
+                "owner": "Beth",
+                "recurring": false,
+                "start_time": "2026-04-06T08:30:00+10:00",
+                "summary": "Testing the audio"
+            }
+        ],
+        "whole_day_events": [
+
+        ]
+    }
+]
