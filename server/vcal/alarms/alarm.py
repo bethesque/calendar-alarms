@@ -12,6 +12,7 @@ from vcal.alarms.sound import track_length
 from vcal.scene import SceneProtocol
 from vcal.settings import SnapcastSettings, MpdSettings
 from vcal.snapserver import Snapserver
+from vcal.announcements.snapcast import SnapserverManager
 
 logger = logging.getLogger(__name__)
 
@@ -151,36 +152,31 @@ class AnnouncementAudio:
         return AUDIO_DIRECTORY + "/preannounce_3.mp3"
 
 def play_notifications(announcements_file: str, alarms_file: str, scene: SceneProtocol):
+    mpd_settings = MpdSettings()
+    snapcast_settings = SnapcastSettings()
+
+    snapserver_manager = SnapserverManager(snapcast_settings)
+
     if announcements_file:
-        set_snapclient_volumes("tts")
+        snapserver_manager.set_volumes("tts")
+
 
     if announcements_file and not alarms_file:
-        scene.around_announcement(lambda: _play_announcement(announcements_file))
+        scene.around_announcement(lambda: _play_announcement(announcements_file, mpd_settings))
         return
 
     scene.prepare_for_alarm()
     if announcements_file:
-        _play_announcement(announcements_file)
+        _play_announcement(announcements_file, mpd_settings)
 
     if announcements_file and alarms_file:
         time.sleep(2)
 
     if alarms_file:
-        set_snapclient_volumes("alarm")
-        _play_alarm(alarms_file)
+        snapserver_manager.set_volumes("alarm")
+        _play_alarm(alarms_file, mpd_settings)
 
-def set_snapclient_volumes(usecase: str):
-    try:
-        snapcast_settings = SnapcastSettings()
-        snapserver = Snapserver(snapcast_settings.snapserver_rpc_url())
-        players = snapserver.connected_client_names()
-        snapserver.set_volumes(snapcast_settings.volumes_for_players(players, usecase))
-
-    except Exception:
-        logger.exception(f"Error setting clients to {usecase} volume - audio may not be heard")
-
-def _play_announcement(announcements_file):
-    mpd_settings = MpdSettings()
+def _play_announcement(announcements_file, mpd_settings):
     with mpd_connection(mpd_settings) as alarm_player:
 
         logger.info(f"Playing announcements {announcements_file}")
@@ -188,8 +184,7 @@ def _play_announcement(announcements_file):
         alarm_player.play_file(announcements_file)
     time.sleep(track_length(announcements_file))
 
-def _play_alarm(alarms_file):
-    mpd_settings = MpdSettings()
+def _play_alarm(alarms_file, mpd_settings: MpdSettings):
     with mpd_connection(mpd_settings) as alarm_player:
         fade_up_duration = 45
         logger.info(f"Playing alarm {alarms_file}, increasing volume from {mpd_settings.volumes.alarm_start} to {mpd_settings.volumes.alarm_end} over {fade_up_duration} seconds")
