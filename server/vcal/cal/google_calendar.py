@@ -21,6 +21,8 @@ TIMEZONE = "Australia/Melbourne"
 
 logger = logging.getLogger(__name__)
 
+class MissingCalendarDataException(Exception):
+    pass
 
 @dataclass
 class GoogleCalendar:
@@ -256,6 +258,12 @@ def load_event(event_dict):
         return Event(**event_args)
 
 
+def get_events_for_date(calendar_days, date_time):
+    match = next((day for day in calendar_days if day.date == date_time.date()), None)
+    if match:
+        return match.all_events()
+    else:
+        raise MissingCalendarDataException()
 
 @dataclass
 class CalendarSource:

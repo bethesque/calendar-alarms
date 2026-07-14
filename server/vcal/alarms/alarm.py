@@ -167,8 +167,7 @@ def play_notifications(announcements_file: str, alarms_file: str, scene: ScenePr
 
     if alarms_file:
         set_snapclient_volumes("alarm")
-        vols = MpdSettings().volumes
-        _play_alarm(alarms_file, vols.alarm_start, vols.alarm_end)
+        _play_alarm(alarms_file)
 
 def set_snapclient_volumes(usecase: str):
     try:
@@ -181,20 +180,22 @@ def set_snapclient_volumes(usecase: str):
         logger.exception(f"Error setting clients to {usecase} volume - audio may not be heard")
 
 def _play_announcement(announcements_file):
-    with mpd_connection() as alarm_player:
+    mpd_settings = MpdSettings()
+    with mpd_connection(mpd_settings) as alarm_player:
 
         logger.info(f"Playing announcements {announcements_file}")
-        alarm_player.set_volume(MpdSettings().volumes.tts)
+        alarm_player.set_volume(mpd_settings.volumes.tts)
         alarm_player.play_file(announcements_file)
     time.sleep(track_length(announcements_file))
 
-def _play_alarm(alarms_file, start_volume, end_volume):
-    with mpd_connection() as alarm_player:
+def _play_alarm(alarms_file):
+    mpd_settings = MpdSettings()
+    with mpd_connection(mpd_settings) as alarm_player:
         fade_up_duration = 45
-        logger.info(f"Playing alarm {alarms_file}, increasing volume from {start_volume} to {end_volume} over {fade_up_duration} seconds")
-        alarm_player.set_volume(start_volume)
+        logger.info(f"Playing alarm {alarms_file}, increasing volume from {mpd_settings.volumes.alarm_start} to {mpd_settings.volumes.alarm_end} over {fade_up_duration} seconds")
+        alarm_player.set_volume(mpd_settings.volumes.alarm_start)
         alarm_player.play_file(alarms_file)
-        fade_up([(alarm_player, end_volume)], fade_up_duration, 10)
+        fade_up([(alarm_player, mpd_settings.volumes.alarm_end)], fade_up_duration, 10)
 
 def stop_alarm(after_alarm_hook=None):
     # Stop alarm

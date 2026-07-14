@@ -5,6 +5,7 @@ from typing import Optional, List, Tuple
 import os
 from contextlib import contextmanager
 from vcal.env import MPD_HOST, MPD_PORT
+from vcal.settings import MpdSettings
 import shutil
 
 logger = logging.getLogger(__name__)
@@ -16,8 +17,9 @@ It uses the python-musicpd library to communicate with the MPD daemon.
 """
 
 @contextmanager
-def mpd_connection():
-    client = MpdClient(MPD_HOST, MPD_PORT)
+def mpd_connection(settings: MpdSettings = MpdSettings()):
+
+    client = MpdClient(settings.host, settings.port)
     try:
         client.connect()
         yield client

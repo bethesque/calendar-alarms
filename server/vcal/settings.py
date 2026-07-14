@@ -54,6 +54,8 @@ class MpdVolumeConfig(BaseModel):
 
 
 class MpdSettings(YAMLSettings):
+    host: str = Field(default="/run/mpd/socket", description="The host or socket path by which to connect to the MPD process. Must match the configuration for bind_to_address in /etc/mpd.conf")
+    port: int = Field(default=0, description="Set to 0 when using a socket.")
     volumes: MpdVolumeConfig = Field(default_factory=MpdVolumeConfig)
 
     model_config = SettingsConfigDict(

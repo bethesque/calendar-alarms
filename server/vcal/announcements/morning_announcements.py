@@ -3,15 +3,14 @@ import glob
 import time
 from vcal.alarms.mpd import fade_up, mpd_connection
 from vcal.announcements.snapcast import SnapserverManager
-from vcal.alarms import BACKGROUND_MUSIC_DIRECTORY
 from vcal.settings import MorningAnnouncementsSettings, MpdSettings, SnapcastSettings
-from vcal.cal.google_calendar import CalendarDay, WeatherForecast, load_data_from_file
+from vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException, load_data_from_file, get_events_for_date
 from vcal.alarms.text_to_voice import text_to_voice_file_daily_summary
 from vcal.alarms.sound import mix_announcement_audio, track_length
 from vcal.random_text import ListOptionsSource, select_text
 from vcal.select_item import select_item_by_date, select_option
 
-from vcal.alarms import  OUTPUT_AUDIO_DIRECTORY
+from vcal.alarms import BACKGROUND_MUSIC_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
 from vcal.env import CACHE_DIRECTORY
 
 MORNING_ANNOUNCEMENTS_AUDIO_FILE = f"{OUTPUT_AUDIO_DIRECTORY}/morning_announcements.wav"
@@ -20,37 +19,25 @@ SPEECH_FILE = CACHE_DIRECTORY + "/audio/morning_annoucements_speech.mp3"
 
 logger = logging.getLogger(__name__)
 
-class MissingCalendarDataException(Exception):
-    pass
-
-
-class MorningAnnouncementesTextBuilder:
-    def __init__(self, calendar_days: list[CalendarDay], base_time) -> None:
-        self.calendar_days = calendar_days
-        self.base_time = base_time
-        self.settings = MorningAnnouncementsSettings()
+class TextBuilder:
+    def __init__(self, events: list[Event], settings: MorningAnnouncementsSettings = MorningAnnouncementsSettings()) -> None:
+        self.events = events
+        self.settings = settings
 
     def get_morning_announcements_text(self):
         try:
-            announcement = " ".join(self._build_sentences(self.get_events(self.calendar_days, self.base_time)))
+            announcement = " ".join(self._build_sentences())
             logger.info(f"Generated daily summary announcement: {announcement}")
             return announcement
         except MissingCalendarDataException:
             return "There was no calendar data found for today's date. "
 
-    def get_events(self, calendar_days, base_time):
-        match = next((day for day in calendar_days if day.date == base_time.date()), None)
-        if match:
-            return match.all_events()
-        else:
-            raise MissingCalendarDataException()
-
     """
     Build a List of sentences to speak aloud from the given list of Events.
     """
-    def _build_sentences(self, all_events):
-        weather_forecast = self._get_weather_forecast(all_events)
-        events = self._get_non_weather_forecast_events(all_events)
+    def _build_sentences(self):
+        weather_forecast = self._get_weather_forecast(self.events)
+        events = self._get_non_weather_forecast_events(self.events)
 
         sentences = ["Good morning!"]
 
@@ -95,7 +82,7 @@ class MorningAnnouncementesTextBuilder:
     def _get_weather_forecast(self, events):
         return next((event for event in events if isinstance(event, WeatherForecast)), None)
 
-class MorningAnnouncementsBackgroundMusicSelector:
+class BackgroundMusicSelector:
     def __init__(self, base_time):
         self.base_time = base_time
 
@@ -112,7 +99,7 @@ class MorningAnnouncementsBackgroundMusicSelector:
         return background_music_files
 
 
-class MorningAnnouncementsBuilder:
+class AudioFileBuilder:
     def __init__(self, text_builder, bg_music_selector):
         self.text_builder = text_builder
         self.bg_music_selector = bg_music_selector
@@ -130,22 +117,22 @@ class MorningAnnouncementsBuilder:
 Top level entry point. Generate a summary of today's events, convert them to voice, and play them.
 """
 def play_morning_announcements(calendar_file, base_time, before_announcement_hook=None, after_announcement_hook=None):
-    text_builder = MorningAnnouncementesTextBuilder(load_data_from_file(calendar_file), base_time)
-    bg_music_selector = MorningAnnouncementsBackgroundMusicSelector(base_time)
-    output_file = MorningAnnouncementsBuilder(text_builder, bg_music_selector).build_audio_file()
+    events = get_events_for_date(load_data_from_file(calendar_file), base_time)
+    text_builder = TextBuilder(events)
+    bg_music_selector = BackgroundMusicSelector(base_time)
+    output_file = AudioFileBuilder(text_builder, bg_music_selector).build_audio_file()
     play_morning_announcements_audio_file(output_file, SnapcastSettings(), MpdSettings(), before_announcement_hook, after_announcement_hook)
 
 """
 Helper method to play the cached announcement speech audio file to avoid a round trip to the text-to-speech service.
 """
 def play_morning_announcements_audio_file(audio_file, snapcast_settings: SnapcastSettings, mpd_settings: MpdSettings, before_announcement_hook=None, after_announcement_hook=None):
-
     SnapserverManager(snapcast_settings).set_volumes("tts", None)
 
     before_announcement_hook() if before_announcement_hook else None
 
     # Play the mixed audio file
-    with mpd_connection() as alarm_player:
+    with mpd_connection(mpd_settings) as alarm_player:
         volumes = mpd_settings.volumes
         alarm_player.set_volume(volumes.alarm_start)
         alarm_player.play_file(audio_file)
