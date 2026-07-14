@@ -13,7 +13,14 @@
             }
         ],
         "whole_day_events": [
-
+            {
+                "description": "",
+                "end_time": null,
+                "owner": "BoM",
+                "recurring": true,
+                "start_time": null,
+                "summary": "Max 23, Possible shower"
+            }
         ]
     }
 ]

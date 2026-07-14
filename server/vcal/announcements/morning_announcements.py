@@ -24,13 +24,14 @@ class TextBuilder:
         self.events = events
         self.settings = settings
 
-    def get_morning_announcements_text(self):
+    def get_morning_announcements_text(self) -> list[str]:
         try:
-            announcement = " ".join(self._build_sentences())
-            logger.info(f"Generated daily summary announcement: {announcement}")
-            return announcement
+            sentences = self._build_sentences()
+
+            logger.info(f"Generated daily summary announcement: {" ".join(sentences)}")
+            return sentences
         except MissingCalendarDataException:
-            return "There was no calendar data found for today's date. "
+            return ["There was no calendar data found for today's date. "]
 
     """
     Build a List of sentences to speak aloud from the given list of Events.
