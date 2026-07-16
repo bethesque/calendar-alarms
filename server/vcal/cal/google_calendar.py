@@ -49,12 +49,12 @@ def notifications_from_description_rules(event: "Event", rules: list[Notificatio
     if not event.start_time or not event.description:
         return notifications
 
-    description = event.description
+    summary = event.summary
     for rule in rules:
         if rule.owner is not None and rule.owner != "" and event.owner.lower() != rule.owner.lower():
             continue
 
-        haystack = description.lower()
+        haystack = summary.lower()
         needle = rule.pattern.lower()
         if needle in haystack:
             notifications.append(EventNotification(
@@ -87,7 +87,13 @@ class Event:
         if rules:
             notifications.extend(notifications_from_description_rules(self, rules))
 
-        return notifications
+        deduplicated_notifications = []
+        for notification in notifications:
+            if any(existing == notification for existing in deduplicated_notifications):
+                continue
+            deduplicated_notifications.append(notification)
+
+        return deduplicated_notifications
 
     def notifications_within_window(self, start_time, end_time, rules: list[NotificationRule] | None = None):
         notifications_in_window = []

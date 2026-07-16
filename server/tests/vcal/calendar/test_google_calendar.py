@@ -216,7 +216,7 @@ def test_notifications_support_description_rules():
     event = Event(
         owner="Beth",
         summary="Gym session",
-        description="This is a gym workout",
+        description="This is a workout",
         start_time=start_time,
     )
 
@@ -237,6 +237,28 @@ def test_notifications_support_description_rules():
 def test_notification_rule_rejects_invalid_notification_type():
     with pytest.raises(ValidationError):
         NotificationRule(pattern="gym", notification_type="beep")
+
+
+def test_notifications_deduplicate_matching_tag_and_rule_notifications():
+    start_time = datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
+    event = Event(
+        owner="Beth",
+        summary="Gym session",
+        description="#alarm20 #alarm20",
+        start_time=start_time,
+    )
+
+    rule = NotificationRule(
+        pattern="gym",
+        notification_type="alarm",
+        offset_minutes=20,
+    )
+
+    notifications = event.notifications([rule])
+
+    assert len(notifications) == 1
+    assert notifications[0].type == NotificationType.ALARM
+    assert notifications[0].offset == 20
 
 
 def test_notifications_description_rules_require_matching_owner():
