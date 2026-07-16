@@ -127,6 +127,7 @@ class GoogleCalendarSettings(YAMLSettings):
 class Option(BaseModel):
     text: str
     last_used: str | None = None
+    enabled: bool | None = Field(default=True)
 
     def last_used_datetime(self) -> datetime | None:
         if self.last_used is None:
@@ -141,7 +142,7 @@ class Option(BaseModel):
         return self.last_used is None
 
 class MorningAnnouncementsSettings(YAMLSettings):
-    prelude_options: list[str] = Field(default_factory=list, description="Text to read after 'Good morning' and before the day's events")
+    prelude_options: list[Option] = Field(default_factory=list, description="Text to read after 'Good morning' and before the day's events")
     prelude_probability: float = Field(default=1, description="The probability that a prelude will be included")
     facts: list[Option] = Field(default_factory=list, description="List of facts to read after the day's events")
 
@@ -151,7 +152,11 @@ class MorningAnnouncementsSettings(YAMLSettings):
 
     @property
     def unused_facts(self) -> list[Option]:
-        return [fact for fact in self.facts if fact.never_used()]
+        return [fact for fact in self.facts if fact.never_used() and fact.enabled]
+
+    @property
+    def enabled_prelude_options(self) -> list[Option]:
+        return [prelude_option for prelude_option in self.prelude_options if prelude_option.enabled]
 
 class MusicAssistantPlayer(BaseModel):
     name: str = Field(description="The name of the Music Assistant player in Home Assistant (excluding the 'media_player.' prefix)")

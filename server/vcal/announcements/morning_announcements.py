@@ -64,8 +64,13 @@ class TextBuilder:
         return sentences
 
     def _get_prelude(self)-> str | None:
-        prelude_options = ListOptionsSource("MorningAnnouncementsSettings.prelude_options", self.settings.prelude_options)
-        return select_text(None, self.settings.prelude_probability, prelude_options)
+        options = self.settings.enabled_prelude_options
+        if options:
+            prelude_text = select_option(self.settings.enabled_prelude_options).text
+            self.settings.save()
+            return prelude_text
+        else:
+            return None
 
     def _get_postlude(self)-> list[str]:
         unused_facts = self.settings.unused_facts
