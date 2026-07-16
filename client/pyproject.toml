@@ -1,0 +1,47 @@
+[build-system]
+requires = [
+  "setuptools>=77",
+  "wheel",
+  "packaging>=24.2"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "audio-client"
+version = "1.0.0"
+description = "RaspberryPi client for house wide audio system"
+readme = "README.md"
+requires-python = ">=3.9.2"
+license = "MIT"
+authors = [
+  {name = "Beth Skurrie", email = "beth@bethesque.com"},
+]
+keywords = []
+
+# Main project dependencies (replaces requirements.txt)
+dependencies = [
+    "requests==2.31.0",
+    "fastapi==0.139.2",
+    "uvicorn==0.51.0"
+]
+
+[project.optional-dependencies]
+# Extra dependencies installed via `pip install ".[dev]"`
+dev = [
+    "black",
+    "pytest==9.0.3"
+]
+
+[project.urls]
+# Links displayed on PyPI
+Homepage = "https://github.com/bethesque/calendar-alarms"
+
+[project.scripts]
+
+[tool.setuptools]
+# Tells setuptools where to find your source code
+packages = []
+
+[tool.pytest.ini_options]
+# Configuration for other tools (like pytest) can also live here
+testpaths = []

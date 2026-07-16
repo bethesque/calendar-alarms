@@ -26,6 +26,13 @@
   args:
     chdir: "{{ project_root }}"
 
+- name: Install package in editable mode
+  ansible.builtin.pip:
+    name: .
+    editable: true
+    chdir: "{{ client_root }}"
+  tags: slow
+
 - name: Add .env file
   ansible.builtin.template:
     src: .env.j2
