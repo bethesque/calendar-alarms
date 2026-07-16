@@ -8,7 +8,7 @@ from vcal.alarms.alarm import _play_alarm
 from vcal.env import LOG_LEVEL
 from vcal.alarms.mpd import fade_out, fade_up, mpd_connection
 from vcal.log_config import setup_logging_for_alarms
-from vcal.cal.google_calendar import CalendarSource
+from vcal.cal.google_calendar import CalendarSource, CalendarDay
 from vcal.scene import NullScene, Scene
 from vcal.settings import MainSettings
 
@@ -19,7 +19,7 @@ setup_logging_for_alarms(str(LOG_LEVEL))
 
 logger = logging.getLogger(__name__)
 
-def load_events(file_path):
+def load_calendar_days(file_path) -> list[CalendarDay]:
     return CalendarSource(cache_file_path=file_path).load_data_from_file()
 
 def check_alarms():
@@ -55,7 +55,7 @@ def check_alarms():
         logger.info(f"Checking for alarms in {args.calendar_file}...")
 
         base_time = args.base_time or datetime.now().astimezone()
-        calendar_data = load_events(args.calendar_file)
+        calendar_data = load_calendar_days(args.calendar_file)
 
         scene = NullScene() if args.ignore_music_assistant else Scene()
 

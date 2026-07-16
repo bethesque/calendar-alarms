@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from vcal.settings import AppSettings
-from pydantic_ui import create_pydantic_ui, UIConfig
+from pydantic_ui import create_pydantic_ui, UIConfig, FieldConfig, Renderer
 
 class AdminRoutes:
     def __init__(self):
@@ -16,6 +16,12 @@ class AdminRoutes:
                 show_types=False,
                 footer_text="hello",
                 xyz="foo",
+                attr_configs={
+                    "google_calendar_settings.notification_rules.[].owner": FieldConfig(
+                        renderer=Renderer.SELECT,
+                        options_from="google_calendar_settings.calendars.[].name"
+                    ),
+                },
             ),
             data_saver=self._save_settings,
             data_loader=lambda: AppSettings()

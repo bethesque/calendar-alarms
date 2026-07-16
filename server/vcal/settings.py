@@ -1,6 +1,7 @@
 from datetime import datetime
 import logging
 from pathlib import Path
+from typing import Literal
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 import yaml
@@ -99,15 +100,22 @@ class SnapcastSettings(YAMLSettings):
         }
 
 
-class CalendarSetting(BaseSettings):
+class CalendarSetting(BaseModel):
     id: str
     name: str
+
+class NotificationRule(BaseModel):
+    pattern: str = Field(..., description="The substring to match in the event description")
+    owner: str | None = Field(default=None, description="The event owner that must match for the rule to apply")
+    notification_type: Literal["alarm", "announce"] = Field(default="alarm", description="The notification type: alarm or announce")
+    offset_minutes: int = Field(default=0, ge=0, description="Minutes before the event start")
 
 class GoogleCalendarSettings(YAMLSettings):
     scope: str = Field(default="https://www.googleapis.com/auth/calendar.readonly", description="Permissions scope")
     redirect_server: str = Field(description="The local server to which the redirect should be sent after authentication with Google")
     login_hint: str = Field(description="The default email address to put in the login form")
     calendars: list[CalendarSetting] = Field(default_factory=list)
+    notification_rules: list[NotificationRule] = Field(default_factory=list, description="Rules for creating notifications from event descriptions")
 
     def calendar_filter(self)-> list[tuple]:
         return [(cal.id, cal.name) for cal in self.calendars]

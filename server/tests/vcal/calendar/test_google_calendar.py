@@ -1,7 +1,11 @@
 import datetime
 from zoneinfo import ZoneInfo
 
-from vcal.cal.google_calendar import Event
+import pytest
+from pydantic import ValidationError
+
+from vcal.cal.google_calendar import Event, NotificationType
+from vcal.settings import NotificationRule
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
 
@@ -205,4 +209,58 @@ def test_notifications_can_parse_multiple_tags_in_description():
     assert notifications[0].offset == 10
     assert notifications[1].type.name == "ANNOUNCE"
     assert notifications[1].offset == 5
+
+
+def test_notifications_support_description_rules():
+    start_time = datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
+    event = Event(
+        owner="Beth",
+        summary="Gym session",
+        description="This is a gym workout",
+        start_time=start_time,
+    )
+
+    rule = NotificationRule(
+        pattern="gym",
+        notification_type="alarm",
+        offset_minutes=75,
+    )
+
+    notifications = event.notifications([rule])
+
+    assert len(notifications) == 1
+    assert notifications[0].type == NotificationType.ALARM
+    assert notifications[0].offset == 75
+    assert notifications[0].notification_time == datetime.datetime(2026, 4, 28, 10, 45, tzinfo=TIMEZONE)
+
+
+def test_notification_rule_rejects_invalid_notification_type():
+    with pytest.raises(ValidationError):
+        NotificationRule(pattern="gym", notification_type="beep")
+
+
+def test_notifications_description_rules_require_matching_owner():
+    start_time = datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
+    matching_event = Event(
+        owner="Beth",
+        summary="Gym session",
+        description="This is a gym workout",
+        start_time=start_time,
+    )
+    non_matching_event = Event(
+        owner="Alex",
+        summary="Gym session",
+        description="This is a gym workout",
+        start_time=start_time,
+    )
+
+    rule = NotificationRule(
+        pattern="gym",
+        notification_type="alarm",
+        offset_minutes=75,
+        owner="Beth",
+    )
+
+    assert len(matching_event.notifications([rule])) == 1
+    assert non_matching_event.notifications([rule]) == []
 

@@ -15,7 +15,7 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from vcal.settings import GoogleCalendarSettings
+from vcal.settings import GoogleCalendarSettings, NotificationRule
 
 TIMEZONE = "Australia/Melbourne"
 
@@ -43,6 +43,27 @@ class EventNotification:
     def __post_init__(self):
         self.notification_time = self.event.start_time - datetime.timedelta(minutes=self.offset)
 
+
+def notifications_from_description_rules(event: "Event", rules: list[NotificationRule]) -> list[EventNotification]:
+    notifications: list[EventNotification] = []
+    if not event.start_time or not event.description:
+        return notifications
+
+    description = event.description
+    for rule in rules:
+        if rule.owner is not None and rule.owner != "" and event.owner.lower() != rule.owner.lower():
+            continue
+
+        haystack = description.lower()
+        needle = rule.pattern.lower()
+        if needle in haystack:
+            notifications.append(EventNotification(
+                event=event,
+                type=NotificationType[rule.notification_type.upper()],
+                offset=rule.offset_minutes,
+            ))
+    return notifications
+
 @dataclass
 class Event:
     owner: str
@@ -52,7 +73,7 @@ class Event:
     end_time: datetime.datetime = None
     recurring: bool = False
 
-    def notifications(self) -> list[EventNotification]:
+    def notifications(self, rules: list[NotificationRule] | None = None) -> list[EventNotification]:
         notifications = []
         if self.description and self.start_time:
             matches = re.findall(r"#(alarm|announce)(\d+)?", self.description)
@@ -62,11 +83,15 @@ class Event:
                     type_enum = NotificationType[type.upper()]
                     offset_int = int(offset) if offset else 0
                     notifications.append(EventNotification(type=type_enum, offset=offset_int, event=self))
+
+        if rules:
+            notifications.extend(notifications_from_description_rules(self, rules))
+
         return notifications
 
-    def notifications_within_window(self, start_time, end_time):
+    def notifications_within_window(self, start_time, end_time, rules: list[NotificationRule] | None = None):
         notifications_in_window = []
-        for event_notification in self.notifications():
+        for event_notification in self.notifications(rules):
             if start_time <= event_notification.notification_time < end_time:
                 notifications_in_window.append(event_notification)
         return notifications_in_window

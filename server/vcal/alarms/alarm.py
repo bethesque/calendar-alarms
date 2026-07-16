@@ -10,7 +10,7 @@ from vcal.select_item import select_item_by_date
 from vcal.alarms import ALARMS_DIRECTORY, AUDIO_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
 from vcal.alarms.sound import track_length
 from vcal.scene import SceneProtocol
-from vcal.settings import SnapcastSettings, MpdSettings
+from vcal.settings import SnapcastSettings, MpdSettings, GoogleCalendarSettings
 from vcal.snapserver import Snapserver
 from vcal.announcements.snapcast import SnapserverManager
 
@@ -21,10 +21,11 @@ Takes a list of CalenderDays and finds any alarms due within the given time wind
 """
 
 class NotificationFinder:
-    def __init__(self, calendar_days, base_time, window):
+    def __init__(self, calendar_days, base_time, window, notification_rules=None):
         self.calendar_days = calendar_days
         self.base_time = base_time
         self.window = window
+        self.notification_rules = notification_rules or []
 
 
     def find_notification_events(self):
@@ -34,7 +35,7 @@ class NotificationFinder:
 
         for day in self.calendar_days:
             for event in day.timed_events:
-                event_notifications = event.notifications_within_window(start, end)
+                event_notifications = event.notifications_within_window(start, end, self.notification_rules)
                 matching_events.extend(event_notifications)
 
         self._log_results(start, end, matching_events)
@@ -212,7 +213,8 @@ def stop_alarm(after_alarm_hook=None):
     after_alarm_hook() if after_alarm_hook else None
 
 def check_for_notifications(base_time, window, calendar_data, scene:SceneProtocol):
-    alarm_finder = NotificationFinder(calendar_data, base_time, window)
+    notification_rules = GoogleCalendarSettings().notification_rules
+    alarm_finder = NotificationFinder(calendar_data, base_time, window, notification_rules)
     event_notifications = alarm_finder.find_notification_events()
 
     if event_notifications:
