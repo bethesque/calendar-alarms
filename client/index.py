@@ -163,6 +163,7 @@ def _get_status_body(audio_config: dict) -> dict:
             "status": system(["systemctl", "--user", "is-active", "calendar-alarms-snapclient.service"]),
             "snapclient_status": snapclient_status
         },
+        "calendar-alarms-snapclient-status": snapclient_status,
         "music-assistant-snapclient.service": {
             "status": system(["systemctl", "--user", "is-active", "music-assistant-snapclient.service"])
         },
