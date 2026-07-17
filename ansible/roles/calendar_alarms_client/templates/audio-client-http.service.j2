@@ -6,8 +6,7 @@ After=network.target
 
 [Service]
 WorkingDirectory={{ client_root }}
-ExecStart={{ ansible_python_interpreter }} {{ http_index_file }} --port {{ audio_client_http_port }}
-EnvironmentFile={{ client_root }}/.env
+ExecStart=source {{ client_root }}/script/start.sh
 SyslogIdentifier=audio-client-http
 Restart=always
 

@@ -26,19 +26,23 @@
   args:
     chdir: "{{ project_root }}"
 
-- name: Install package in editable mode
-  ansible.builtin.pip:
-    name: .
-    editable: true
-    chdir: "{{ client_root }}"
-  tags: slow
 
-- name: Add .env file
+- name: Pip install
+  ansible.builtin.shell: |
+    {{ ansible_python_interpreter }} -m venv .venv
+    source .venv/bin/activate
+    .venv/bin/python -m pip install .
+  args:
+    chdir: "{{ client_root }}"
+  tags:
+    - slow
+
+- name: Add config file
   ansible.builtin.template:
-    src: .env.j2
-    dest: "{{ client_root }}/.env"
+    src: config.yaml.j2
+    dest: "{{ client_root }}/config.yaml"
     owner: "{{ snapclient_user }}"
     group: "{{ snapclient_user }}"
     mode: "0755"
   tags:
-    - env
+    - config

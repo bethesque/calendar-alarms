@@ -7,6 +7,7 @@ StartLimitIntervalSec=120
 StartLimitBurst=5
 
 [Service]
+# Logs at journalctl SYSLOG_IDENTIFIER=sendspin-armv6
 ExecStart=/usr/local/bin/sendspin-armv6
 Restart=on-failure
 RestartSec=10

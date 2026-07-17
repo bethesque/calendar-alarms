@@ -3,7 +3,6 @@ import threading
 import logging
 import http.client
 import re
-import json
 import socket
 import subprocess
 import argparse
@@ -18,6 +17,10 @@ from amixer_control import VolumeController
 from snapserver import get_client_status, mute_client, is_client_playing
 from music_assistant import pause_player, toggle_pause_play
 
+from pydantic import Field
+from pydantic_settings import BaseSettings
+import yaml
+
 http.client.HTTPConnection.debuglevel = int(os.getenv("HTTP_LOG_LEVEL", "0") or 0)  # 0: disabled, 1: enabled
 logger = logging.getLogger(__name__)
 
@@ -30,12 +33,35 @@ This service listens for POST requests to /audio/mute and mutes the audio output
 The service responds immediately to the HTTP request and performs the muting operations asynchronously to avoid blocking the client.
 """
 
-client_id_file = None  # set from env in __main__, same as original global usage
+class Config(BaseSettings):
+    port: int = Field(default=8080)
+    host: str = Field(default="0.0.0.0")
+    log_level: str = Field(default="info")
+    snapserver_rpc_url: str | None
+    snapclient_client_id_file: str | None
+    home_assistant_url: str | None
+    home_assistant_player_entity: str | None
 
+    @property
+    def uvicorn_kwargs(self) -> dict:
+        return {
+            "port": self.port,
+            "host": self.host,
+            "log_level": self.log_level
+        }
+
+    @property
+    def app_config(self) -> dict:
+        return {
+            "snapserver_url": self.snapserver_rpc_url,
+            "client_id_file": self.snapclient_client_id_file,
+            "home_assistant_url": self.home_assistant_url,
+            "home_assistant_player_entity": self.home_assistant_player_entity
+        }
 
 def toggle(audio_config):
     with muted_alsa():
-        snapclient_id = Path(client_id_file).read_text().strip() if Path(client_id_file).exists() else None
+        snapclient_id = Path(audio_config["client_id_file"]).read_text().strip() if Path(audio_config["client_id_file"]).exists() else None
         is_snap_playing = is_snapclient_playing(audio_config, snapclient_id)
 
         if is_snap_playing:
@@ -46,7 +72,7 @@ def toggle(audio_config):
 
 def stop(audio_config):
     with muted_alsa():
-        snapclient_id = Path(client_id_file).read_text().strip() if Path(client_id_file).exists() else None
+        snapclient_id = Path(audio_config["client_id_file"]).read_text().strip() if Path(audio_config["client_id_file"]).exists() else None
         mute_snapclient(audio_config["snapserver_url"], snapclient_id)
         pause_music_assistant_player(audio_config)
 
@@ -178,40 +204,28 @@ class AudioServer:
 
 
 if __name__ == "__main__":
+
     parser = argparse.ArgumentParser(description="Audio control service")
-    parser.add_argument(
-        "--port",
-        type=int,
-        default=8080,
-        help="The port to run the server on."
-    )
 
     parser.add_argument(
-        "--host",
-        type=str,
-        default="0.0.0.0",
-        help="The host to run the server on."
+        "--conf",
+        default="config.yaml",
     )
 
     args = parser.parse_args()
 
-    snapserver_url = os.environ["SNAPSERVER_RPC_URL"]
-    client_id_file = os.environ["SNAPCLIENT_CLIENT_ID_FILE"]
-    home_assistant_url = os.environ["HOME_ASSISTANT_URL"]
-    home_assistant_player_entity = os.environ["HOME_ASSISTANT_PLAYER_ENTITY"]
+    with open(args.conf) as f:
+        config = Config(**yaml.safe_load(f))
 
-    audio_config = {
-        "snapserver_url": snapserver_url,
-        "client_id_file": client_id_file,
-        "home_assistant_url": home_assistant_url,
-        "home_assistant_player_entity": home_assistant_player_entity
-    }
+    uvicorn_args = config.uvicorn_kwargs
 
-    toggle_url = f"http://{args.host}:{args.port}/audio/toggle"
-    stop_url = f"http://{args.host}:{args.port}/audio/stop"
-    status_url = f"http://{args.host}:{args.port}/audio/status"
-    logger.info(f"Starting audio client endpoints at {toggle_url}, {stop_url} and {status_url} with config {audio_config}")
+    parser = argparse.ArgumentParser(description="Audio control service")
 
-    server = AudioServer(audio_config)
+    toggle_url = f"http://{config.host}:{config.port}/audio/toggle"
+    stop_url = f"http://{config.host}:{config.port}/audio/stop"
+    status_url = f"http://{config.host}:{config.port}/audio/status"
+    logger.info(f"Starting audio client endpoints at {toggle_url}, {stop_url} and {status_url} with config {config.app_config}")
 
-    uvicorn.run(server.app, host=args.host, port=args.port)
+    server = AudioServer(config.app_config)
+
+    uvicorn.run(server.app, host=config.host, port=config.port)
