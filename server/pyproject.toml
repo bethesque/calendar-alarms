@@ -32,7 +32,9 @@ dependencies = [
     "pydantic-settings==2.14.2",
     "pydantic-settings[yaml]",
     "pydantic-ui==0.5.4",
-    "python-multipart==0.0.32"
+    "python-multipart==0.0.32",
+    "fastapi==0.138.1",
+    "uvicorn==0.49.0"
 ]
 
 [project.optional-dependencies]

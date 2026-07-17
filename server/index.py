@@ -70,7 +70,6 @@ if __name__ == "__main__":
         log_level: str = "info"
         timeout_graceful_shutdown: int = 1
 
-
         def uvicorn_kwargs(self) -> dict:
             return self.model_dump(exclude_none=True)
 
