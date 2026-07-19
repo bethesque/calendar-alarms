@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 class SnapserverManager:
     def __init__(self, snapcast_settings: SnapcastSettings):
         self.snapcast_settings = snapcast_settings
-        self.snapserver = Snapserver(snapcast_settings.snapserver_rpc_url())
+        self.snapserver = Snapserver(snapcast_settings.snapserver_rpc_url)
 
     def set_volumes(self, usecase: str, player_names: list[str] | None = None) -> set[str]:
         try:

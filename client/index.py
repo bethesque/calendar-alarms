@@ -85,7 +85,7 @@ def is_snapclient_playing(audio_config, client_id):
         except Exception:
             logger.exception("Error checking if snapclient is playing")
     else:
-        logger.warning(f"No client ID found in {client_id_file}, cannot determine if snapclient is playing")
+        logger.warning(f"No client ID found in {audio_config["client_id_file"]}, cannot determine if snapclient is playing")
     return is_snapclient_playing
 
 

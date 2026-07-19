@@ -85,6 +85,7 @@ class SnapcastSettings(YAMLSettings):
         yaml_file="config/snapcast.yaml"
     )
 
+    @property
     def snapserver_rpc_url(self):
         return self.snapserver + "/jsonrpc"
 
