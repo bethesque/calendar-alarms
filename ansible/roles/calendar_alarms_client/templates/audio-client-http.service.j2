@@ -6,7 +6,7 @@ After=network.target
 
 [Service]
 WorkingDirectory={{ client_root }}
-ExecStart=source {{ client_root }}/script/start.sh
+ExecStart={{ client_root }}/script/start.sh
 SyslogIdentifier=audio-client-http
 Restart=always
 
