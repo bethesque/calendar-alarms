@@ -46,7 +46,7 @@ class EventNotification:
 
 def notifications_from_description_rules(event: "Event", rules: list[NotificationRule]) -> list[EventNotification]:
     notifications: list[EventNotification] = []
-    if not event.start_time or not event.description:
+    if not event.start_time or not event.summary:
         return notifications
 
     summary = event.summary
