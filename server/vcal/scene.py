@@ -15,7 +15,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class SceneProtocol(Protocol):
-    def prepare_for_alarm(self):
+    def prepare_for_alarm(self, areas: set[str] | None):
         ...
 
     @staticmethod
@@ -32,7 +32,7 @@ class SceneProtocol(Protocol):
         ...
 
 class NullScene:
-    def prepare_for_alarm(self):
+    def prepare_for_alarm(self, areas: set[str] | None):
         pass
 
     def restore_after_alarm(self):
@@ -53,9 +53,9 @@ class Scene:
     def __init__(self) -> None:
         pass
 
-    def prepare_for_alarm(self):
+    def prepare_for_alarm(self, areas: set[str] | None):
         try:
-            self._build_ma()
+            self._build_ma(areas)
             self._save_state()
             if self._ma.playing():
                 logger.info("Pausing Music Assistant players...")
@@ -246,7 +246,7 @@ class Scene2:
     def __init__(self) -> None:
         pass
 
-    def prepare_for_alarm(self):
+    def prepare_for_alarm(self, areas: set[str] | None):
         if any_players_playing(MUSIC_ASSISTANT_URL, MUSIC_ASSISTANT_TOKEN):
             asyncio.run(AsyncScene().prepare_for_alarm_async())
         else:

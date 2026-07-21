@@ -155,18 +155,19 @@ class AnnouncementAudio:
 def play_notifications(announcements_file: str, alarms_file: str, scene: SceneProtocol):
     mpd_settings = MpdSettings()
     snapcast_settings = SnapcastSettings()
-
     snapserver_manager = SnapserverManager(snapcast_settings)
+    areas = snapserver_manager.connected_player_areas()
 
     if announcements_file:
         snapserver_manager.set_volumes("tts")
 
-
+    # Only announcement
     if announcements_file and not alarms_file:
-        scene.around_announcement(lambda: _play_announcement(announcements_file, mpd_settings))
+        scene.around_announcement(lambda: _play_announcement(announcements_file, mpd_settings), areas)
         return
 
-    scene.prepare_for_alarm()
+    # Announcement and/or alarm
+    scene.prepare_for_alarm(areas)
     if announcements_file:
         _play_announcement(announcements_file, mpd_settings)
 

@@ -133,7 +133,7 @@ def play_morning_announcements(calendar_file, base_time, before_announcement_hoo
 Helper method to play the cached announcement speech audio file to avoid a round trip to the text-to-speech service.
 """
 def play_morning_announcements_audio_file(audio_file, snapcast_settings: SnapcastSettings, mpd_settings: MpdSettings, before_announcement_hook=None, after_announcement_hook=None):
-    SnapserverManager(snapcast_settings).set_volumes("tts", None)
+    SnapserverManager(snapcast_settings).set_volumes("tts")
 
     before_announcement_hook() if before_announcement_hook else None
 

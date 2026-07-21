@@ -64,7 +64,8 @@ def play_audio_file_as_announcement(request: AudioFileAnnouncementRequest):
     _play_audio_files(playable_request)
 
 def _play_audio_files(request: PlayableRequest):
-    areas = SnapserverManager(SnapcastSettings()).set_volumes(request.usecase.name.lower(), request.player_names)
+    snapserver_manager = SnapserverManager(SnapcastSettings(), request.player_names)
+    snapserver_manager.set_volumes(request.usecase.name.lower())
 
     def play():
         try:
@@ -73,10 +74,11 @@ def _play_audio_files(request: PlayableRequest):
                 alarm_player.set_volume(mpd_settings.volumes[request.usecase.name.lower()])
                 alarm_player.play_files(request.audio_files)
                 time.sleep(sum(track_length(f) for f in request.audio_files))
+                logger.info("Finished playing files")
         except Exception:
             logger.exception(f"Error playing announcement audio file(s) {request.audio_files}")
 
-    request.scene.around_announcement(play, areas)
+    request.scene.around_announcement(play, snapserver_manager.connected_player_areas())
 
 def list_sound_effects()-> list[str]:
         return ["none", "random"] + sorted([os.path.basename(path) for path in SoundEffectSelector().get_options_source().get_options()])

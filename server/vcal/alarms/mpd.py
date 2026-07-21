@@ -133,6 +133,20 @@ class MpdClient:
             logger.error(f"Failed to play file {full_path}: {e}")
             raise e
 
+
+    def wait_for_queue_to_finish(self, timeout: float = 30.0, interval: float = 0.2) -> bool:
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            status = self.client.status()
+            state = status.get("state")
+
+            if state in {"stop", "pause", "idle"}:
+                return True
+
+            time.sleep(interval)
+
+        return False
+
     def play_files(self, file_paths: list[str]):
         try:
             self.client.clear()
@@ -252,7 +266,7 @@ class FadeUp:
             # as something else has changed the volume
             current_volume = self.mpd_process.get_volume()
             if current_volume is not None and not self.similar_enough(current_volume, self.last_known_volume):
-                logger.info(f"Volume changed externally during fade up (from {self.last_known_volume} to {current_volume}), stopping fade up")
+                logger.info(f"Volume of MPD changed externally during fade up (from {self.last_known_volume} to {current_volume}), stopping fade up")
                 return True  # done
             new_volume = self.volumes[self.current_step]
             self.mpd_process.set_volume(new_volume)
