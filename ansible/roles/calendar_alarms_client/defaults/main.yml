@@ -20,4 +20,4 @@ client_root: "{{ project_root }}/client"
 http_index_file: "{{ client_root }}/index.py"
 
 # From 0-30
-default_amixer_volume: 25
+default_amixer_volume: 27

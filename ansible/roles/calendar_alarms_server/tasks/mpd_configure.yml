@@ -39,6 +39,8 @@
     group: root
     mode: "0644"
   notify: restart mpd
+  tags:
+    - sample_rate
 
 - name: Ensure mpd override directory exists
   ansible.builtin.file:

@@ -49,6 +49,8 @@
     group: root
     mode: "0644"
   when: inventory_hostname != "travnas"
+  tags:
+    - sample_rate
 
 - name: Configure ALSA default to USB audio device (travnas)
   become: true
@@ -59,6 +61,8 @@
     group: root
     mode: "0644"
   when: inventory_hostname == "travnas"
+  tags:
+    - sample_rate
 
 - name: Reboot if ALSA config was created for the first time
   ansible.builtin.import_tasks: reboot.yml

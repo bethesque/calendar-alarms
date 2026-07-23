@@ -10,7 +10,7 @@ pcm.usb_dmix {
 
     slave {
         pcm "usb_hw"
-        rate 48000
+        rate {{ sample_rate }}
         channels 2
     }
 }

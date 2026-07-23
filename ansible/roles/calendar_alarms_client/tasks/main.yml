@@ -66,7 +66,9 @@
     amixer set Speaker 10
     speaker-test -c 2 -t wav -l 1
   changed_when: false
-  tags: audio
+  tags:
+    - audio
+    - sample_rate
   when: not is_bluetooth_audio
 
 - name: Set default amixer volume

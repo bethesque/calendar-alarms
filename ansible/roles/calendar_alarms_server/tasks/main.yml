@@ -3,6 +3,7 @@
   tags:
     - http
     - codebase
+    - sample_rate
 
 # - name: End play
 #   ansible.builtin.meta: end_play

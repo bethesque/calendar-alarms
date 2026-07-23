@@ -8,11 +8,17 @@ pcm.usb_dmix {
     ipc_key 1024
     slave {
         pcm "usb_hw"
-        rate 48000
+        rate 441000
         channels 2
         period_time 125000
-        period_size 6000
-        buffer_size 48000
+        buffer_time 1000000
+
+#        pcm "usb_hw"
+#        rate 48000
+#        channels 2
+#        period_time 125000
+#        period_size 6000
+#        buffer_size 48000
     }
 }
 pcm.usb {

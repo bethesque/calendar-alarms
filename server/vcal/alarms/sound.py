@@ -4,6 +4,7 @@ import subprocess
 import tempfile
 import os
 import math
+from vcal.alarms import SAMPLE_RATE
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +23,8 @@ def build_alarm_audio(
     logger.debug(f"Building alarm audio with announcement_file={announcement_file}, alarm_file={alarm_file}, output_file={output_file}, duration={duration}")
     filter_complex = (
         # 1) Force format INCLUDING sample format
-        "[0:a]aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo[s0];"
-        "[1:a]aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo,volume=1.8[s1];"
+        f"[0:a]aformat=sample_fmts=s16:sample_rates={SAMPLE_RATE}:channel_layouts=stereo[s0];"
+        f"[1:a]aformat=sample_fmts=s16:sample_rates={SAMPLE_RATE}:channel_layouts=stereo,volume=1.8[s1];"
 
         # 2) Build ONE cycle: silence → announcement
         "[s0][s1]concat=n=2:v=0:a=1[ann_once];"
@@ -32,7 +33,7 @@ def build_alarm_audio(
         f"[ann_once]aloop=loop={announcement_loops}:size=2e+09[ann];"
 
         # 4) Prepare alarm
-        "[2:a]aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo,"
+        f"[2:a]aformat=sample_fmts=s16:sample_rates={SAMPLE_RATE}:channel_layouts=stereo,"
         f"volume=0.5,aloop=loop={alarm_loops}:size=2e+09[alarm];"
 
         # 5) Mix
@@ -51,14 +52,14 @@ def build_alarm_audio(
         "-loglevel", "warning",
         "-f", "lavfi",
         "-t", "5",
-        "-i", "anullsrc=r=48000:cl=stereo",
+        "-i", f"anullsrc=r={SAMPLE_RATE}:cl=stereo",
         "-i", announcement_file,
         "-stream_loop", "-1",
         "-i", alarm_file,
         "-filter_complex", filter_complex,
 
         "-c:a", "pcm_s16le",
-        "-ar", "48000",
+        "-ar", f"{SAMPLE_RATE}",
         "-ac", "2",
 
         "-y",
@@ -87,15 +88,15 @@ def mix_announcement_audio(
     music_loops = num_loops(full_duration_seconds, music_file)
 
     fade_start = full_duration_seconds - fade_duration
-    size=track_length(music_file) * 48000
+    size=track_length(music_file) * SAMPLE_RATE
 
     filter_complex = (
         # Announcement (delay + smooth start)
-        "[0:a]aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo,"
+        f"[0:a]aformat=sample_fmts=s16:sample_rates={SAMPLE_RATE}:channel_layouts=stereo,"
         f"volume=1.5,adelay={delay * 1000}|{delay * 1000}[ann];"
 
         # Music
-        "[1:a]aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo,volume=0.5,"
+        f"[1:a]aformat=sample_fmts=s16:sample_rates={SAMPLE_RATE}:channel_layouts=stereo,volume=0.5,"
         f"aloop=loop={music_loops}:size={size},"
         "asetpts=N/SR/TB,"
         f"atrim=start=0:end={full_duration_seconds:.2f},"
@@ -117,7 +118,7 @@ def mix_announcement_audio(
         "-filter_complex", filter_complex,
 
         "-c:a", "pcm_s16le",
-        "-ar", "48000",
+        "-ar", f"{SAMPLE_RATE}",
         "-ac", "2",
 
         "-y",

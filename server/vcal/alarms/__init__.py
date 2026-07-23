@@ -6,3 +6,4 @@ BACKGROUND_MUSIC_DIRECTORY = "audio/background_music"
 ANNOUNCEMENT_FILE = "audio/announcement.mp3"
 SILENCE_FILE = "audio/silence_5s.mp3"
 OUTPUT_AUDIO_DIRECTORY = "/tmp"
+SAMPLE_RATE = 441000
