@@ -15,6 +15,7 @@ Requires: ffmpeg and ffprobe installed and available on PATH.
 import json
 import subprocess
 from pathlib import Path
+from vcal.alarms import SAMPLE_RATE
 
 # Target values derived from measuring 3 Google TTS samples (see analysis)
 # ffmpeg -i tts.mp3 -filter:a loudnorm=print_format=summary -f null -
@@ -118,7 +119,7 @@ def normalize_audio(
     codec = source_info["codec_name"] or "aac"
     bitrate = f"{source_info['bit_rate'] // 1000}k" if source_info["bit_rate"] else "128k"
     channels = source_info["channels"] or 1
-    sample_rate = source_info["sample_rate"] or "44100"
+    sample_rate = SAMPLE_RATE # source_info["sample_rate"] or "44100"
 
     # Pass 1: measure
     stats = _measure_loudness(input_path, target_i, target_tp, target_lra)
