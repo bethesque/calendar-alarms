@@ -21,7 +21,7 @@ SILENCE_5_SEC = "audio/silence_5s.mp3"
 SILENCE_1_SEC = "audio/silence_1s.mp3"
 SILENCE_HALF_SEC = "audio/silence_500ms.mp3"
 
-PRE_ANNOUNCEMENT_BELL = AUDIO_DIRECTORY + "/tunetank.com_alert-positive-chime-melody.wav"
+PRE_ANNOUNCEMENT_BELL = AUDIO_DIRECTORY + "/preannounce_3.mp3"
 from enum import Enum
 
 logger = logging.getLogger(__name__)
@@ -70,9 +70,9 @@ def _play_audio_files(request: PlayableRequest):
     def play():
         try:
             mpd_settings = MpdSettings()
-            with mpd_connection(mpd_settings) as mpd_player:
-                mpd_player.set_volume(mpd_settings.volumes[request.usecase.name.lower()])
-                mpd_player.play_files(request.audio_files)
+            with mpd_connection(mpd_settings) as alarm_player:
+                alarm_player.set_volume(mpd_settings.volumes[request.usecase.name.lower()])
+                alarm_player.play_files(request.audio_files)
                 time.sleep(sum(track_length(f) for f in request.audio_files))
                 logger.info("Finished playing files")
         except Exception:
@@ -121,9 +121,9 @@ class PlayableRequestBuilder:
         if not request.message:
             raise ValueError("AnnouncementRequest.message is required")
 
-        audio_files = self._build_one_off_announcement_file(request.message, request.sound_effect)
+        audio_file = self._build_one_off_announcement_file(request.message, request.sound_effect)
         return PlayableRequest(
-            audio_files=audio_files,
+            audio_files=[audio_file],
             scene=request.scene,
             usecase=request.usecase,
             player_names=request.player_names
@@ -141,13 +141,12 @@ class PlayableRequestBuilder:
         )
 
 
-    def _build_one_off_announcement_file(self, message: str, sound_effect: str | None = None) -> list[str]:
+    def _build_one_off_announcement_file(self, message: str, sound_effect: str | None = None):
         speech_file = text_to_voice_file(message)
-        #announcement_file = OUTPUT_AUDIO_DIRECTORY + "/one_off_announcement.wav"
+        announcement_file = OUTPUT_AUDIO_DIRECTORY + "/one_off_announcement.wav"
         files = self.get_pre_announcement_files(sound_effect) + [speech_file, SILENCE_1_SEC]
-        return files
-        #join_mp3s_to_wav(files, announcement_file)
-        #return announcement_file
+        join_mp3s_to_wav(files, announcement_file)
+        return announcement_file
 
     def get_pre_announcement_files(self, sound_effect: str | None)-> list[str]:
         files = [PRE_ANNOUNCEMENT_BELL]
