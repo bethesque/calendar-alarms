@@ -21,7 +21,7 @@ SILENCE_5_SEC = "audio/silence_5s.mp3"
 SILENCE_1_SEC = "audio/silence_1s.mp3"
 SILENCE_HALF_SEC = "audio/silence_500ms.mp3"
 
-PRE_ANNOUNCEMENT_BELL = AUDIO_DIRECTORY + "/tunetank.com_alert-positive-chime-melody.wav"
+PRE_ANNOUNCEMENT_BELL = AUDIO_DIRECTORY + "/tunetank.com_alert-positive-chime-melody-s16.wav"
 from enum import Enum
 
 logger = logging.getLogger(__name__)
