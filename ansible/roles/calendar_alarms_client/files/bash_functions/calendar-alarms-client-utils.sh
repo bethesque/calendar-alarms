@@ -18,7 +18,7 @@ function calendar-alarms-snapclient-restart {
     systemctl --user restart calendar-alarms-snapclient "$@"
 }
 
-function calendar-alarms-speaker-test {
+function audio-client-speaker-test {
     speaker-test -c 2 -t wav -l 1
 }
 

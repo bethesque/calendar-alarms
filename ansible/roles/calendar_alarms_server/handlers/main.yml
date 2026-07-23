@@ -2,8 +2,10 @@
   systemd:
     name: mpd
     state: restarted
+  become: true
 
 - name: restart snapserver
   systemd:
     name: snapserver
     state: restarted
+  become: true
