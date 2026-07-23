@@ -70,9 +70,9 @@ def _play_audio_files(request: PlayableRequest):
     def play():
         try:
             mpd_settings = MpdSettings()
-            with mpd_connection(mpd_settings) as alarm_player:
-                alarm_player.set_volume(mpd_settings.volumes[request.usecase.name.lower()])
-                alarm_player.play_files(request.audio_files)
+            with mpd_connection(mpd_settings) as mpd_player:
+                #mpd_player.set_volume(mpd_settings.volumes[request.usecase.name.lower()])
+                mpd_player.play_files(request.audio_files)
                 time.sleep(sum(track_length(f) for f in request.audio_files))
                 logger.info("Finished playing files")
         except Exception:
