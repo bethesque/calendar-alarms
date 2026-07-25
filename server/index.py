@@ -62,6 +62,10 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 if __name__ == "__main__":
 
+    class SuppressPollFilter(logging.Filter):
+        def filter(self, record):
+            return "/events/poll" not in record.getMessage()
+
     class UvicornSettings(BaseSettings):
         host: str = "0.0.0.0"
         port: int = 8081
@@ -87,5 +91,7 @@ if __name__ == "__main__":
     if args.conf:
         with open(args.conf) as f:
             uvicorn_args = UvicornSettings(**yaml.safe_load(f)).uvicorn_kwargs()
+
+    logging.getLogger("uvicorn.access").addFilter(SuppressPollFilter())
 
     uvicorn.run(app, **uvicorn_args)
