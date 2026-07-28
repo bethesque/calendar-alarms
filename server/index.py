@@ -2,7 +2,7 @@ import argparse
 import logging
 import yaml
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from pydantic_settings import BaseSettings
@@ -21,8 +21,9 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 
 @app.get("/", response_class=HTMLResponse)
-def index():
-    return """
+def index(request: Request):
+    hostname = request.url.hostname
+    return f"""
     <html>
         <head>
             <meta name="viewport"
@@ -33,7 +34,7 @@ def index():
         <body>
             <h1>Calendar Alarms</h1>
             <ul>
-                <li><a href="/login">Google Login</a></li>
+                <li><a href="https://{hostname}:8443/login">Google Login (only works over https)</a></li>
                 <li><a href="/alarm">Alarm</a></li>
                 <li><a href="/admin">Admin</a></li>
                 <li><a href="/status/calendar-alarms-service">Calendar Alarms HTTP Service Status</a></li>
@@ -92,6 +93,6 @@ if __name__ == "__main__":
         with open(args.conf) as f:
             uvicorn_args = UvicornSettings(**yaml.safe_load(f)).uvicorn_kwargs()
 
-    logging.getLogger("uvicorn.access").addFilter(SuppressPollFilter())
+    #logging.getLogger("uvicorn.access").addFilter(SuppressPollFilter())
 
     uvicorn.run(app, **uvicorn_args)
