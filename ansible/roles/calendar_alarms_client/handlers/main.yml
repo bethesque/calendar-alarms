@@ -2,3 +2,9 @@
   systemd:
     name: snapclient
     state: restarted
+
+- name: restart calendar-alarms-http.service
+  systemd:
+    name: calendar-alarms-http
+    scope: user
+    state: restarted
