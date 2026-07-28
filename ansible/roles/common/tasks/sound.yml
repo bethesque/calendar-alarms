@@ -35,12 +35,21 @@
   ansible.builtin.debug:
     var: snapclient_soundcard_option
 
-- name: Check if /etc/asound.conf exists
-  ansible.builtin.stat:
-    path: /etc/asound.conf
-  register: asound_conf_stat
-
 - name: Configure ALSA default to USB audio device (not travnas)
+  ansible.builtin.template:
+    src: asound.conf.j2
+    dest: "/home/{{ snapclient_user }}/.asoundrc"
+    owner: "{{ snapclient_user }}"
+    group: "{{ snapclient_user }}"
+    mode: "0644"
+  when: inventory_hostname != "travnas"
+  tags:
+    - sample_rate
+  notify:
+    - restart calendar-alarms-snapclient service
+    - restart music assistant service
+
+- name: Configure ALSA default to USB audio device (travnas)
   become: true
   ansible.builtin.template:
     src: asound.conf.j2
@@ -48,22 +57,9 @@
     owner: root
     group: root
     mode: "0644"
-  when: inventory_hostname != "travnas"
-  tags:
-    - sample_rate
-
-- name: Configure ALSA default to USB audio device (travnas)
-  become: true
-  ansible.builtin.template:
-    src: asound-travnas.conf.j2
-    dest: /etc/asound.conf
-    owner: root
-    group: root
-    mode: "0644"
   when: inventory_hostname == "travnas"
   tags:
     - sample_rate
-
-- name: Reboot if ALSA config was created for the first time
-  ansible.builtin.import_tasks: reboot.yml
-  when: is_pi and not asound_conf_stat.stat.exists
+  notify:
+    - restart calendar-alarms-snapclient service
+    - restart music assistant service

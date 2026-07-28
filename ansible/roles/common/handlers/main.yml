@@ -1,0 +1,12 @@
+- name: restart calendar-alarms-snapclient service
+  ansible.builtin.systemd:
+    scope: user
+    name: calendar-alarms-snapclient
+    state: restarted
+
+- name: restart music assistant service
+  ansible.builtin.systemd:
+    scope: user
+    name: sendspin-armv6
+    state: restarted
+

@@ -6,6 +6,7 @@ pcm.usb_hw {
 pcm.usb_dmix {
     type dmix
     ipc_key 1024
+
     slave {
         pcm "usb_hw"
         rate {{ sample_rate }}

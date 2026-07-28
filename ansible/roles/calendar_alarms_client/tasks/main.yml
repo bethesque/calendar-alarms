@@ -63,7 +63,7 @@
 
 - name: Test audio
   ansible.builtin.shell: |
-    amixer set Speaker 10
+    amixer set Speaker 15
     speaker-test -c 2 -t wav -l 1
   changed_when: false
   tags:
@@ -77,4 +77,5 @@
   tags:
     - audio
     - default_volume
+    - sample_rate
   when: not is_bluetooth_audio
