@@ -164,7 +164,7 @@ class MusicAssistantPlayer(BaseModel):
     area: str = Field(description="The area of the house where the Music Assistant player is located")
 
 class HomeAssistantAnnouncementSettings(BaseModel):
-    volume: float = Field(default=0.15, description="The volume to dip the Music Assistant players to while playing an announcement", ge=0.0, le=1.0)
+    fade_volume: float = Field(default=0.15, description="The volume to fade the Music Assistant players to while playing an announcement", ge=0.0, le=1.0)
     fade_down_duration: float = Field(default=1.5, description="The number of seconds over which to fade down the audio playing on Music Assistant before an announcement.")
     fade_up_duration: float = Field(default=1.5, description="The number of seconds over which to fade down the audio playing on Music Assistant before an announcement.")
 
