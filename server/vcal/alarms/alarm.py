@@ -11,7 +11,6 @@ from vcal.alarms import ALARMS_DIRECTORY, AUDIO_DIRECTORY, OUTPUT_AUDIO_DIRECTOR
 from vcal.alarms.sound import track_length
 from vcal.scene import SceneProtocol
 from vcal.settings import SnapcastSettings, MpdSettings, GoogleCalendarSettings
-from vcal.snapserver import Snapserver
 from vcal.announcements.snapcast import SnapserverManager
 
 logger = logging.getLogger(__name__)
