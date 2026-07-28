@@ -25,7 +25,7 @@
     git pull
   args:
     chdir: "{{ project_root }}"
-  notify: restart calendar-alarms-http.service
+  notify: restart audio-client-http.service
 
 
 - name: Pip install
@@ -47,4 +47,4 @@
     mode: "0755"
   tags:
     - config
-  notify: restart calendar-alarms-http.service
+  notify: restart audio-client-http.service

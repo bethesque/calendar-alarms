@@ -16,6 +16,7 @@
       - alsa-utils
       - git
       - python3-pip
+      - nginx
     state: present
     update_cache: yes
   become: yes

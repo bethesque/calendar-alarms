@@ -1,11 +1,26 @@
 - name: restart mpd
+  become: true
   systemd:
     name: mpd
     state: restarted
-  become: true
 
 - name: restart snapserver
+  become: true
   systemd:
     name: snapserver
     state: restarted
+
+- name: restart nginx
   become: true
+  systemd:
+    name: nginx
+    state: restarted
+
+- name: reload user systemd daemon
+  ansible.builtin.command: systemctl --user daemon-reload
+
+- name: restart calendar-alarms-http.service
+  systemd:
+    name: calendar-alarms-http
+    scope: user
+    state: restarted

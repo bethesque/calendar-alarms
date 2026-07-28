@@ -19,6 +19,8 @@
     git pull
   args:
     chdir: "{{ project_root }}"
+  notify:
+    - restart calendar-alarms-http.service
 
 - name: Install package in editable mode
   ansible.builtin.pip:

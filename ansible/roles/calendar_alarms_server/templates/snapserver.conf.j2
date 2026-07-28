@@ -2,7 +2,7 @@
 port = {{ ca_snapserver_stream_port }}
 
 # device derived from the first Loopback device in `arecord -l`
-source = alsa://?name=mpd&device=hw:0,1,0&sampleformat={{ audio_format }}:16:2&codec=pcm
+source = alsa://?name=mpd&device=hw:0,1,0&sampleformat={{ audio_format }}&codec=pcm
 
 [http]
 enabled = true

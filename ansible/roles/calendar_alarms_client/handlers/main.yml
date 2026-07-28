@@ -3,8 +3,8 @@
     name: snapclient
     state: restarted
 
-- name: restart calendar-alarms-http.service
+- name: restart audio-client-http.service
   systemd:
-    name: calendar-alarms-http
+    name: audio-client-http
     scope: user
     state: restarted
