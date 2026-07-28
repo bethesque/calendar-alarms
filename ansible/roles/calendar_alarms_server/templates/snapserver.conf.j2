@@ -1,7 +1,8 @@
 [stream]
 port = {{ ca_snapserver_stream_port }}
-source = pipe://{{ mpd_fifo_path }}?name=mpd&codec=pcm&sampleformat={{ audio_format }}
-# source = file:///tmp/bethtest.wav?name=bethtest
+
+# device derived from the first Loopback device in `arecord -l`
+source = alsa://?name=mpd&device=hw:0,1,0&sampleformat={{ audio_format }}:16:2&codec=pcm
 
 [http]
 enabled = true
