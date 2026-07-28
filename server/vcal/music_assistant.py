@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List, Tuple
 import logging
 from dataclasses import dataclass
+from vcal.settings import HomeAssistantAnnouncementSettings, HomeAssistantSettings
 
 
 from vcal.env import CACHE_DIRECTORY, DIP_TARGET_VOLUME
@@ -177,10 +178,10 @@ class PlayerFadeUp:
         if self.current_step < len(self.volumes):
             # if the current volume has changed since the last step, return True to indicate we're done,
             # as something else has changed the volume
-            current_volume = self.ma_player.get_volume()
-            if current_volume is not None and not self.similar_enough(current_volume, self.last_known_volume):
-                logger.info(f"Volume for {self.ma_player.name} changed externally during fade up (from {self.last_known_volume} to {current_volume}), stopping fade up")
-                return True # done
+            #current_volume = self.ma_player.get_volume()
+            #if current_volume is not None and not self.similar_enough(current_volume, self.last_known_volume):
+            #    logger.info(f"Volume for {self.ma_player.name} changed externally during fade up (from {self.last_known_volume} to {current_volume}), stopping fade up")
+            #    return True # done
             new_volume = self.volumes[self.current_step]
             self.ma_player.set_volume(new_volume)
             self.last_known_volume = new_volume
@@ -199,7 +200,7 @@ class PlayerFadeUp:
         return abs(vol1 - vol2) <= threshold
 
 
-def fade_out(ma_players: List[MusicAssistantPlayer], duration: float, target_volume: float = 0.0, step_time: float = 0.25):
+def fade_out(ma_players: List[MusicAssistantPlayer], duration: float, target_volume: float = 0.0, step_time: float = 0.20):
     """Gradually fade out the volume of the given Music Assistant players over the specified duration.
 
     Args:
@@ -235,30 +236,37 @@ def fade_out(ma_players: List[MusicAssistantPlayer], duration: float, target_vol
     return faded_players
 
 
-def fade_up(players_and_target_volumes: List[Tuple[MusicAssistantPlayer, float]], duration: float, steps: int = 10):
-    """Gradually fade up the volume of the given Music Assistant players over the specified duration and steps.
+def fade_up(players_and_target_volumes: List[Tuple[MusicAssistantPlayer, float]], duration: float, step_time: float = 0.20):
+    """Gradually fade up the volume of the given Music Assistant players over the specified duration.
 
     Args:
         mpd_processes_and_target_volumes: List of tuples of (MusicAssistantPlayer, target_volume)
         duration: Total duration in seconds for the fade up
-        steps: Number of volume steps for the fade up
+        step_time: Time in seconds between each volume step (total time per loop iteration, including processing)
     """
+    steps = max(1, round(duration / step_time)) if step_time > 0 else 1
+
     fade_ups = []
     for player, target_volume in players_and_target_volumes:
         fade_ups.append(PlayerFadeUp(player, target_volume=target_volume, num_steps=steps))
 
-    step_time = duration / steps if steps > 0 else duration
-
     while fade_ups:
+        loop_start = time.monotonic()
+
         for fade in fade_ups[:]:
             if fade.step():
                 fade_ups.remove(fade)
+
         if fade_ups:
-            time.sleep(step_time)
+            elapsed = time.monotonic() - loop_start
+            remaining = step_time - elapsed
+            if remaining > 0:
+                time.sleep(remaining)
 
 class MusicAssistant:
-    def __init__(self, players: list[MusicAssistantPlayer]):
+    def __init__(self, players: list[MusicAssistantPlayer], announcement_settings: HomeAssistantAnnouncementSettings):
         self.players = players
+        self.announcement_settings = announcement_settings
 
     def fetch_current_state(self):
         for player in self.players:
@@ -271,11 +279,11 @@ class MusicAssistant:
             player.pause()
 
     def dip_volume(self):
-        fade_out(self.players, 1.5, DIP_TARGET_VOLUME)
+        fade_out(self.players, self.announcement_settings.fade_down_duration, self.announcement_settings.volume)
 
     def restore_volume(self):
         playing_players = [player for player in self.players if player.get_original_state().playing()]
-        fade_up([(player, player.get_original_state().get_volume()) for player in playing_players], duration=4, steps=9)
+        fade_up([(player, player.get_original_state().get_volume()) for player in playing_players], duration=self.announcement_settings.fade_up_duration)
 
     def restore_original_state(self):
         playing_players = [player for player in self.players if player.get_original_state().playing()]
@@ -286,15 +294,15 @@ class MusicAssistant:
             # give the buffers time to get their glitches out
             time.sleep(1)
 
-            fade_up([(player, player.get_original_state().get_volume()) for player in playing_players], duration=4, steps=9)
+            fade_up([(player, player.get_original_state().get_volume()) for player in playing_players], duration=self.announcement_settings.fade_up_duration)
 
     def playing(self) -> bool:
         return any(player.get_original_state().playing() for player in self.players)
 
     @staticmethod
-    def build_for_players_with_names(names, hass_url: str, hass_token: str):
+    def build_for_players_with_names(names, hass_url: str, hass_token: str, announcement_settings: HomeAssistantAnnouncementSettings):
         players = [MusicAssistantPlayer(f"media_player.{name}", hass_url, hass_token) for name in names]
-        return MusicAssistant(players)
+        return MusicAssistant(players, announcement_settings)
 
 @dataclass
 class MusicAssistantState:
@@ -318,11 +326,11 @@ class MusicAssistantState:
                 player = MusicAssistantPlayer(player_dict["name"], hass_url, hass_token)
                 player.set_original_state(PlayerState(player_dict["original_state"]))
                 players.append(player)
-            return MusicAssistant(players)
+            return MusicAssistant(players, HomeAssistantSettings().announcements)
         else:
             logger.warning("Could not load playing players from saved state. Returning MusicAssistant with no players")
             logger.warning(music_assistant_state)
-            return MusicAssistant([])
+            return MusicAssistant([], HomeAssistantSettings().announcements)
 
     """
         Do not restore any state that is more than 5 minutes old

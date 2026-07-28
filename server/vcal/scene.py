@@ -105,7 +105,12 @@ class Scene:
     def _build_ma(self, areas: set[str] | None = None):
         settings = HomeAssistantSettings()
         player_names_to_dip = [player.name for player in settings.players if areas is None or player.area in areas]
-        self._ma = MusicAssistant.build_for_players_with_names(player_names_to_dip, settings.hass_url, settings.hass_token)
+        self._ma = MusicAssistant.build_for_players_with_names(
+            player_names_to_dip,
+            settings.hass_url,
+            settings.hass_token,
+            settings.announcements
+        )
         self._ma.fetch_current_state()
 
     def _save_state(self):

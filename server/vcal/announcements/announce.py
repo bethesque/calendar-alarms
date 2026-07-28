@@ -1,27 +1,26 @@
 import logging
-import glob
 import os
 import time
 from dataclasses import dataclass
-from datetime import datetime
-
 from vcal.scene import SceneProtocol
-from vcal.alarms.mpd import fade_up, mpd_connection
-from vcal.cal.google_calendar import load_data_from_file
+from vcal.alarms.mpd import mpd_connection
 from vcal.alarms.text_to_voice import text_to_voice_file
 from vcal.alarms.sound import track_length, join_mp3s_to_wav
 from vcal.random_text import FileListOptionsSource, select_text
-from vcal.env import DATA_DIRECTORY, ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY
+from vcal.env import ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY
 from vcal.alarms import  AUDIO_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
 from vcal.settings import SnapcastSettings, MpdSettings
 from vcal.announcements.snapcast import SnapserverManager
 from vcal.housie_talkie.audio import normalize_audio
 
+# ffmpeg -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 -t 0.25 -q:a 9 -acodec libmp3lame silence.mp3
 SILENCE_5_SEC = "audio/silence_5s.mp3"
 SILENCE_1_SEC = "audio/silence_1s.mp3"
 SILENCE_HALF_SEC = "audio/silence_500ms.mp3"
+SILENCE_QUARTER_SEC = "audio/silence_500ms.mp3"
+POST_ANNOUNCEMENT_SILENCE = SILENCE_QUARTER_SEC
 
-PRE_ANNOUNCEMENT_BELL = AUDIO_DIRECTORY + "/preannounce_2.mp3"
+PRE_ANNOUNCEMENT_BELL = AUDIO_DIRECTORY + "/preannounce_4.mp3"
 from enum import Enum
 
 logger = logging.getLogger(__name__)
@@ -134,7 +133,7 @@ class PlayableRequestBuilder:
         normalize_audio(request.audio_file, normalized_audio_file)
         pre_announce_files = self.get_pre_announcement_files(request.sound_effect)
         return PlayableRequest(
-            audio_files=pre_announce_files + [normalized_audio_file],
+            audio_files=pre_announce_files + [normalized_audio_file, POST_ANNOUNCEMENT_SILENCE],
             scene=request.scene,
             usecase=AnnouncementUsecase.TALKIE,
             player_names=request.player_names
@@ -144,7 +143,7 @@ class PlayableRequestBuilder:
     def _build_one_off_announcement_file(self, message: str, sound_effect: str | None = None):
         speech_file = text_to_voice_file(message)
         announcement_file = OUTPUT_AUDIO_DIRECTORY + "/one_off_announcement.wav"
-        files = self.get_pre_announcement_files(sound_effect) + [speech_file, SILENCE_1_SEC]
+        files = self.get_pre_announcement_files(sound_effect) + [speech_file, POST_ANNOUNCEMENT_SILENCE]
         join_mp3s_to_wav(files, announcement_file)
         return announcement_file
 
