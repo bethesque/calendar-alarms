@@ -1,7 +1,9 @@
 import os
+from pathlib import Path
 from vcal.settings import HousieTalkieSettings
 from vcal.housie_talkie.audio import normalize_audio
 from vcal.announcements.announce import play_audio_file_as_announcement as og_play_audio_file_as_announcement, AudioFileAnnouncementRequest
+from vcal.alarms import OUTPUT_AUDIO_DIRECTORY
 
 def play_audio_file_as_announcement(request: AudioFileAnnouncementRequest):
     normalized_audio_file = _normalize_audio_file_to_match_tts_volume(request.audio_file)
@@ -26,4 +28,6 @@ def _normalize_audio_file_to_match_tts_volume(audio_file):
     return normalized_audio_file
 
 def _normalize_audio_file_path(audio_file):
-    return os.path.splitext(audio_file)[0] + "_normalized" + os.path.splitext(audio_file)[1]
+    path = Path(audio_file)
+    return OUTPUT_AUDIO_DIRECTORY + "/" + path.stem + "_normalized" + path.suffix
+

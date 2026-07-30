@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+from datetime import datetime
 from pathlib import Path
 from dataclasses import dataclass
 from vcal.scene import SceneProtocol
@@ -128,7 +129,7 @@ class PlayableRequestBuilder:
         )
 
     def build_playable_request_for_audio_file(self, request: AudioFileAnnouncementRequest) -> PlayableRequest:
-        announcement_file = OUTPUT_AUDIO_DIRECTORY +  f"/{Path(request.audio_file).stem}_full.wav"
+        announcement_file = OUTPUT_AUDIO_DIRECTORY +  f"/{Path(request.audio_file).stem}_" + self._datestamp() + ".wav"
         mp3_files = self.get_pre_announcement_files(request.sound_effect) + [request.audio_file, POST_ANNOUNCEMENT_SILENCE]
         join_mixed_files_to_wav(mp3_files, announcement_file)
         return PlayableRequest(
@@ -140,7 +141,7 @@ class PlayableRequestBuilder:
 
     def _build_one_off_announcement_file(self, message: str, sound_effect: str | None = None):
         speech_file = text_to_voice_file(message)
-        announcement_file = OUTPUT_AUDIO_DIRECTORY + "/one_off_announcement.wav"
+        announcement_file = OUTPUT_AUDIO_DIRECTORY + "/tts_" + self._datestamp() + ".wav"
         mp3_files = self.get_pre_announcement_files(sound_effect) + [speech_file, POST_ANNOUNCEMENT_SILENCE]
         join_mp3s_to_wav(mp3_files, announcement_file)
         return announcement_file
@@ -154,5 +155,9 @@ class PlayableRequestBuilder:
             files.append(SILENCE_HALF_SEC)
 
         return files
+
+    def _datestamp(self) -> str:
+        now = datetime.now()
+        return f"{now.strftime('%y%m%d%H%M%S')}{now.microsecond // 1000:03d}"
 
 
