@@ -93,6 +93,6 @@ if __name__ == "__main__":
         with open(args.conf) as f:
             uvicorn_args = UvicornSettings(**yaml.safe_load(f)).uvicorn_kwargs()
 
-    #logging.getLogger("uvicorn.access").addFilter(SuppressPollFilter())
+    logging.getLogger("uvicorn.access").addFilter(SuppressPollFilter())
 
     uvicorn.run(app, **uvicorn_args)
