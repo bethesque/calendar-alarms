@@ -18,7 +18,7 @@ from vcal.announcements.snapcast import SnapserverManager
 SILENCE_5_SEC = "audio/silence_5s.mp3"
 SILENCE_1_SEC = "audio/silence_1s.mp3"
 SILENCE_HALF_SEC = "audio/silence_500ms.mp3"
-SILENCE_QUARTER_SEC = "audio/silence_500ms.mp3"
+SILENCE_QUARTER_SEC = "audio/silence_250ms.mp3"
 POST_ANNOUNCEMENT_SILENCE = SILENCE_QUARTER_SEC
 
 PRE_ANNOUNCEMENT_BELL = AUDIO_DIRECTORY + "/preannounce_4.mp3"
