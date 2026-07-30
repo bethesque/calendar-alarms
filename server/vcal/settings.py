@@ -182,6 +182,15 @@ class HomeAssistantSettings(YAMLSettings):
         yaml_file="config/home_assistant.yaml"
     )
 
+class HousieTalkieSettings(YAMLSettings):
+    target_integrated_loudness: float = Field(default=-19.0, description="Target integrated loudness in LUFS", le=0)
+    target_true_peak: float = Field(default=-1.5, description="Target true peak ceiling in dBTP", le=0)
+    target_loudness_range: float = Field(default=1.0, description="Target loudness range in LU")
+
+    model_config = SettingsConfigDict(
+        yaml_file="config/housie_talkie.yaml"
+    )
+
 class AppSettings(BaseSettings):
     main_settings: MainSettings = Field(default_factory=MainSettings, description="Main settings")
     mpd_settings: MpdSettings = Field(default_factory=MpdSettings, description="MPD settings")
@@ -189,6 +198,7 @@ class AppSettings(BaseSettings):
     google_calendar_settings: GoogleCalendarSettings = Field(default_factory=GoogleCalendarSettings, description="Google Calendar settings")
     morning_announcements_settings: MorningAnnouncementsSettings = Field(default_factory=MorningAnnouncementsSettings, description="Morning announcements settings")
     home_assistant_settings: HomeAssistantSettings = Field(default_factory=HomeAssistantSettings, description="Home Assistant settings")
+    housie_talkie_settings: HousieTalkieSettings = Field(default_factory=HousieTalkieSettings, description="Housie Talkie settings")
 
     def save(self) -> None:
         logger.info("Saving settings")
@@ -198,3 +208,4 @@ class AppSettings(BaseSettings):
         self.google_calendar_settings.save()
         self.morning_announcements_settings.save()
         self.home_assistant_settings.save()
+        self.housie_talkie_settings.save()

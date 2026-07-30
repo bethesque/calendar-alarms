@@ -11,7 +11,6 @@ from vcal.env import ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY
 from vcal.alarms import  AUDIO_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
 from vcal.settings import SnapcastSettings, MpdSettings
 from vcal.announcements.snapcast import SnapserverManager
-from vcal.housie_talkie.audio import normalize_audio
 
 # ffmpeg -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 -t 0.25 -q:a 9 -acodec libmp3lame silence.mp3
 SILENCE_5_SEC = "audio/silence_5s.mp3"
@@ -28,7 +27,6 @@ logger = logging.getLogger(__name__)
 class AnnouncementUsecase(Enum):
     TTS = 1
     TALKIE = 2
-
 
 @dataclass(frozen=True)
 class TextAnnouncementRequest:
@@ -129,16 +127,13 @@ class PlayableRequestBuilder:
         )
 
     def build_playable_request_for_audio_file(self, request: AudioFileAnnouncementRequest) -> PlayableRequest:
-        normalized_audio_file = self._normalized_audio_file_path(request.audio_file)
-        normalize_audio(request.audio_file, normalized_audio_file)
         pre_announce_files = self.get_pre_announcement_files(request.sound_effect)
         return PlayableRequest(
-            audio_files=pre_announce_files + [normalized_audio_file, POST_ANNOUNCEMENT_SILENCE],
+            audio_files=pre_announce_files + [request.audio_file, POST_ANNOUNCEMENT_SILENCE],
             scene=request.scene,
             usecase=AnnouncementUsecase.TALKIE,
             player_names=request.player_names
         )
-
 
     def _build_one_off_announcement_file(self, message: str, sound_effect: str | None = None):
         speech_file = text_to_voice_file(message)
@@ -157,7 +152,4 @@ class PlayableRequestBuilder:
 
         return files
 
-    def _normalized_audio_file_path(self, audio_file):
-        normalized_file_path = os.path.splitext(audio_file)[0] + "_normalized" + os.path.splitext(audio_file)[1]
-        return normalized_file_path
 

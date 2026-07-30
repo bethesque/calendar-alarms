@@ -1,0 +1,29 @@
+import os
+from vcal.settings import HousieTalkieSettings
+from vcal.housie_talkie.audio import normalize_audio
+from vcal.announcements.announce import play_audio_file_as_announcement as og_play_audio_file_as_announcement, AudioFileAnnouncementRequest
+
+def play_audio_file_as_announcement(request: AudioFileAnnouncementRequest):
+    normalized_audio_file = _normalize_audio_file_to_match_tts_volume(request.audio_file)
+    normalized_request = AudioFileAnnouncementRequest(
+        audio_file=normalized_audio_file,
+        scene=request.scene,
+        sound_effect=request.sound_effect,
+        player_names=request.player_names
+    )
+
+    og_play_audio_file_as_announcement(normalized_request)
+
+def _normalize_audio_file_to_match_tts_volume(audio_file):
+    housie_talkie_settings = HousieTalkieSettings()
+    normalized_audio_file = _normalize_audio_file_path(audio_file)
+    normalize_audio(
+        audio_file,
+        normalized_audio_file,
+        housie_talkie_settings.target_integrated_loudness,
+        housie_talkie_settings.target_true_peak,
+        housie_talkie_settings.target_loudness_range)
+    return normalized_audio_file
+
+def _normalize_audio_file_path(audio_file):
+    return os.path.splitext(audio_file)[0] + "_normalized" + os.path.splitext(audio_file)[1]
