@@ -3,7 +3,6 @@ import logging
 import subprocess
 import tempfile
 import os
-import math
 from vcal.alarms import SAMPLE_RATE
 
 logger = logging.getLogger(__name__)
@@ -183,3 +182,50 @@ def join_mp3s_to_wav(mp3_files: list, output_wav: str):
         )
     finally:
         os.remove(list_file)
+
+def join_mixed_files_to_wav(files: list, output_wav: str):
+    """
+    Join an arbitrary list of audio files (mixed formats/codecs allowed,
+    e.g. mp3, m4a, wav) into a single WAV file using ffmpeg.
+
+    :param files: list of input file paths, in the order they should be joined
+    :param output_wav: path to the output .wav file
+    """
+    if not files:
+        raise ValueError("files list must not be empty")
+
+    # Build -i flags for each input
+    input_args = []
+    for f in files:
+        input_args.extend(["-i", f])
+
+    # Build the concat filter, e.g. "[0:a][1:a][2:a]concat=n=3:v=0:a=1[out]"
+    stream_labels = "".join(f"[{i}:a]" for i in range(len(files)))
+    filter_complex = f"{stream_labels}concat=n={len(files)}:v=0:a=1[out]"
+
+    cmd = [
+        "ffmpeg",
+        "-y",  # overwrite output if it exists
+        *input_args,
+        "-filter_complex", filter_complex,
+        "-map", "[out]",
+        "-ar", f"{SAMPLE_RATE}",
+        "-ac", "2",
+        output_wav,
+    ]
+
+    result = subprocess.run(
+        cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        text=True
+    )
+
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"ffmpeg failed (exit code {result.returncode}):\n{result.stderr}"
+        )
+
+    return output_wav
+
+

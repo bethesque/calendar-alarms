@@ -1,11 +1,12 @@
 import logging
 import os
 import time
+from pathlib import Path
 from dataclasses import dataclass
 from vcal.scene import SceneProtocol
 from vcal.alarms.mpd import mpd_connection
 from vcal.alarms.text_to_voice import text_to_voice_file
-from vcal.alarms.sound import track_length, join_mp3s_to_wav
+from vcal.alarms.sound import track_length, join_mp3s_to_wav, join_mixed_files_to_wav
 from vcal.random_text import FileListOptionsSource, select_text
 from vcal.env import ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY
 from vcal.alarms import  AUDIO_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
@@ -127,9 +128,11 @@ class PlayableRequestBuilder:
         )
 
     def build_playable_request_for_audio_file(self, request: AudioFileAnnouncementRequest) -> PlayableRequest:
-        pre_announce_files = self.get_pre_announcement_files(request.sound_effect)
+        announcement_file = OUTPUT_AUDIO_DIRECTORY +  f"/{Path(request.audio_file).stem}_full.wav"
+        mp3_files = self.get_pre_announcement_files(request.sound_effect) + [request.audio_file, POST_ANNOUNCEMENT_SILENCE]
+        join_mixed_files_to_wav(mp3_files, announcement_file)
         return PlayableRequest(
-            audio_files=pre_announce_files + [request.audio_file, POST_ANNOUNCEMENT_SILENCE],
+            audio_files=[announcement_file],
             scene=request.scene,
             usecase=AnnouncementUsecase.TALKIE,
             player_names=request.player_names
@@ -138,8 +141,8 @@ class PlayableRequestBuilder:
     def _build_one_off_announcement_file(self, message: str, sound_effect: str | None = None):
         speech_file = text_to_voice_file(message)
         announcement_file = OUTPUT_AUDIO_DIRECTORY + "/one_off_announcement.wav"
-        files = self.get_pre_announcement_files(sound_effect) + [speech_file, POST_ANNOUNCEMENT_SILENCE]
-        join_mp3s_to_wav(files, announcement_file)
+        mp3_files = self.get_pre_announcement_files(sound_effect) + [speech_file, POST_ANNOUNCEMENT_SILENCE]
+        join_mp3s_to_wav(mp3_files, announcement_file)
         return announcement_file
 
     def get_pre_announcement_files(self, sound_effect: str | None)-> list[str]:
