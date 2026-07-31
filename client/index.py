@@ -61,25 +61,52 @@ class Config(BaseSettings):
             "hostname" : socket.gethostname()
         }
 
-def toggle(audio_config):
+def toggle(audio_config, params = None):
     with muted_alsa():
         snapclient_id = Path(audio_config["client_id_file"]).read_text().strip() if Path(audio_config["client_id_file"]).exists() else None
-        is_snap_playing = is_snapclient_playing(audio_config, snapclient_id)
+        is_snap_playing = _is_snapclient_playing(audio_config, snapclient_id)
 
         if is_snap_playing:
-            mute_snapclient(audio_config["snapserver_url"], snapclient_id)
+            _mute_snapclient(audio_config["snapserver_url"], snapclient_id)
         else:
-            toggle_music_assistant_player(audio_config)
+            _toggle_music_assistant_player(audio_config)
+    _report_battery_level(audio_config, params)
 
 
-def stop(audio_config):
+def stop(audio_config, params = None):
     with muted_alsa():
         snapclient_id = Path(audio_config["client_id_file"]).read_text().strip() if Path(audio_config["client_id_file"]).exists() else None
-        mute_snapclient(audio_config["snapserver_url"], snapclient_id)
-        pause_music_assistant_player(audio_config)
+        _mute_snapclient(audio_config["snapserver_url"], snapclient_id)
+        _pause_music_assistant_player(audio_config)
+    _report_battery_level(audio_config, params)
+
+def _report_battery_level(audio_config, params):
+
+    try:
+        button_battery_level = float(params["button_battery_level"])
+        logger.info(f"Reporting battery level {button_battery_level} to Home Assistant")
+        url = f"{audio_config["home_assistant_url"]}/api/webhook/{audio_config["hostname"]}-flic-button-battery-level"
+        try:
+            response = requests.post(
+                url,
+                json={ "value": button_battery_level },
+                timeout=10,
+            )
+
+            if not response.ok:
+                logger.error(
+                    "Failed to update battery level: HTTP %s - %s",
+                    response.status_code,
+                    response.text,
+                )
+
+        except requests.RequestException:
+            logger.exception("Error sending battery level update")
+    except (ValueError, TypeError):
+        logger.info(f"Button battery level '{params["button_battery_level"]}' from headers is not a number, not reporting to Home Assistant")
 
 
-def is_snapclient_playing(audio_config, client_id):
+def _is_snapclient_playing(audio_config, client_id):
     is_snapclient_playing = False
     if client_id:
         try:
@@ -95,7 +122,7 @@ def is_snapclient_playing(audio_config, client_id):
 For alarms/announcements, mute the snapclient rather than trying to stop the stream.
 The next alarm/announcement will set the volume back to 100%.
 """
-def mute_snapclient(ca_snapserver_rpc_url, client_id):
+def _mute_snapclient(ca_snapserver_rpc_url, client_id):
     logger.info(f"Snapclient {client_id} is playing, muting snapclient at {ca_snapserver_rpc_url}")
     try:
         mute_client(ca_snapserver_rpc_url, client_id)
@@ -103,7 +130,7 @@ def mute_snapclient(ca_snapserver_rpc_url, client_id):
         logger.exception("Error muting snapclient")
 
 
-def toggle_music_assistant_player(audio_config):
+def _toggle_music_assistant_player(audio_config):
     try:
         logger.info(f"Toggling pause/play Music Assistant player {audio_config['home_assistant_player_entity']} at {audio_config['home_assistant_url']} ")
         toggle_pause_play(audio_config["home_assistant_url"], audio_config["home_assistant_player_entity"])
@@ -111,32 +138,13 @@ def toggle_music_assistant_player(audio_config):
         logger.exception("Error toggling pause/play Music Assistant player")
 
 
-def pause_music_assistant_player(audio_config):
+def _pause_music_assistant_player(audio_config):
     try:
         logger.info(f"Pausing Music Assistant player {audio_config['home_assistant_player_entity']} at {audio_config['home_assistant_url']} ")
         pause_player(audio_config["home_assistant_url"], audio_config["home_assistant_player_entity"])
     except Exception:
         logger.exception("Error toggling pause/play Music Assistant player")
 
-
-def report_battery_level(audio_config):
-    url = f"{audio_config["home_assistant_url"]}/api/webhook/{audio_config["hostname"]}-flic-button-battery-level"
-    try:
-        response = requests.post(
-            url,
-            json={"value": 82},
-            timeout=10,
-        )
-
-        if not response.ok:
-            logger.error(
-                "Failed to update battery level: HTTP %s - %s",
-                response.status_code,
-                response.text,
-            )
-
-    except requests.RequestException:
-        logger.exception("Error sending battery level update")
 
 @contextmanager
 def muted_alsa():
@@ -157,9 +165,9 @@ def muted_alsa():
             logger.exception("Exception unmuting volume using amixer")
 
 
-def _run_in_background(target, audio_config):
+def run_in_background(target, audio_config, params):
     """Fire-and-forget execution, mirroring the original daemon-thread behaviour."""
-    threading.Thread(target=target, args=(audio_config,), daemon=True).start()
+    threading.Thread(target=target, args=(audio_config, params), daemon=True).start()
 
 
 def _get_status_body(audio_config: dict) -> dict:
@@ -182,7 +190,6 @@ def _get_status_body(audio_config: dict) -> dict:
     return {
         "calendar-alarms-snapclient.service": {
             "status": system(["systemctl", "--user", "is-active", "calendar-alarms-snapclient.service"]),
-            "snapclient_status": snapclient_status
         },
         "calendar-alarms-snapclient-status": snapclient_status,
         "music-assistant-snapclient.service": {
@@ -193,7 +200,6 @@ def _get_status_body(audio_config: dict) -> dict:
         },
         "amixer": {"volume": amixer_volume}
     }
-
 
 class AudioServer:
     """Encapsulates the FastAPI app and its routes for the audio control service."""
@@ -217,13 +223,13 @@ class AudioServer:
             return PlainTextResponse("error", status_code=500)
 
     async def audio_toggle(self, background_tasks: BackgroundTasks, request: Request):
-        logger.info(request.headers)
-        background_tasks.add_task(_run_in_background, toggle, self.audio_config)
+        button_battery_level = request.headers.get('button-battery-level', None)
+        background_tasks.add_task(run_in_background, toggle, self.audio_config, { "button_battery_level": button_battery_level })
         return Response(content="Toggling audio\n", status_code=202, media_type="text/plain")
 
     async def audio_stop(self, background_tasks: BackgroundTasks, request: Request):
-        logger.info(request.headers)
-        background_tasks.add_task(_run_in_background, stop, self.audio_config)
+        button_battery_level = request.headers.get('button-battery-level', None)
+        background_tasks.add_task(run_in_background, stop, self.audio_config, { "button_battery_level": button_battery_level })
         return Response(content="Stopping audio\n", status_code=202, media_type="text/plain")
 
 
