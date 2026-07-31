@@ -6,11 +6,12 @@ import re
 import socket
 import subprocess
 import argparse
+import requests
 from pathlib import Path
 from contextlib import contextmanager
 
 import uvicorn
-from fastapi import FastAPI, BackgroundTasks, Response
+from fastapi import FastAPI, BackgroundTasks, Response, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from amixer_control import VolumeController
@@ -56,7 +57,8 @@ class Config(BaseSettings):
             "snapserver_url": self.snapserver_rpc_url,
             "client_id_file": self.snapclient_client_id_file,
             "home_assistant_url": self.home_assistant_url,
-            "home_assistant_player_entity": self.home_assistant_player_entity
+            "home_assistant_player_entity": self.home_assistant_player_entity,
+            "hostname" : socket.gethostname()
         }
 
 def toggle(audio_config):
@@ -116,6 +118,25 @@ def pause_music_assistant_player(audio_config):
     except Exception:
         logger.exception("Error toggling pause/play Music Assistant player")
 
+
+def report_battery_level(audio_config):
+    url = f"{audio_config["home_assistant_url"]}/api/webhook/{audio_config["hostname"]}-flic-button-battery-level"
+    try:
+        response = requests.post(
+            url,
+            json={"value": 82},
+            timeout=10,
+        )
+
+        if not response.ok:
+            logger.error(
+                "Failed to update battery level: HTTP %s - %s",
+                response.status_code,
+                response.text,
+            )
+
+    except requests.RequestException:
+        logger.exception("Error sending battery level update")
 
 @contextmanager
 def muted_alsa():
@@ -195,11 +216,13 @@ class AudioServer:
             logger.exception("Error getting status")
             return PlainTextResponse("error", status_code=500)
 
-    async def audio_toggle(self, background_tasks: BackgroundTasks):
+    async def audio_toggle(self, background_tasks: BackgroundTasks, request: Request):
+        logger.info(request.headers)
         background_tasks.add_task(_run_in_background, toggle, self.audio_config)
         return Response(content="Toggling audio\n", status_code=202, media_type="text/plain")
 
-    async def audio_stop(self, background_tasks: BackgroundTasks):
+    async def audio_stop(self, background_tasks: BackgroundTasks, request: Request):
+        logger.info(request.headers)
         background_tasks.add_task(_run_in_background, stop, self.audio_config)
         return Response(content="Stopping audio\n", status_code=202, media_type="text/plain")
 
