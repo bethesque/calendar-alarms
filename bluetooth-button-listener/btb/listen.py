@@ -37,20 +37,27 @@ TELEMETRY_LOG_LOCKOUT = 60  # seconds
 last_telemetry_log_time = 0
 
 SHELLY_BLU1_OBJECT_ID = 0x3A  # BTHome object ID for Shelly BLU1 button event
+PACKET_ID = 0x00
+BATTERY_LEVEL_ID = 0x01
 
 # BTHome v2 object id -> value byte-length, per bthome.io/format and Shelly's
 # own BLU decoder scripts. Extend this if new object ids show up in logs.
-BTHOME_OBJECT_LENGTHS = {
-    0x00: 1,  # packet id (pid)
-    0x01: 1,  # battery %
-    0x02: 2,  # temperature (int16)
-    0x03: 2,  # humidity (uint16)
-    0x05: 3,  # illuminance (uint24)
-    0x21: 1,  # motion
-    0x2d: 1,  # window
-    0x2e: 1,  # humidity (uint8 variant)
-    SHELLY_BLU1_OBJECT_ID: 1,  # button event
-}
+
+@dataclass(frozen=True)
+class ShellyObject:
+    id: int
+    name: str
+    length: int
+
+OBJECTS = [
+    ShellyObject(PACKET_ID, "packet_id", 1),
+    ShellyObject(BATTERY_LEVEL_ID, "battery", 1),
+    ShellyObject(0xf0, "device_type_id", 2),
+    ShellyObject(0xf1, "firmware_version", 4),
+    ShellyObject(SHELLY_BLU1_OBJECT_ID, "event", 1),
+]
+
+BTHOME_OBJECT_LENGTHS = {obj.id: obj for obj in OBJECTS}
 
 @dataclass(frozen=True)
 class Configuration:
@@ -78,13 +85,14 @@ def parse_bthome(payload):
     i = 1  # byte 0 is the BTHome device-info byte, not an object
     while i < len(payload):
         obj_id = payload[i]
-        length = BTHOME_OBJECT_LENGTHS.get(obj_id)
-        if length is None:
+        shelly_object = BTHOME_OBJECT_LENGTHS.get(obj_id)
+        if shelly_object is None:
             logging.debug(
                 f"Unrecognised object id {obj_id:#x} at offset {i}, "
                 f"stopping parse of payload: {payload.hex()}"
             )
             return
+        length = shelly_object.length
         value = payload[i + 1: i + 1 + length]
         if len(value) < length:
             logging.debug(
@@ -92,7 +100,7 @@ def parse_bthome(payload):
                 f"payload: {payload.hex()}"
             )
             return
-        yield obj_id, value
+        yield shelly_object.name, value
         i += 1 + length
 
 
@@ -110,15 +118,17 @@ def extract_button_event(payload):
     against raw payload bytes without needing to fake bleak's
     device/advertisement_data objects.
     """
-    battery = None
-    event = None
-    for obj_id, value in parse_bthome(payload):
-        if obj_id == 0x01:
-            battery = value[0]
-        elif obj_id == SHELLY_BLU1_OBJECT_ID:
-            event = value[0]
-    return {"battery": battery, "event": event}
 
+    fields = {
+        "event": None,
+        "battery": None,
+        "packet_id": None
+    }
+
+    for obj_id, value in parse_bthome(payload):
+        fields[obj_id] = value[0]
+
+    return fields
 
 def trigger(event, endpoints):
     url = endpoints.get(event)

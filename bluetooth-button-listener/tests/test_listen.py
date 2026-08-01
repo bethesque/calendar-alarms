@@ -141,7 +141,7 @@ def test_multiple_button_objects_last_one_wins():
     # whole payload rather than stopping at the first match.
     payload = h("4400" + "9c" + "3a01" + "3a02")
     objs = list(parse_bthome(payload))
-    button_events = [v[0] for oid, v in objs if oid == 0x3A]
+    button_events = [v[0] for oid, v in objs if oid == "event"]
     assert button_events == [1, 2]
 
 
@@ -290,7 +290,7 @@ def test_real_click_still_triggers_not_logged_as_telemetry(caplog, monkeypatch):
 #   python3 test_bluetooth_button_listener.py --replay captured.jsonl
 # ---------------------------------------------------------------------------
 def replay(path):
-    print(f"{'timestamp':<20} {'mac':<18} {'battery':<8} {'event':<6} payload")
+    print(f"{'timestamp':<20} {'mac':<18} {'battery':<8} {'packet_id':<6} {'event':<6} payload")
     print("-" * 90)
     with open(path) as f:
         for line in f:
@@ -305,8 +305,13 @@ def replay(path):
                 f"{entry['mac']:<18} "
                 f"{str(result['battery']):<8} "
                 f"{str(result['event']):<6} "
+                f"{str(result.get('packet_id')):<6} "
                 f"{entry['payload_hex']}"
             )
+
+            #result = {obj_id: value[0] for obj_id, value in parse_bthome(payload)}
+            #print(result)
+
 
 
 if __name__ == "__main__":
