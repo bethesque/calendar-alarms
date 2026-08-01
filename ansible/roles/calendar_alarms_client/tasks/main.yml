@@ -65,6 +65,7 @@
   ansible.builtin.shell: |
     amixer set Speaker 15
     speaker-test -c 2 -t wav -l 1
+    amixer set Speaker {{ default_amixer_volume }}
   changed_when: false
   tags:
     - audio
