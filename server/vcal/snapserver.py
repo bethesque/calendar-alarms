@@ -20,8 +20,6 @@ class Client:
     def name(self) -> str:
         return self.config_name or self.host_name
 
-
-
 class Snapserver:
     def __init__(self, base_url: str):
         self.base_url = base_url.rstrip("/")
