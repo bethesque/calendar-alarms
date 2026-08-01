@@ -27,11 +27,12 @@ Two ways to use this file:
 
 import sys
 import json
+import socket
 
 import pytest
 
 import btb.listen as bbl
-from btb.listen import extract_button_event, parse_bthome, callback, DEFAULT_SERVICE_UUID
+from btb.listen import extract_button_event, parse_bthome, callback, DEFAULT_SERVICE_UUID, Configuration
 
 
 class FakeDevice:
@@ -147,6 +148,15 @@ def test_multiple_button_objects_last_one_wins():
 MAC = "AA:BB:CC:DD:EE:FF"
 SERVICE_UUID = DEFAULT_SERVICE_UUID
 ENDPOINTS = {1: "http://example/single", 2: "http://example/double", 4: "http://example/long"}
+HASS_URL = "http://homeassistant.local"
+
+CONFIG = Configuration(
+    service_uuid=SERVICE_UUID,
+    endpoints=ENDPOINTS,
+    hass_url=HASS_URL,
+    button_mac_address=MAC,
+    capture_path=None
+)
 
 
 @pytest.fixture(autouse=True)
@@ -165,30 +175,77 @@ def make_advertisement(payload_hex, rssi=-60):
     return FakeAdvertisementData(service_data={SERVICE_UUID: h(payload_hex)}, rssi=rssi)
 
 
-def test_telemetry_only_payload_logs_battery(caplog):
+def test_telemetry_only_payload_logs_battery(caplog, monkeypatch):
     # A real payload from the logs: no button object, battery = 100%
     device = FakeDevice(MAC, "SBBT-002C")
     ad = make_advertisement("44009c0164f00102f100120001")
 
+    calls = []
+    monkeypatch.setattr(
+        bbl, "requests",
+        type(
+            "FakeRequests",
+            (),
+            {
+                "RequestException": Exception,
+                "post": staticmethod(lambda *a, **k: calls.append((a, k)) or type("R", (), {"status_code": 200})())
+            })()
+    )
+
     with caplog.at_level("INFO"):
-        callback(MAC, SERVICE_UUID, ENDPOINTS, None, device, ad)
+        callback(CONFIG, device, ad)
 
     assert any(
         "Telemetry" in rec.message and "Battery: 100%" in rec.message
         for rec in caplog.records
     )
 
-
-def test_telemetry_logging_is_rate_limited(caplog):
+def test_telemetry_only_payload_reports_battery_level(caplog, monkeypatch):
+    # A real payload from the logs: no button object, battery = 100%
     device = FakeDevice(MAC, "SBBT-002C")
     ad = make_advertisement("44009c0164f00102f100120001")
 
+    calls = []
+    monkeypatch.setattr(
+        bbl, "requests",
+        type(
+            "FakeRequests",
+            (),
+            {
+                "RequestException": Exception,
+                "post": staticmethod(lambda *a, **k: calls.append((a, k)) or type("R", (), {"status_code": 200})())
+            })()
+    )
+
+    callback(CONFIG, device, ad)
+
+    assert len(calls) == 1
+    assert calls[0][0][0] == f"http://homeassistant.local/api/webhook/{socket.gethostname()}-shelly-button-battery-level"
+    assert calls[0][1]["json"] == { "value": 100.0 }
+
+
+def test_telemetry_logging_is_rate_limited(caplog, monkeypatch):
+    device = FakeDevice(MAC, "SBBT-002C")
+    ad = make_advertisement("44009c0164f00102f100120001")
+
+    calls = []
+    monkeypatch.setattr(
+        bbl, "requests",
+        type(
+            "FakeRequests",
+            (),
+            {
+                "RequestException": Exception,
+                "post": staticmethod(lambda *a, **k: calls.append((a, k)) or type("R", (), {"status_code": 200})())
+            })()
+    )
+
     with caplog.at_level("INFO"):
-        callback(MAC, SERVICE_UUID, ENDPOINTS, None, device, ad)
+        callback(CONFIG, device, ad)
         caplog.clear()
         # Immediately repeat — simulates the ~30-packet burst seen in
         # real logs. Should NOT log again within TELEMETRY_LOG_LOCKOUT.
-        callback(MAC, SERVICE_UUID, ENDPOINTS, None, device, ad)
+        callback(CONFIG, device, ad)
 
     assert not any("Telemetry" in rec.message for rec in caplog.records)
 
@@ -199,7 +256,7 @@ def test_telemetry_without_battery_object_does_not_log(caplog):
     ad = make_advertisement("440005")
 
     with caplog.at_level("INFO"):
-        callback(MAC, SERVICE_UUID, ENDPOINTS, None, device, ad)
+        callback(CONFIG, device, ad)
 
     assert not any("Telemetry" in rec.message for rec in caplog.records)
 
@@ -217,7 +274,7 @@ def test_real_click_still_triggers_not_logged_as_telemetry(caplog, monkeypatch):
     )
 
     with caplog.at_level("INFO"):
-        callback(MAC, SERVICE_UUID, ENDPOINTS, None, device, ad)
+        callback(CONFIG, device, ad)
 
     messages = [rec.message for rec in caplog.records]
     assert any("Event: 1" in m for m in messages)

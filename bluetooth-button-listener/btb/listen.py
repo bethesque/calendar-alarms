@@ -5,8 +5,10 @@ import requests
 import argparse
 import os
 import json
+import socket
 from functools import partial
 import http.client
+from dataclasses import dataclass
 from bleak import BleakScanner
 
 # Configure app logging
@@ -50,6 +52,13 @@ BTHOME_OBJECT_LENGTHS = {
     SHELLY_BLU1_OBJECT_ID: 1,  # button event
 }
 
+@dataclass(frozen=True)
+class Configuration:
+    service_uuid: str | None
+    button_mac_address: str | None
+    endpoints: dict
+    capture_path: str | None
+    hass_url: str | None
 
 def parse_bthome(payload):
     """
@@ -140,12 +149,35 @@ def _capture_payload(path, device, advertisement_data, payload):
     except Exception:
         logging.exception(f"Failed to write payload capture to {path}")
 
+def _report_battery_level(level, hass_url):
+    try:
+        button_battery_level = float(level)
+        logging.info(f"Reporting battery level {button_battery_level} to Home Assistant")
+        url = f"{hass_url}/api/webhook/{socket.gethostname()}-shelly-button-battery-level"
+        try:
+            response = requests.post(
+                url,
+                json={ "value": button_battery_level },
+                timeout=10,
+            )
 
-def callback(button_mac, service_uuid, endpoints, capture_path, device, advertisement_data):
+            if not response.ok:
+                logging.error(
+                    "Failed to update battery level: HTTP %s - %s",
+                    response.status_code,
+                    response.text,
+                )
+
+        except requests.RequestException:
+            logging.exception("Error sending battery level update")
+    except (ValueError, TypeError):
+        logging.info(f"Button battery level '{level}' is not a number, not reporting to Home Assistant")
+
+def callback(config: Configuration, device, advertisement_data):
     global last_trigger_time, last_telemetry_log_time
 
     # 1. MAC address check — cheapest, filters out all other devices
-    if device.address != button_mac:
+    if device.address != config.button_mac_address:
         return
 
     # 2. Name sanity check
@@ -155,13 +187,13 @@ def callback(button_mac, service_uuid, endpoints, capture_path, device, advertis
 
     # 3. Service UUID check
     sd = advertisement_data.service_data
-    if service_uuid not in sd:
+    if config.service_uuid not in sd:
         return
 
-    payload = sd[service_uuid]
+    payload = sd[config.service_uuid]
 
-    if capture_path:
-        _capture_payload(capture_path, device, advertisement_data, payload)
+    if config.capture_path:
+        _capture_payload(config.capture_path, device, advertisement_data, payload)
 
     # 4. Validate payload length
     if len(payload) < 2:
@@ -189,6 +221,8 @@ def callback(button_mac, service_uuid, endpoints, capture_path, device, advertis
                 f"Telemetry from {device.address} ({device.name}) | "
                 f"RSSI: {advertisement_data.rssi} | Battery: {battery}%"
             )
+            if config.hass_url:
+                _report_battery_level(battery, config.hass_url)
         return
 
     # 6. Click lockout — a button object is present (either a real click
@@ -199,7 +233,7 @@ def callback(button_mac, service_uuid, endpoints, capture_path, device, advertis
         return
 
     # 8. Validate event value is one we recognise
-    if event not in endpoints:
+    if event not in config.endpoints:
         logging.warning(f"Unknown event value: {event}, ignoring")
         return
 
@@ -212,7 +246,7 @@ def callback(button_mac, service_uuid, endpoints, capture_path, device, advertis
         f"Battery: {battery} | "
         f"Event: {event}"
     )
-    trigger(event, endpoints)
+    trigger(event, config.endpoints)
 
 
 def parse_arguments():
@@ -250,38 +284,44 @@ def parse_arguments():
              "timestamp) so it can be fed into the test suite later.",
     )
 
+    parser.add_argument(
+        "--hass-url",
+        help="Home assistant URL"
+    )
+
     args = parser.parse_args()
 
-    service_uuid = args.service_uuid or os.getenv("SERVICE_UUID", DEFAULT_SERVICE_UUID)
-    button_mac_address = args.button_mac_address or os.getenv("BUTTON_MAC_ADDRESS")
-    capture_path = args.capture_payloads or os.getenv("CAPTURE_PAYLOADS")
-    endpoints = {
-        1: args.single_click_endpoint or os.getenv("SINGLE_CLICK_ENDPOINT"),
-        2: args.double_click_endpoint or os.getenv("DOUBLE_CLICK_ENDPOINT"),
-        4: args.long_click_endpoint or os.getenv("LONG_CLICK_ENDPOINT")
-    }
+    return Configuration(
+        service_uuid=args.service_uuid or os.getenv("SERVICE_UUID", DEFAULT_SERVICE_UUID),
+        button_mac_address = args.button_mac_address or os.getenv("BUTTON_MAC_ADDRESS"),
+        capture_path = args.capture_payloads or os.getenv("CAPTURE_PAYLOADS"),
+        hass_url = args.hass_url or os.getenv("HASS_URL"),
+        endpoints = {
+            1: args.single_click_endpoint or os.getenv("SINGLE_CLICK_ENDPOINT"),
+            2: args.double_click_endpoint or os.getenv("DOUBLE_CLICK_ENDPOINT"),
+            4: args.long_click_endpoint or os.getenv("LONG_CLICK_ENDPOINT")
+        }
+    )
 
-    return (service_uuid, button_mac_address, endpoints, capture_path)
 
 
-def validate_arguments(button_mac_address, endpoints):
-    if button_mac_address is None:
+def validate_arguments(config: Configuration):
+    if config.button_mac_address is None:
         print("Must provide --button-mac-address or env BUTTON_MAC_ADDRESS")
         exit(1)
 
-    if all(value is None for value in endpoints.values()):
+    if all(value is None for value in config.endpoints.values()):
         print("A --single-click-endpoint or env SINGLE_CLICK_ENDPOINT, --double-click--endpoint or DOUBLE_CLICK_ENDPOINT, or --long-click-endpoint or LONG_CLICK_ENDPOINT is required")
         exit(1)
 
-
 async def main():
-    service_uuid, button_mac_address, endpoints, capture_path = parse_arguments()
-    validate_arguments(button_mac_address, endpoints)
+    config = parse_arguments()
+    validate_arguments(config)
 
-    callback_partial = partial(callback, button_mac_address, service_uuid, endpoints, capture_path)
-    logging.info(f"Listening for button {button_mac_address} with service {service_uuid}, endpoints: {endpoints}")
-    if capture_path:
-        logging.info(f"Capturing raw payloads to {capture_path}")
+    callback_partial = partial(callback, config)
+    logging.info(f"Listening for button {config.button_mac_address} with service {config.service_uuid}, endpoints: {config.endpoints}")
+    if config.capture_path:
+        logging.info(f"Capturing raw payloads to {config.capture_path}")
 
     scanner = BleakScanner(callback_partial)
     await scanner.start()
