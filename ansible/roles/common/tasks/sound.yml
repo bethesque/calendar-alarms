@@ -35,6 +35,12 @@
   ansible.builtin.debug:
     var: snapclient_soundcard_option
 
+- name: Calculate ALSA buffer_time from latency
+  ansible.builtin.set_fact:
+    alsa_buffer_time_us: "{{ (alsa_period_time_us | int) * 3 + 50000 }}"
+  tags:
+    - asound
+
 - name: Configure ALSA default to USB audio device (not travnas)
   ansible.builtin.template:
     src: asound.conf.j2
@@ -45,6 +51,7 @@
   when: inventory_hostname != "travnas"
   tags:
     - sample_rate
+    - asound
   notify:
     - restart calendar-alarms-snapclient service
     - restart music assistant service

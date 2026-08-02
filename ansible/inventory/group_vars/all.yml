@@ -23,3 +23,5 @@ calendar_alarms_https_port: 8443 # Only used for Google login
 calendar_alarms_server_url: "https://nas.dixon.net.au:{{ calendar_alarms_http_port }}"
 
 sample_rate: 44100
+alsa_period_time_us: 100000
+

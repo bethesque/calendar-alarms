@@ -11,8 +11,8 @@ pcm.usb_dmix {
         pcm "usb_hw"
         rate {{ sample_rate }}
         channels 2
-        period_time 125000
-        buffer_time 1000000
+        period_time {{ alsa_period_time_us }}
+        buffer_time {{ alsa_buffer_time_us }}
     }
 }
 pcm.usb {
