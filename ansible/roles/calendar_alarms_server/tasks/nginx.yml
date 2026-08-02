@@ -1,0 +1,33 @@
+- name: Deploy calendar-alarms nginx config
+  become: true
+  template:
+    src: calendar-alarms.conf.j2
+    dest: /etc/nginx/sites-available/calendar-alarms.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart nginx
+
+- name: Symlink calendar-alarms config to sites-enabled
+  become: true
+  file:
+    src: /etc/nginx/sites-available/calendar-alarms.conf
+    dest: /etc/nginx/sites-enabled/calendar-alarms.conf
+    state: link
+    force: yes
+
+- name: Create /etc/nginx/ssl directory (need to put certs in manually)
+  become: true
+  file:
+    path: /etc/nginx/ssl
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Enable nginx service
+  become: true
+  systemd:
+    name: nginx
+    enabled: yes
+    state: started
