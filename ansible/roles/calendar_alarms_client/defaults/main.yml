@@ -14,7 +14,6 @@ snapclient_arch: >-
     else ansible_facts['architecture']
   }}
 
-ca_snapclient_client_id_file: "/run/user/{{ ansible_user_uid }}/calendar-alarms-snapclient/client_id.txt"
 project_root: "/home/{{ snapclient_user }}/calendar-alarms"
 client_root: "{{ project_root }}/client"
 http_index_file: "{{ client_root }}/index.py"

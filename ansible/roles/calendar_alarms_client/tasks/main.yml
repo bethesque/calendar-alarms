@@ -29,12 +29,6 @@
     - snapclient
     - snapclient_service
 
-- name: Configure Snapclient Identification service
-  ansible.builtin.import_tasks: snapclient_identify.yml
-  tags:
-    - calendar_alarms
-    - snapclient
-
 - name: Install alsa-utils
   become: true
   ansible.builtin.package:
