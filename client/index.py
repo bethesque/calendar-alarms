@@ -15,7 +15,7 @@ from fastapi import FastAPI, BackgroundTasks, Response, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from amixer_control import VolumeController
-from snapserver import get_client_status, mute_client, is_client_playing
+from snapserver import get_client_status, mute_client, get_status
 from music_assistant import pause_player, toggle_pause_play
 
 from pydantic import Field
@@ -39,9 +39,9 @@ class Config(BaseSettings):
     host: str = Field(default="0.0.0.0")
     log_level: str = Field(default="info")
     snapserver_rpc_url: str | None
-    snapclient_client_id_file: str | None
     home_assistant_url: str | None
     home_assistant_player_entity: str | None
+    hostname: str = Field(default_factory=socket.gethostname)
 
     @property
     def uvicorn_kwargs(self) -> dict:
@@ -55,19 +55,16 @@ class Config(BaseSettings):
     def app_config(self) -> dict:
         return {
             "snapserver_url": self.snapserver_rpc_url,
-            "client_id_file": self.snapclient_client_id_file,
             "home_assistant_url": self.home_assistant_url,
             "home_assistant_player_entity": self.home_assistant_player_entity,
-            "hostname" : socket.gethostname()
+            "hostname" : self.hostname
         }
 
 def toggle(audio_config, params = None):
     with muted_alsa():
-        snapclient_id = Path(audio_config["client_id_file"]).read_text().strip() if Path(audio_config["client_id_file"]).exists() else None
-        is_snap_playing = _is_snapclient_playing(audio_config, snapclient_id)
-
+        is_snap_playing, client_id = _is_snapclient_playing(audio_config)
         if is_snap_playing:
-            _mute_snapclient(audio_config["snapserver_url"], snapclient_id)
+            _mute_snapclient(audio_config["snapserver_url"], client_id)
         else:
             _toggle_music_assistant_player(audio_config)
     _report_battery_level(audio_config, params)
@@ -75,8 +72,8 @@ def toggle(audio_config, params = None):
 
 def stop(audio_config, params = None):
     with muted_alsa():
-        snapclient_id = Path(audio_config["client_id_file"]).read_text().strip() if Path(audio_config["client_id_file"]).exists() else None
-        _mute_snapclient(audio_config["snapserver_url"], snapclient_id)
+        _, client_id = get_status(audio_config["snapserver_url"], audio_config["hostname"])
+        _mute_snapclient(audio_config, client_id)
         _pause_music_assistant_player(audio_config)
     _report_battery_level(audio_config, params)
 
@@ -106,26 +103,27 @@ def _report_battery_level(audio_config, params):
         logger.info(f"Button battery level '{params["button_battery_level"]}' from headers is not a number, not reporting to Home Assistant")
 
 
-def _is_snapclient_playing(audio_config, client_id):
+def _is_snapclient_playing(audio_config) -> tuple[bool, str | None]:
     is_snapclient_playing = False
-    if client_id:
-        try:
-            is_snapclient_playing = is_client_playing(audio_config["snapserver_url"], client_id)
-        except Exception:
-            logger.exception("Error checking if snapclient is playing")
-    else:
-        logger.warning(f"No client ID found in {audio_config["client_id_file"]}, cannot determine if snapclient is playing")
-    return is_snapclient_playing
+    client_id : str | None = None
+
+    try:
+        is_snapclient_playing, client_id = get_status(audio_config["snapserver_url"], audio_config["hostname"])
+    except Exception:
+        logger.exception("Error checking if snapclient is playing")
+
+    return is_snapclient_playing, client_id
+
 
 
 """
 For alarms/announcements, mute the snapclient rather than trying to stop the stream.
 The next alarm/announcement will set the volume back to 100%.
 """
-def _mute_snapclient(ca_snapserver_rpc_url, client_id):
-    logger.info(f"Snapclient {client_id} is playing, muting snapclient at {ca_snapserver_rpc_url}")
+def _mute_snapclient(audio_config, client_id):
+    logger.info(f"Muting snapclient at {audio_config["snapserver_url"]}")
     try:
-        mute_client(ca_snapserver_rpc_url, client_id)
+        mute_client(audio_config["snapserver_url"], client_id)
     except Exception:
         logger.exception("Error muting snapclient")
 

@@ -50,7 +50,7 @@ def get_client_status(ca_snapserver_rpc_url: str, name: str) -> dict:
 
     return {}
 
-def is_client_playing(ca_snapserver_rpc_url: str, client_id: str) -> bool:
+def get_status(ca_snapserver_rpc_url: str, name: str) -> tuple[bool, str]:
     """Return True if the Snapclient is currently playing."""
 
     payload = {
@@ -86,10 +86,10 @@ def is_client_playing(ca_snapserver_rpc_url: str, client_id: str) -> bool:
             continue
 
         for client in group["clients"]:
-            if client["id"] == client_id:
-                return stream.get("status") == "playing"
+            if client["config"].get("name", None) == name or client["host"].get("name", None) == name:
+                return stream.get("status") == "playing", client["id"]
 
-    raise ValueError(f"Client '{client_id}' not found")
+    raise ValueError(f"Client '{name}' not found")
 
 def mute_client(ca_snapserver_rpc_url, client_id):
     logger.info(f"Muting, ca_snapserver_rpc_url={ca_snapserver_rpc_url}, client_id={client_id}")
