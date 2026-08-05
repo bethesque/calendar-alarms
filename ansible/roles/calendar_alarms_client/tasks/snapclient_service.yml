@@ -31,16 +31,9 @@
     owner: "{{ snapclient_user }}"
     group: "{{ snapclient_user }}"
     mode: "0644"
-
-- name: Reload user systemd daemon
-  ansible.builtin.command: systemctl --user daemon-reload
-
-- name: Restart user snapclient service
-  ansible.builtin.systemd:
-    name: calendar-alarms-snapclient.service
-    scope: user
-    state: restarted
-    enabled: true
+  notify:
+    - reload user systemd daemon
+    - restart calendar-alarms-snapclient.service
 
 - name: Setup start/stop timers for officepi
   ansible.builtin.import_tasks: snapclient_officepi.yml

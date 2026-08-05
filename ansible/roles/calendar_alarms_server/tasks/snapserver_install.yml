@@ -22,6 +22,8 @@
 - name: Debug decision (optional)
   ansible.builtin.debug:
     msg: "Build required: {{ build_snapcast }} (installed={{ snapserver_installed_version | default('none') }})"
+  tags:
+    - install_snapserver
 
 - name: Install build dependencies
   ansible.builtin.apt:
@@ -48,13 +50,19 @@
     dest: "{{ snapcast_src_dir }}"
     version: "{{ snapcast_version }}"
     update: yes
+  become: yes
   when: build_snapcast
+  tags:
+    - install_snapserver
 
 - name: Ensure build directory exists
   ansible.builtin.file:
     path: "{{ snapcast_src_dir }}/build"
     state: directory
+  become: yes
   when: build_snapcast
+  tags:
+    - install_snapserver
 
 - name: Configure with cmake
   ansible.builtin.command:
@@ -62,16 +70,25 @@
     chdir: "{{ snapcast_src_dir }}/build"
   args:
     creates: "{{ snapcast_src_dir }}/build/Makefile"
+  become: yes
   when: build_snapcast
+  tags:
+    - install_snapserver
 
 - name: Build Snapcast
   ansible.builtin.command:
-    cmd: make -j{{ ansible_processor_vcpus | default(2) }}
+    cmd: make -j{{ ansible_facts['processor_vcpus'] | default(2) }}
     chdir: "{{ snapcast_src_dir }}/build"
+  become: yes
   when: build_snapcast
+  tags:
+    - install_snapserver
 
 - name: Install Snapcast
   ansible.builtin.command:
     cmd: make install
     chdir: "{{ snapcast_src_dir }}/build"
+  become: yes
   when: build_snapcast
+  tags:
+    - install_snapserver

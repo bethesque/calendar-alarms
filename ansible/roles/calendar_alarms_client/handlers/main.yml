@@ -1,3 +1,6 @@
+- name: reload user systemd daemon
+  ansible.builtin.command: systemctl --user daemon-reload
+
 - name: restart snapclient
   systemd:
     name: snapclient
@@ -8,3 +11,10 @@
     name: audio-client-http
     scope: user
     state: restarted
+
+- name: restart calendar-alarms-snapclient.service
+  ansible.builtin.systemd:
+    name: calendar-alarms-snapclient.service
+    scope: user
+    state: restarted
+    enabled: true

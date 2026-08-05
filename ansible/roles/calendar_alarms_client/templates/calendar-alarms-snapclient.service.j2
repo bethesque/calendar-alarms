@@ -5,7 +5,7 @@ Wants=network-online.target time-sync.target
 
 [Service]
 ExecStartPre=/bin/sleep 2
-ExecStart={{ snapclient_path }} tcp://{{ ca_snapserver_host }}:{{ ca_snapserver_stream_port }} --hostID={{ ca_snapclient_host_id }} --instance 2 --soundcard usb
+ExecStart={{ snapclient_path }} tcp://{{ ca_snapserver_host }}:{{ ca_snapserver_stream_port }} --hostID={{ ca_snapclient_host_id }} --instance 2 --soundcard usb --player alsa:buffer_time={{ ca_snapclient_alsa_buffer_time }},fragments={{ ca_snapclient_alsa_fragments }}
 Restart=always
 RestartSec=5
 SyslogIdentifier=calendar-alarms-snapclient

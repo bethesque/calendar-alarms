@@ -24,4 +24,5 @@ calendar_alarms_server_url: "https://nas.dixon.net.au:{{ calendar_alarms_http_po
 
 sample_rate: 44100
 alsa_period_time_us: 100000
-
+ca_snapclient_alsa_buffer_time: 300
+ca_snapclient_alsa_fragments: 3
