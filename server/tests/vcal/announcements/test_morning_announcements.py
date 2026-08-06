@@ -31,7 +31,7 @@ def test_get_morning_announcements_text_includes_weather_and_facts(monkeypatch):
 
     # Provide a minimal settings object with needed attributes
     settings = Mock()
-    settings.enabled_prelude_options = []
+    settings.enabled_prelude_options = ["Prelude text."]
     settings.prelude_probability = 1.0
     settings.unused_facts = ["fact1"]
     settings.save = Mock()
@@ -50,5 +50,4 @@ def test_get_morning_announcements_text_includes_weather_and_facts(monkeypatch):
         "Selected fact",
         "Have a lovely day.",
     ]
-
     assert text == expected

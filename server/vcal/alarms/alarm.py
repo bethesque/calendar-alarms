@@ -2,14 +2,14 @@ import logging
 import glob
 import time
 from datetime import timedelta
-from vcal.cal.google_calendar import EventNotification, NotificationType
+from vcal.cal.google_calendar import EventNotification, NotificationType, CalendarSource
 from vcal.alarms.sound import build_alarm_audio, join_mp3s_to_wav
 from vcal.alarms.text_to_voice import text_to_voice_file
 from vcal.alarms.mpd import fade_up, fade_out, mpd_connection
 from vcal.select_item import select_item_by_date
 from vcal.alarms import ALARMS_DIRECTORY, AUDIO_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
 from vcal.alarms.sound import track_length
-from vcal.scene import SceneProtocol
+from vcal.scene import SceneProtocol, Scene
 from vcal.settings import SnapcastSettings, MpdSettings, GoogleCalendarSettings
 from vcal.announcements.snapcast import SnapserverManager
 
@@ -68,14 +68,39 @@ class NotificationFinder:
         logging.info("Total matched events: %d", len(results))
         return results
 
+class NotificationTextBuilder:
+    def __init__(self, event_notifications: list[EventNotification], base_time):
+        self.event_notifications = event_notifications
+        self.base_time = base_time
+
+    def build(self) -> list[str]:
+        return self._deduplicate_list([self._announcement_for_event(event) for event in self.event_notifications])
+
+    def _announcement_for_event(self, event_notification: EventNotification):
+        announcement: str
+        summary = event_notification.event.summary if event_notification.event.summary else "an event"
+        if event_notification.offset > 0:
+            announcement = f"It will be time for {summary} in {event_notification.offset} minutes"
+        else:
+            announcement = f"It's time for {summary}"
+
+        if event_notification.reminder:
+            announcement = announcement + ". " + event_notification.reminder
+
+        return announcement
+
+    def _deduplicate_list(self, items):
+        return list(dict.fromkeys(items))
+
 """
 Builds the alarm audio by using TTS to read out the event descriptions, and
 mixing in background alarm music.
 """
 class AlarmAudio:
-    def __init__(self, event_notifications: list[EventNotification], base_time):
-        self.event_notifications = event_notifications
+    def __init__(self, notification_texts: list[str], base_time):
+        self.notification_texts = notification_texts
         self.base_time = base_time
+
 
     def build_alarm_file(self):
         joined_announcement_file = OUTPUT_AUDIO_DIRECTORY + "/alarm.wav"
@@ -94,22 +119,12 @@ class AlarmAudio:
         return audio_file
 
     def _announcement_files_for_events(self):
-        return self._deduplicate_list([text_to_voice_file(self._announcement_for_event(event)) for event in self.event_notifications])
-
-    def _announcement_for_event(self, event_notification: EventNotification):
-        summary = event_notification.event.summary if event_notification.event.summary else "an event"
-        if event_notification.offset > 0:
-            return f"It will be time for {summary} in {event_notification.offset} minutes"
-        else:
-            return f"It's time for {summary}"
+        return [text_to_voice_file(text) for text in self.notification_texts]
 
     def _get_alarm_file(self):
         alarm_files = self._get_alarm_files()
         # New alarm every 14 days
         return select_item_by_date(sorted(alarm_files), self.base_time.date(), 14)
-
-    def _deduplicate_list(self, items):
-        return list(dict.fromkeys(items))
 
     def _get_alarm_files(self):
         # Get all mp3 files in the ALARMS_DIRECTORY
@@ -124,8 +139,8 @@ Builds the alarm audio by using TTS to read out the event descriptions, and
 mixing in background alarm music.
 """
 class AnnouncementAudio:
-    def __init__(self, event_notifications: list[EventNotification], base_time):
-        self.event_notifications = event_notifications
+    def __init__(self, notification_texts: list[str], base_time):
+        self.notification_texts = notification_texts
         self.base_time = base_time
 
     def build_announcement_file(self):
@@ -136,22 +151,12 @@ class AnnouncementAudio:
         return joined_announcement_file
 
     def _announcement_files_for_events(self):
-        return self._deduplicate_list([text_to_voice_file(self._announcement_for_event(event)) for event in self.event_notifications])
-
-    def _announcement_for_event(self, event_notification: EventNotification):
-        summary = event_notification.event.summary if event_notification.event.summary else "an event"
-        if event_notification.offset > 0:
-            return f"It will be time for {summary} in {event_notification.offset} minutes"
-        else:
-            return f"It's time for {summary}"
-
-    def _deduplicate_list(self, items):
-        return list(dict.fromkeys(items))
+        return [text_to_voice_file(text) for text in self.notification_texts]
 
     def preannouncement_bell(self):
         return AUDIO_DIRECTORY + "/preannounce_3.mp3"
 
-def play_notifications(announcements_file: str, alarms_file: str, scene: SceneProtocol):
+def play_notifications(announcements_file: str | None, alarms_file: str | None, scene: SceneProtocol):
     mpd_settings = MpdSettings()
     snapcast_settings = SnapcastSettings()
     snapserver_manager = SnapserverManager(snapcast_settings)
@@ -213,17 +218,57 @@ def stop_alarm(after_alarm_hook=None):
 
     after_alarm_hook() if after_alarm_hook else None
 
-def check_for_notifications(base_time, window, calendar_data, scene:SceneProtocol):
-    notification_rules = GoogleCalendarSettings().notification_rules
+def test_alarm():
+    from datetime import datetime
+    date_string = "2026-04-06T00:00:00+10:00"
+    base_time = datetime.fromisoformat("2026-04-06T00:00:00+10:00")
+
+    days = [
+        {
+            "date":  base_time.strftime("%Y-%m-%d"),
+            "date_time": date_string,
+            "timed_events": [
+                {
+                    "description": "#announce",
+                    "end_time": None,
+                    "owner": "Beth",
+                    "recurring": False,
+                    "start_time": date_string,
+                    "summary": "Testing the announcement"
+                },
+                {
+                    "description": "#alarm",
+                    "end_time": None,
+                    "owner": "Beth",
+                    "recurring": False,
+                    "start_time": date_string,
+                    "summary": "Testing the alarm"
+                },
+            ],
+            "whole_day_events": []
+        }
+    ]
+
+    calendar_data = CalendarSource(cache_file_path="").load_data_from_any(days)
+
+    check_for_notifications(base_time, 5, calendar_data, Scene())
+
+
+def check_for_notifications(base_time, window, calendar_data, scene:SceneProtocol, google_calendar_settings: GoogleCalendarSettings = GoogleCalendarSettings()):
+    notification_rules = google_calendar_settings.notification_rules
     alarm_finder = NotificationFinder(calendar_data, base_time, window, notification_rules)
     event_notifications = alarm_finder.find_notification_events()
 
     if event_notifications:
         # Separate alarm and announcement notifications
-        alarm_event_notifications = [event for event in event_notifications if event.type == NotificationType.ALARM]
         announcement_event_notifications = [event for event in event_notifications if event.type == NotificationType.ANNOUNCE]
+        alarm_event_notifications = [event for event in event_notifications if event.type == NotificationType.ALARM]
 
-        alarm_audio_file = AlarmAudio(alarm_event_notifications, base_time).build_alarm_file() if alarm_event_notifications else None
-        announcements_file = AnnouncementAudio(announcement_event_notifications, base_time).build_announcement_file() if announcement_event_notifications else None
+        announcement_texts = NotificationTextBuilder(announcement_event_notifications, base_time).build()
+        alarm_texts = NotificationTextBuilder(alarm_event_notifications, base_time).build()
+
+        announcements_file = AnnouncementAudio(announcement_texts, base_time).build_announcement_file() if announcement_event_notifications else None
+        alarm_audio_file = AlarmAudio(alarm_texts, base_time).build_alarm_file() if alarm_event_notifications else None
+
         play_notifications(announcements_file, alarm_audio_file, scene)
 

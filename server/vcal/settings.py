@@ -110,6 +110,7 @@ class NotificationRule(BaseModel):
     owner: str | None = Field(default=None, description="The event owner that must match for the rule to apply")
     notification_type: Literal["alarm", "announce"] = Field(default="alarm", description="The notification type: alarm or announce")
     offset_minutes: int = Field(default=0, ge=0, description="Minutes before the event start")
+    reminder: str | None = None
 
 class GoogleCalendarSettings(YAMLSettings):
     scope: str = Field(default="https://www.googleapis.com/auth/calendar.readonly", description="Permissions scope")

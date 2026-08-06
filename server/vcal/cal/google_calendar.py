@@ -39,12 +39,20 @@ class EventNotification:
     type: NotificationType
     offset: int
     notification_time: datetime.datetime = field(init=False)
+    reminder: str | None = None
 
     def __post_init__(self):
         self.notification_time = self.event.start_time - datetime.timedelta(minutes=self.offset)
 
+    def same_excluding_reminder(self, other: "EventNotification") -> bool:
+        return (
+            self.event == other.event
+            and self.type == other.type
+            and self.offset == other.offset
+            and self.notification_time == other.notification_time
+        )
 
-def notifications_from_description_rules(event: "Event", rules: list[NotificationRule]) -> list[EventNotification]:
+def notifications_from_rules(event: "Event", rules: list[NotificationRule]) -> list[EventNotification]:
     notifications: list[EventNotification] = []
     if not event.start_time or not event.summary:
         return notifications
@@ -61,6 +69,7 @@ def notifications_from_description_rules(event: "Event", rules: list[Notificatio
                 event=event,
                 type=NotificationType[rule.notification_type.upper()],
                 offset=rule.offset_minutes,
+                reminder=rule.reminder
             ))
     return notifications
 
@@ -75,6 +84,12 @@ class Event:
 
     def notifications(self, rules: list[NotificationRule] | None = None) -> list[EventNotification]:
         notifications = []
+
+        # Add the notifications from rules first because they have reminders, and will be used in preference
+        # to notifications sourced from the description if there is a duplicate.
+        if rules:
+            notifications.extend(notifications_from_rules(self, rules))
+
         if self.description and self.start_time:
             matches = re.findall(r"#(alarm|announce)(\d+)?", self.description)
             if matches:
@@ -84,12 +99,9 @@ class Event:
                     offset_int = int(offset) if offset else 0
                     notifications.append(EventNotification(type=type_enum, offset=offset_int, event=self))
 
-        if rules:
-            notifications.extend(notifications_from_description_rules(self, rules))
-
         deduplicated_notifications = []
         for notification in notifications:
-            if any(existing == notification for existing in deduplicated_notifications):
+            if any(existing.same_excluding_reminder(notification) for existing in deduplicated_notifications):
                 continue
             deduplicated_notifications.append(notification)
 

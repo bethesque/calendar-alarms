@@ -252,6 +252,7 @@ def test_notifications_deduplicate_matching_tag_and_rule_notifications():
         pattern="gym",
         notification_type="alarm",
         offset_minutes=20,
+        reminder="Remember to eat."
     )
 
     notifications = event.notifications([rule])
@@ -259,6 +260,7 @@ def test_notifications_deduplicate_matching_tag_and_rule_notifications():
     assert len(notifications) == 1
     assert notifications[0].type == NotificationType.ALARM
     assert notifications[0].offset == 20
+    assert notifications[0].reminder == "Remember to eat."
 
 
 def test_notifications_description_rules_require_matching_owner():
