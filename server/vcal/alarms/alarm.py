@@ -1,5 +1,7 @@
 import logging
 import glob
+from pathlib import Path
+import re
 import time
 from datetime import timedelta
 from vcal.cal.google_calendar import EventNotification, NotificationType, CalendarSource
@@ -68,10 +70,19 @@ class NotificationFinder:
         logging.info("Total matched events: %d", len(results))
         return results
 
+class VerbIdentifier:
+    def __init__(self, verb_file: str):
+        with open(verb_file, encoding="utf-8") as f:
+            self.verbs = set({line.strip() for line in f if line.strip()})
+
+    def is_verb(self, word: str):
+        return word.lower() in self.verbs
+
 class NotificationTextBuilder:
     def __init__(self, event_notifications: list[EventNotification], base_time):
         self.event_notifications = event_notifications
         self.base_time = base_time
+        self.verb_identifier = VerbIdentifier(str(Path(__file__).resolve().parent.joinpath("verbs.txt")))
 
     def build(self) -> list[str]:
         return self._deduplicate_list([self._announcement_for_event(event) for event in self.event_notifications])
@@ -80,14 +91,19 @@ class NotificationTextBuilder:
         announcement: str
         summary = event_notification.event.summary if event_notification.event.summary else "an event"
         if event_notification.offset > 0:
-            announcement = f"It will be time for {summary} in {event_notification.offset} minutes"
+            announcement = f"It will be time {self.to_or_for(summary)} {summary} in {event_notification.offset} minutes"
         else:
-            announcement = f"It's time for {summary}"
+            announcement = f"It's time {self.to_or_for(summary)} {summary}"
 
         if event_notification.reminder:
             announcement = announcement + ". " + event_notification.reminder
 
         return announcement
+
+    def to_or_for(self, event_summary):
+        first_word = re.sub(r"[^\w]", "", event_summary.split()[0]).lower()
+        return "to" if self.verb_identifier.is_verb(first_word) else "for"
+
 
     def _deduplicate_list(self, items):
         return list(dict.fromkeys(items))
