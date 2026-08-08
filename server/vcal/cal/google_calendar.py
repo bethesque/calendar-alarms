@@ -273,6 +273,9 @@ def get_calendars(creds, filter):
 def load_data_from_file(file_path: str) -> list[CalendarDay]:
     with open(file_path, "r") as f:
         days = json.load(f)
+        return load_data_from_any(days)
+
+def load_data_from_any(days: Any) -> list[CalendarDay]:
         calendar_days = []
         for day in days:
             whole_day_events = [load_event(event) for event in day["whole_day_events"]]
@@ -328,6 +331,10 @@ class CalendarSource:
 
     def load_data_from_file(self) -> list[CalendarDay]:
         self.calendar_days = load_data_from_file(self.cache_file_path)
+        return self.calendar_days
+
+    def load_data_from_any(self, any: Any) -> list[CalendarDay]:
+        self.calendar_days = load_data_from_any(any)
         return self.calendar_days
 
     def save_data_to_file(self):

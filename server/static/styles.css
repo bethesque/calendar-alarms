@@ -73,7 +73,7 @@ a:active {
 }
 
 button {
-    background-color: #e74c3c;
+    background-color: darkgrey;
     color: white;
     border: none;
     padding: 12px 20px;
@@ -84,6 +84,14 @@ button {
 }
 
 button:hover {
+    background-color: rgb(120, 120, 120);
+}
+
+button.stop {
+    background-color: #e74c3c;
+}
+
+button.stop:hover {
     background-color: #c0392b;
 }
 

@@ -286,20 +286,12 @@ def test_alarm():
             "date_time": date_string,
             "timed_events": [
                 {
-                    "description": "#announce",
-                    "end_time": None,
-                    "owner": "Beth",
-                    "recurring": False,
-                    "start_time": date_string,
-                    "summary": "Testing the announcement"
-                },
-                {
                     "description": "#alarm",
                     "end_time": None,
                     "owner": "Beth",
                     "recurring": False,
                     "start_time": date_string,
-                    "summary": "Testing the alarm"
+                    "summary": "test the alarm"
                 },
             ],
             "whole_day_events": []

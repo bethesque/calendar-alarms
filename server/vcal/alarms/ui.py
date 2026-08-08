@@ -1,9 +1,12 @@
+import logging
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 import threading
 from vcal.scene import Scene
-from vcal.alarms.alarm import stop_alarm
+from vcal.alarms.alarm import stop_alarm, test_alarm
 from queue import Queue
+
+logger = logging.getLogger(__name__)
 
 class AlarmHandler:
     def __init__(self):
@@ -38,6 +41,10 @@ class AlarmHandler:
                 self._pending = False
             return "Alarm currently being stopped"
 
+    def test_alarm(self) -> str:
+        threading.Thread(target=test_alarm, daemon=True).start()
+        return "Testing alarm..."
+
 class AlarmRoutes:
     def __init__(self):
         self.alarm_handler = AlarmHandler()
@@ -59,8 +66,33 @@ class AlarmRoutes:
             name="alarm_stop",
         )
 
+        self.router.add_api_route(
+            "/test",
+            self.test_alarm_endpoint,
+            methods=["POST"],
+            response_class=HTMLResponse,
+            name="alarm_test",
+        )
+
     async def alarm_page(self, request: Request):
         stop_url = request.url_for("alarm_stop")
+        test_url = request.url_for("alarm_test")
+
+        return self._alarm_form(None, request)
+
+    async def stop_alarm_endpoint(self, request: Request):
+        message = self.alarm_handler.stop_alarm()
+        return self._alarm_form(message, request)
+
+    async def test_alarm_endpoint(self, request: Request):
+        message = self.alarm_handler.test_alarm()
+        return self._alarm_form(message, request)
+
+    def _alarm_form(self, message: str | None, request: Request):
+        stop_url = request.url_for("alarm_stop")
+        test_url = request.url_for("alarm_test")
+
+        message_with_tags = f"<p>{message}</p>" if message else ""
 
         return f"""
         <html>
@@ -72,32 +104,14 @@ class AlarmRoutes:
             </head>
             <body>
                 <h1>Alarm Control</h1>
+                {message_with_tags}
                 <form method="post" action="{ stop_url }">
-                    <button type="submit">Stop Alarm</button>
+                    <button type="submit" class="stop">🔕 Stop Alarm</button>
+                </form>
+                <form method="post" action="{ test_url }" style="display:block; padding-top: 20px">
+                    <button type="submit">Test Alarm</button>
                 </form>
                 <a href="/">Home</a>
             </body>
         </html>
         """
-
-    async def stop_alarm_endpoint(self, request: Request):
-        message = self.alarm_handler.stop_alarm()
-        alarm_index_url = request.url_for("alarm_index")
-
-        return HTMLResponse(
-            f"""
-            <html>
-                <head>
-                    <meta name="viewport"
-                          content="width=device-width, initial-scale=1.0">
-                    <title>Alarm Control</title>
-                    <link rel="stylesheet" href="/static/styles.css">
-                </head>
-                <body>
-                    <h2>{message}</h2>
-                    <a href="{alarm_index_url}">Go back</a>
-                </body>
-            </html>
-            """,
-            status_code=202,
-        )
