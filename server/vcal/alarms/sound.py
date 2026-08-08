@@ -74,6 +74,43 @@ def build_alarm_audio(
                 text=True)
     logger.debug(f"FFmpeg output: {result.stderr}")
 
+def build_aggressive_alarm_audio(
+        announcement_file: str,
+        alarm_file: str,
+        output_file: str,
+        loops: int
+):
+    """
+        Join the alarm file and the announcement file, loop them
+        and save the file into output_file
+    """
+    #loops = num_loops(duration, announcement_file, alarm_file)
+
+    concat_inputs = "[0:a][1:a]" * loops
+    filter_complex = f"{concat_inputs}concat=n={loops * 2}:v=0:a=1[out]"
+
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-loglevel", "warning",
+        "-i", alarm_file,
+        "-i", announcement_file,
+        "-filter_complex", filter_complex,
+        "-map", "[out]",
+        output_file,
+    ]
+
+    logger.debug(f"Running FFmpeg command: {' '.join(cmd)}")
+
+    result = subprocess.run(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True)
+    logger.debug(f"FFmpeg output: {result.stderr}")
+
+
+
 def mix_announcement_audio(
     speech_file: str,
     music_file: str,
@@ -133,9 +170,9 @@ def mix_announcement_audio(
 
 
 def num_loops(max_length: float, *file_paths: str) -> int:
-        """Calculate the number of loops needed to play files for max_length seconds, rounding DOWN so that it is less than the max."""
-        total_length = sum(track_length(fp) for fp in file_paths)
-        return max(1, int(max_length // total_length))
+    """Calculate the number of loops needed to play files for max_length seconds, rounding DOWN so that it is less than the max."""
+    total_length = sum(track_length(fp) for fp in file_paths)
+    return max(1, int(max_length // total_length))
 
 """
 Length of the audio file in seconds.

@@ -1,6 +1,7 @@
 
 ALARM_FILE = "audio/alarm.mp3"
-ALARMS_DIRECTORY = "audio/alarms"
+GENTLE_ALARMS_DIRECTORY = "audio/alarms_gentle"
+AGGRESSIVE_ALARMS_DIRECTORY = "audio/alarms_aggressive"
 AUDIO_DIRECTORY = "audio"
 BACKGROUND_MUSIC_DIRECTORY = "audio/background_music"
 ANNOUNCEMENT_FILE = "audio/announcement.mp3"
