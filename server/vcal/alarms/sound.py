@@ -39,7 +39,7 @@ def build_alarm_audio(
         "[alarm][ann]amix=inputs=2:duration=longest:weights='1 1.2',"
 
         # ✅ 6) Fade in over 1 second
-        f"afade=t=in:st=0:d=1.5,afade=t=out:st={duration-5}:d=5,"
+        f"afade=t=in:st=0:d=1.5,afade=t=out:st={duration-2}:d=2,"
 
         # 7) Final limiter + trim
         f"alimiter=limit=0.9,atrim=duration={duration}"
@@ -84,7 +84,7 @@ def build_aggressive_alarm_audio(
         Join the alarm file and the announcement file, loop them
         and save the file into output_file
     """
-    #loops = num_loops(duration, announcement_file, alarm_file)
+
 
     concat_inputs = "[0:a][1:a]" * loops
     filter_complex = f"{concat_inputs}concat=n={loops * 2}:v=0:a=1[out]"

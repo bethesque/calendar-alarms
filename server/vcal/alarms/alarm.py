@@ -13,7 +13,7 @@ from vcal.select_item import select_item_by_date
 from vcal.alarms import GENTLE_ALARMS_DIRECTORY, AGGRESSIVE_ALARMS_DIRECTORY, AUDIO_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
 from vcal.alarms.sound import track_length
 from vcal.scene import SceneProtocol, Scene
-from vcal.settings import SnapcastSettings, MpdSettings, GoogleCalendarSettings
+from vcal.settings import AlarmSettings, SnapcastSettings, MpdSettings, NotificationSettings
 from vcal.announcements.snapcast import SnapserverManager
 
 logger = logging.getLogger(__name__)
@@ -117,9 +117,10 @@ Builds the alarm audio by using TTS to read out the event descriptions, and
 mixing in background alarm music.
 """
 class AlarmAudio:
-    def __init__(self, notification_texts: list[str], base_time):
+    def __init__(self, notification_texts: list[str], alarm_settings: AlarmSettings, base_time):
         self.notification_texts = notification_texts
         self.base_time = base_time
+        self.alarm_settings = alarm_settings
 
 
     def build_alarm_file(self):
@@ -134,24 +135,29 @@ class AlarmAudio:
             announcement_file=joined_announcement_file,
             alarm_file=alarm_file,
             output_file=gentle_audio_file,
-            duration=120
+            duration=self.alarm_settings.gentle_alarm_duration
         )
 
-        loud_noise_warning_file = text_to_voice_file("Warning - an aggressively loud noise is about to be played to get your attention.")
+        files_to_loop = [gentle_audio_file]
 
-        aggressive_audio_file = OUTPUT_AUDIO_DIRECTORY + "/alarm_aggressive.wav"
+        if self.alarm_settings.aggressive_alarm_loops > 0:
+            loud_noise_warning_file = text_to_voice_file("Warning - an aggressively loud noise is about to be played to get your attention.")
 
-        build_aggressive_alarm_audio(
-            announcement_file=joined_announcement_file,
-            alarm_file=self.get_aggressive_alarm_file(),
-            output_file=aggressive_audio_file,
-            loops=3
-        )
+            aggressive_audio_file = OUTPUT_AUDIO_DIRECTORY + "/alarm_aggressive.wav"
 
+            build_aggressive_alarm_audio(
+                announcement_file=joined_announcement_file,
+                alarm_file=self.get_aggressive_alarm_file(),
+                output_file=aggressive_audio_file,
+                loops=self.alarm_settings.aggressive_alarm_loops
+            )
+
+            files_to_loop.append(loud_noise_warning_file)
+            files_to_loop.append(SILENCE_HALF_SEC)
+            files_to_loop.append(aggressive_audio_file)
+
+        all_files = files_to_loop * self.alarm_settings.full_loops
         alarm_file = OUTPUT_AUDIO_DIRECTORY + "/alarm.wav"
-
-        files_to_loop = [gentle_audio_file, loud_noise_warning_file, SILENCE_HALF_SEC, aggressive_audio_file]
-        all_files = files_to_loop + files_to_loop
 
         join_mixed_files_to_wav(all_files, alarm_file)
 
@@ -305,8 +311,8 @@ def test_alarm():
     check_for_notifications(base_time, 5, calendar_data, Scene())
 
 
-def check_for_notifications(base_time, window, calendar_data, scene:SceneProtocol, google_calendar_settings: GoogleCalendarSettings = GoogleCalendarSettings()):
-    notification_rules = google_calendar_settings.notification_rules
+def check_for_notifications(base_time, window, calendar_data, scene:SceneProtocol, notification_settings: NotificationSettings = NotificationSettings()):
+    notification_rules = notification_settings.notification_rules
     alarm_finder = NotificationFinder(calendar_data, base_time, window, notification_rules)
     event_notifications = alarm_finder.find_notification_events()
 
@@ -319,7 +325,7 @@ def check_for_notifications(base_time, window, calendar_data, scene:SceneProtoco
         alarm_texts = NotificationTextBuilder(alarm_event_notifications, base_time).build()
 
         announcements_file = AnnouncementAudio(announcement_texts, base_time).build_announcement_file() if announcement_event_notifications else None
-        alarm_audio_file = AlarmAudio(alarm_texts, base_time).build_alarm_file() if alarm_event_notifications else None
+        alarm_audio_file = AlarmAudio(alarm_texts, notification_settings.alarms, base_time).build_alarm_file() if alarm_event_notifications else None
 
         play_notifications(announcements_file, alarm_audio_file, scene)
 

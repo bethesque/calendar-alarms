@@ -112,6 +112,19 @@ class NotificationRule(BaseModel):
     offset_minutes: int = Field(default=0, ge=0, description="Minutes before the event start")
     reminder: str | None = None
 
+class AlarmSettings(BaseSettings):
+    gentle_alarm_duration: int = Field(default=120, description="The number of seconds to play the gentle alarm", ge=0)
+    aggressive_alarm_loops: int = Field(default=1, description="The number of times to play the aggressive alarm. 0 to disable.", ge=0)
+    full_loops: int = Field(default=2, description="The number of times the gentle/aggressive alarm loops should be played", ge=1)
+
+class NotificationSettings(YAMLSettings):
+    notification_rules: list[NotificationRule] = Field(default_factory=list, description="Rules for creating notifications from event descriptions")
+    alarms: AlarmSettings = Field(default_factory=AlarmSettings)
+
+    model_config = SettingsConfigDict(
+        yaml_file="config/notifications.yaml"
+    )
+
 class GoogleCalendarSettings(YAMLSettings):
     scope: str = Field(default="https://www.googleapis.com/auth/calendar.readonly", description="Permissions scope")
     redirect_server: str = Field(description="The local server to which the redirect should be sent after authentication with Google")
@@ -200,6 +213,7 @@ class AppSettings(BaseSettings):
     morning_announcements_settings: MorningAnnouncementsSettings = Field(default_factory=MorningAnnouncementsSettings, description="Morning announcements settings")
     home_assistant_settings: HomeAssistantSettings = Field(default_factory=HomeAssistantSettings, description="Home Assistant settings")
     housie_talkie_settings: HousieTalkieSettings = Field(default_factory=HousieTalkieSettings, description="Housie Talkie settings")
+    notification_settings: NotificationSettings = Field(default_factory=NotificationSettings, description="Notification settings")
 
     def save(self) -> None:
         logger.info("Saving settings")
@@ -210,3 +224,4 @@ class AppSettings(BaseSettings):
         self.morning_announcements_settings.save()
         self.home_assistant_settings.save()
         self.housie_talkie_settings.save()
+        self.notification_settings.save()
