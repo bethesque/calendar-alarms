@@ -15,7 +15,7 @@ from fastapi import FastAPI, BackgroundTasks, Response, Request
 from fastapi.responses import JSONResponse, PlainTextResponse, FileResponse
 
 from amixer_control import VolumeController
-from snapserver import get_client_status, mute_client, get_status
+from snapserver import get_client_status, mute_client, get_playing_status
 from music_assistant import pause_player, toggle_pause_play
 
 from pydantic import Field
@@ -74,7 +74,7 @@ def toggle(audio_config, params = None):
 
 def stop(audio_config, params = None):
     with muted_alsa():
-        _, client_id = get_status(audio_config["snapserver_url"], audio_config["hostname"])
+        _, client_id = get_playing_status(audio_config["snapserver_url"], audio_config["hostname"])
         _mute_snapclient(audio_config, client_id)
         _pause_music_assistant_player(audio_config)
     _report_battery_level(audio_config, params)
@@ -110,7 +110,7 @@ def _is_snapclient_playing(audio_config) -> tuple[bool, str | None]:
     client_id : str | None = None
 
     try:
-        is_snapclient_playing, client_id = get_status(audio_config["snapserver_url"], audio_config["hostname"])
+        is_snapclient_playing, client_id = get_playing_status(audio_config["snapserver_url"], audio_config["hostname"])
     except Exception:
         logger.exception("Error checking if snapclient is playing")
 
@@ -123,7 +123,6 @@ For alarms/announcements, mute the snapclient rather than trying to stop the str
 The next alarm/announcement will set the volume back to 100%.
 """
 def _mute_snapclient(audio_config, client_id):
-    logger.info(f"Muting snapclient at {audio_config["snapserver_url"]}")
     try:
         mute_client(audio_config["snapserver_url"], client_id)
     except Exception:
@@ -185,7 +184,7 @@ def _get_status_body(audio_config: dict) -> dict:
     amixer_result = system(["amixer"])
     match = re.search(r'Front Left: Playback (\d+) \[(\d+%)\]', amixer_result)
     amixer_volume = f"{match.group(1)} ({match.group(2)})" if match else None
-    snapclient_status = get_client_status(audio_config["snapserver_url"], socket.gethostname())
+    snapclient_status = get_client_status(audio_config["snapserver_url"], audio_config["hostname"])
 
     return {
         "calendar-alarms-snapclient.service": {

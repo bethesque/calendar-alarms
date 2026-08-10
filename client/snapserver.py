@@ -33,6 +33,8 @@ def get_client_status(ca_snapserver_rpc_url: str, name: str) -> dict:
 
     status = data["result"]["server"]
 
+    matching_clients = []
+
     for group in status["groups"]:
         stream_id = group.get("stream_id")
 
@@ -46,11 +48,16 @@ def get_client_status(ca_snapserver_rpc_url: str, name: str) -> dict:
 
         for client in group["clients"]:
             if client["config"].get("name", None) == name or client["host"].get("name", None) == name:
-                return client
+                matching_clients.append(client)
 
-    return {}
+    if matching_clients:
+        return max(matching_clients, key=lambda c: (c["lastSeen"]["sec"], c["lastSeen"]["usec"]))
+    else:
+        return {}
 
-def get_status(ca_snapserver_rpc_url: str, name: str) -> tuple[bool, str]:
+
+
+def get_playing_status(snapserver_rpc_url: str, name: str) -> tuple[bool, str]:
     """Return True if the Snapclient is currently playing."""
 
     payload = {
@@ -60,7 +67,7 @@ def get_status(ca_snapserver_rpc_url: str, name: str) -> tuple[bool, str]:
     }
 
     request = urllib.request.Request(
-        ca_snapserver_rpc_url,
+        snapserver_rpc_url,
         data=json.dumps(payload).encode("utf-8"),
         headers={"Content-Type": "application/json"},
         method="POST",
@@ -74,6 +81,8 @@ def get_status(ca_snapserver_rpc_url: str, name: str) -> tuple[bool, str]:
 
     status = data["result"]["server"]
 
+    matching_clients = []
+
     for group in status["groups"]:
         stream_id = group.get("stream_id")
 
@@ -87,12 +96,18 @@ def get_status(ca_snapserver_rpc_url: str, name: str) -> tuple[bool, str]:
 
         for client in group["clients"]:
             if client["config"].get("name", None) == name or client["host"].get("name", None) == name:
-                return stream.get("status") == "playing", client["id"]
+                matching_clients.append(client | { "status": stream.get("status") })
 
-    raise ValueError(f"Client '{name}' not found")
+    if matching_clients:
+        client = max(matching_clients, key=lambda c: (c["lastSeen"]["sec"], c["lastSeen"]["usec"]))
+        return client["status"] == "playing", client["id"]
+    else:
+        raise ValueError(f"Client '{name}' not found")
 
-def mute_client(ca_snapserver_rpc_url, client_id):
-    logger.info(f"Muting, ca_snapserver_rpc_url={ca_snapserver_rpc_url}, client_id={client_id}")
+
+
+def mute_client(snapserver_rpc_url: str, client_id: str):
+    logger.info(f"Muting Snapclient {client_id} at {snapserver_rpc_url}")
     with mute_lock:
         try:
 
@@ -111,7 +126,7 @@ def mute_client(ca_snapserver_rpc_url, client_id):
             }
 
             req = Request(
-                ca_snapserver_rpc_url,
+                snapserver_rpc_url,
                 data=json.dumps(payload).encode("utf-8"),
                 headers={"Content-Type": "application/json"},
                 method="POST",
