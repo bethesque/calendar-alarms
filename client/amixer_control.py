@@ -8,13 +8,11 @@ import subprocess
 import threading
 import time
 
-
 SOCKET_PATH = "/tmp/volume_control.sock"
 
 # Configurable ramp settings
 RAMP_DURATION_SECONDS = 3
 RAMP_STEPS = 10
-
 
 logging.basicConfig(
     level=logging.INFO,

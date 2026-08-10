@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import threading
 import logging
 import http.client
@@ -7,12 +8,11 @@ import socket
 import subprocess
 import argparse
 import requests
-from pathlib import Path
 from contextlib import contextmanager
 
 import uvicorn
 from fastapi import FastAPI, BackgroundTasks, Response, Request
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, FileResponse
 
 from amixer_control import VolumeController
 from snapserver import get_client_status, mute_client, get_status
@@ -21,6 +21,8 @@ from music_assistant import pause_player, toggle_pause_play
 from pydantic import Field
 from pydantic_settings import BaseSettings
 import yaml
+
+STATIC_DIR = Path(__file__).parent / "static"
 
 http.client.HTTPConnection.debuglevel = int(os.getenv("HTTP_LOG_LEVEL", "0") or 0)  # 0: disabled, 1: enabled
 logger = logging.getLogger(__name__)
@@ -200,17 +202,35 @@ def _get_status_body(audio_config: dict) -> dict:
     }
 
 class AudioServer:
-    """Encapsulates the FastAPI app and its routes for the audio control service."""
-
     def __init__(self, audio_config: dict):
         self.audio_config = audio_config
         self.app = FastAPI()
+        self._operation_lock = threading.Lock()
         self._register_routes()
 
     def _register_routes(self):
         self.app.add_api_route("/audio/status", self.status, methods=["GET"])
         self.app.add_api_route("/audio/toggle", self.audio_toggle, methods=["POST"])
         self.app.add_api_route("/audio/stop", self.audio_stop, methods=["POST"])
+        self.app.add_api_route("/audio", self.control_page, methods=["GET"])
+
+
+    def _run_exclusive(self, background_tasks: BackgroundTasks, target, params):
+        """Try to claim the lock; if busy, signal the caller to reject the request."""
+        if not self._operation_lock.acquire(blocking=False):
+            return False
+
+        def _run_and_release():
+            try:
+                target(self.audio_config, params)
+            finally:
+                self._operation_lock.release()
+
+        background_tasks.add_task(lambda: threading.Thread(target=_run_and_release, daemon=True).start())
+        return True
+
+    async def control_page(self):
+        return FileResponse(STATIC_DIR / "index.html")
 
     async def status(self):
         try:
@@ -222,14 +242,17 @@ class AudioServer:
 
     async def audio_toggle(self, background_tasks: BackgroundTasks, request: Request):
         button_battery_level = request.headers.get('button-battery-level', None)
-        background_tasks.add_task(run_in_background, toggle, self.audio_config, { "button_battery_level": button_battery_level })
+        started = self._run_exclusive(background_tasks, toggle, {"button_battery_level": button_battery_level})
+        if not started:
+            return Response(content="Busy: another operation is in progress\n", status_code=409, media_type="text/plain")
         return Response(content="Toggling audio\n", status_code=202, media_type="text/plain")
 
     async def audio_stop(self, background_tasks: BackgroundTasks, request: Request):
         button_battery_level = request.headers.get('button-battery-level', None)
-        background_tasks.add_task(run_in_background, stop, self.audio_config, { "button_battery_level": button_battery_level })
+        started = self._run_exclusive(background_tasks, stop, {"button_battery_level": button_battery_level})
+        if not started:
+            return Response(content="Busy: another operation is in progress\n", status_code=409, media_type="text/plain")
         return Response(content="Stopping audio\n", status_code=202, media_type="text/plain")
-
 
 if __name__ == "__main__":
 
