@@ -11,8 +11,8 @@ import time
 SOCKET_PATH = "/tmp/volume_control.sock"
 
 # Configurable ramp settings
-RAMP_DURATION_SECONDS = 3
-RAMP_STEPS = 10
+RAMP_DURATION_SECONDS = 1
+RAMP_STEPS = 5
 
 logging.basicConfig(
     level=logging.INFO,
