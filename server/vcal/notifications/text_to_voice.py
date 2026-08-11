@@ -2,7 +2,6 @@ import os
 import logging
 from gtts import gTTS
 from vcal.string_utils import sanitise_filename
-from vcal.random_text import TextFileOptionsSource, select_text
 from vcal.env import CACHE_DIRECTORY, GOOGLE_TRANSLATE_LANG, DEFAULT_GOOGLE_TRANSLATE_TLD
 from vcal.notifications.sound import join_mp3s_to_wav
 
@@ -64,9 +63,7 @@ def get_file_path_for_text(text, tld, cache_directory=AUDIO_CACHE_DIR):
     return audio_file_path
 
 def gtts_tld():
-    # Randomly select a tld to keep things interesting.
-    tld = select_text(DEFAULT_GOOGLE_TRANSLATE_TLD, 1/5, TextFileOptionsSource(file_name="accent_tld_choices.txt"))
-    return tld if tld else DEFAULT_GOOGLE_TRANSLATE_TLD
+    return DEFAULT_GOOGLE_TRANSLATE_TLD
 
 if __name__ == "__main__":
     test_text = "This is a test event. Don't do anything."

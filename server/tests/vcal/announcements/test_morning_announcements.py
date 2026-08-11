@@ -25,7 +25,7 @@ def test_get_morning_announcements_text_includes_weather_and_facts(monkeypatch):
     events = [weather, e1, e2]
 
     monkeypatch.setattr(
-        "vcal.announcements.morning_announcements.select_option",
+        "vcal.morning_announcements.core.select_option",
         fake_select_option,
     )
 

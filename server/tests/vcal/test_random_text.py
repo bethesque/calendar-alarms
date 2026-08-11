@@ -3,7 +3,7 @@ import random
 import os
 from pathlib import Path
 
-from vcal.random_text import OptionsSource, TextFileOptionsSource, select_text
+from vcal.random_text import ListOptionsSource, select_text
 
 def write_file(path: Path, lines):
     os.makedirs(path.parent, exist_ok=True)
@@ -17,14 +17,11 @@ def read_file(path: Path):
 
 
 def test_returns_default_when_above_threshold(tmp_path, monkeypatch):
-    text_choices_file_name = "choices.txt"
     previously_chosen = tmp_path / "random_text_selection_history" / "choices_history.txt"
-
-    write_file(tmp_path / text_choices_file_name, ["A", "B", "C"])
 
     monkeypatch.setattr(random, "random", lambda: 0.6)
 
-    options_source = TextFileOptionsSource(file_name=text_choices_file_name, resources_directory=str(tmp_path))
+    options_source = ListOptionsSource("choices", ["A", "B", "C"])
 
     result = select_text(
         default_text="DEFAULT",
@@ -38,16 +35,13 @@ def test_returns_default_when_above_threshold(tmp_path, monkeypatch):
 
 
 def test_selects_and_appends_when_below_threshold(tmp_path, monkeypatch):
-    text_choices_file_name = "choices.txt"
     previously_chosen = tmp_path / "random_text_selection_history" / "choices_history.txt"
-
-    write_file(tmp_path / text_choices_file_name, ["A", "B", "C"])
 
     monkeypatch.setattr(random, "random", lambda: 0.1)
     # Always pick the first in the sequence, which should be "A"
     monkeypatch.setattr(random, "choice", lambda seq: seq[0])
 
-    options_source = TextFileOptionsSource(file_name=text_choices_file_name, resources_directory=str(tmp_path))
+    options_source = ListOptionsSource("choices", ["A", "B", "C"])
 
     result = select_text(
         default_text="DEFAULT",
@@ -64,14 +58,13 @@ def test_excludes_previously_chosen(tmp_path, monkeypatch):
     text_choices_file_name = "choices.txt"
     previously_chosen = tmp_path / "random_text_selection_history" / "choices_history.txt"
 
-    write_file(tmp_path / text_choices_file_name, ["A", "B", "C"])
     write_file(previously_chosen, ["A"])
 
     monkeypatch.setattr(random, "random", lambda: 0.2)
     # Always pick the first in the sequence, which should be "B" after "A" is excluded
     monkeypatch.setattr(random, "choice", lambda seq: seq[0])
 
-    options_source = TextFileOptionsSource(file_name=text_choices_file_name, resources_directory=str(tmp_path))
+    options_source = ListOptionsSource("choices", ["A", "B", "C"])
 
     result = select_text(
         default_text="DEFAULT",
@@ -89,14 +82,13 @@ def test_resets_when_all_used(tmp_path, monkeypatch):
     text_choices_file_name = "choices.txt"
     previously_chosen = tmp_path / "random_text_selection_history" / "choices_history.txt"
 
-    write_file(tmp_path / text_choices_file_name, ["A", "B"])
     write_file(previously_chosen, ["A", "B"])
 
     monkeypatch.setattr(random, "random", lambda: 0.2)
     # Always pick the first in the sequence, which should be "A" after reset
     monkeypatch.setattr(random, "choice", lambda seq: "A")
 
-    options_source = TextFileOptionsSource(file_name=text_choices_file_name, resources_directory=str(tmp_path))
+    options_source = ListOptionsSource("choices", ["A", "B"])
 
     result = select_text(
         default_text="DEFAULT",
@@ -127,7 +119,7 @@ def test_multiset_behavior(tmp_path, monkeypatch):
 
     monkeypatch.setattr(random, "choice", fake_choice)
 
-    options_source = TextFileOptionsSource(file_name=text_choices_file_name, resources_directory=str(tmp_path))
+    options_source = ListOptionsSource("choices", ["A", "A", "B"])
 
     select_text(
         default_text="DEFAULT",
@@ -149,7 +141,7 @@ def test_missing_previously_chosen_file(tmp_path, monkeypatch):
     monkeypatch.setattr(random, "random", lambda: 0.2)
     monkeypatch.setattr(random, "choice", lambda seq: "X")
 
-    options_source = TextFileOptionsSource(file_name=text_choices_file_name, resources_directory=str(tmp_path))
+    options_source = ListOptionsSource("choices", ["X"])
 
     result = select_text(
         default_text="DEFAULT",

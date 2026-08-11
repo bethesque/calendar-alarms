@@ -36,27 +36,6 @@ class ListOptionsSource:
     def __str__(self):
         return f"{self.name}"
 
-class TextFileOptionsSource:
-    def __init__(self, file_name: str, resources_directory=RESOURCES_DIRECTORY):
-        self.file_name = file_name
-        self.resources_directory = resources_directory
-        self.text_options_full_path = os.path.join(self.resources_directory, self.file_name)
-        self.name = os.path.splitext(self.file_name)[0]
-
-    def get_options(self) -> list[str]:
-        if not os.path.exists(self.text_options_full_path):
-            logger.warning(f"{self.text_options_full_path} file not found. Cannot provide options for random choice. Returning empty list.")
-            return []
-        with open(self.text_options_full_path, "r", encoding="utf-8") as fa:
-            return [line.rstrip("\n") for line in fa]
-
-    def get_name(self) -> str:
-        return self.name
-
-    def __str__(self):
-        return f"Text file options source {self.text_options_full_path}"
-
-
 class FileListOptionsSource:
     def __init__(self, directory: str, extensions: list[str] | None = None):
         self.directory = directory
