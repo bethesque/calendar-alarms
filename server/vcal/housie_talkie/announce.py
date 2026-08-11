@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from vcal.settings import HousieTalkieSettings
 from vcal.housie_talkie.audio import normalize_audio
-from vcal.announcements.announce import play_audio_file_as_announcement as og_play_audio_file_as_announcement, AudioFileAnnouncementRequest
+from vcal.housie_talkie.speak.announce import play_audio_file_as_announcement as og_play_audio_file_as_announcement, AudioFileAnnouncementRequest
 from vcal.notifications import OUTPUT_AUDIO_DIRECTORY
 
 def play_audio_file_as_announcement(request: AudioFileAnnouncementRequest):

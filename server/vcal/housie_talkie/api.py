@@ -5,7 +5,7 @@ from pathlib import Path
 from fastapi import APIRouter, File, Form, UploadFile
 from vcal.scene import Scene
 from vcal.housie_talkie.announce import play_audio_file_as_announcement
-from vcal.announcements.announce import AudioFileAnnouncementRequest
+from vcal.housie_talkie.speak.announce import AudioFileAnnouncementRequest
 
 logger = logging.getLogger(__name__)
 

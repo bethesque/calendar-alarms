@@ -2,7 +2,7 @@ import logging
 import threading
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
-from vcal.announcements.morning_announcements import play_morning_announcements
+from vcal.morning_announcements import play_morning_announcements
 from vcal.scene import Scene
 from vcal.notifications.alarm import stop_alarm, test_alarm
 from vcal.cli import refresh_calendar_data

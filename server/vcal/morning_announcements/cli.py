@@ -1,41 +1,19 @@
 import logging
 
-from vcal.announcements.morning_announcements import play_morning_announcements_audio_file
-from vcal.announcements.morning_announcements import MORNING_ANNOUNCEMENTS_AUDIO_FILE
+from vcal.morning_announcements.core import play_morning_announcements_audio_file
+from vcal.morning_announcements.core import MORNING_ANNOUNCEMENTS_AUDIO_FILE
 from datetime import datetime
 import argparse
 from vcal.env import DATA_DIRECTORY, LOG_LEVEL
 import os
-from vcal.announcements.morning_announcements import play_morning_announcements as do_play_morning_announcements, play_morning_announcements_audio_file, SPEECH_FILE
+from vcal.morning_announcements.core import play_morning_announcements as do_play_morning_announcements, play_morning_announcements_audio_file
 from vcal.log_config import setup_logging_for_announcements
 from vcal.scene import Scene
-from vcal.announcements.announce import play_announcement as play_announcement_func, TextAnnouncementRequest
 from vcal.settings import MainSettings, MpdSettings, SnapcastSettings
 
 setup_logging_for_announcements(str(LOG_LEVEL))
 
 logger = logging.getLogger(__name__)
-
-def play_announcement():
-    parser = argparse.ArgumentParser(description="Play a one-off announcement")
-    parser.add_argument(
-        "--message",
-        required=True,
-        help="The message to announce"
-    )
-
-    parser.add_argument(
-        "--sound_effect_file_name",
-        help="The name of the sound effect file to play"
-    )
-    args = parser.parse_args()
-
-    try:
-        logger.info(f"Playing announcement: {args.message}")
-        play_announcement_func(TextAnnouncementRequest(message=args.message, sound_effect=args.sound_effect_file_name,  scene= Scene()))
-    except Exception:
-        logger.exception("Error playing announcements")
-        exit(1)
 
 def play_morning_announcements():
     if not MainSettings().enabled:

@@ -12,7 +12,7 @@ from vcal.random_text import FileListOptionsSource, select_text
 from vcal.env import ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY
 from vcal.notifications import  AUDIO_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
 from vcal.settings import SnapcastSettings, MpdSettings
-from vcal.announcements.snapcast import SnapserverManager
+from vcal.snapcast import SnapserverManager
 
 # ffmpeg -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 -t 0.25 -q:a 9 -acodec libmp3lame silence.mp3
 SILENCE_5_SEC = "audio/silence_5s.mp3"

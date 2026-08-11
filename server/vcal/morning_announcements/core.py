@@ -4,7 +4,7 @@ import time
 import os
 from datetime import datetime
 from vcal.notifications.mpd import fade_up, mpd_connection
-from vcal.announcements.snapcast import SnapserverManager
+from vcal.snapcast import SnapserverManager
 from vcal.settings import MorningAnnouncementsSettings, MpdSettings, SnapcastSettings
 from vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException, load_data_from_file, get_events_for_date
 from vcal.notifications.text_to_voice import text_to_voice_file_daily_summary

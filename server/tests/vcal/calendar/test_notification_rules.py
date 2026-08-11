@@ -1,6 +1,5 @@
 import sys
 from pathlib import Path
-from unittest.mock import Mock
 from datetime import datetime
 
 from vcal.settings import NotificationRule
@@ -8,8 +7,7 @@ from vcal.settings import NotificationRule
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from vcal.notifications.alarm import NotificationFinder, NotificationTextBuilder
-from vcal.announcements.morning_announcements import TextBuilder
-from vcal.cal.google_calendar import CalendarSource, Event, WeatherForecast
+from vcal.cal.google_calendar import CalendarSource
 
 def test_notification_rule_with_reminder_e2e():
     date_string = "2026-04-06T00:00:00+10:00"

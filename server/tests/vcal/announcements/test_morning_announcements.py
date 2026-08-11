@@ -4,7 +4,7 @@ from unittest.mock import Mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from vcal.announcements.morning_announcements import TextBuilder
+from vcal.morning_announcements.core import TextBuilder
 from vcal.cal.google_calendar import Event, WeatherForecast
 
 select_option_call_count = 0
