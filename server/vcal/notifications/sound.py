@@ -3,7 +3,7 @@ import logging
 import subprocess
 import tempfile
 import os
-from vcal.alarms import SAMPLE_RATE
+from vcal.notifications import SAMPLE_RATE
 
 logger = logging.getLogger(__name__)
 

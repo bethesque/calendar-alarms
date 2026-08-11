@@ -5,12 +5,12 @@ from datetime import datetime
 from pathlib import Path
 from dataclasses import dataclass
 from vcal.scene import SceneProtocol
-from vcal.alarms.mpd import mpd_connection
-from vcal.alarms.text_to_voice import text_to_voice_file
-from vcal.alarms.sound import track_length, join_mp3s_to_wav, join_mixed_files_to_wav
+from vcal.notifications.mpd import mpd_connection
+from vcal.notifications.text_to_voice import text_to_voice_file
+from vcal.notifications.sound import track_length, join_mp3s_to_wav, join_mixed_files_to_wav
 from vcal.random_text import FileListOptionsSource, select_text
 from vcal.env import ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY
-from vcal.alarms import  AUDIO_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
+from vcal.notifications import  AUDIO_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
 from vcal.settings import SnapcastSettings, MpdSettings
 from vcal.announcements.snapcast import SnapserverManager
 

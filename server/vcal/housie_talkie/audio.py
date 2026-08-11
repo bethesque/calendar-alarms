@@ -15,7 +15,7 @@ Requires: ffmpeg and ffprobe installed and available on PATH.
 import json
 import subprocess
 from pathlib import Path
-from vcal.alarms import SAMPLE_RATE
+from vcal.notifications import SAMPLE_RATE
 
 # Target values derived from measuring 3 Google TTS samples (see analysis)
 # ffmpeg -i tts.mp3 -filter:a loudnorm=print_format=summary -f null -

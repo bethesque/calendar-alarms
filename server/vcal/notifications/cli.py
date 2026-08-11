@@ -4,16 +4,16 @@ import logging
 import os
 import argparse
 from datetime import datetime
-from vcal.alarms.alarm import _play_alarm
+from vcal.notifications.alarm import _play_alarm
 from vcal.env import LOG_LEVEL
-from vcal.alarms.mpd import fade_out, fade_up, mpd_connection
+from vcal.notifications.mpd import fade_out, fade_up, mpd_connection
 from vcal.log_config import setup_logging_for_alarms
 from vcal.cal.google_calendar import CalendarSource, CalendarDay
 from vcal.scene import NullScene, Scene
 from vcal.settings import MainSettings
 
 from vcal.env import DATA_DIRECTORY
-from vcal.alarms.alarm import check_for_notifications
+from vcal.notifications.alarm import check_for_notifications
 
 setup_logging_for_alarms(str(LOG_LEVEL))
 

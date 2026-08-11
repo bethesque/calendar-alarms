@@ -4,7 +4,7 @@ from gtts import gTTS
 from vcal.string_utils import sanitise_filename
 from vcal.random_text import TextFileOptionsSource, select_text
 from vcal.env import CACHE_DIRECTORY, GOOGLE_TRANSLATE_LANG, DEFAULT_GOOGLE_TRANSLATE_TLD
-from vcal.alarms.sound import join_mp3s_to_wav
+from vcal.notifications.sound import join_mp3s_to_wav
 
 DEFAULT_ANNOUCEMENT_FILE = "audio/default_announcement.mp3"
 AUDIO_CACHE_DIR = os.path.join(CACHE_DIRECTORY, "audio")

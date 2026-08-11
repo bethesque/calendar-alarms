@@ -7,7 +7,7 @@ from vcal.settings import NotificationRule
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from vcal.alarms.alarm import NotificationFinder, NotificationTextBuilder
+from vcal.notifications.alarm import NotificationFinder, NotificationTextBuilder
 from vcal.announcements.morning_announcements import TextBuilder
 from vcal.cal.google_calendar import CalendarSource, Event, WeatherForecast
 

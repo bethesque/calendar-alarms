@@ -11,7 +11,7 @@ from vcal.cal.ui import GoogleCalendarAuthRoutes
 from vcal.announcements.api import AnnouncementRoutes
 from vcal.housie_talkie.api import HousieTalkieRoutes
 from vcal.admin_ui import AdminRoutes
-from vcal.alarms.ui import AlarmRoutes
+from vcal.notifications.ui import AlarmRoutes
 from vcal.logs_ui import CalendarAlarmsStatusRoutes, LogRoutes
 
 setup_logging_for_http_server(logging.INFO)

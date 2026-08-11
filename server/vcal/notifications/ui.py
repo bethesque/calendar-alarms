@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from vcal.announcements.morning_announcements import play_morning_announcements
 from vcal.scene import Scene
-from vcal.alarms.alarm import stop_alarm, test_alarm
+from vcal.notifications.alarm import stop_alarm, test_alarm
 from vcal.cli import refresh_calendar_data
 from queue import Queue
 
@@ -102,9 +102,6 @@ class AlarmRoutes:
         )
 
     async def alarm_page(self, request: Request):
-        stop_url = request.url_for("alarm_stop")
-        test_url = request.url_for("alarm_test")
-
         return self._alarm_form(None, request)
 
     async def stop_alarm_endpoint(self, request: Request):
