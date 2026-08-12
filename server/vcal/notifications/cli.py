@@ -64,16 +64,6 @@ def check_alarms():
         logger.exception("Error checking for alarms")
         exit(1)
 
-def test_alarm():
-    try:
-        print("Testing alarm... press Ctrl+C to stop")
-        _play_alarm(["audio/test_announcement.mp3"], False)
-    except KeyboardInterrupt as e:
-        logger.info("Stopping test alarm...")
-        with mpd_connection() as alarm_player:
-            fade_out([alarm_player], 3)
-        exit(0)
-
 def stop_alarm():
     try:
         with mpd_connection() as alarm_player:

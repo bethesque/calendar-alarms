@@ -2,8 +2,8 @@ import logging
 import os
 import time
 
+from vcal.notifications.sound import track_length
 from vcal.notifications.mpd import mpd_connection
-from vcal.notifications import  AUDIO_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
 from vcal.settings import SnapcastSettings, MpdSettings
 from vcal.snapcast import SnapserverManager
 from housie_talkie.models import *
