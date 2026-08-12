@@ -4,7 +4,7 @@ from typing import Optional, List
 from fastapi import APIRouter, HTTPException
 from fastapi import Query
 from pydantic import BaseModel
-from vcal.housie_talkie.speak.announce import play_announcement, list_sound_effects, TextAnnouncementRequest
+from vcal.housie_talkie.core import play_tts_announcement, list_sound_effects, TtsAnnouncementRequest
 from vcal.scene import Scene
 
 class HttpAnnouncementRequest(BaseModel):
@@ -51,10 +51,10 @@ class AnnouncementRoutes:
 
         players = ensure_list(players) if players is not None else None
 
-        announcement_request = TextAnnouncementRequest(scene=Scene(), message=message, sound_effect=sound_effect, player_names=players)
+        announcement_request = TtsAnnouncementRequest(scene=Scene(), message=message, sound_effect=sound_effect, player_names=players)
 
         Thread(
-            target=play_announcement,
+            target=play_tts_announcement,
             args=(
                 announcement_request,
             ),

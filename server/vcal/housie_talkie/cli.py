@@ -3,7 +3,7 @@ import argparse
 from vcal.env import LOG_LEVEL
 from vcal.log_config import setup_logging_for_announcements
 from vcal.scene import Scene
-from vcal.housie_talkie.speak import play_announcement as play_announcement_func, TextAnnouncementRequest
+from vcal.housie_talkie.core import play_tts_announcement as play_announcement_func, TtsAnnouncementRequest
 
 setup_logging_for_announcements(str(LOG_LEVEL))
 
@@ -25,7 +25,7 @@ def play_announcement():
 
     try:
         logger.info(f"Playing announcement: {args.message}")
-        play_announcement_func(TextAnnouncementRequest(message=args.message, sound_effect=args.sound_effect_file_name,  scene= Scene()))
+        play_announcement_func(TtsAnnouncementRequest(message=args.message, sound_effect=args.sound_effect_file_name,  scene= Scene()))
     except Exception:
         logger.exception("Error playing announcements")
         exit(1)

@@ -1,13 +1,12 @@
-import os
 from pathlib import Path
 from vcal.settings import HousieTalkieSettings
-from vcal.housie_talkie.audio import normalize_audio
-from vcal.housie_talkie.speak.announce import play_audio_file_as_announcement as og_play_audio_file_as_announcement, AudioFileAnnouncementRequest
+from vcal.housie_talkie.voice_ffmpeg import normalize_audio
+from vcal.housie_talkie.core import play_voice_announcement as og_play_audio_file_as_announcement, VoiceAnnouncementRequest
 from vcal.notifications import OUTPUT_AUDIO_DIRECTORY
 
-def play_audio_file_as_announcement(request: AudioFileAnnouncementRequest):
+def play_audio_file_as_announcement(request: VoiceAnnouncementRequest):
     normalized_audio_file = _normalize_audio_file_to_match_tts_volume(request.audio_file)
-    normalized_request = AudioFileAnnouncementRequest(
+    normalized_request = VoiceAnnouncementRequest(
         audio_file=normalized_audio_file,
         scene=request.scene,
         sound_effect=request.sound_effect,

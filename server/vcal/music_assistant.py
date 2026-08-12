@@ -9,8 +9,7 @@ import logging
 from dataclasses import dataclass
 from vcal.settings import HomeAssistantAnnouncementSettings, HomeAssistantSettings
 
-
-from vcal.env import CACHE_DIRECTORY, DIP_TARGET_VOLUME
+from vcal.env import CACHE_DIRECTORY
 
 logger = logging.getLogger(__name__)
 

@@ -1,20 +1,19 @@
 import logging
-import os
-import time
+from enum import Enum
 from datetime import datetime
 from pathlib import Path
 from dataclasses import dataclass
 from vcal.scene import SceneProtocol
-from vcal.notifications.mpd import mpd_connection
 from vcal.notifications.text_to_voice import text_to_voice_file
 from vcal.notifications.sound import track_length, join_mp3s_to_wav, join_mixed_files_to_wav
-from vcal.random_text import FileListOptionsSource, select_text
-from vcal.env import ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY
 from vcal.notifications import  AUDIO_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
-from vcal.settings import SnapcastSettings, MpdSettings
-from vcal.snapcast import SnapserverManager
+from vcal.env import ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY
+from vcal.random_text import FileListOptionsSource, select_text
+
+logger = logging.getLogger(__name__)
 
 # ffmpeg -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 -t 0.25 -q:a 9 -acodec libmp3lame silence.mp3
+
 SILENCE_5_SEC = "audio/silence_5s.mp3"
 SILENCE_1_SEC = "audio/silence_1s.mp3"
 SILENCE_HALF_SEC = "audio/silence_500ms.mp3"
@@ -22,16 +21,13 @@ SILENCE_QUARTER_SEC = "audio/silence_250ms.mp3"
 POST_ANNOUNCEMENT_SILENCE = SILENCE_QUARTER_SEC
 
 PRE_ANNOUNCEMENT_BELL = AUDIO_DIRECTORY + "/preannounce_4.mp3"
-from enum import Enum
-
-logger = logging.getLogger(__name__)
 
 class AnnouncementUsecase(Enum):
     TTS = 1
-    TALKIE = 2
+    VOICE = 2
 
 @dataclass(frozen=True)
-class TextAnnouncementRequest:
+class TtsAnnouncementRequest:
     scene: SceneProtocol
     sound_effect: str | None = None
     player_names: list[str] | None = None
@@ -39,12 +35,12 @@ class TextAnnouncementRequest:
     usecase: AnnouncementUsecase = AnnouncementUsecase.TTS
 
 @dataclass(frozen=True)
-class AudioFileAnnouncementRequest:
+class VoiceAnnouncementRequest:
     audio_file: str
     scene: SceneProtocol
     sound_effect: str | None = None
     player_names: list[str] | None = None
-    usecase: AnnouncementUsecase = AnnouncementUsecase.TALKIE
+    usecase: AnnouncementUsecase = AnnouncementUsecase.VOICE
 
 @dataclass(frozen=True)
 class PlayableRequest:
@@ -53,42 +49,12 @@ class PlayableRequest:
     usecase: AnnouncementUsecase
     player_names: list[str] | None = None
 
-
-def play_announcement(request: TextAnnouncementRequest):
-    playable_request = PlayableRequestBuilder().build_playable_request_for_text_announcement(request)
-    _play_audio_files(playable_request)
-
-def play_audio_file_as_announcement(request: AudioFileAnnouncementRequest):
-    playable_request = PlayableRequestBuilder().build_playable_request_for_audio_file(request)
-    _play_audio_files(playable_request)
-
-def _play_audio_files(request: PlayableRequest):
-    snapserver_manager = SnapserverManager(SnapcastSettings(), request.player_names)
-    snapserver_manager.set_volumes(request.usecase.name.lower())
-
-    def play():
-        try:
-            mpd_settings = MpdSettings()
-            with mpd_connection(mpd_settings) as alarm_player:
-                alarm_player.set_volume(mpd_settings.volumes[request.usecase.name.lower()])
-                alarm_player.play_files(request.audio_files)
-                time.sleep(sum(track_length(f) for f in request.audio_files))
-                logger.info("Finished playing files")
-        except Exception:
-            logger.exception(f"Error playing announcement audio file(s) {request.audio_files}")
-
-    request.scene.around_announcement(play, snapserver_manager.connected_player_areas())
-
-def list_sound_effects()-> list[str]:
-        return ["none", "random"] + sorted([os.path.basename(path) for path in SoundEffectSelector().get_options_source().get_options()])
-
 class SoundEffectSelector:
     def __init__(self, directory: str = AUDIO_DIRECTORY + "/sound_effects", extensions: list[str] = [".mp3"]):
         self.options_source = FileListOptionsSource(directory=directory, extensions=extensions)
 
     def get_options_source(self):
         return self.options_source
-
 
     def get_sound_effect_file(self, sound_effect: str | None) -> str | None:
         if sound_effect == "random":
@@ -111,12 +77,11 @@ class SoundEffectSelector:
             logger.info("No sound effect specified")
             return None
 
-
 class PlayableRequestBuilder:
     def __init__(self, sound_effect_selector: SoundEffectSelector = SoundEffectSelector()):
         self.sound_effect_selector = sound_effect_selector
 
-    def build_playable_request_for_text_announcement(self, request: TextAnnouncementRequest) -> PlayableRequest:
+    def build_playable_request_for_tts_announcement(self, request: TtsAnnouncementRequest) -> PlayableRequest:
         if not request.message:
             raise ValueError("AnnouncementRequest.message is required")
 
@@ -128,14 +93,14 @@ class PlayableRequestBuilder:
             player_names=request.player_names
         )
 
-    def build_playable_request_for_audio_file(self, request: AudioFileAnnouncementRequest) -> PlayableRequest:
+    def build_playable_request_for_voice_announcement(self, request: VoiceAnnouncementRequest) -> PlayableRequest:
         announcement_file = OUTPUT_AUDIO_DIRECTORY +  f"/{Path(request.audio_file).stem}_" + self._datestamp() + ".wav"
         mp3_files = self.get_pre_announcement_files(request.sound_effect) + [request.audio_file, POST_ANNOUNCEMENT_SILENCE]
         join_mixed_files_to_wav(mp3_files, announcement_file)
         return PlayableRequest(
             audio_files=[announcement_file],
             scene=request.scene,
-            usecase=AnnouncementUsecase.TALKIE,
+            usecase=AnnouncementUsecase.VOICE,
             player_names=request.player_names
         )
 
@@ -159,5 +124,3 @@ class PlayableRequestBuilder:
     def _datestamp(self) -> str:
         now = datetime.now()
         return f"{now.strftime('%y%m%d%H%M%S')}{now.microsecond // 1000:03d}"
-
-
