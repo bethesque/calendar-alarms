@@ -64,7 +64,7 @@ class MpdSettings(YAMLSettings):
 
 class VolumeConfig(BaseModel):
     tts: int = Field(default=80, ge=0, le=100, title="TTS volume")
-    talkie: int = Field(default=80, ge=0, le=100, title="Housie Talkie volume")
+    voice: int = Field(default=80, ge=0, le=100, title="Voice recording volume")
     alarm: int = Field(default=100, ge=0, le=100, title="Alarm end volume")
 
     def __getitem__(self, key: str) -> int:
