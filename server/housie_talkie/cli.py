@@ -3,7 +3,7 @@ import argparse
 from vcal.env import LOG_LEVEL
 from vcal.log_config import setup_logging_for_announcements
 from vcal.scene import Scene
-from vcal.housie_talkie.core import play_tts_announcement as play_announcement_func, TtsAnnouncementRequest
+from housie_talkie.core import play_tts_announcement as play_announcement_func, TtsAnnouncementRequest
 
 setup_logging_for_announcements(str(LOG_LEVEL))
 

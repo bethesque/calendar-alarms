@@ -1,11 +1,12 @@
 import logging
+import os
 from enum import Enum
 from datetime import datetime
 from pathlib import Path
 from dataclasses import dataclass
 from vcal.scene import SceneProtocol
 from vcal.notifications.text_to_voice import text_to_voice_file
-from vcal.notifications.sound import track_length, join_mp3s_to_wav, join_mixed_files_to_wav
+from vcal.notifications.sound import join_mp3s_to_wav, join_mixed_files_to_wav
 from vcal.notifications import  AUDIO_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
 from vcal.env import ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY
 from vcal.random_text import FileListOptionsSource, select_text

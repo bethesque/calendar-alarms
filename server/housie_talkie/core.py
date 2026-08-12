@@ -6,7 +6,7 @@ from vcal.notifications.mpd import mpd_connection
 from vcal.notifications import  AUDIO_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
 from vcal.settings import SnapcastSettings, MpdSettings
 from vcal.snapcast import SnapserverManager
-from vcal.housie_talkie.models import *
+from housie_talkie.models import *
 
 logger = logging.getLogger(__name__)
 

@@ -4,8 +4,8 @@ import threading
 from pathlib import Path
 from fastapi import APIRouter, File, Form, UploadFile
 from vcal.scene import Scene
-from vcal.housie_talkie.voice import play_audio_file_as_announcement
-from vcal.housie_talkie.core import VoiceAnnouncementRequest
+from housie_talkie.voice import play_audio_file_as_announcement
+from housie_talkie.core import VoiceAnnouncementRequest
 
 logger = logging.getLogger(__name__)
 

@@ -8,8 +8,8 @@ from fastapi.responses import HTMLResponse
 from pydantic_settings import BaseSettings
 from vcal.log_config import setup_logging_for_http_server
 from vcal.cal.ui import GoogleCalendarAuthRoutes
-from vcal.housie_talkie.tts_api import AnnouncementRoutes
-from vcal.housie_talkie.voice_api import HousieTalkieRoutes
+from housie_talkie.tts_api import AnnouncementRoutes
+from housie_talkie.voice_api import HousieTalkieRoutes
 from vcal.admin_ui import AdminRoutes
 from vcal.notifications.ui import AlarmRoutes
 from vcal.logs_ui import CalendarAlarmsStatusRoutes, LogRoutes

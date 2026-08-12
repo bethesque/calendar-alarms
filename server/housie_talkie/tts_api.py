@@ -4,7 +4,7 @@ from typing import Optional, List
 from fastapi import APIRouter, HTTPException
 from fastapi import Query
 from pydantic import BaseModel
-from vcal.housie_talkie.core import play_tts_announcement, list_sound_effects, TtsAnnouncementRequest
+from housie_talkie.core import play_tts_announcement, list_sound_effects, TtsAnnouncementRequest
 from vcal.scene import Scene
 
 class HttpAnnouncementRequest(BaseModel):
