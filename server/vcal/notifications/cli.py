@@ -4,7 +4,7 @@ import logging
 import os
 import argparse
 from datetime import datetime
-from vcal.notifications.alarm import _play_alarm
+from vcal.notifications.alarm import _play_event_alarm
 from vcal.env import LOG_LEVEL
 from vcal.notifications.mpd import fade_out, fade_up, mpd_connection
 from vcal.log_config import setup_logging_for_alarms

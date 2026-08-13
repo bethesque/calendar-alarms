@@ -13,6 +13,7 @@ from housie_talkie.voice_api import HousieTalkieRoutes
 from vcal.admin_ui import AdminRoutes
 from vcal.notifications.ui import AlarmRoutes
 from vcal.logs_ui import CalendarAlarmsStatusRoutes, LogRoutes
+from vcal.wake_up_alarm.api import WakeUpAlarmRoutes
 
 setup_logging_for_http_server(logging.INFO)
 
@@ -35,7 +36,8 @@ def index(request: Request):
             <h1>Calendar Alarms</h1>
             <ul>
                 <li><a href="https://{hostname}:8443/login">Google Login (only works over https)</a></li>
-                <li><a href="/alarm">Alarm</a></li>
+                <li><a href="/alarm">Calendar Alarms</a></li>
+                <li><a href="/wake-up-alarm">Wake up alarm</a></li>
                 <li><a href="/admin">Admin</a></li>
                 <li><a href="/status/calendar-alarms-service">Calendar Alarms HTTP Service Status</a></li>
                 <li><a href="/logs/server">Calendar Alarms HTTP Server logs</a></li>
@@ -52,6 +54,7 @@ app.include_router(GoogleCalendarAuthRoutes().router, prefix="")
 app.include_router(AnnouncementRoutes().router, prefix="/announce")
 app.include_router(HousieTalkieRoutes().router, prefix="/talkie")
 app.include_router(AlarmRoutes().router, prefix="/alarm")
+app.include_router(WakeUpAlarmRoutes().router, prefix="/wake-up-alarm")
 app.include_router(AdminRoutes().router, prefix="/admin")
 app.include_router(CalendarAlarmsStatusRoutes().router, prefix="/status/calendar-alarms-service")
 app.include_router(LogRoutes(file_path="logs/server.log", route="/server").router, prefix="/logs")

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Wake up alarm</title>
+<style>
+  body { font-family: sans-serif; max-width: 480px; margin: 40px auto; padding: 0 16px; }
+  button {
+    display: block; width: 100%; padding: 16px; margin: 12px 0;
+    font-size: 18px; border-radius: 8px; border: 1px solid #ccc; cursor: pointer;
+  }
+  #toggle-btn { background: #4a90e2; color: white; }
+  #stop-btn { background: #e24a4a; color: white; }
+  button:active { opacity: 0.8; }
+  #result {
+    margin-top: 20px; padding: 12px; border-radius: 6px; background: #f4f4f4;
+    font-family: monospace; white-space: pre-wrap; word-break: break-word;
+  }
+</style>
+</head>
+<body>
+  <h2>Wake up alarm</h2>
+  <button id="toggle-btn">Play</button>
+  <button id="stop-btn">Stop</button>
+  <div id="result">No request sent yet.</div>
+
+<script>
+  function callEndpoint(path, method) {
+    const resultEl = document.getElementById('result');
+    resultEl.textContent = 'Sending request to ' + path + '...';
+
+    const xhr = new XMLHttpRequest();
+    xhr.open(method || 'POST', path, true);
+
+    xhr.onload = function () {
+      resultEl.textContent = 'Status: ' + xhr.status + ' ' + xhr.statusText + '\n\n' + xhr.responseText;
+    };
+
+    xhr.onerror = function () {
+      resultEl.textContent = 'Request failed (network error).';
+    };
+
+    xhr.send();
+  }
+
+  document.getElementById('toggle-btn').addEventListener('click', function () {
+    callEndpoint(window.location.href);
+  });
+
+  document.getElementById('stop-btn').addEventListener('click', function () {
+    callEndpoint(window.location.href.replace(/\/$/,'') + "/stop");
+  });
+
+</script>
+</body>
+</html>

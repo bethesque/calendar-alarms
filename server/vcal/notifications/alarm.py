@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from vcal.cal.google_calendar import EventNotification, NotificationType, CalendarSource
 from vcal.notifications.sound import build_alarm_audio, join_mp3s_to_wav, build_aggressive_alarm_audio, join_mixed_files_to_wav
 from vcal.notifications.text_to_voice import text_to_voice_file
-from vcal.notifications.mpd import fade_up, mpd_connection
+from vcal.notifications.mpd import fade_out, fade_up, mpd_connection
 from vcal.select_item import select_item_by_date
 from vcal.notifications import GENTLE_ALARMS_DIRECTORY, AGGRESSIVE_ALARMS_DIRECTORY, AUDIO_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
 from vcal.notifications.sound import track_length
@@ -224,30 +224,29 @@ def play_notifications(announcements_file: str | None, alarms_file: str | None, 
 
     # Only announcement
     if announcements_file and not alarms_file:
-        scene.around_announcement(lambda: _play_announcement(announcements_file, mpd_settings), areas)
+        scene.around_announcement(lambda: _play_event_announcement(announcements_file, mpd_settings), areas)
         return
 
     # Announcement and/or alarm
     scene.prepare_for_alarm(areas)
     if announcements_file:
-        _play_announcement(announcements_file, mpd_settings)
+        _play_event_announcement(announcements_file, mpd_settings)
 
     if announcements_file and alarms_file:
         time.sleep(2)
 
     if alarms_file:
         snapserver_manager.set_volumes("alarm")
-        _play_alarm(alarms_file, mpd_settings)
+        _play_event_alarm(alarms_file, mpd_settings)
 
-def _play_announcement(announcements_file, mpd_settings):
+def _play_event_announcement(announcements_file, mpd_settings):
     with mpd_connection(mpd_settings) as alarm_player:
-
         logger.info(f"Playing announcements {announcements_file}")
         alarm_player.set_volume(mpd_settings.volumes.tts)
         alarm_player.play_file(announcements_file)
     time.sleep(track_length(announcements_file))
 
-def _play_alarm(alarms_file, mpd_settings: MpdSettings):
+def _play_event_alarm(alarms_file, mpd_settings: MpdSettings):
     with mpd_connection(mpd_settings) as alarm_player:
         fade_up_duration = 45
         logger.info(f"Playing alarm {alarms_file}, increasing volume from {mpd_settings.volumes.alarm_start} to {mpd_settings.volumes.alarm_end} over {fade_up_duration} seconds")
