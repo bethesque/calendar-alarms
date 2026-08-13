@@ -16,7 +16,7 @@ def _play_wake_up_alarm_via_mpd(alarm_file, mpd_settings: MpdSettings):
     alarm_end_volume = mpd_settings.volumes.wake_up_alarm_end
     steps = 10
 
-    snapserver_manager = SnapserverManager(SnapcastSettings())
+    snapserver_manager = SnapserverManager(SnapcastSettings()) # pyright: ignore[reportCallIssue]
     snapserver_manager.set_volumes("alarm")
 
     with mpd_connection(mpd_settings) as mpd:

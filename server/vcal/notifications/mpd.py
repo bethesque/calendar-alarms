@@ -114,11 +114,12 @@ class MpdClient:
             self.client = None
             return False
 
-    def _ensure_connected(self) -> bool:
-        """Ensure we have an active connection to MPD."""
-        if not self.is_running():
-            return self.connect()
-        return True
+
+#    def _ensure_connected(self) -> bool:
+#        """Ensure we have an active connection to MPD."""
+#        if not self.is_running():
+#            return self.connect()
+#        return True
 
     def play_file(self, file_path: str):
         if file_path.startswith("/tmp/"):

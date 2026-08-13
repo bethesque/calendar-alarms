@@ -27,7 +27,7 @@ class YAMLSettings(BaseSettings):
         )
 
     def save(self) -> None:
-        path = Path(self.model_config["yaml_file"])
+        path = Path(self.model_config["yaml_file"]) # pyright: ignore[reportArgumentType, reportTypedDictNotRequiredAccess]
         path.parent.mkdir(parents=True, exist_ok=True)
 
         with path.open("w") as f:
@@ -208,8 +208,8 @@ class HousieTalkieSettings(YAMLSettings):
 class AppSettings(BaseSettings):
     main_settings: MainSettings = Field(default_factory=MainSettings, description="Main settings")
     mpd_settings: MpdSettings = Field(default_factory=MpdSettings, description="MPD settings")
-    snapcast_settings: SnapcastSettings = Field(default_factory=SnapcastSettings, description="Snapcast settings")
-    google_calendar_settings: GoogleCalendarSettings = Field(default_factory=GoogleCalendarSettings, description="Google Calendar settings")
+    snapcast_settings: SnapcastSettings = Field(default_factory=SnapcastSettings, description="Snapcast settings") # pyright: ignore[reportArgumentType]
+    google_calendar_settings: GoogleCalendarSettings = Field(default_factory=GoogleCalendarSettings, description="Google Calendar settings") # type: ignore
     morning_announcements_settings: MorningAnnouncementsSettings = Field(default_factory=MorningAnnouncementsSettings, description="Morning announcements settings")
     home_assistant_settings: HomeAssistantSettings = Field(default_factory=HomeAssistantSettings, description="Home Assistant settings")
     housie_talkie_settings: HousieTalkieSettings = Field(default_factory=HousieTalkieSettings, description="Housie Talkie settings")
