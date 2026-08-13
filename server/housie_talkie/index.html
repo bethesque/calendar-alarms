@@ -5,8 +5,7 @@
 <title>Wake up alarm</title>
 <link rel="stylesheet" href="/static/styles.css">
 <style>
-  body { max-width: 480px; margin: 40px auto; padding: 0 16px; }
-
+  body { font-family: sans-serif; max-width: 480px; margin: 40px auto; padding: 0 16px; }
   button {
     display: block; width: 100%; padding: 16px; margin: 12px 0;
     font-size: 18px; border-radius: 8px; border: 1px solid #ccc; cursor: pointer;
@@ -21,12 +20,10 @@
 </style>
 </head>
 <body>
-  <div style="display: flex; align-items: center; gap: 12px;">
-    <a href="/" class="back">⬅️</a>
-    <h1>Wake up alarm</h1>
-  </div>
-  <button id="toggle-btn">Play</button>
-  <button id="stop-btn">Stop</button>
+  <h1>Housie Talkie</h1>
+  <button id="test-tts">Test TTS</button>
+  <button id="test-voice">Test voice</button>
+  <button id="home">Home</button>
   <div id="result">No request sent yet.</div>
 
 <script>
@@ -48,13 +45,18 @@
     xhr.send();
   }
 
-  document.getElementById('toggle-btn').addEventListener('click', function () {
-    callEndpoint(window.location.href);
+  document.getElementById('test-tts').addEventListener('click', function () {
+    callEndpoint("/announce?message=This%20is%20a%20test");
   });
 
-  document.getElementById('stop-btn').addEventListener('click', function () {
-    callEndpoint(window.location.href.replace(/\/$/,'') + "/stop");
+  document.getElementById('test-voice').addEventListener('click', function () {
+    callEndpoint("/talkie/test");
   });
+
+  document.getElementById('home').addEventListener('click', function () {
+    window.location.href = "/"
+  });
+
 </script>
 </body>
 </html>

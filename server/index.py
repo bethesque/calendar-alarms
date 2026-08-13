@@ -8,12 +8,13 @@ from fastapi.responses import HTMLResponse
 from pydantic_settings import BaseSettings
 from vcal.log_config import setup_logging_for_http_server
 from vcal.cal.ui import GoogleCalendarAuthRoutes
-from housie_talkie.tts_api import AnnouncementRoutes
-from housie_talkie.voice_api import HousieTalkieRoutes
+from housie_talkie.tts_api import TtsRoutes
+from housie_talkie.voice_api import VoiceRoutes
 from vcal.admin_ui import AdminRoutes
 from vcal.notifications.ui import AlarmRoutes
 from vcal.logs_ui import CalendarAlarmsStatusRoutes, LogRoutes
 from vcal.wake_up_alarm.api import WakeUpAlarmRoutes
+from housie_talkie.ui import UserInterfaceRoutes
 
 setup_logging_for_http_server(logging.INFO)
 
@@ -34,25 +35,31 @@ def index(request: Request):
         </head>
         <body>
             <h1>Calendar Alarms</h1>
-            <ul>
-                <li><a href="https://{hostname}:8443/login">Google Login (only works over https)</a></li>
-                <li><a href="/alarm">Calendar Alarms</a></li>
-                <li><a href="/wake-up-alarm">Wake up alarm</a></li>
-                <li><a href="/admin">Admin</a></li>
-                <li><a href="/status/calendar-alarms-service">Calendar Alarms HTTP Service Status</a></li>
-                <li><a href="/logs/server">Calendar Alarms HTTP Server logs</a></li>
-                <li><a href="/logs/alarms">Alarms logs</a></li>
-                <li><a href="/logs/announcements">Announcements logs</a></li>
-                <li><a href="/logs/data-refresh">Data Refresh logs</a></li>
-                <li><a href="/logs/cron">Cron logs</a></li>
+            <ul class="buttons">
+                <li><a href="/alarm" class="button">Calendar Alarms</a></li>
+                <li><a href="/wake-up-alarm" class="button">Wake up alarm</a></li>
+                <li><a href="/housie-talkie" class="button">Housie Talkie</a></li>
+                <li><a href="https://{hostname}:8443/login" class="button">Google Login (only works over https)</a></li>
+            </ul>
+            <ul class="buttons">
+                <li><a href="/admin" class="button">Admin</a></li>
+            </ul>
+            <ul class="buttons">
+                <li><a href="/status/calendar-alarms-service"class="button" >Calendar Alarms HTTP Service Status</a></li>
+                <li><a href="/logs/server" class="button">Calendar Alarms HTTP Server logs</a></li>
+                <li><a href="/logs/alarms" class="button">Alarms logs</a></li>
+                <li><a href="/logs/announcements" class="button">Announcements logs</a></li>
+                <li><a href="/logs/data-refresh" class="button">Data Refresh logs</a></li>
+                <li><a href="/logs/cron" class="button">Cron logs</a></li>
             </ul>
         </body>
     </html>
     """
 
 app.include_router(GoogleCalendarAuthRoutes().router, prefix="")
-app.include_router(AnnouncementRoutes().router, prefix="/announce")
-app.include_router(HousieTalkieRoutes().router, prefix="/talkie")
+app.include_router(TtsRoutes().router, prefix="/announce")
+app.include_router(VoiceRoutes().router, prefix="/talkie")
+app.include_router(UserInterfaceRoutes().router, prefix="/housie-talkie")
 app.include_router(AlarmRoutes().router, prefix="/alarm")
 app.include_router(WakeUpAlarmRoutes().router, prefix="/wake-up-alarm")
 app.include_router(AdminRoutes().router, prefix="/admin")

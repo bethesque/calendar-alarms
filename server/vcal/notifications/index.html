@@ -2,17 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Wake up alarm</title>
+<title>Calendar notifications</title>
 <link rel="stylesheet" href="/static/styles.css">
 <style>
-  body { max-width: 480px; margin: 40px auto; padding: 0 16px; }
-
+  body { font-family: sans-serif; max-width: 480px; margin: 40px auto; padding: 0 16px; }
   button {
     display: block; width: 100%; padding: 16px; margin: 12px 0;
     font-size: 18px; border-radius: 8px; border: 1px solid #ccc; cursor: pointer;
   }
-  #toggle-btn { background: #4a90e2; color: white; }
-  #stop-btn { background: #e24a4a; color: white; }
+  #play-morning-announcements { background: #4a90e2; color: white; }
+  #stop-alarm { background: #e24a4a; color: white; }
   button:active { opacity: 0.8; }
   #result {
     margin-top: 20px; padding: 12px; border-radius: 6px; background: #f4f4f4;
@@ -23,10 +22,12 @@
 <body>
   <div style="display: flex; align-items: center; gap: 12px;">
     <a href="/" class="back">⬅️</a>
-    <h1>Wake up alarm</h1>
+    <h1>Calendar notifications</h1>
   </div>
-  <button id="toggle-btn">Play</button>
-  <button id="stop-btn">Stop</button>
+  <button id="stop-alarm">🔕 Stop alarm</button>
+  <button id="play-morning-announcements">Play morning announcements</button>
+  <button id="refresh-calendar-data">Refresh calendar data</button>
+  <button id="test-alarm">Test alarm</button>
   <div id="result">No request sent yet.</div>
 
 <script>
@@ -48,13 +49,22 @@
     xhr.send();
   }
 
-  document.getElementById('toggle-btn').addEventListener('click', function () {
-    callEndpoint(window.location.href);
+  document.getElementById('stop-alarm').addEventListener('click', function () {
+    callEndpoint("/alarm/stop");
   });
 
-  document.getElementById('stop-btn').addEventListener('click', function () {
-    callEndpoint(window.location.href.replace(/\/$/,'') + "/stop");
+  document.getElementById('test-alarm').addEventListener('click', function () {
+    callEndpoint("/alarm/test");
   });
+
+  document.getElementById('play-morning-announcements').addEventListener('click', function () {
+    callEndpoint("/alarm/morning-announcements");
+  });
+
+  document.getElementById('refresh-calendar-data').addEventListener('click', function () {
+    callEndpoint("/alarm/refresh-calendar-data");
+  });
+
 </script>
 </body>
 </html>

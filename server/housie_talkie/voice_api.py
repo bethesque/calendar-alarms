@@ -17,7 +17,7 @@ def ensure_list_or_none(x):
     else:
         return [x]
 
-class HousieTalkieRoutes:
+class VoiceRoutes:
     def __init__(self):
         self.router = APIRouter()
 

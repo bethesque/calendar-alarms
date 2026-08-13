@@ -12,7 +12,7 @@ class HttpAnnouncementRequest(BaseModel):
     sound_effect: Optional[str] = None
     players: Optional[List[str]] = None
 
-class AnnouncementRoutes:
+class TtsRoutes:
     def __init__(self):
         self.router = APIRouter()
 

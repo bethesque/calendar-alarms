@@ -46,11 +46,15 @@ ul {
     max-width: 420px;
 }
 
+ul.buttons {
+    margin-bottom: 15px;
+}
+
 li {
     margin: 10px 0;
 }
 
-a {
+a.button {
     display: block;
     padding: 14px 16px;
     background: var(--card-bg);
@@ -70,6 +74,17 @@ a:hover {
 
 a:active {
     transform: translateY(0px);
+}
+
+a.back {
+    display: inline;
+    padding: 3px;
+    text-decoration: none;
+    font-size: 1.2rem;
+
+
+  position: relative;
+  top: -0.7rem;
 }
 
 button {
