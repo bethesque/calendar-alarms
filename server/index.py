@@ -30,16 +30,15 @@ def index(request: Request):
         <head>
             <meta name="viewport"
                   content="width=device-width, initial-scale=1.0">
-            <title>Calendar Alarms</title>
+            <title>Home audio</title>
             <link rel="stylesheet" href="/static/styles.css">
         </head>
         <body>
-            <h1>Calendar Alarms</h1>
+            <h1>Home audio</h1>
             <ul class="buttons">
-                <li><a href="/alarm" class="button">Calendar Alarms</a></li>
-                <li><a href="/wake-up-alarm" class="button">Wake up alarm</a></li>
+                <li><a href="/alarm" class="button">Calendar notifications</a></li>
                 <li><a href="/housie-talkie" class="button">Housie Talkie</a></li>
-                <li><a href="https://{hostname}:8443/login" class="button">Google Login (only works over https)</a></li>
+                <li><a href="/wake-up-alarm" class="button">Wake up alarm</a></li>
             </ul>
             <ul class="buttons">
                 <li><a href="/admin" class="button">Admin</a></li>

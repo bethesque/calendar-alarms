@@ -28,6 +28,7 @@
   <button id="play-morning-announcements">Play morning announcements</button>
   <button id="refresh-calendar-data">Refresh calendar data</button>
   <button id="test-alarm">Test alarm</button>
+  <button id="google-login">Google Login (only works over https)</button>
   <div id="result">No request sent yet.</div>
 
 <script>
@@ -63,6 +64,12 @@
 
   document.getElementById('refresh-calendar-data').addEventListener('click', function () {
     callEndpoint("/alarm/refresh-calendar-data");
+  });
+
+  document.getElementById('google-login').addEventListener('click', function () {
+    url = new URL(window.location.href);
+    login_url = "https://" + url.hostname + ":8443/login";
+    window.location.href = login_url;
   });
 
 </script>
