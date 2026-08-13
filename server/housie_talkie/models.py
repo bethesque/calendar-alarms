@@ -7,21 +7,13 @@ from dataclasses import dataclass
 from vcal.scene import SceneProtocol
 from vcal.notifications.text_to_voice import text_to_voice_file
 from vcal.notifications.sound import join_mp3s_to_wav, join_mixed_files_to_wav
-from vcal.notifications import  AUDIO_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
+from vcal.notifications import  AUDIO_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, SILENCE_QUARTER_SEC, SILENCE_HALF_SEC
 from vcal.env import ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY
 from vcal.random_text import FileListOptionsSource, select_text
 
 logger = logging.getLogger(__name__)
 
-# ffmpeg -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 -t 0.25 -q:a 9 -acodec libmp3lame silence.mp3
-
-SILENCE_5_SEC = "audio/silence_5s.mp3"
-SILENCE_1_SEC = "audio/silence_1s.mp3"
-SILENCE_HALF_SEC = "audio/silence_500ms.mp3"
-SILENCE_QUARTER_SEC = "audio/silence_250ms.mp3"
 POST_ANNOUNCEMENT_SILENCE = SILENCE_QUARTER_SEC
-
-PRE_ANNOUNCEMENT_BELL = AUDIO_DIRECTORY + "/preannounce_4.mp3"
 
 class AnnouncementUsecase(Enum):
     TTS = 1

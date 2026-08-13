@@ -10,16 +10,13 @@ from vcal.notifications.sound import build_alarm_audio, join_mp3s_to_wav, build_
 from vcal.notifications.text_to_voice import text_to_voice_file
 from vcal.notifications.mpd import fade_out, fade_up, mpd_connection
 from vcal.select_item import select_item_by_date
-from vcal.notifications import GENTLE_ALARMS_DIRECTORY, AGGRESSIVE_ALARMS_DIRECTORY, AUDIO_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
+from vcal.notifications import GENTLE_ALARMS_DIRECTORY, AGGRESSIVE_ALARMS_DIRECTORY, AUDIO_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, SILENCE_HALF_SEC
 from vcal.notifications.sound import track_length
 from vcal.scene import SceneProtocol, Scene
 from vcal.settings import AlarmSettings, SnapcastSettings, MpdSettings, NotificationSettings
 from vcal.snapcast import SnapserverManager
 
 logger = logging.getLogger(__name__)
-
-SILENCE_1_SEC = "audio/silence_1s.mp3"
-SILENCE_HALF_SEC = "audio/silence_500ms.mp3"
 
 """
 Takes a list of CalenderDays and finds any alarms due within the given time window.
