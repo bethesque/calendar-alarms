@@ -2,14 +2,20 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Wake up alarm</title>
+<title>Housie Talkie</title>
 <link rel="stylesheet" href="/static/styles.css">
 <style>
-  body { font-family: sans-serif; max-width: 480px; margin: 40px auto; padding: 0 16px; }
+  body { max-width: 480px; margin: 40px auto; padding: 0 16px; }
+
   button {
-    display: block; width: 100%; padding: 16px; margin: 12px 0;
+    display: block; width: 100%;
+
+    padding: 16px; margin: 12px 0;
+
     font-size: 18px; border-radius: 8px; border: 1px solid #ccc; cursor: pointer;
+
   }
+
   #toggle-btn { background: #4a90e2; color: white; }
   #stop-btn { background: #e24a4a; color: white; }
   button:active { opacity: 0.8; }
@@ -20,10 +26,13 @@
 </style>
 </head>
 <body>
-  <h1>Housie Talkie</h1>
+  <div style="display: flex; align-items: center; gap: 12px;">
+    <a href="/" class="back">⬅️</a>
+    <h1>Housie Talkie</h1>
+  </div>
   <button id="test-tts">Test TTS</button>
   <button id="test-voice">Test voice</button>
-  <button id="home">Home</button>
+
   <div id="result">No request sent yet.</div>
 
 <script>
@@ -51,10 +60,6 @@
 
   document.getElementById('test-voice').addEventListener('click', function () {
     callEndpoint("/talkie/test");
-  });
-
-  document.getElementById('home').addEventListener('click', function () {
-    window.location.href = "/"
   });
 
 </script>
