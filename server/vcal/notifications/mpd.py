@@ -123,6 +123,11 @@ class MpdClient:
     def play_file(self, file_path: str):
         full_path = f"file://{os.path.abspath(file_path)}"
 
+        if not file_path.startswith("/tmp/"):
+            full_path = f"file://{shutil.copy(full_path, "/tmp")}"
+
+        logger.info(f"Adding file: {full_path}")
+
         try:
             self.client.clear()
             self.client.add(full_path)
