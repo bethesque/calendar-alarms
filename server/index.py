@@ -28,8 +28,7 @@ def index(request: Request):
     return f"""
     <html>
         <head>
-            <meta name="viewport"
-                  content="width=device-width, initial-scale=1.0">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Tortice Home Audio</title>
             <link rel="stylesheet" href="/static/styles.css">
         </head>
