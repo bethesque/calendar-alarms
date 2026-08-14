@@ -6,30 +6,21 @@
 <title>Calendar notifications</title>
 <link rel="stylesheet" href="/static/styles.css">
 <style>
-  body { font-family: sans-serif; max-width: 480px; margin: 40px auto; padding: 0 16px; }
-  button {
-    display: block; width: 100%; padding: 16px; margin: 12px 0;
-    font-size: 18px; border-radius: 8px; border: 1px solid #ccc; cursor: pointer;
-  }
-  #play-morning-announcements { background: #4a90e2; color: white; }
   #stop-alarm { background: #e24a4a; color: white; }
-  button:active { opacity: 0.8; }
-  #result {
-    margin-top: 20px; padding: 12px; border-radius: 6px; background: #f4f4f4;
-    font-family: monospace; white-space: pre-wrap; word-break: break-word;
-  }
 </style>
 </head>
 <body>
-  <div style="display: flex; align-items: center; gap: 12px;">
+  <div class="header">
     <a href="/" class="back">⬅️</a>
     <h1>Calendar notifications</h1>
   </div>
-  <button id="stop-alarm">🔕 Stop alarm</button>
-  <button id="play-morning-announcements">Play morning announcements</button>
-  <button id="refresh-calendar-data">Refresh calendar data</button>
-  <button id="test-alarm">Test alarm</button>
-  <button id="google-login">🔐 Google Login (only works over https)</button>
+  <ul class="buttons">
+    <li><a class="button" id="stop-alarm"><span class="emoji">🔕</span><span>Stop alarm</span></a></li>
+    <li><a class="button" id="play-morning-announcements"><span class="emoji">🌅</span><span>Play morning announcements</span></a></li>
+    <li><a class="button" id="refresh-calendar-data"><span class="emoji">🔄</span><span>Refresh calendar data</span></a></li>
+    <li><a class="button" id="test-alarm"><span class="emoji">📋</span><span>Test alarm</span></a></li>
+    <li><a class="button" id="google-login"><span class="emoji">🔐</span><span>Google Login (only works over https)</span></a></li>
+  </ul>
   <div id="result">No request sent yet.</div>
 
 <script>

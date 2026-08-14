@@ -139,3 +139,16 @@ span.emoji {
     flex-shrink: 0;
     padding-right: 0.5rem;
 }
+
+/* Secondary pages */
+
+div.header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+#result {
+    margin-top: 20px; padding: 12px; border-radius: 6px; background: #f4f4f4;
+    font-family: monospace; white-space: pre-wrap; word-break: break-word;
+}

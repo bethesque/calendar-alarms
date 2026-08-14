@@ -5,29 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Wake up alarm</title>
 <link rel="stylesheet" href="/static/styles.css">
-<style>
-  body { max-width: 480px; margin: 40px auto; padding: 0 16px; }
-
-  button {
-    display: block; width: 100%; padding: 16px; margin: 12px 0;
-    font-size: 18px; border-radius: 8px; border: 1px solid #ccc; cursor: pointer;
-  }
-  #toggle-btn { background: #4a90e2; color: white; }
-  #stop-btn { background: #e24a4a; color: white; }
-  button:active { opacity: 0.8; }
-  #result {
-    margin-top: 20px; padding: 12px; border-radius: 6px; background: #f4f4f4;
-    font-family: monospace; white-space: pre-wrap; word-break: break-word;
-  }
-</style>
 </head>
 <body>
-  <div style="display: flex; align-items: center; gap: 12px;">
+  <div class="header">
     <a href="/" class="back">⬅️</a>
     <h1>Wake up alarm</h1>
   </div>
-  <button id="toggle-btn">Play</button>
-  <button id="stop-btn">Stop</button>
+  <ul class="buttons">
+    <li><a class="button" id="toggle-btn"><span class="emoji">▶️</span><span>Play</span></a></li>
+    <li><a class="button" id="stop-btn"><span class="emoji">⏹️</span><span>Stop</span></a></li>
+  </ul>
   <div id="result">No request sent yet.</div>
 
 <script>

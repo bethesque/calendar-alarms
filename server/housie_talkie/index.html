@@ -5,34 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Housie Talkie</title>
 <link rel="stylesheet" href="/static/styles.css">
-<style>
-  body { max-width: 480px; margin: 40px auto; padding: 0 16px; }
-
-  button {
-    display: block; width: 100%;
-
-    padding: 16px; margin: 12px 0;
-
-    font-size: 18px; border-radius: 8px; border: 1px solid #ccc; cursor: pointer;
-
-  }
-
-  #toggle-btn { background: #4a90e2; color: white; }
-  #stop-btn { background: #e24a4a; color: white; }
-  button:active { opacity: 0.8; }
-  #result {
-    margin-top: 20px; padding: 12px; border-radius: 6px; background: #f4f4f4;
-    font-family: monospace; white-space: pre-wrap; word-break: break-word;
-  }
-</style>
 </head>
 <body>
-  <div style="display: flex; align-items: center; gap: 12px;">
+  <div class="header">
     <a href="/" class="back">⬅️</a>
     <h1>Housie Talkie</h1>
   </div>
-  <button id="test-tts">Test TTS</button>
-  <button id="test-voice">Test voice</button>
+  <ul class="buttons">
+    <li><a class="button" id="test-tts"><span class="emoji">🤖</span><span>Test TTS</span></a></li>
+    <li><a class="button" id="test-voice"><span class="emoji">🎤</span><span>Test voice</span></a></li>
+  </ul>
 
   <div id="result">No request sent yet.</div>
 
