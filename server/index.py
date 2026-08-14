@@ -30,18 +30,20 @@ def index(request: Request):
         <head>
             <meta name="viewport"
                   content="width=device-width, initial-scale=1.0">
-            <title>Home audio</title>
+            <title>Tortice Home Audio</title>
             <link rel="stylesheet" href="/static/styles.css">
         </head>
         <body>
-            <h1>Home audio</h1>
+            <h1>Tortice Home Audio</h1>
             <ul class="buttons">
-                <li><a href="/alarm" class="button">Calendar notifications</a></li>
-                <li><a href="/housie-talkie" class="button">Housie Talkie</a></li>
-                <li><a href="/wake-up-alarm" class="button">Wake up alarm</a></li>
+                <li><a href="/alarm" class="button"><span class="emoji">📅</span><span>Calendar notifications<span></a></li>
+                <li><a href="/housie-talkie" class="button"><span class="emoji">🎤</span><span>Housie Talkie</span></a></li>
+                <li><a href="/wake-up-alarm" class="button"><span class="emoji">⏰</span><span>Wake up alarm</a></span></li>
             </ul>
             <ul class="buttons">
-                <li><a href="/admin" class="button">Admin</a></li>
+                <li><a href="/settings" class="button"><span class="emoji">⚙️</span><span>Settings</span></a></li>
+                <li><a href="http://nas.dixon.net.au:1880" class="button"><span class="emoji">🔊</span><span>Snapweb</span></a>
+      </li>
             </ul>
             <ul class="buttons">
                 <li><a href="/status/calendar-alarms-service"class="button" >Calendar Alarms HTTP Service Status</a></li>
@@ -61,7 +63,7 @@ app.include_router(VoiceRoutes().router, prefix="/talkie")
 app.include_router(UserInterfaceRoutes().router, prefix="/housie-talkie")
 app.include_router(AlarmRoutes().router, prefix="/alarm")
 app.include_router(WakeUpAlarmRoutes().router, prefix="/wake-up-alarm")
-app.include_router(AdminRoutes().router, prefix="/admin")
+app.include_router(AdminRoutes().router, prefix="/settings")
 app.include_router(CalendarAlarmsStatusRoutes().router, prefix="/status/calendar-alarms-service")
 app.include_router(LogRoutes(file_path="logs/server.log", route="/server").router, prefix="/logs")
 app.include_router(LogRoutes(file_path="logs/alarms.log", route="/alarms").router, prefix="/logs")
@@ -83,6 +85,7 @@ if __name__ == "__main__":
         ssl_keyfile: str | None = None
         log_level: str = "info"
         timeout_graceful_shutdown: int = 1
+        reload: bool = False
 
         def uvicorn_kwargs(self) -> dict:
             return self.model_dump(exclude_none=True)
@@ -104,4 +107,4 @@ if __name__ == "__main__":
 
     logging.getLogger("uvicorn.access").addFilter(SuppressPollFilter())
 
-    uvicorn.run(app, **uvicorn_args)
+    uvicorn.run("index:app", **uvicorn_args)

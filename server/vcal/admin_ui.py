@@ -10,7 +10,7 @@ class AdminRoutes:
             AppSettings,
             prefix="",
             ui_config=UIConfig(
-                title="Calendar alarms configuration",
+                title="Tortice home audio settings",
                 show_validation=True,
                 show_save_reset=True,
                 show_types=False,

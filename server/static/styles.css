@@ -131,3 +131,11 @@ pre {
     border-radius: 8px;
     background: #fafafa;
 }
+
+span.emoji {
+    font-size: 1.4rem;
+    width: 1.75rem;
+    text-align: center;
+    flex-shrink: 0;
+    padding-right: 0.5rem;
+}
