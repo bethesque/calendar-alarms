@@ -38,8 +38,8 @@ def build_alarm_audio(
         # 5) Mix
         "[alarm][ann]amix=inputs=2:duration=longest:weights='1 1.2',"
 
-        # ✅ 6) Fade in over 1 second
-        f"afade=t=in:st=0:d=1.5,afade=t=out:st={duration-2}:d=2,"
+        # ✅ 6) Fade in
+        f"afade=t=in:st=0:d=4,afade=t=out:st={duration-2}:d=2,"
 
         # 7) Final limiter + trim
         f"alimiter=limit=0.9,atrim=duration={duration}"
@@ -50,7 +50,7 @@ def build_alarm_audio(
         "ffmpeg",
         "-loglevel", "warning",
         "-f", "lavfi",
-        "-t", "5",
+        "-t", "5", # 5 seconds of silence before and between announcements
         "-i", f"anullsrc=r={SAMPLE_RATE}:cl=stereo",
         "-i", announcement_file,
         "-stream_loop", "-1",
