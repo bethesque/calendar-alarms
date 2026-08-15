@@ -4,8 +4,8 @@ from zoneinfo import ZoneInfo
 import pytest
 from pydantic import ValidationError
 
-from vcal.cal.google_calendar import Event, NotificationType
-from audio.settings import NotificationRule
+from homeaudio.vcal.cal.google_calendar import Event, NotificationType
+from homeaudio.audio.settings import NotificationRule
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
 

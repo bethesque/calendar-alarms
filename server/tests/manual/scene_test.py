@@ -1,7 +1,7 @@
 import logging
 from venv import logger
 
-from vcal.scene import Scene
+from homeaudio.audio.scene import Scene
 
 
 if __name__ == "__main__":

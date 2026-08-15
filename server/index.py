@@ -6,15 +6,15 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from pydantic_settings import BaseSettings
-from audio.log_config import setup_logging_for_http_server
-from vcal.cal.ui import GoogleCalendarAuthRoutes
-from housie_talkie.tts_api import TtsRoutes
-from housie_talkie.voice_api import VoiceRoutes
-from audio.admin_ui import AdminRoutes
-from vcal.notifications.ui import AlarmRoutes
-from audio.logs_ui import CalendarAlarmsStatusRoutes, LogRoutes
-from vcal.wake_up_alarm.api import WakeUpAlarmRoutes
-from housie_talkie.ui import UserInterfaceRoutes
+from homeaudio.audio.log_config import setup_logging_for_http_server
+from homeaudio.vcal.cal.ui import GoogleCalendarAuthRoutes
+from homeaudio.housie_talkie.tts_api import TtsRoutes
+from homeaudio.housie_talkie.voice_api import VoiceRoutes
+from homeaudio.audio.admin_ui import AdminRoutes
+from homeaudio.vcal.notifications.ui import AlarmRoutes
+from homeaudio.audio.logs_ui import CalendarAlarmsStatusRoutes, LogRoutes
+from homeaudio.vcal.wake_up_alarm.api import WakeUpAlarmRoutes
+from homeaudio.housie_talkie.ui import UserInterfaceRoutes
 
 setup_logging_for_http_server(logging.INFO)
 
@@ -75,6 +75,7 @@ if __name__ == "__main__":
 
     class SuppressPollFilter(logging.Filter):
         def filter(self, record):
+            print("used")
             return "/events/poll" not in record.getMessage()
 
     class UvicornSettings(BaseSettings):
@@ -85,11 +86,12 @@ if __name__ == "__main__":
         log_level: str = "info"
         timeout_graceful_shutdown: int = 1
         reload: bool = False
+        access_log: bool = False
 
         def uvicorn_kwargs(self) -> dict:
             return self.model_dump(exclude_none=True)
 
-    parser = argparse.ArgumentParser(description="Audio control service")
+    parser = argparse.ArgumentParser(description="Home audio control service")
 
     parser.add_argument(
         "--conf",

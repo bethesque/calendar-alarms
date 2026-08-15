@@ -6,3 +6,6 @@ curl -X POST http://localhost:8081/talkie \
   -F "players=travcal" \
   -F "sound_effect=none" \
   -F "audio=@tests/manual/recording_1783930884421.m4a"
+
+
+# curl -X POST http://localhost:8081/talkie/test -F "players=travcal"

@@ -1,10 +1,10 @@
 from contextlib import contextmanager
 from datetime import datetime
 
-from vcal.notifications.alarm import check_for_notifications
-from vcal.cal.google_calendar import CalendarSource
-from audio.scene import NullScene
-from audio.settings import NotificationSettings
+from homeaudio.vcal.notifications.alarm import check_for_notifications
+from homeaudio.vcal.cal.google_calendar import CalendarSource
+from homeaudio.audio.scene import NullScene
+from homeaudio.audio.settings import NotificationSettings
 
 
 class StubSnapserverManager:

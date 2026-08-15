@@ -2,12 +2,12 @@ import sys
 from pathlib import Path
 from datetime import datetime
 
-from audio.settings import NotificationRule
+from homeaudio.audio.settings import NotificationRule
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from vcal.notifications.alarm import NotificationFinder, NotificationTextBuilder
-from vcal.cal.google_calendar import CalendarSource
+from homeaudio.vcal.notifications.alarm import NotificationFinder, NotificationTextBuilder
+from homeaudio.vcal.cal.google_calendar import CalendarSource
 
 def test_notification_rule_with_reminder_e2e():
     date_string = "2026-04-06T00:00:00+10:00"

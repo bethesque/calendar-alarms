@@ -1,5 +1,5 @@
 import pytest
-from audio.mpd import FadeOut, FadeUp
+from homeaudio.audio.mpd import FadeOut, FadeUp
 
 
 class TestFadeOutCalculateVolumeSteps:

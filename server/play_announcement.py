@@ -1,4 +1,4 @@
-from vcal.morning_announcements.cli import play_announcement
+from homeaudio.vcal.morning_announcements.cli import play_announcement
 
 if __name__ == "__main__":
     play_announcement()

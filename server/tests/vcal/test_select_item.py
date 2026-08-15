@@ -1,7 +1,7 @@
 from datetime import date
 import pytest
 
-from audio.select_item import select_item_by_date
+from homeaudio.audio.select_item import select_item_by_date
 
 
 def test_basic_progression():

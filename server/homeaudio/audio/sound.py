@@ -1,0 +1,268 @@
+import subprocess
+import logging
+import subprocess
+import tempfile
+import os
+from homeaudio.vcal.notifications import SAMPLE_RATE
+
+logger = logging.getLogger(__name__)
+
+def build_alarm_audio(
+    announcement_file: str,
+    alarm_file: str,
+    output_file: str,
+    duration: int = 300
+):
+
+    # Not quite right because we add silence at the beginning and between loops, but it's good enough
+    # The overall file will be concatenated at <duration> seconds
+    announcement_loops = num_loops(duration, announcement_file)
+    alarm_loops = num_loops(duration, alarm_file)
+
+    logger.debug(f"Building alarm audio with announcement_file={announcement_file}, alarm_file={alarm_file}, output_file={output_file}, duration={duration}")
+    filter_complex = (
+        # 1) Force format INCLUDING sample format
+        f"[0:a]aformat=sample_fmts=s16:sample_rates={SAMPLE_RATE}:channel_layouts=stereo[s0];"
+        f"[1:a]aformat=sample_fmts=s16:sample_rates={SAMPLE_RATE}:channel_layouts=stereo,volume=1.8[s1];"
+
+        # 2) Build ONE cycle: silence → announcement
+        "[s0][s1]concat=n=2:v=0:a=1[ann_once];"
+
+        # 3) Loop announcement cycle
+        f"[ann_once]aloop=loop={announcement_loops}:size=2e+09[ann];"
+
+        # 4) Prepare alarm
+        f"[2:a]aformat=sample_fmts=s16:sample_rates={SAMPLE_RATE}:channel_layouts=stereo,"
+        f"volume=0.5,aloop=loop={alarm_loops}:size=2e+09[alarm];"
+
+        # 5) Mix
+        "[alarm][ann]amix=inputs=2:duration=longest:weights='1 1.2',"
+
+        # ✅ 6) Fade in
+        f"afade=t=in:st=0:d=4,afade=t=out:st={duration-2}:d=2,"
+
+        # 7) Final limiter + trim
+        f"alimiter=limit=0.9,atrim=duration={duration}"
+
+    )
+
+    cmd = [
+        "ffmpeg",
+        "-loglevel", "warning",
+        "-f", "lavfi",
+        "-t", "5", # 5 seconds of silence before and between announcements
+        "-i", f"anullsrc=r={SAMPLE_RATE}:cl=stereo",
+        "-i", announcement_file,
+        "-stream_loop", "-1",
+        "-i", alarm_file,
+        "-filter_complex", filter_complex,
+
+        "-c:a", "pcm_s16le",
+        "-ar", f"{SAMPLE_RATE}",
+        "-ac", "2",
+
+        "-y",
+        output_file,
+    ]
+
+    logger.debug(f"Running FFmpeg command: {' '.join(cmd)}")
+
+    result = subprocess.run(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True)
+    logger.debug(f"FFmpeg output: {result.stderr}")
+
+def build_aggressive_alarm_audio(
+        announcement_file: str,
+        alarm_file: str,
+        output_file: str,
+        loops: int
+):
+    """
+        Join the alarm file and the announcement file, loop them
+        and save the file into output_file
+    """
+
+
+    concat_inputs = "[0:a][1:a]" * loops
+    filter_complex = f"{concat_inputs}concat=n={loops * 2}:v=0:a=1[out]"
+
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-loglevel", "warning",
+        "-i", alarm_file,
+        "-i", announcement_file,
+        "-filter_complex", filter_complex,
+        "-map", "[out]",
+        output_file,
+    ]
+
+    logger.debug(f"Running FFmpeg command: {' '.join(cmd)}")
+
+    result = subprocess.run(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True)
+    logger.debug(f"FFmpeg output: {result.stderr}")
+
+
+
+def mix_announcement_audio(
+    speech_file: str,
+    music_file: str,
+    output_file: str,
+):
+
+    delay = 5
+    fade_duration = 3
+    speech_file_length = track_length(speech_file)
+    full_duration_seconds = speech_file_length + delay + fade_duration
+    music_loops = num_loops(full_duration_seconds, music_file)
+
+    fade_start = full_duration_seconds - fade_duration
+    size=track_length(music_file) * SAMPLE_RATE
+
+    filter_complex = (
+        # Announcement (delay + smooth start)
+        f"[0:a]aformat=sample_fmts=s16:sample_rates={SAMPLE_RATE}:channel_layouts=stereo,"
+        f"volume=1.5,adelay={delay * 1000}|{delay * 1000}[ann];"
+
+        # Music
+        f"[1:a]aformat=sample_fmts=s16:sample_rates={SAMPLE_RATE}:channel_layouts=stereo,volume=0.5,"
+        f"aloop=loop={music_loops}:size={size},"
+        "asetpts=N/SR/TB,"
+        f"atrim=start=0:end={full_duration_seconds:.2f},"
+        "afade=t=in:st=0:d=1.5,"
+        f"afade=t=out:st={fade_start:.2f}:d={fade_duration}[music];"
+
+        # Mix
+        f"[music][ann]amix=inputs=2:weights='1 1.2',"
+
+        # Initial fade-in + limiter
+        "alimiter=limit=0.9"
+    )
+
+    cmd = [
+        "ffmpeg",
+        "-loglevel", "warning",
+        "-i", speech_file,
+        "-i", music_file,
+        "-filter_complex", filter_complex,
+
+        "-c:a", "pcm_s16le",
+        "-ar", f"{SAMPLE_RATE}",
+        "-ac", "2",
+
+        "-y",
+        output_file,
+    ]
+
+    result = subprocess.run(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True)
+    logger.debug(f"FFmpeg output: {result.stderr}")
+
+
+def num_loops(max_length: float, *file_paths: str) -> int:
+    """Calculate the number of loops needed to play files for max_length seconds, rounding DOWN so that it is less than the max."""
+    total_length = sum(track_length(fp) for fp in file_paths)
+    return max(1, int(max_length // total_length))
+
+"""
+Length of the audio file in seconds.
+"""
+def track_length(path: str)  -> float:
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-v", "error",
+                "-show_entries", "format=duration",
+                "-of", "default=noprint_wrappers=1:nokey=1",
+                path
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            check=True
+        )
+        return float(result.stdout.strip())
+    except Exception as e:
+        raise RuntimeError(f"Failed to get duration: {e}")
+
+
+def join_mp3s_to_wav(mp3_files: list, output_wav: str):
+    with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
+        for mp3 in mp3_files:
+            f.write(f"file '{os.path.abspath(mp3)}'\n")
+        list_file = f.name
+
+    try:
+        subprocess.run([
+            "ffmpeg",
+            "-y",
+            "-f", "concat",
+            "-safe", "0",
+            "-i", list_file,
+            "-vn",
+            "-acodec", "pcm_s16le",
+            output_wav
+        ], check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+    finally:
+        os.remove(list_file)
+
+def join_mixed_files_to_wav(files: list, output_wav: str):
+    """
+    Join an arbitrary list of audio files (mixed formats/codecs allowed,
+    e.g. mp3, m4a, wav) into a single WAV file using ffmpeg.
+
+    :param files: list of input file paths, in the order they should be joined
+    :param output_wav: path to the output .wav file
+    """
+    if not files:
+        raise ValueError("files list must not be empty")
+
+    # Build -i flags for each input
+    input_args = []
+    for f in files:
+        input_args.extend(["-i", f])
+
+    # Build the concat filter, e.g. "[0:a][1:a][2:a]concat=n=3:v=0:a=1[out]"
+    stream_labels = "".join(f"[{i}:a]" for i in range(len(files)))
+    filter_complex = f"{stream_labels}concat=n={len(files)}:v=0:a=1[out]"
+
+    cmd = [
+        "ffmpeg",
+        "-y",  # overwrite output if it exists
+        *input_args,
+        "-filter_complex", filter_complex,
+        "-map", "[out]",
+        "-ar", f"{SAMPLE_RATE}",
+        "-ac", "2",
+        output_wav,
+    ]
+
+    result = subprocess.run(
+        cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        text=True
+    )
+
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"ffmpeg failed (exit code {result.returncode}):\n{result.stderr}"
+        )
+
+    return output_wav
+
+
