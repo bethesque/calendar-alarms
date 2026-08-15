@@ -16,6 +16,9 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from homeaudio.audio.settings import GoogleCalendarSettings, NotificationRule
+from homeaudio.env import DATA_DIRECTORY
+
+TOKEN_PATH = f"{DATA_DIRECTORY}/token.json"
 
 TIMEZONE = "Australia/Melbourne"
 
@@ -139,9 +142,9 @@ def load_google_creds():
     # created automatically when the authorization flow completes for the first
     # time.
     settings = GoogleCalendarSettings()
-    token_filename = "token.json"
-    if os.path.exists(token_filename):
-        creds = Credentials.from_authorized_user_file(token_filename, [settings.scope])
+
+    if os.path.exists(TOKEN_PATH):
+        creds = Credentials.from_authorized_user_file(TOKEN_PATH, [settings.scope])
 
     if creds and creds.expired and creds.refresh_token:
         try:

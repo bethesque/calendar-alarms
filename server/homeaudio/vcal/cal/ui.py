@@ -2,6 +2,10 @@ import google_auth_oauthlib.flow
 from fastapi import APIRouter
 from fastapi.responses import RedirectResponse, HTMLResponse
 from homeaudio.audio.settings import GoogleCalendarSettings
+from homeaudio.env import DATA_DIRECTORY
+
+CLIENT_SECRET_PATH = f"{DATA_DIRECTORY}/client_secret.json"
+TOKEN_PATH = f"{DATA_DIRECTORY}/token.json"
 
 class GoogleCalendarAuthRoutes:
     def __init__(self):
@@ -22,7 +26,7 @@ class GoogleCalendarAuthRoutes:
 
     async def login(self):
         flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
-            "client_secret.json",
+            CLIENT_SECRET_PATH,
             scopes=[self.settings.scope],
             state="alwaysTheSame",
         )
@@ -52,7 +56,7 @@ class GoogleCalendarAuthRoutes:
             return HTMLResponse(f"Something went wrong! {error}")
 
         flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
-            "client_secret.json",
+            CLIENT_SECRET_PATH,
             scopes=[self.settings.scope],
             state=state,
         )
@@ -60,7 +64,7 @@ class GoogleCalendarAuthRoutes:
         flow.redirect_uri = f"{self.settings.redirect_server}/auth"
         flow.fetch_token(code=code)
 
-        with open("token.json", "w") as f:
+        with open(TOKEN_PATH, "w") as f:
             f.write(flow.credentials.to_json())
 
         return HTMLResponse(
