@@ -13,7 +13,7 @@ from homeaudio.audio.random_text import ListOptionsSource, select_text
 from homeaudio.audio.select_item import select_item_by_date, select_option
 
 from homeaudio.vcal.notifications import BACKGROUND_MUSIC_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
-from homeaudio.env import CACHE_DIRECTORY, DATA_DIRECTORY
+from homeaudio.env import CACHE_DIRECTORY, CALENDAR_DATA_DIRECTORY
 
 MORNING_ANNOUNCEMENTS_AUDIO_FILE = f"{OUTPUT_AUDIO_DIRECTORY}/morning_announcements.wav"
 MORNING_ANNOUNCEMENTS_PRELUDE_CHOICES = "morning_announcements_prelude_choices.txt"
@@ -124,7 +124,7 @@ class AudioFileBuilder:
 """
 Top level entry point. Generate a summary of today's events, convert them to voice, and play them.
 """
-def play_morning_announcements(calendar_file = os.path.join(DATA_DIRECTORY, "calendar.json"), base_time = datetime.now().astimezone(), before_announcement_hook=None, after_announcement_hook=None):
+def play_morning_announcements(calendar_file = os.path.join(CALENDAR_DATA_DIRECTORY, "calendar.json"), base_time = datetime.now().astimezone(), before_announcement_hook=None, after_announcement_hook=None):
     events = get_events_for_date(load_data_from_file(calendar_file), base_time)
     text_builder = TextBuilder(events)
     bg_music_selector = BackgroundMusicSelector(base_time)

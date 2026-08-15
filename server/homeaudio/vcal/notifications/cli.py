@@ -12,7 +12,7 @@ from homeaudio.vcal.cal.google_calendar import CalendarSource, CalendarDay
 from homeaudio.audio.scene import NullScene, Scene
 from homeaudio.audio.settings import MainSettings
 
-from homeaudio.env import DATA_DIRECTORY
+from homeaudio.env import CALENDAR_DATA_DIRECTORY
 from homeaudio.vcal.notifications.alarm import check_for_notifications
 
 setup_logging_for_alarms(str(LOG_LEVEL))
@@ -43,8 +43,8 @@ def check_alarms():
 
     parser.add_argument(
         "--calendar_file",
-        default=os.path.join(DATA_DIRECTORY, "calendar.json"),
-        help=f"Path to the calendar JSON file (default: {os.path.join(DATA_DIRECTORY, 'calendar.json')})"
+        default=os.path.join(CALENDAR_DATA_DIRECTORY, "calendar.json"),
+        help=f"Path to the calendar JSON file (default: {os.path.join(CALENDAR_DATA_DIRECTORY, 'calendar.json')})"
     )
 
     parser.add_argument('--ignore-music-assistant', action='store_true', help="Do not fade out Music Assistant before playing alarms")

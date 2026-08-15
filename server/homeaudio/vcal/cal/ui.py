@@ -2,10 +2,10 @@ import google_auth_oauthlib.flow
 from fastapi import APIRouter
 from fastapi.responses import RedirectResponse, HTMLResponse
 from homeaudio.audio.settings import GoogleCalendarSettings
-from homeaudio.env import DATA_DIRECTORY
+from homeaudio.env import CALENDAR_DATA_DIRECTORY
 
-CLIENT_SECRET_PATH = f"{DATA_DIRECTORY}/client_secret.json"
-TOKEN_PATH = f"{DATA_DIRECTORY}/token.json"
+CLIENT_SECRET_PATH = f"{CALENDAR_DATA_DIRECTORY}/client_secret.json"
+TOKEN_PATH = f"{CALENDAR_DATA_DIRECTORY}/token.json"
 
 class GoogleCalendarAuthRoutes:
     def __init__(self):

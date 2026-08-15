@@ -4,7 +4,7 @@ from homeaudio.vcal.morning_announcements.core import play_morning_announcements
 from homeaudio.vcal.morning_announcements.core import MORNING_ANNOUNCEMENTS_AUDIO_FILE
 from datetime import datetime
 import argparse
-from homeaudio.env import DATA_DIRECTORY, LOG_LEVEL
+from homeaudio.env import CALENDAR_DATA_DIRECTORY, LOG_LEVEL
 import os
 from homeaudio.vcal.morning_announcements.core import play_morning_announcements as do_play_morning_announcements, play_morning_announcements_audio_file
 from homeaudio.audio.log_config import setup_logging_for_announcements
@@ -36,8 +36,8 @@ def play_morning_announcements():
 
     parser.add_argument(
         "--calendar_file",
-        default=os.path.join(DATA_DIRECTORY, "calendar.json"),
-        help=f"Path to the calendar JSON file (default: {os.path.join(DATA_DIRECTORY, 'calendar.json')})"
+        default=os.path.join(CALENDAR_DATA_DIRECTORY, "calendar.json"),
+        help=f"Path to the calendar JSON file (default: {os.path.join(CALENDAR_DATA_DIRECTORY, 'calendar.json')})"
     )
 
     args = parser.parse_args()

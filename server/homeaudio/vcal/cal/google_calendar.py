@@ -16,9 +16,9 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from homeaudio.audio.settings import GoogleCalendarSettings, NotificationRule
-from homeaudio.env import DATA_DIRECTORY
+from homeaudio.env import CALENDAR_DATA_DIRECTORY
 
-TOKEN_PATH = f"{DATA_DIRECTORY}/token.json"
+TOKEN_PATH = f"{CALENDAR_DATA_DIRECTORY}/token.json"
 
 TIMEZONE = "Australia/Melbourne"
 
