@@ -1,6 +1,6 @@
 import logging
-from vcal.snapserver import Snapserver
-from vcal.settings import SnapcastSettings
+from audio.snapserver import Snapserver
+from audio.settings import SnapcastSettings
 
 logger = logging.getLogger(__name__)
 

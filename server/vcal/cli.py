@@ -1,7 +1,7 @@
 from vcal.env import DATA_DIRECTORY, LOG_LEVEL
 from vcal.cal.google_calendar import CalendarSource
-from vcal.log_config import setup_logging_for_data_refresh
-from vcal.settings import GoogleCalendarSettings
+from audio.log_config import setup_logging_for_data_refresh
+from audio.settings import GoogleCalendarSettings
 
 """
 This script refreshes the calendar data and saves it to a local file.

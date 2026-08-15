@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 from datetime import datetime
 
-from vcal.settings import NotificationRule
+from audio.settings import NotificationRule
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 

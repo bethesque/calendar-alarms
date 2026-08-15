@@ -6,15 +6,15 @@ import re
 import time
 from datetime import datetime, timedelta
 from vcal.cal.google_calendar import EventNotification, NotificationType, CalendarSource
-from vcal.notifications.sound import build_alarm_audio, join_mp3s_to_wav, build_aggressive_alarm_audio, join_mixed_files_to_wav
+from audio.sound import build_alarm_audio, join_mp3s_to_wav, build_aggressive_alarm_audio, join_mixed_files_to_wav
 from vcal.notifications.text_to_voice import text_to_voice_file
-from vcal.notifications.mpd import fade_out, fade_up, mpd_connection
-from vcal.select_item import select_item_by_date
+from audio.mpd import fade_out, fade_up, mpd_connection
+from audio.select_item import select_item_by_date
 from vcal.notifications import GENTLE_ALARMS_DIRECTORY, AGGRESSIVE_ALARMS_DIRECTORY, AUDIO_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, SILENCE_HALF_SEC
-from vcal.notifications.sound import track_length
-from vcal.scene import SceneProtocol, Scene
-from vcal.settings import AlarmSettings, SnapcastSettings, MpdSettings, NotificationSettings
-from vcal.snapcast import SnapserverManager
+from audio.sound import track_length
+from audio.scene import SceneProtocol, Scene
+from audio.settings import AlarmSettings, SnapcastSettings, MpdSettings, NotificationSettings
+from audio.snapcast import SnapserverManager
 
 logger = logging.getLogger(__name__)
 

@@ -2,10 +2,10 @@ import logging
 from pathlib import Path
 import threading
 
-from vcal.snapcast import SnapserverManager
-from vcal.notifications.mpd import fade_up, mpd_connection
-from vcal.random_text import FileListOptionsSource, select_text
-from vcal.settings import MpdSettings, SnapcastSettings
+from audio.snapcast import SnapserverManager
+from audio.mpd import fade_up, mpd_connection
+from audio.random_text import FileListOptionsSource, select_text
+from audio.settings import MpdSettings, SnapcastSettings
 from vcal.env import WAKE_UP_ALARMS_DIRECTORY
 
 logger = logging.getLogger(__name__)

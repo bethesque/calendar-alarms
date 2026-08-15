@@ -5,7 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from vcal.cal.google_calendar import Event, NotificationType
-from vcal.settings import NotificationRule
+from audio.settings import NotificationRule
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
 

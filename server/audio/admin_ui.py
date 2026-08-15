@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from vcal.settings import AppSettings
+from audio.settings import AppSettings
 from pydantic_ui import create_pydantic_ui, UIConfig, FieldConfig, Renderer
 
 class AdminRoutes:

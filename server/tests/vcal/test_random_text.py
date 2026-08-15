@@ -3,7 +3,7 @@ import random
 import os
 from pathlib import Path
 
-from vcal.random_text import ListOptionsSource, select_text
+from audio.random_text import ListOptionsSource, select_text
 
 def write_file(path: Path, lines):
     os.makedirs(path.parent, exist_ok=True)

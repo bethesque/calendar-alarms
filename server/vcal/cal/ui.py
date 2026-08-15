@@ -1,7 +1,7 @@
 import google_auth_oauthlib.flow
 from fastapi import APIRouter
 from fastapi.responses import RedirectResponse, HTMLResponse
-from vcal.settings import GoogleCalendarSettings
+from audio.settings import GoogleCalendarSettings
 
 class GoogleCalendarAuthRoutes:
     def __init__(self):

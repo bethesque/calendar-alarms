@@ -4,7 +4,7 @@ import threading
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse
 from vcal.morning_announcements import play_morning_announcements
-from vcal.scene import Scene
+from audio.scene import Scene
 from vcal.notifications.alarm import stop_alarm, test_alarm
 from vcal.cli import refresh_calendar_data
 from queue import Queue

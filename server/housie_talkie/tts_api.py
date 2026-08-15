@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi import Query
 from pydantic import BaseModel
 from housie_talkie.core import play_tts_announcement, list_sound_effects, TtsAnnouncementRequest
-from vcal.scene import Scene
+from audio.scene import Scene
 
 class HttpAnnouncementRequest(BaseModel):
     message: Optional[str] = None

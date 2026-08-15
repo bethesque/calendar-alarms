@@ -1,6 +1,6 @@
 from datetime import date
 import logging
-from vcal.settings import Option
+from audio.settings import Option
 from datetime import datetime
 import random
 

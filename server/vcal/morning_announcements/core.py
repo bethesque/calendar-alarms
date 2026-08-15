@@ -3,14 +3,14 @@ import glob
 import time
 import os
 from datetime import datetime
-from vcal.notifications.mpd import fade_up, mpd_connection
-from vcal.snapcast import SnapserverManager
-from vcal.settings import MorningAnnouncementsSettings, MpdSettings, SnapcastSettings
+from audio.mpd import fade_up, mpd_connection
+from audio.snapcast import SnapserverManager
+from audio.settings import MorningAnnouncementsSettings, MpdSettings, SnapcastSettings
 from vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException, load_data_from_file, get_events_for_date
 from vcal.notifications.text_to_voice import text_to_voice_file_daily_summary
-from vcal.notifications.sound import mix_announcement_audio, track_length
-from vcal.random_text import ListOptionsSource, select_text
-from vcal.select_item import select_item_by_date, select_option
+from audio.sound import mix_announcement_audio, track_length
+from audio.random_text import ListOptionsSource, select_text
+from audio.select_item import select_item_by_date, select_option
 
 from vcal.notifications import BACKGROUND_MUSIC_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
 from vcal.env import CACHE_DIRECTORY, DATA_DIRECTORY

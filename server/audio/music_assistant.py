@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import List, Tuple
 import logging
 from dataclasses import dataclass
-from vcal.settings import HomeAssistantAnnouncementSettings, HomeAssistantSettings
+from audio.settings import HomeAssistantAnnouncementSettings, HomeAssistantSettings
 
 from vcal.env import CACHE_DIRECTORY
 

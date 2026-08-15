@@ -3,7 +3,7 @@ import os
 import threading
 from pathlib import Path
 from fastapi import APIRouter, File, Form, UploadFile
-from vcal.scene import Scene
+from audio.scene import Scene
 from housie_talkie.voice import play_audio_file_as_announcement
 from housie_talkie.core import VoiceAnnouncementRequest
 

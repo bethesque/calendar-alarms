@@ -1,5 +1,5 @@
-from vcal.music_assistant import MusicAssistant, MusicAssistantState
-from vcal.settings import HomeAssistantSettings
+from audio.music_assistant import MusicAssistant, MusicAssistantState
+from audio.settings import HomeAssistantSettings
 from typing import Protocol
 import logging
 

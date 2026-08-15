@@ -6,13 +6,13 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from pydantic_settings import BaseSettings
-from vcal.log_config import setup_logging_for_http_server
+from audio.log_config import setup_logging_for_http_server
 from vcal.cal.ui import GoogleCalendarAuthRoutes
 from housie_talkie.tts_api import TtsRoutes
 from housie_talkie.voice_api import VoiceRoutes
-from vcal.admin_ui import AdminRoutes
+from audio.admin_ui import AdminRoutes
 from vcal.notifications.ui import AlarmRoutes
-from vcal.logs_ui import CalendarAlarmsStatusRoutes, LogRoutes
+from audio.logs_ui import CalendarAlarmsStatusRoutes, LogRoutes
 from vcal.wake_up_alarm.api import WakeUpAlarmRoutes
 from housie_talkie.ui import UserInterfaceRoutes
 

@@ -1,5 +1,5 @@
 import pytest
-from vcal.notifications.mpd import FadeOut, FadeUp
+from audio.mpd import FadeOut, FadeUp
 
 
 class TestFadeOutCalculateVolumeSteps:

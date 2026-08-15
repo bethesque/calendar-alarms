@@ -7,9 +7,9 @@ import argparse
 from vcal.env import DATA_DIRECTORY, LOG_LEVEL
 import os
 from vcal.morning_announcements.core import play_morning_announcements as do_play_morning_announcements, play_morning_announcements_audio_file
-from vcal.log_config import setup_logging_for_announcements
-from vcal.scene import Scene
-from vcal.settings import MainSettings, MpdSettings, SnapcastSettings
+from audio.log_config import setup_logging_for_announcements
+from audio.scene import Scene
+from audio.settings import MainSettings, MpdSettings, SnapcastSettings
 
 setup_logging_for_announcements(str(LOG_LEVEL))
 

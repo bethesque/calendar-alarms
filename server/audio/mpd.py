@@ -4,7 +4,7 @@ import musicpd
 from typing import Optional, List, Tuple
 import os
 from contextlib import contextmanager
-from vcal.settings import MpdSettings
+from audio.settings import MpdSettings
 import shutil
 
 logger = logging.getLogger(__name__)

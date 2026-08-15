@@ -4,12 +4,12 @@ from enum import Enum
 from datetime import datetime
 from pathlib import Path
 from dataclasses import dataclass
-from vcal.scene import SceneProtocol
+from audio.scene import SceneProtocol
 from vcal.notifications.text_to_voice import text_to_voice_file
-from vcal.notifications.sound import join_mp3s_to_wav, join_mixed_files_to_wav
+from audio.sound import join_mp3s_to_wav, join_mixed_files_to_wav
 from vcal.notifications import  AUDIO_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, SILENCE_QUARTER_SEC, SILENCE_HALF_SEC
 from vcal.env import ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY
-from vcal.random_text import FileListOptionsSource, select_text
+from audio.random_text import FileListOptionsSource, select_text
 
 logger = logging.getLogger(__name__)
 

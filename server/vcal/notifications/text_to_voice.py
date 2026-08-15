@@ -1,9 +1,9 @@
 import os
 import logging
 from gtts import gTTS
-from vcal.string_utils import sanitise_filename
+from audio.string_utils import sanitise_filename
 from vcal.env import CACHE_DIRECTORY, GOOGLE_TRANSLATE_LANG, DEFAULT_GOOGLE_TRANSLATE_TLD
-from vcal.notifications.sound import join_mp3s_to_wav
+from audio.sound import join_mp3s_to_wav
 
 DEFAULT_ANNOUCEMENT_FILE = "audio/default_announcement.mp3"
 AUDIO_CACHE_DIR = os.path.join(CACHE_DIRECTORY, "audio")

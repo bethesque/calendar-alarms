@@ -6,11 +6,11 @@ import argparse
 from datetime import datetime
 from vcal.notifications.alarm import _play_event_alarm
 from vcal.env import LOG_LEVEL
-from vcal.notifications.mpd import fade_out, fade_up, mpd_connection
-from vcal.log_config import setup_logging_for_alarms
+from audio.mpd import fade_out, fade_up, mpd_connection
+from audio.log_config import setup_logging_for_alarms
 from vcal.cal.google_calendar import CalendarSource, CalendarDay
-from vcal.scene import NullScene, Scene
-from vcal.settings import MainSettings
+from audio.scene import NullScene, Scene
+from audio.settings import MainSettings
 
 from vcal.env import DATA_DIRECTORY
 from vcal.notifications.alarm import check_for_notifications

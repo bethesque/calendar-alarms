@@ -10,12 +10,12 @@ from enum import Enum
 from operator import attrgetter
 import logging
 import json
-from vcal.string_utils import json_default_encoder
+from audio.string_utils import json_default_encoder
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from vcal.settings import GoogleCalendarSettings, NotificationRule
+from audio.settings import GoogleCalendarSettings, NotificationRule
 
 TIMEZONE = "Australia/Melbourne"
 

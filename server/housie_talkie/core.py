@@ -2,10 +2,10 @@ import logging
 import os
 import time
 
-from vcal.notifications.sound import track_length
-from vcal.notifications.mpd import mpd_connection
-from vcal.settings import SnapcastSettings, MpdSettings
-from vcal.snapcast import SnapserverManager
+from audio.sound import track_length
+from audio.mpd import mpd_connection
+from audio.settings import SnapcastSettings, MpdSettings
+from audio.snapcast import SnapserverManager
 from housie_talkie.models import *
 
 logger = logging.getLogger(__name__)
