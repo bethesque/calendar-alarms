@@ -46,6 +46,23 @@ ul {
     max-width: 420px;
 }
 
+.field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    max-width: 420px;
+    margin-bottom: 15px;
+}
+
+.field label {
+    flex-shrink: 0;
+}
+
+.field select {
+    flex: 1;
+}
+
 ul.buttons {
     margin-bottom: 15px;
 }

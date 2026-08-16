@@ -11,6 +11,22 @@
     <a href="/" class="back">⬅️</a>
     <h1>Housie Talkie</h1>
   </div>
+
+  <div class="field">
+    <label for="players">Players:</label>
+    <select id="players">
+      <option value="">All</option>
+      <option value="bethmac">BethMac</option>
+      <option value="travcal">TravCal</option>
+      <option value="travnas">TravNAS</option>
+      <option value="officepi">OfficePi</option>
+      <option value="kaypi">KayPi</option>
+      <option value="patpi">PatPi</option>
+      <option value="kaybox">KayBox</option>
+      <option value="thepatbox">PatBox</option>
+    </select>
+  </div>
+
   <ul class="buttons">
     <li><a class="button" id="test-tts"><span class="emoji">🤖</span><span>Test TTS</span></a></li>
     <li><a class="button" id="test-voice"><span class="emoji">🎤</span><span>Test voice</span></a></li>
@@ -37,12 +53,21 @@
     xhr.send();
   }
 
+  function withPlayers(url) {
+    const players = document.getElementById('players').value;
+    if (players) {
+      return url + "&players=" + players;
+    } else {
+      return url;
+    }
+  }
+
   document.getElementById('test-tts').addEventListener('click', function () {
-    callEndpoint("/announce?message=This%20is%20a%20test");
+    callEndpoint(withPlayers("/announce?message=This%20is%20a%20test"));
   });
 
   document.getElementById('test-voice').addEventListener('click', function () {
-    callEndpoint("/talkie/test");
+    callEndpoint(withPlayers("/talkie/test"));
   });
 
 </script>
