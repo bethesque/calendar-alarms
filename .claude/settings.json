@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la ~/.claude/projects/ 2>/dev/null | head -20 *)",
+      "Read(//Users/beth/.claude/projects/**)",
+      "Bash(mpc status)",
+      "Bash(pip list)",
+      "Bash(pip show *)"
+    ]
+  }
+}
