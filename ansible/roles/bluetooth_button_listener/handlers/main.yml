@@ -1,0 +1,9 @@
+- name: reload user systemd daemon
+  ansible.builtin.command: systemctl --user daemon-reload
+
+- name: restart bluetooth-button-listener.service
+  ansible.builtin.systemd:
+    name: bluetooth-button-listener.service
+    scope: user
+    state: restarted
+    enabled: true
