@@ -19,6 +19,7 @@
     <li><a class="button" id="play-morning-announcements"><span class="emoji">🌅</span><span>Play morning announcements</span></a></li>
     <li><a class="button" id="refresh-calendar-data"><span class="emoji">🔄</span><span>Refresh calendar data</span></a></li>
     <li><a class="button" id="test-alarm"><span class="emoji">📋</span><span>Test alarm</span></a></li>
+    <li><a class="button" id="mute-area"><span class="emoji">📋</span><span>Mute area</span></a></li>
     <li><a class="button" id="google-login"><span class="emoji">🔐</span><span>Google Login (only works over https)</span></a></li>
   </ul>
   <div id="result">No request sent yet.</div>
@@ -62,6 +63,10 @@
     url = new URL(window.location.href);
     login_url = "https://" + url.hostname + ":8443/login";
     window.location.href = login_url;
+  });
+
+  document.getElementById('mute-area').addEventListener('click', function () {
+    callEndpoint("/alarm/mute/area-of/travcal", "POST");
   });
 
 </script>

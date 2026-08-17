@@ -1,11 +1,11 @@
 import logging
 from pathlib import Path
 import threading
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Response
 from fastapi.responses import FileResponse, HTMLResponse
 from homeaudio.vcal.morning_announcements import play_morning_announcements
 from homeaudio.audio.scene import Scene
-from homeaudio.vcal.notifications.alarm import stop_alarm, test_alarm
+from homeaudio.vcal.notifications.alarm import stop_alarm, test_alarm, mute_alarm_for_area_of_player
 from homeaudio.vcal.cli import refresh_calendar_data
 from queue import Queue
 
@@ -44,6 +44,10 @@ class AlarmHandler:
                 self._pending = False
             return "Alarm currently being stopped"
 
+    def mute_area_of_player(self, player: str) -> str:
+        threading.Thread(target=mute_alarm_for_area_of_player, args=(player,), daemon=True).start()
+        return f"Muting area for {player}"
+
 
     def test_alarm(self) -> str:
         threading.Thread(target=test_alarm, daemon=True).start()
@@ -72,6 +76,13 @@ class AlarmRoutes:
         )
 
         self.router.add_api_route(
+            "/mute/area-of/{player}",
+            self.mute_area_endpoint,
+            methods=["POST"],
+            name="alarm_mute",
+        )
+
+        self.router.add_api_route(
             "/test",
             self.test_alarm_endpoint,
             methods=["POST"],
@@ -97,6 +108,10 @@ class AlarmRoutes:
 
     async def stop_alarm_endpoint(self):
         message = self.alarm_handler.stop_alarm()
+        return Response(content=message, status_code=202, media_type="text/plain")
+
+    async def mute_area_endpoint(self, player: str):
+        message = self.alarm_handler.mute_area_of_player(player)
         return Response(content=message, status_code=202, media_type="text/plain")
 
     async def test_alarm_endpoint(self):

@@ -58,7 +58,7 @@ play-test-file = "vcal.alarms.cli:play_test_file"
 cal-announce = "vcal.morning_announcements.cli:play_morning_announcements" # Morning summary announcement
 cal-announce-cached = "vcal.morning_announcements.cli:play_morning_announcements_cached" # Play the cached voice file
 
-cal-data-refresh = "vcal.cli:refresh_calendar_data"
+cal-data-refresh = "homeaudio.vcal.cli:refresh_calendar_data"
 
 [tool.setuptools]
 # Tells setuptools where to find your source code

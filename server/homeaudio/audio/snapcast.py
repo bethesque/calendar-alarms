@@ -32,6 +32,3 @@ class SnapserverManager:
             logger.exception(f"Error setting snapclients to {usecase} volume - audio may not be heard")
 
         return self.connected_player_areas()
-
-
-

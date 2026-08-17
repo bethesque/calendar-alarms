@@ -20,6 +20,9 @@ class Client:
     def name(self) -> str:
         return self.config_name or self.host_name
 
+    def name_matches(self, name) -> bool:
+        return self.config_name == name or self.host_name == name
+
 class Snapserver:
     def __init__(self, base_url: str):
         self.base_url = base_url.rstrip("/")
@@ -127,6 +130,35 @@ class Snapserver:
                 },
             },
         }
+
+    def _set_client_mute(self, client_id: str) -> dict:
+        return {
+            "method": "Client.SetVolume",
+            "params": {
+                "id": client_id,
+                "volume": {
+                    "muted": True,
+                },
+            },
+        }
+
+    def mute_clients(self, client_names: list[str]):
+        all_clients = self.connected_clients()
+        logger.info(f"Attempting to mute {", ".join(client_names)}")
+        matching_clients = [c for player in client_names for c in all_clients if c.name_matches(player)]
+
+        if matching_clients:
+            calls = [
+                self._set_client_mute(c.id)
+                for c in matching_clients
+            ]
+
+            logger.info(f"Muting {", ".join([c.name for c in matching_clients])} (any others are not connected)")
+
+            if calls:
+                self._batch_rpc(calls)
+        else:
+            logger.info("No connected clients to mute")
 
     def set_volumes(self, host_volumes: dict) -> None:
         clients = self.connected_clients()

@@ -100,6 +100,12 @@ class SnapcastSettings(YAMLSettings):
             for player_name in player_names
         }
 
+    def snapclients_for_area(self, area: str) -> list[SnapclientConfig]:
+        return [snapclient for snapclient in self.snapclients if snapclient.area == area]
+
+    def snapclient_settings(self, name: str) -> SnapclientConfig:
+        return next((snapclient for snapclient in self.snapclients if snapclient.name == name))
+
 
 class CalendarSetting(BaseModel):
     id: str
