@@ -10,7 +10,7 @@ from homeaudio.audio.sound import build_alarm_audio, join_mp3s_to_wav, build_agg
 from homeaudio.vcal.notifications.text_to_voice import text_to_voice_file
 from homeaudio.audio.mpd import fade_out, fade_up, mpd_connection
 from homeaudio.audio.select_item import select_item_by_date
-from homeaudio.vcal.notifications import GENTLE_ALARMS_DIRECTORY, AGGRESSIVE_ALARMS_DIRECTORY, AUDIO_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, SILENCE_HALF_SEC
+from homeaudio.vcal.notifications import GENTLE_ALARMS_DIRECTORY, AGGRESSIVE_ALARMS_DIRECTORY, PRE_ANNOUNCEMENT_BELL, OUTPUT_AUDIO_DIRECTORY, SILENCE_HALF_SEC
 from homeaudio.audio.sound import track_length
 from homeaudio.audio.scene import SceneProtocol, Scene
 from homeaudio.audio.settings import AlarmSettings, SnapcastSettings, MpdSettings, NotificationSettings
@@ -208,7 +208,7 @@ class AnnouncementAudio:
         return [text_to_voice_file(text) for text in self.notification_texts]
 
     def preannouncement_bell(self):
-        return AUDIO_DIRECTORY + "/preannounce_3.mp3"
+        return PRE_ANNOUNCEMENT_BELL
 
 def play_notifications(announcements_file: str | None, alarms_file: str | None, scene: SceneProtocol):
     mpd_settings = MpdSettings()
