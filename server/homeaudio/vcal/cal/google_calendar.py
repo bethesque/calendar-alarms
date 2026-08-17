@@ -42,12 +42,12 @@ class EventNotification:
     type: NotificationType
     offset: int
     notification_time: datetime.datetime = field(init=False)
-    reminder: str | None = None
+    notification_rule: NotificationRule | None = None
 
     def __post_init__(self):
         self.notification_time = self.event.start_time - datetime.timedelta(minutes=self.offset)
 
-    def same_excluding_reminder(self, other: "EventNotification") -> bool:
+    def same_excluding_notification_rule(self, other: "EventNotification") -> bool:
         return (
             self.event == other.event
             and self.type == other.type
@@ -72,7 +72,7 @@ def notifications_from_rules(event: "Event", rules: list[NotificationRule]) -> l
                 event=event,
                 type=NotificationType[rule.notification_type.upper()],
                 offset=rule.offset_minutes,
-                reminder=rule.reminder
+                notification_rule = rule
             ))
     return notifications
 
@@ -104,7 +104,7 @@ class Event:
 
         deduplicated_notifications = []
         for notification in notifications:
-            if any(existing.same_excluding_reminder(notification) for existing in deduplicated_notifications):
+            if any(existing.same_excluding_notification_rule(notification) for existing in deduplicated_notifications):
                 continue
             deduplicated_notifications.append(notification)
 

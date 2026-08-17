@@ -111,6 +111,8 @@ class NotificationRule(BaseModel):
     notification_type: Literal["alarm", "announce"] = Field(default="alarm", description="The notification type: alarm or announce")
     offset_minutes: int = Field(default=0, ge=0, description="Minutes before the event start")
     reminder: str | None = None
+    replace: bool = Field(default=False, description="When true, the reminder replaces the announcement text, otherwise it is appended.")
+
 
 class AlarmSettings(BaseSettings):
     gentle_alarm_duration: int = Field(default=120, description="The number of seconds to play the gentle alarm", ge=0)

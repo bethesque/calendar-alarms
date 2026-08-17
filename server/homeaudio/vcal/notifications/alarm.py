@@ -15,6 +15,7 @@ from homeaudio.audio.sound import track_length
 from homeaudio.audio.scene import SceneProtocol, Scene
 from homeaudio.audio.settings import AlarmSettings, SnapcastSettings, MpdSettings, NotificationSettings
 from homeaudio.audio.snapcast import SnapserverManager
+from homeaudio.audio.snapserver import Snapserver
 
 logger = logging.getLogger(__name__)
 
@@ -90,14 +91,18 @@ class NotificationTextBuilder:
 
     def _announcement_for_event(self, event_notification: EventNotification):
         announcement: str
-        summary = event_notification.event.summary if event_notification.event.summary else "an event"
-        if event_notification.offset > 0:
-            announcement = f"It will be time {self.to_or_for(summary)} {summary} in {event_notification.offset} minutes"
-        else:
-            announcement = f"It's time {self.to_or_for(summary)} {summary}"
 
-        if event_notification.reminder:
-            announcement = announcement + ". " + event_notification.reminder
+        if event_notification.notification_rule and event_notification.notification_rule.replace and event_notification.notification_rule.reminder:
+            announcement = event_notification.notification_rule.reminder
+        else:
+            summary = event_notification.event.summary if event_notification.event.summary else "an event"
+            if event_notification.offset > 0:
+                announcement = f"It will be time {self.to_or_for(summary)} {summary} in {event_notification.offset} minutes"
+            else:
+                announcement = f"It's time {self.to_or_for(summary)} {summary}"
+
+            if event_notification.notification_rule and event_notification.notification_rule.reminder:
+                announcement = announcement + ". " + event_notification.notification_rule.reminder
 
         return announcement
 
@@ -270,6 +275,15 @@ def stop_alarm(after_alarm_hook=None):
     logger.info(message)
 
     after_alarm_hook() if after_alarm_hook else None
+
+def mute_alarm_for_area_of_player(player, snapcast_settings: SnapcastSettings = SnapcastSettings()):
+    area = snapcast_settings.snapclient_settings(player).area
+    if area:
+        names = [ snapclient.name for snapclient in snapcast_settings.snapclients_for_area(area)]
+        snapserver = Snapserver(snapcast_settings.snapserver_rpc_url)
+        snapserver.mute_clients(names)
+    else:
+        logger.info(f"No area found for player {player}, cannot mute area")
 
 def test_alarm():
     date_string = "2026-04-06T00:00:00+10:00"
