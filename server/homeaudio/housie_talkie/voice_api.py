@@ -4,10 +4,24 @@ import threading
 from pathlib import Path
 from fastapi import APIRouter, File, Form, UploadFile
 from homeaudio.audio.scene import Scene
+from homeaudio.audio.snapserver import Client
 from homeaudio.housie_talkie.voice import play_audio_file_as_announcement
-from homeaudio.housie_talkie.core import VoiceAnnouncementRequest
+from homeaudio.housie_talkie.core import VoiceAnnouncementRequest, list_clients, list_sound_effects
+from homeaudio.audio.settings import SnapcastSettings, SnapclientConfig
 
 logger = logging.getLogger(__name__)
+
+class ClientJson:
+    def __init__(self, client: Client, client_config: SnapclientConfig | None):
+        self.client = client
+        self.client_config = client_config
+
+    def to_dict(self) -> dict:
+        return {
+            "name": self.client.name,
+            "display_name": self.client_config.display_name if self.client_config else self.client.name,
+            "connected": self.client.connected
+        }
 
 def ensure_list_or_none(x):
     if isinstance(x, list):
@@ -33,6 +47,18 @@ class VoiceRoutes:
             self.test,
             methods=["POST"],
             status_code=202
+        )
+
+        self.router.add_api_route(
+            "/clients",
+            self.clients,
+            methods=["GET"],
+        )
+
+        self.router.add_api_route(
+            "/sound-effects",
+            self.sound_effects,
+            methods=["GET"],
         )
 
     async def index(
@@ -65,6 +91,24 @@ class VoiceRoutes:
         ).start()
 
         return "OK"
+
+    async def clients(self):
+        snapcast_settings = SnapcastSettings()
+        snapclient_configs = snapcast_settings.snapclients_by_name
+        return {
+            "clients": [ClientJson(client, snapclient_configs.get(client.name, None)).to_dict() for client in list_clients(snapcast_settings)]
+        }
+
+    async def sound_effects(self):
+        return {
+            "sound_effects": [
+                {
+                    "name": file,
+                    "value": file
+                }
+                for file in list_sound_effects()
+            ]
+        }
 
     async def test(
         self,

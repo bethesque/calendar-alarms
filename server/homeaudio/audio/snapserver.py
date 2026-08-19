@@ -12,6 +12,8 @@ class Client:
     id: str
     host_name: str
     config_name: str
+    connected: bool
+    last_seen: dict
 
     def __str__(self) -> str:
         return f"{self.id}:{self.host_name}"
@@ -94,10 +96,27 @@ class Snapserver:
                         id=c["id"],
                         host_name=c["host"]["name"],
                         config_name=c["config"]["name"],
+                        connected=c["connected"],
+                        last_seen=c["lastSeen"]
                     )
                 )
 
-        return clients
+        return self._most_recent_per_host(clients)
+
+    @staticmethod
+    def _most_recent_per_host(clients: list[Client]) -> list[Client]:
+        most_recent_by_host: dict[str, Client] = {}
+
+        for client in clients:
+            existing = most_recent_by_host.get(client.host_name)
+            if existing is None or Snapserver._last_seen_key(client) > Snapserver._last_seen_key(existing):
+                most_recent_by_host[client.host_name] = client
+
+        return list(most_recent_by_host.values())
+
+    @staticmethod
+    def _last_seen_key(client: Client) -> tuple[int, int]:
+        return (client.last_seen.get("sec", 0), client.last_seen.get("usec", 0))
 
     def connected_client_names(self) -> list[str]:
         return [ client.name for client in self.connected_clients() ]

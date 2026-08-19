@@ -7,6 +7,7 @@ from homeaudio.audio.mpd import mpd_connection
 from homeaudio.audio.settings import SnapcastSettings, MpdSettings
 from homeaudio.audio.snapcast import SnapserverManager
 from homeaudio.housie_talkie.models import *
+from homeaudio.audio.snapserver import Client, Snapserver
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,12 @@ def _play_audio_files(request: PlayableRequest):
 
 def list_sound_effects()-> list[str]:
         return ["none", "random"] + sorted([os.path.basename(path) for path in SoundEffectSelector().get_options_source().get_options()])
+
+def list_clients(snapcast_settings: SnapcastSettings = SnapcastSettings()) -> list[Client]:
+    snapserver = Snapserver(snapcast_settings.snapserver_rpc_url)
+    return snapserver.connected_clients()
+
+
 
 
 
