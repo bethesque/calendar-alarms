@@ -191,7 +191,7 @@ class MorningAnnouncementsSettings(YAMLSettings):
 
 class MusicAssistantPlayer(BaseModel):
     name: str = Field(description="The name of the Music Assistant player in Home Assistant (excluding the 'media_player.' prefix)")
-    area: str = Field(description="The area of the house where the Music Assistant player is located")
+    area: str | None = Field(description="The area of the house where the Music Assistant player is located")
 
 class HomeAssistantAnnouncementSettings(BaseModel):
     fade_volume: float = Field(default=0.15, description="The volume to fade the Music Assistant players to while playing an announcement", ge=0.0, le=1.0)
