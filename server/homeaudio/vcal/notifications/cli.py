@@ -4,7 +4,7 @@ import logging
 import os
 import argparse
 from datetime import datetime
-from homeaudio.vcal.notifications.alarm import _play_event_alarm
+from homeaudio.vcal.notifications.core import _play_event_alarm
 from homeaudio.env import LOG_LEVEL
 from homeaudio.audio.mpd import fade_out, fade_up, mpd_connection
 from homeaudio.audio.log_config import setup_logging_for_alarms
@@ -13,7 +13,7 @@ from homeaudio.audio.scene import NullScene, Scene
 from homeaudio.audio.settings import MainSettings
 
 from homeaudio.env import CALENDAR_DATA_DIRECTORY
-from homeaudio.vcal.notifications.alarm import check_for_notifications
+from homeaudio.vcal.notifications.core import check_for_notifications
 
 setup_logging_for_alarms(str(LOG_LEVEL))
 

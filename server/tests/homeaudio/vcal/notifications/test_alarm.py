@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from homeaudio.vcal.cal.google_calendar import Event, EventNotification, LeaveForEvent, NotificationType
 from homeaudio.audio.settings import NotificationRule
-from homeaudio.vcal.notifications.alarm import NotificationTextBuilder
+from homeaudio.vcal.notifications.core import NotificationTextBuilder
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
 

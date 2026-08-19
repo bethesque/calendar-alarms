@@ -6,7 +6,7 @@ from homeaudio.audio.settings import NotificationRule
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from homeaudio.vcal.notifications.alarm import NotificationFinder, NotificationTextBuilder
+from homeaudio.vcal.notifications.core import NotificationFinder, NotificationTextBuilder
 from homeaudio.vcal.cal.google_calendar import CalendarSource
 
 def test_notification_rule_with_reminder_e2e():

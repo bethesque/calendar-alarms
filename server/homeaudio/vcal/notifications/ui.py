@@ -5,7 +5,7 @@ from fastapi import APIRouter, Response
 from fastapi.responses import FileResponse, HTMLResponse
 from homeaudio.vcal.morning_announcements import play_morning_announcements
 from homeaudio.audio.scene import Scene
-from homeaudio.vcal.notifications.alarm import stop_alarm, test_alarm, mute_alarm_for_area_of_player
+from homeaudio.vcal.notifications.core import stop_alarm, test_alarm, mute_alarm_for_area_of_player
 from homeaudio.vcal.cli import refresh_calendar_data
 from queue import Queue
 

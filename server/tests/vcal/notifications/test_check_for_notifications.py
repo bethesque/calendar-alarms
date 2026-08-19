@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from datetime import datetime
 
-from homeaudio.vcal.notifications.alarm import check_for_notifications
+from homeaudio.vcal.notifications.core import check_for_notifications
 from homeaudio.vcal.cal.google_calendar import CalendarSource
 from homeaudio.audio.scene import NullScene
 from homeaudio.audio.settings import NotificationSettings
@@ -54,12 +54,12 @@ def test_check_for_notifications_with_announce_event_plays_via_mpd(monkeypatch):
 
     # Avoid hitting gTTS/ffmpeg to build real audio - the content of the
     # generated files isn't what this test is checking.
-    monkeypatch.setattr("homeaudio.vcal.notifications.alarm.text_to_voice_file", lambda text: "fake_speech.mp3")
-    monkeypatch.setattr("homeaudio.vcal.notifications.alarm.join_mp3s_to_wav", lambda files, output: None)
-    monkeypatch.setattr("homeaudio.vcal.notifications.alarm.track_length", lambda path: 0)
+    monkeypatch.setattr("homeaudio.vcal.notifications.core.text_to_voice_file", lambda text: "fake_speech.mp3")
+    monkeypatch.setattr("homeaudio.vcal.notifications.core.join_mp3s_to_wav", lambda files, output: None)
+    monkeypatch.setattr("homeaudio.vcal.notifications.core.track_length", lambda path: 0)
 
     # Stub Snapcast so no real network calls are made to the Snapserver.
-    monkeypatch.setattr("homeaudio.vcal.notifications.alarm.SnapserverManager", StubSnapserverManager)
+    monkeypatch.setattr("homeaudio.vcal.notifications.core.SnapserverManager", StubSnapserverManager)
 
     # Stub MPD - mpd_connection is a contextmanager, so replace it with a fake
     # one that yields a stub player we can make assertions on.
@@ -69,7 +69,7 @@ def test_check_for_notifications_with_announce_event_plays_via_mpd(monkeypatch):
     def fake_mpd_connection(settings=None):
         yield mpd_player
 
-    monkeypatch.setattr("homeaudio.vcal.notifications.alarm.mpd_connection", fake_mpd_connection)
+    monkeypatch.setattr("homeaudio.vcal.notifications.core.mpd_connection", fake_mpd_connection)
 
     check_for_notifications(
         base_time,
