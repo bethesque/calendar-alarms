@@ -210,6 +210,28 @@ def test_notifications_can_parse_multiple_tags_in_description():
     assert notifications[1].type.name == "ANNOUNCE"
     assert notifications[1].offset == 5
 
+def test_travel_notifications():
+    start_time = datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE)
+    event = Event(
+        owner="Beth",
+        summary="Morning meeting",
+        description="#travel20",
+        start_time=start_time,
+    )
+
+    notifications = event.notifications()
+
+    assert len(notifications) == 2
+    assert notifications[0].event.summary == "Leave for Morning meeting"
+    assert notifications[0].type.name == "ANNOUNCE"
+    assert notifications[0].offset == 5
+    assert notifications[0].event.start_time == datetime.datetime(2026, 4, 28, 12, 10, tzinfo=TIMEZONE)
+
+    assert notifications[1].event.summary == "Leave for Morning meeting"
+    assert notifications[1].type.name == "ANNOUNCE"
+    assert notifications[1].offset == 0
+    assert notifications[1].event.start_time == datetime.datetime(2026, 4, 28, 12, 10, tzinfo=TIMEZONE)
+
 
 def test_notifications_support_description_rules():
     start_time = datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
@@ -260,7 +282,7 @@ def test_notifications_deduplicate_matching_tag_and_rule_notifications():
     assert len(notifications) == 1
     assert notifications[0].type == NotificationType.ALARM
     assert notifications[0].offset == 20
-    assert notifications[0].reminder == "Remember to eat."
+    assert notifications[0].notification_rule.reminder == "Remember to eat."
 
 
 def test_notifications_description_rules_require_matching_owner():

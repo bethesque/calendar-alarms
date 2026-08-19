@@ -93,15 +93,48 @@ class Event:
         if rules:
             notifications.extend(notifications_from_rules(self, rules))
 
+        self._add_notifications_from_description(notifications)
+
+        return self._deduplicate_notifications(notifications)
+
+    def _add_notifications_from_description(self, notifications):
         if self.description and self.start_time:
-            matches = re.findall(r"#(alarm|announce)(\d+)?", self.description)
+            matches = re.findall(r"#(alarm|announce|travel)(\d+)?", self.description)
             if matches:
                 for match in matches:
-                    type, offset = match
-                    type_enum = NotificationType[type.upper()]
-                    offset_int = int(offset) if offset else 0
-                    notifications.append(EventNotification(type=type_enum, offset=offset_int, event=self))
+                    tag, offset = match
 
+                    offset_int = int(offset) if offset else 0
+
+                    if tag == "travel":
+                        self._add_travel_notifications(notifications, offset_int)
+                    else:
+                        type_enum = NotificationType[tag.upper()]
+                        notifications.append(EventNotification(type=type_enum, offset=offset_int, event=self))
+
+    def notifications_within_window(self, start_time, end_time, rules: list[NotificationRule] | None = None):
+        notifications_in_window = []
+        for event_notification in self.notifications(rules):
+            if start_time <= event_notification.notification_time < end_time:
+                notifications_in_window.append(event_notification)
+        return notifications_in_window
+
+    def _add_travel_notifications(self, notifications, offset_int):
+        """
+            Add notification for leaving time, and for 5 minutes before leaving time
+        """
+        departure_time = self.start_time - datetime.timedelta(minutes=offset_int)
+        event = LeaveForEvent(
+                            owner=self.owner,
+                            summary=f"Leave for {self.summary}",
+                            description=self.description,
+                            start_time=departure_time,
+                            end_time=self.start_time
+                        )
+        notifications.append(EventNotification(type=NotificationType.ANNOUNCE, offset=5, event=event))
+        notifications.append(EventNotification(type=NotificationType.ANNOUNCE, offset=0, event=event))
+
+    def _deduplicate_notifications(self, notifications):
         deduplicated_notifications = []
         for notification in notifications:
             if any(existing.same_excluding_notification_rule(notification) for existing in deduplicated_notifications):
@@ -110,12 +143,9 @@ class Event:
 
         return deduplicated_notifications
 
-    def notifications_within_window(self, start_time, end_time, rules: list[NotificationRule] | None = None):
-        notifications_in_window = []
-        for event_notification in self.notifications(rules):
-            if start_time <= event_notification.notification_time < end_time:
-                notifications_in_window.append(event_notification)
-        return notifications_in_window
+@dataclass
+class LeaveForEvent(Event):
+    pass
 
 @dataclass
 class WeatherForecast(Event):
