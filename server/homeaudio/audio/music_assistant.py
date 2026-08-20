@@ -81,7 +81,7 @@ class MusicAssistantPlayer:
 
     def fetch_state(self):
         self._original_state = self.get_state()
-        logger.debug(f"Storing original state for {self.name}: {self._original_state}")
+        logger.debug(f"Fetching state for {self.name}: {self._original_state}")
 
     # Calls the API
     def get_volume(self) -> float:
