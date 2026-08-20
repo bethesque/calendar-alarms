@@ -23,7 +23,7 @@ class ClientJson:
             "connected": self.client.connected
         }
 
-def ensure_list_or_none(x):
+def ensure_list_or_none(x) -> list | None:
     if isinstance(x, list):
         return x
     elif x is None:
@@ -77,12 +77,16 @@ class VoiceRoutes:
             while chunk := await audio.read(65536):
                 f.write(chunk)
 
+        players_list = ensure_list_or_none(players)
+
         talkie_request = VoiceAnnouncementRequest(
             audio_file=audio_file_path,
             scene=Scene(),
             sound_effect=sound_effect,
-            player_names=ensure_list_or_none(players)
+            player_names=players_list
         )
+
+        logger.info(f"Received request to play voice recording {audio_file_path} as announcement with sound effect {sound_effect} to players {players_list}")
 
         threading.Thread(
             target=play_audio_file_as_announcement,
@@ -116,12 +120,15 @@ class VoiceRoutes:
         players: list[str] | None = Form(None),
     ):
         audio_file_path = str(Path(__file__).resolve().parent.joinpath("audio").joinpath("test_recording.m4a"))
+        players_list = ensure_list_or_none(players)
+
+        logger.info(f"Received request to play test voice recording {audio_file_path} as announcement with sound effect {sound_effect} to players {players_list}")
 
         talkie_request = VoiceAnnouncementRequest(
             audio_file=audio_file_path,
             scene=Scene(),
             sound_effect=sound_effect,
-            player_names=ensure_list_or_none(players)
+            player_names=players_list
         )
 
         threading.Thread(
