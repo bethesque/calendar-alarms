@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from pydantic_settings import BaseSettings
 from homeaudio.audio.log_config import setup_logging_for_http_server
-from homeaudio.vcal.cal.ui import GoogleCalendarAuthRoutes
+from homeaudio.vcal.cal.ui import TokenRoutes
 from homeaudio.housie_talkie.tts_api import TtsRoutes
 from homeaudio.housie_talkie.voice_api import VoiceRoutes
 from homeaudio.audio.admin_ui import AdminRoutes
@@ -56,7 +56,7 @@ def index(request: Request):
     </html>
     """
 
-app.include_router(GoogleCalendarAuthRoutes().router, prefix="")
+app.include_router(TokenRoutes("/alarm").router, prefix="/token")
 app.include_router(TtsRoutes().router, prefix="/announce")
 app.include_router(VoiceRoutes().router, prefix="/talkie")
 app.include_router(UserInterfaceRoutes().router, prefix="/housie-talkie")

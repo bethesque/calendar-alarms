@@ -1,87 +1,76 @@
-import google_auth_oauthlib.flow
-from fastapi import APIRouter
-from fastapi.responses import RedirectResponse, HTMLResponse
-from homeaudio.audio.settings import GoogleCalendarSettings
+from fastapi import APIRouter, File, Request, UploadFile
+from fastapi.responses import HTMLResponse
 from homeaudio.env import CALENDAR_DATA_DIRECTORY
 
-CLIENT_SECRET_PATH = f"{CALENDAR_DATA_DIRECTORY}/client_secret.json"
 TOKEN_PATH = f"{CALENDAR_DATA_DIRECTORY}/token.json"
+PAGE_TITLE = "Upload Google API token.json"
 
-class GoogleCalendarAuthRoutes:
-    def __init__(self):
-        self.settings = GoogleCalendarSettings()
+class TokenRoutes:
+    def __init__(self, back_path):
         self.router = APIRouter()
+        self.back_path = back_path
 
         self.router.add_api_route(
-            "/login",
-            self.login,
-            methods=["GET"],
+            "/upload",
+            self.upload_token_form,
+            methods=["GET"]
         )
 
         self.router.add_api_route(
-            "/auth",
-            self.auth,
-            methods=["GET"],
+            "/upload",
+            self.upload_token,
+            methods=["POST"],
+            name="upload_post"
         )
 
-    async def login(self):
-        flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
-            CLIENT_SECRET_PATH,
-            scopes=[self.settings.scope],
-            state="alwaysTheSame",
-        )
-
-        flow.redirect_uri = f"{self.settings.redirect_server}/auth"
-
-        authorization_url, _ = flow.authorization_url(
-            access_type="offline",
-            include_granted_scopes="true",
-            state="alwaysTheSame",
-            login_hint=self.settings.login_hint,
-            prompt="consent",
-        )
-
-        return RedirectResponse(url=authorization_url)
-
-    async def auth(
-        self,
-        code: str | None = None,
-        state: str | None = None,
-        error: str | None = None,
-    ):
-        if state != "alwaysTheSame":
-            return HTMLResponse(f"Something is up with your state: {state}")
-
-        if error:
-            return HTMLResponse(f"Something went wrong! {error}")
-
-        flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
-            CLIENT_SECRET_PATH,
-            scopes=[self.settings.scope],
-            state=state,
-        )
-
-        flow.redirect_uri = f"{self.settings.redirect_server}/auth"
-        flow.fetch_token(code=code)
-
-        with open(TOKEN_PATH, "w") as f:
-            f.write(flow.credentials.to_json())
+    async def upload_token_form(self, request: Request):
+        action = request.url_for("upload_post")
 
         return HTMLResponse(
-            """
+            f"""
             <html>
                 <head>
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <title>Calendar Auth</title>
+                    <title>{PAGE_TITLE}</title>
                     <link rel="stylesheet" href="/static/styles.css">
                 </head>
                 <body>
-                    <div class="card">
-                        <h1>Success</h1>
-                        <p>The Calendar Alarms credentials have been updated.</p>
+                    <div class="header">
+                        <a href="{self.back_path}" class="back">⬅️</a>
+                        <h1>{PAGE_TITLE}</h1>
                     </div>
                     <div class="card">
-                        <a href="/">Home</a>
+                        <form action="{action}" method="post" enctype="multipart/form-data">
+                            <input type="file" name="token" accept="application/json" required>
+                            <button type="submit">Upload</button>
+                        </form>
+                    </div>
+                </body>
+            </html>
+            """,
+            status_code=200,
+        )
+
+    async def upload_token(self, token: UploadFile = File(...)):
+        with open(TOKEN_PATH, "wb") as f:
+            while chunk := await token.read(65536):
+                f.write(chunk)
+
+        return HTMLResponse(
+            f"""
+            <html>
+                <head>
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>{PAGE_TITLE}</title>
+                    <link rel="stylesheet" href="/static/styles.css">
+                </head>
+                <body>
+                    <div class="header">
+                        <a href="{self.back_path}" class="back">⬅️</a>
+                        <h1>{PAGE_TITLE}</h1>
+                    </div>
+                    <div class="card">
+                        Google API token uploaded.
                     </div>
                 </body>
             </html>
