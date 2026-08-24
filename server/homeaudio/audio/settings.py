@@ -224,21 +224,21 @@ class HousieTalkieSettings(YAMLSettings):
 
 class AppSettings(BaseSettings):
     main_settings: MainSettings = Field(default_factory=MainSettings, description="Main settings")
-    mpd_settings: MpdSettings = Field(default_factory=MpdSettings, description="MPD settings")
-    snapcast_settings: SnapcastSettings = Field(default_factory=SnapcastSettings, description="Snapcast settings") # pyright: ignore[reportArgumentType]
+    event_notification_settings: EventNotificationSettings = Field(default_factory=EventNotificationSettings, description="Notification settings")
     google_calendar_settings: GoogleCalendarSettings = Field(default_factory=GoogleCalendarSettings, description="Google Calendar settings") # type: ignore
-    morning_announcements_settings: MorningAnnouncementsSettings = Field(default_factory=MorningAnnouncementsSettings, description="Morning announcements settings")
     home_assistant_settings: HomeAssistantSettings = Field(default_factory=HomeAssistantSettings, description="Home Assistant settings")
     housie_talkie_settings: HousieTalkieSettings = Field(default_factory=HousieTalkieSettings, description="Housie Talkie settings")
-    event_notification_settings: EventNotificationSettings = Field(default_factory=EventNotificationSettings, description="Notification settings")
+    morning_announcements_settings: MorningAnnouncementsSettings = Field(default_factory=MorningAnnouncementsSettings, description="Morning announcements settings")
+    mpd_settings: MpdSettings = Field(default_factory=MpdSettings, description="MPD settings")
+    snapcast_settings: SnapcastSettings = Field(default_factory=SnapcastSettings, description="Snapcast settings") # pyright: ignore[reportArgumentType]
 
     def save(self) -> None:
         logger.info("Saving settings")
-        self.main_settings.save()
-        self.mpd_settings.save()
-        self.snapcast_settings.save()
+        self.event_notification_settings.save()
         self.google_calendar_settings.save()
-        self.morning_announcements_settings.save()
         self.home_assistant_settings.save()
         self.housie_talkie_settings.save()
-        self.event_notification_settings.save()
+        self.main_settings.save()
+        self.morning_announcements_settings.save()
+        self.mpd_settings.save()
+        self.snapcast_settings.save()

@@ -16,7 +16,7 @@ from homeaudio.audio.logs_ui import CalendarAlarmsStatusRoutes, LogRoutes
 from homeaudio.vcal.wake_up_alarm.api import WakeUpAlarmRoutes
 from homeaudio.housie_talkie.ui import UserInterfaceRoutes
 from homeaudio.audio.settings import SnapcastSettings
-from homeaudio.env import APP_NAME
+from homeaudio.env import APP_NAME, HOUSIE_TALKIE_ENABLED, WAKE_UP_ALARM_ENABLED
 
 setup_logging_for_http_server(logging.INFO)
 
@@ -27,6 +27,8 @@ app = FastAPI()
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
     snapclient_settings = SnapcastSettings()
+    housie_talkie_link = """<li><a href="/housie-talkie" class="button"><span class="emoji">🎤</span><span>Housie Talkie</span></a></li>""" if HOUSIE_TALKIE_ENABLED else ""
+    wake_up_alarm_link = """<li><a href="/wake-up-alarm" class="button"><span class="emoji">⏰</span><span>Wake up alarm</a></span></li>""" if WAKE_UP_ALARM_ENABLED else ""
     return f"""
     <html>
         <head>
@@ -38,8 +40,8 @@ def index(request: Request):
             <h1>{APP_NAME}</h1>
             <ul class="buttons">
                 <li><a href="/alarm" class="button"><span class="emoji">📅</span><span>Calendar notifications<span></a></li>
-                <li><a href="/housie-talkie" class="button"><span class="emoji">🎤</span><span>Housie Talkie</span></a></li>
-                <li><a href="/wake-up-alarm" class="button"><span class="emoji">⏰</span><span>Wake up alarm</a></span></li>
+                {housie_talkie_link}
+                {wake_up_alarm_link}
             </ul>
             <ul class="buttons">
                 <li><a href="/settings" class="button"><span class="emoji">⚙️</span><span>Settings</span></a></li>
