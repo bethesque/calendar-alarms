@@ -15,6 +15,7 @@ from homeaudio.vcal.notifications.ui import AlarmRoutes
 from homeaudio.audio.logs_ui import CalendarAlarmsStatusRoutes, LogRoutes
 from homeaudio.vcal.wake_up_alarm.api import WakeUpAlarmRoutes
 from homeaudio.housie_talkie.ui import UserInterfaceRoutes
+from homeaudio.audio.settings import SnapcastSettings
 
 setup_logging_for_http_server(logging.INFO)
 
@@ -24,7 +25,7 @@ app = FastAPI()
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
-    hostname = request.url.hostname
+    snapclient_settings = SnapcastSettings()
     return f"""
     <html>
         <head>
@@ -41,7 +42,7 @@ def index(request: Request):
             </ul>
             <ul class="buttons">
                 <li><a href="/settings" class="button"><span class="emoji">⚙️</span><span>Settings</span></a></li>
-                <li><a href="http://nas.dixon.net.au:1880" class="button"><span class="emoji">🔊</span><span>Snapweb</span></a>
+                <li><a href="{snapclient_settings.snapserver}" class="button"><span class="emoji">🔊</span><span>Snapweb</span></a>
       </li>
             </ul>
             <ul class="buttons">
