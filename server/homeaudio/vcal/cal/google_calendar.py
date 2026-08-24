@@ -343,7 +343,8 @@ def get_events_for_date(calendar_days, date_time):
     if match:
         return match.all_events()
     else:
-        raise MissingCalendarDataException()
+        available_dates = [str(day.date) for day in calendar_days]
+        raise MissingCalendarDataException(f"Could not find day matching {str(date_time.date())} in days with dates: {available_dates}")
 
 @dataclass
 class CalendarSource:
