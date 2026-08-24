@@ -26,3 +26,5 @@ sendspin_user_service: sendspin-armv6.service
 # target user (adjust if needed)
 sendspin_user: "{{ ansible_user }}"
 sendspin_user_home: "/home/{{ sendspin_user }}"
+
+ma_sendspin_host:  nas.dixon.net.au

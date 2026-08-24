@@ -9,7 +9,7 @@ payload = {
 }
 
 request = urllib.request.Request(
-    "http://192.168.20.3:1880/jsonrpc",
+    "http://192.168.20.3:1780/jsonrpc",
     data=json.dumps(payload).encode("utf-8"),
     headers={"Content-Type": "application/json"},
     method="POST",

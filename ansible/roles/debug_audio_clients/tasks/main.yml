@@ -2,7 +2,6 @@
   ansible.builtin.command: "{{ item.cmd }}"
   loop:
     - { name: "calendar alarms service", cmd: "systemctl --user status calendar-alarms-snapclient" }
-    - { name: "music assistant service", cmd: "systemctl --user status music-assistant-snapclient" }
     - { name: "sendspin service",         cmd: "systemctl --user status sendspin-armv6.service" }
 
     - { name: "amixer",             cmd: "amixer" }
@@ -21,7 +20,6 @@
   ansible.builtin.command: "{{ item.cmd }}"
   loop:
     - { name: "calendar alarms service", cmd: "systemctl --user is-active calendar-alarms-snapclient" }
-    - { name: "music assistant service", cmd: "systemctl --user is-active music-assistant-snapclient" }
     - { name: "sendspin service", cmd: "systemctl --user is-active sendspin-armv6.service" }
 
   register: results

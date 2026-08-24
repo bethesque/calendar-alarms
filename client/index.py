@@ -191,9 +191,6 @@ def _get_status_body(audio_config: dict) -> dict:
             "status": system(["systemctl", "--user", "is-active", "calendar-alarms-snapclient.service"]),
         },
         "calendar-alarms-snapclient-status": snapclient_status,
-        "music-assistant-snapclient.service": {
-            "status": system(["systemctl", "--user", "is-active", "music-assistant-snapclient.service"])
-        },
         "sendspin-armv6.service": {
             "status": system(["systemctl", "--user", "is-active", "sendspin-armv6.service"])
         },

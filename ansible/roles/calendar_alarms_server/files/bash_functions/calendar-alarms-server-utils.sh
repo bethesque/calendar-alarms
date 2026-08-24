@@ -19,7 +19,7 @@ function calendar-alarms-snapserver-restart {
 }
 
 function calendar-alarms-snapserver-api-status {
-    curl -X POST http://127.0.0.1:1880/jsonrpc \
+    curl -X POST http://127.0.0.1:1780/jsonrpc \
         -H "Content-Type: application/json" \
         -d '{"id":1,"jsonrpc":"2.0","method":"Server.GetStatus"}' | jq .
 }
