@@ -128,25 +128,25 @@ class NotificationRule(BaseModel):
     replace: bool = Field(default=False, description="When true, the reminder replaces the announcement text, otherwise it is appended.")
 
 
-class AlarmSettings(BaseSettings):
+class AlarmSettings(BaseModel):
     gentle_alarm_duration: int = Field(default=120, description="The number of seconds to play the gentle alarm", ge=0)
     aggressive_alarm_loops: int = Field(default=1, description="The number of times to play the aggressive alarm. 0 to disable.", ge=0)
     full_loops: int = Field(default=2, description="The number of times the gentle/aggressive alarm loops should be played", ge=1)
 
-class NotificationSettings(YAMLSettings):
+class AnnouncementSettings(BaseModel):
+    sound_effect_probability: float = Field(default=0.25, description="Probability of a sound effect being played before an event announcement (0=never, 1=always)")
+
+class EventNotificationSettings(YAMLSettings):
     notification_rules: list[NotificationRule] = Field(default_factory=list, description="Rules for creating notifications from event descriptions")
     alarms: AlarmSettings = Field(default_factory=AlarmSettings)
+    announcements: AnnouncementSettings = Field(default_factory=AnnouncementSettings)
 
     model_config = SettingsConfigDict(
         yaml_file="config/notifications.yaml"
     )
 
 class GoogleCalendarSettings(YAMLSettings):
-    scope: str = Field(default="https://www.googleapis.com/auth/calendar.readonly", description="Permissions scope")
-    redirect_server: str = Field(description="The local server to which the redirect should be sent after authentication with Google")
-    login_hint: str = Field(description="The default email address to put in the login form")
     calendars: list[CalendarSetting] = Field(default_factory=list)
-    notification_rules: list[NotificationRule] = Field(default_factory=list, description="Rules for creating notifications from event descriptions")
 
     def calendar_filter(self)-> list[tuple]:
         return [(cal.id, cal.name) for cal in self.calendars]
@@ -216,6 +216,7 @@ class HousieTalkieSettings(YAMLSettings):
     target_integrated_loudness: float = Field(default=-19.0, description="Target integrated loudness in LUFS", le=0)
     target_true_peak: float = Field(default=-1.5, description="Target true peak ceiling in dBTP", le=0)
     target_loudness_range: float = Field(default=1.0, description="Target loudness range in LU")
+    sound_effect_probability: float = Field(default=0.25, description="Probability of a sound effect being played when a 'random' sound effect is specified (0=never, 1=always)")
 
     model_config = SettingsConfigDict(
         yaml_file="config/housie_talkie.yaml"
@@ -229,7 +230,7 @@ class AppSettings(BaseSettings):
     morning_announcements_settings: MorningAnnouncementsSettings = Field(default_factory=MorningAnnouncementsSettings, description="Morning announcements settings")
     home_assistant_settings: HomeAssistantSettings = Field(default_factory=HomeAssistantSettings, description="Home Assistant settings")
     housie_talkie_settings: HousieTalkieSettings = Field(default_factory=HousieTalkieSettings, description="Housie Talkie settings")
-    notification_settings: NotificationSettings = Field(default_factory=NotificationSettings, description="Notification settings")
+    event_notification_settings: EventNotificationSettings = Field(default_factory=EventNotificationSettings, description="Notification settings")
 
     def save(self) -> None:
         logger.info("Saving settings")
@@ -240,4 +241,4 @@ class AppSettings(BaseSettings):
         self.morning_announcements_settings.save()
         self.home_assistant_settings.save()
         self.housie_talkie_settings.save()
-        self.notification_settings.save()
+        self.event_notification_settings.save()

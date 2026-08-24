@@ -4,7 +4,7 @@ from datetime import datetime
 from homeaudio.vcal.notifications.core import check_for_notifications
 from homeaudio.vcal.cal.google_calendar import CalendarSource
 from homeaudio.audio.scene import NullScene
-from homeaudio.audio.settings import NotificationSettings
+from homeaudio.audio.settings import EventNotificationSettings
 
 
 class StubSnapserverManager:
@@ -76,7 +76,7 @@ def test_check_for_notifications_with_announce_event_plays_via_mpd(monkeypatch):
         5,
         calendar_data,
         NullScene(),
-        notification_settings=NotificationSettings(notification_rules=[]),
+        event_notification_settings=EventNotificationSettings(notification_rules=[]),
     )
 
     assert len(mpd_player.play_file_calls) == 1

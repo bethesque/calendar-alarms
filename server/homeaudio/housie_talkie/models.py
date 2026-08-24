@@ -8,8 +8,7 @@ from homeaudio.audio.scene import SceneProtocol
 from homeaudio.vcal.notifications.text_to_voice import text_to_voice_file
 from homeaudio.audio.sound import join_mp3s_to_wav, join_mixed_files_to_wav
 from homeaudio.vcal.notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, SILENCE_QUARTER_SEC, SILENCE_HALF_SEC
-from homeaudio.env import ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY, SOUND_EFFECTS_DIRECTORY
-from homeaudio.audio.random_text import FileListOptionsSource, select_text
+from homeaudio.audio.sound_effects import SoundEffectSelector
 
 logger = logging.getLogger(__name__)
 
@@ -42,36 +41,8 @@ class PlayableRequest:
     usecase: AnnouncementUsecase
     player_names: list[str] | None = None
 
-class SoundEffectSelector:
-    def __init__(self, directory: str = SOUND_EFFECTS_DIRECTORY, extensions: list[str] = [".mp3"]):
-        self.options_source = FileListOptionsSource(directory=directory, extensions=extensions)
-
-    def get_options_source(self):
-        return self.options_source
-
-    def get_sound_effect_file(self, sound_effect: str | None) -> str | None:
-        if sound_effect == "random":
-            selected = select_text(None, ANNOUNCEMENT_SOUND_EFFECT_PROBABILITY, self.options_source)
-            if selected:
-                logger.info(f"Selected random sound effect {selected}")
-                return selected
-            else:
-                logger.info("Random selection returned no sound effect")
-                return None
-        elif sound_effect and sound_effect != "none":
-            sound_effect_file_path = os.path.join(SOUND_EFFECTS_DIRECTORY, sound_effect)
-            if os.path.isfile(sound_effect_file_path):
-                logger.info(f"Using specified sound effect {sound_effect_file_path}")
-                return sound_effect_file_path
-            else:
-                logger.warning(f"Sound effect file {sound_effect_file_path} does not exist. Skipping sound effect.")
-                return None
-        else:
-            logger.info("No sound effect specified")
-            return None
-
 class PlayableRequestBuilder:
-    def __init__(self, sound_effect_selector: SoundEffectSelector = SoundEffectSelector()):
+    def __init__(self, sound_effect_selector: SoundEffectSelector):
         self.sound_effect_selector = sound_effect_selector
 
     def build_playable_request_for_tts_announcement(self, request: TtsAnnouncementRequest) -> PlayableRequest:

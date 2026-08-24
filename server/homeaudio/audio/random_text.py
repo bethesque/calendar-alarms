@@ -2,7 +2,7 @@ import random
 import os
 from collections import Counter
 import logging
-from homeaudio.env import CACHE_DIRECTORY, RESOURCES_DIRECTORY
+from homeaudio.env import CACHE_DIRECTORY
 from typing import Protocol
 
 logger = logging.getLogger(__name__)
@@ -63,7 +63,6 @@ def select_text(default_text: str | None,
                          options_source: OptionsSource,
                          choice_history_dir = CHOICE_HISTORY_DIR) -> str | None:
     """
-    - Generate a random float in [0, 1)
     - If rand_val > threshold:
         - Pick an option from options_source (multiset-aware, excluding selection_history)
         - Append it to selection_history

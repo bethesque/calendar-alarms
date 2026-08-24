@@ -13,9 +13,10 @@ from homeaudio.audio.select_item import select_item_by_date
 from homeaudio.vcal.notifications import GENTLE_ALARMS_DIRECTORY, AGGRESSIVE_ALARMS_DIRECTORY, PRE_ANNOUNCEMENT_BELL, OUTPUT_AUDIO_DIRECTORY, SILENCE_HALF_SEC
 from homeaudio.audio.sound import track_length
 from homeaudio.audio.scene import SceneProtocol, Scene
-from homeaudio.audio.settings import AlarmSettings, SnapcastSettings, MpdSettings, NotificationSettings
+from homeaudio.audio.settings import AlarmSettings, SnapcastSettings, MpdSettings, EventNotificationSettings
 from homeaudio.audio.snapcast import SnapserverManager
 from homeaudio.audio.snapserver import Snapserver
+from homeaudio.housie_talkie.models import SoundEffectSelector
 
 logger = logging.getLogger(__name__)
 
@@ -198,13 +199,14 @@ Builds the alarm audio by using TTS to read out the event descriptions, and
 mixing in background alarm music.
 """
 class AnnouncementAudio:
-    def __init__(self, notification_texts: list[str], base_time):
+    def __init__(self, notification_texts: list[str], base_time, sound_effect_selector: SoundEffectSelector):
         self.notification_texts = notification_texts
         self.base_time = base_time
+        self.sound_effect_selector = sound_effect_selector
 
     def build_announcement_file(self):
         joined_announcement_file = OUTPUT_AUDIO_DIRECTORY + "/announcement.wav"
-        files = [self.preannouncement_bell()] + self._announcement_files_for_events()
+        files = self.preannouncement_files() + self._announcement_files_for_events()
         join_mp3s_to_wav(files, joined_announcement_file)
 
         return joined_announcement_file
@@ -212,8 +214,12 @@ class AnnouncementAudio:
     def _announcement_files_for_events(self):
         return [text_to_voice_file(text) for text in self.notification_texts]
 
-    def preannouncement_bell(self):
-        return PRE_ANNOUNCEMENT_BELL
+    def preannouncement_files(self) -> list[str]:
+        file = self.sound_effect_selector.get_random_sound_effect_file()
+        if file:
+            return [PRE_ANNOUNCEMENT_BELL, file]
+        else:
+            return [PRE_ANNOUNCEMENT_BELL]
 
 def play_notifications(announcements_file: str | None, alarms_file: str | None, scene: SceneProtocol):
     mpd_settings = MpdSettings()
@@ -312,8 +318,8 @@ def test_alarm():
     check_for_notifications(base_time, 5, calendar_data, Scene())
 
 
-def check_for_notifications(base_time, window, calendar_data, scene:SceneProtocol, notification_settings: NotificationSettings = NotificationSettings()):
-    notification_rules = notification_settings.notification_rules
+def check_for_notifications(base_time, window, calendar_data, scene:SceneProtocol, event_notification_settings: EventNotificationSettings = EventNotificationSettings()):
+    notification_rules = event_notification_settings.notification_rules
     alarm_finder = NotificationFinder(calendar_data, base_time, window, notification_rules)
     event_notifications = alarm_finder.find_notification_events()
 
@@ -325,8 +331,11 @@ def check_for_notifications(base_time, window, calendar_data, scene:SceneProtoco
         announcement_texts = NotificationTextBuilder(announcement_event_notifications, base_time).build()
         alarm_texts = NotificationTextBuilder(alarm_event_notifications, base_time).build()
 
-        announcements_file = AnnouncementAudio(announcement_texts, base_time).build_announcement_file() if announcement_event_notifications else None
-        alarm_audio_file = AlarmAudio(alarm_texts, notification_settings.alarms, base_time).build_alarm_file() if alarm_event_notifications else None
+        announcements_file = (
+            AnnouncementAudio(announcement_texts, base_time, SoundEffectSelector(event_notification_settings.announcements.sound_effect_probability)).build_announcement_file()
+            if announcement_event_notifications else None
+        )
+        alarm_audio_file = AlarmAudio(alarm_texts, event_notification_settings.alarms, base_time).build_alarm_file() if alarm_event_notifications else None
 
         play_notifications(announcements_file, alarm_audio_file, scene)
 

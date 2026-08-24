@@ -4,19 +4,22 @@ import time
 
 from homeaudio.audio.sound import track_length
 from homeaudio.audio.mpd import mpd_connection
-from homeaudio.audio.settings import SnapcastSettings, MpdSettings
+from homeaudio.audio.settings import HousieTalkieSettings, SnapcastSettings, MpdSettings
 from homeaudio.audio.snapcast import SnapserverManager
+from homeaudio.audio.sound_effects import SoundEffectSelector
 from homeaudio.housie_talkie.models import *
 from homeaudio.audio.snapserver import Client, Snapserver
 
 logger = logging.getLogger(__name__)
 
 def play_tts_announcement(request: TtsAnnouncementRequest):
-    playable_request = PlayableRequestBuilder().build_playable_request_for_tts_announcement(request)
+    sound_effect_selector = SoundEffectSelector(HousieTalkieSettings().sound_effect_probability)
+    playable_request = PlayableRequestBuilder(sound_effect_selector).build_playable_request_for_tts_announcement(request)
     _play_audio_files(playable_request)
 
 def play_voice_announcement(request: VoiceAnnouncementRequest):
-    playable_request = PlayableRequestBuilder().build_playable_request_for_voice_announcement(request)
+    sound_effect_selector = SoundEffectSelector(HousieTalkieSettings().sound_effect_probability)
+    playable_request = PlayableRequestBuilder(sound_effect_selector).build_playable_request_for_voice_announcement(request)
     _play_audio_files(playable_request)
 
 def _play_audio_files(request: PlayableRequest):
@@ -37,7 +40,7 @@ def _play_audio_files(request: PlayableRequest):
     request.scene.around_announcement(play, snapserver_manager.connected_player_areas())
 
 def list_sound_effects()-> list[str]:
-        return ["none", "random"] + sorted([os.path.basename(path) for path in SoundEffectSelector().get_options_source().get_options()])
+        return ["none", "random"] + sorted([os.path.basename(path) for path in SoundEffectSelector(1).get_options_source().get_options()])
 
 def list_clients(snapcast_settings: SnapcastSettings = SnapcastSettings()) -> list[Client]:
     snapserver = Snapserver(snapcast_settings.snapserver_rpc_url)
