@@ -12,7 +12,7 @@ from homeaudio.audio.mpd import fade_out, fade_up, mpd_connection
 from homeaudio.audio.select_item import select_item_by_date
 from homeaudio.vcal.notifications import GENTLE_ALARMS_DIRECTORY, AGGRESSIVE_ALARMS_DIRECTORY, PRE_ANNOUNCEMENT_BELL, OUTPUT_AUDIO_DIRECTORY, SILENCE_HALF_SEC
 from homeaudio.audio.sound import track_length
-from homeaudio.audio.scene import SceneProtocol, Scene
+from homeaudio.audio.scene import SceneProtocol, HomeAssistantScene
 from homeaudio.audio.settings import AlarmSettings, SnapcastSettings, MpdSettings, EventNotificationSettings
 from homeaudio.audio.snapcast import SnapserverManager
 from homeaudio.audio.snapserver import Snapserver
@@ -315,7 +315,7 @@ def test_alarm():
 
     calendar_data = CalendarSource(cache_file_path="").load_data_from_any(days)
 
-    check_for_notifications(base_time, 5, calendar_data, Scene())
+    check_for_notifications(base_time, 5, calendar_data, HomeAssistantScene())
 
 
 def check_for_notifications(base_time, window, calendar_data, scene:SceneProtocol, event_notification_settings: EventNotificationSettings = EventNotificationSettings()):

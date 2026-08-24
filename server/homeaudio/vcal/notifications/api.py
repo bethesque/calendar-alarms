@@ -4,7 +4,7 @@ import threading
 from fastapi import APIRouter, Response
 from fastapi.responses import FileResponse, HTMLResponse
 from homeaudio.vcal.morning_announcements import play_morning_announcements
-from homeaudio.audio.scene import Scene
+from homeaudio.audio.scene import HomeAssistantScene
 from homeaudio.vcal.notifications.core import stop_alarm, test_alarm, mute_alarm_for_area_of_player
 from homeaudio.vcal.cli import refresh_calendar_data
 from queue import Queue
@@ -23,7 +23,7 @@ class AlarmHandler:
         while True:
             self.queue.get()
             try:
-                stop_alarm(Scene.restore_after_alarm)
+                stop_alarm(HomeAssistantScene.restore_after_alarm)
             finally:
                 with self._lock:
                     self._pending = False

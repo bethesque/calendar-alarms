@@ -39,7 +39,7 @@ def select_option(items: list[Option], now: datetime | None = None) -> Option:
 
     now = now or datetime.now()
 
-    never_used = [item for item in items if item.last_used is None]
+    never_used = [item for item in items if item.never_used()]
 
     if never_used:
         selected = random.choice(never_used)

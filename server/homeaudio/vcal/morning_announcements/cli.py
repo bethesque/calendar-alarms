@@ -8,8 +8,9 @@ from homeaudio.env import CALENDAR_DATA_DIRECTORY, LOG_LEVEL
 import os
 from homeaudio.vcal.morning_announcements.core import play_morning_announcements as do_play_morning_announcements, play_morning_announcements_audio_file
 from homeaudio.audio.log_config import setup_logging_for_announcements
-from homeaudio.audio.scene import Scene
+from homeaudio.audio.scene import NullScene, HomeAssistantScene
 from homeaudio.audio.settings import MainSettings, MpdSettings, SnapcastSettings
+from homeaudio.env import HOME_ASSISTANT_SUPPORTED
 
 setup_logging_for_announcements(str(LOG_LEVEL))
 
@@ -45,7 +46,7 @@ def play_morning_announcements():
     try:
         base_time = args.base_time or datetime.now().astimezone()
 
-        scene = Scene()
+        scene = HomeAssistantScene() if HOME_ASSISTANT_SUPPORTED else NullScene()
 
         if args.cached:
             play_morning_announcements_cached()
@@ -57,6 +58,6 @@ def play_morning_announcements():
 
 
 def play_morning_announcements_cached():
-    scene = Scene()
+    scene = HomeAssistantScene()
 
     play_morning_announcements_audio_file(MORNING_ANNOUNCEMENTS_AUDIO_FILE, SnapcastSettings(), MpdSettings(), scene.prepare_for_alarm, scene.restore_after_alarm)

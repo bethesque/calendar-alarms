@@ -39,7 +39,7 @@ class NullScene:
         announcement_func()
 
 
-class Scene:
+class HomeAssistantScene:
 
     def __init__(self) -> None:
         pass

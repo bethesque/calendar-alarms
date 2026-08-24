@@ -9,10 +9,10 @@ from homeaudio.env import LOG_LEVEL
 from homeaudio.audio.mpd import fade_out, fade_up, mpd_connection
 from homeaudio.audio.log_config import setup_logging_for_alarms
 from homeaudio.vcal.cal.google_calendar import CalendarSource, CalendarDay
-from homeaudio.audio.scene import NullScene, Scene
+from homeaudio.audio.scene import NullScene, HomeAssistantScene
 from homeaudio.audio.settings import MainSettings
 
-from homeaudio.env import CALENDAR_DATA_DIRECTORY
+from homeaudio.env import CALENDAR_DATA_DIRECTORY, HOME_ASSISTANT_SUPPORTED
 from homeaudio.vcal.notifications.core import check_for_notifications
 
 setup_logging_for_alarms(str(LOG_LEVEL))
@@ -47,7 +47,7 @@ def check_alarms():
         help=f"Path to the calendar JSON file (default: {os.path.join(CALENDAR_DATA_DIRECTORY, 'calendar.json')})"
     )
 
-    parser.add_argument('--ignore-music-assistant', action='store_true', help="Do not fade out Music Assistant before playing alarms")
+
 
     args = parser.parse_args()
 
@@ -57,7 +57,7 @@ def check_alarms():
         base_time = args.base_time or datetime.now().astimezone()
         calendar_data = load_calendar_days(args.calendar_file)
 
-        scene = NullScene() if args.ignore_music_assistant else Scene()
+        scene = HomeAssistantScene() if HOME_ASSISTANT_SUPPORTED else NullScene()
 
         check_for_notifications(base_time, args.window, calendar_data, scene)
     except Exception:
