@@ -11,7 +11,7 @@ from homeaudio.vcal.cal.ui import TokenRoutes
 from homeaudio.housie_talkie.tts_api import TtsRoutes
 from homeaudio.housie_talkie.voice_api import VoiceRoutes
 from homeaudio.audio.admin_ui import AdminRoutes
-from homeaudio.vcal.notifications.ui import AlarmRoutes
+from homeaudio.vcal.notifications.api import AlarmRoutes
 from homeaudio.audio.logs_ui import CalendarAlarmsStatusRoutes, LogRoutes
 from homeaudio.vcal.wake_up_alarm.api import WakeUpAlarmRoutes
 from homeaudio.housie_talkie.ui import UserInterfaceRoutes
