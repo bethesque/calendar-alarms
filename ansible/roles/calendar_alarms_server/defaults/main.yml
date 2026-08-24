@@ -25,3 +25,4 @@ project_root: /home/{{ ansible_user }}/calendar-alarms-2
 resources_dir: /home/{{ ansible_user }}/calendar-alarms-resources
 server_root: "{{ project_root }}/server"
 calendar_alarms_server_conf: "{{ server_root }}/config/uvicorn.yaml"
+app_name: "Tortice Home Audio"

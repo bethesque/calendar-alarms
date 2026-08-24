@@ -16,6 +16,7 @@ from homeaudio.audio.logs_ui import CalendarAlarmsStatusRoutes, LogRoutes
 from homeaudio.vcal.wake_up_alarm.api import WakeUpAlarmRoutes
 from homeaudio.housie_talkie.ui import UserInterfaceRoutes
 from homeaudio.audio.settings import SnapcastSettings
+from homeaudio.env import APP_NAME
 
 setup_logging_for_http_server(logging.INFO)
 
@@ -30,11 +31,11 @@ def index(request: Request):
     <html>
         <head>
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Tortice Home Audio</title>
+            <title>{APP_NAME}</title>
             <link rel="stylesheet" href="/static/styles.css">
         </head>
         <body>
-            <h1>Tortice Home Audio</h1>
+            <h1>{APP_NAME}</h1>
             <ul class="buttons">
                 <li><a href="/alarm" class="button"><span class="emoji">📅</span><span>Calendar notifications<span></a></li>
                 <li><a href="/housie-talkie" class="button"><span class="emoji">🎤</span><span>Housie Talkie</span></a></li>

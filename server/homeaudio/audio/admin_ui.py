@@ -2,6 +2,8 @@ from fastapi import APIRouter
 from homeaudio.audio.settings import AppSettings
 from pydantic_ui import create_pydantic_ui, UIConfig, FieldConfig, Renderer
 
+from homeaudio.env import APP_NAME
+
 class AdminRoutes:
     def __init__(self):
         self.router = APIRouter()
@@ -10,7 +12,7 @@ class AdminRoutes:
             AppSettings,
             prefix="",
             ui_config=UIConfig(
-                title="Tortice home audio settings",
+                title=f"{APP_NAME} Settings",
                 show_validation=True,
                 show_save_reset=True,
                 show_types=False,

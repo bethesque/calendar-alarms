@@ -8,7 +8,7 @@ A house-wide audio system that plays alarms and announcements sourced from Googl
 
 There are three independent Python projects, each with its own venv and `pyproject.toml`:
 
-- `server/` — the brain. Reads Google Calendar, decides what to announce/alarm, generates TTS audio, mixes it with music, and tells Snapcast/MPD to play it. Also serves a small FastAPI admin UI ("Tortice Home Audio").
+- `server/` — the brain. Reads Google Calendar, decides what to announce/alarm, generates TTS audio, mixes it with music, and tells Snapcast/MPD to play it. Also serves a small FastAPI admin UI.
 - `client/` — runs on each room's Raspberry Pi. A small FastAPI service that mutes/unmutes ALSA output and the local Snapclient in response to bluetooth button presses, and reports status.
 - `bluetooth-button-listener/` — runs on a Pi Zero W paired with a Shelly BLU Button Tough 1. Listens for BLE advertisements, decodes click type, and POSTs to the client's endpoints.
 
