@@ -161,7 +161,7 @@ class Option(BaseModel):
     enabled: bool | None = Field(default=True)
 
     def last_used_datetime(self) -> datetime | None:
-        if self.last_used is None:
+        if self.last_used is None or self.last_used.strip() == "":
             return None
         return datetime.fromisoformat(self.last_used)
 
@@ -170,7 +170,7 @@ class Option(BaseModel):
         self.last_used = dt.isoformat()
 
     def never_used(self) -> bool:
-        return self.last_used is None
+        return self.last_used is None or self.last_used.strip() == ""
 
 class MorningAnnouncementsSettings(YAMLSettings):
     prelude_options: list[Option] = Field(default_factory=list, description="Text to read after 'Good morning' and before the day's events")
