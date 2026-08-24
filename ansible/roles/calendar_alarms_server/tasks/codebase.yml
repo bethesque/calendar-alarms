@@ -28,3 +28,15 @@
     editable: true
     chdir: "{{ server_root }}"
   tags: slow
+
+- name: Add env.py file
+  ansible.builtin.template:
+    src: env.py.j2
+    dest: "{{ server_root }}/homeaudio/env.py"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+  tags:
+    - env
+  notify:
+    - restart calendar-alarms-http.service
