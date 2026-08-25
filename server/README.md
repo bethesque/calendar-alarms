@@ -16,6 +16,16 @@ Mac or Linux environment. Windows is not supported.
 
 ### Set up
 
+#### Google Cloud
+
+https://console.cloud.google.com
+
+Enable:
+
+Calendar API
+
+Needs a Desktop client to get the token.json. Use calendar-alarms-auth project to get this.
+
 #### mac
 
 ```
