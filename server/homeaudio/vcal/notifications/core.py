@@ -282,6 +282,7 @@ def stop_alarm(after_alarm_hook=None):
 
     after_alarm_hook() if after_alarm_hook else None
 
+# TODO mute Music Assistant also
 def mute_alarm_for_area_of_player(player, snapcast_settings: SnapcastSettings = SnapcastSettings()):
     area = snapcast_settings.snapclient_settings(player).area
     if area:
