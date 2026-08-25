@@ -18,7 +18,10 @@ from googleapiclient.errors import HttpError
 from homeaudio.audio.settings import GoogleCalendarSettings, NotificationRule
 from homeaudio.env import CALENDAR_DATA_DIRECTORY
 
-SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
+SCOPES = [
+    "https://www.googleapis.com/auth/calendar.readonly",
+    "https://www.googleapis.com/auth/tasks.readonly",
+]
 TOKEN_PATH = f"{CALENDAR_DATA_DIRECTORY}/token.json"
 
 TIMEZONE = "Australia/Melbourne"

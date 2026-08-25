@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from homeaudio.vcal.morning_announcements import play_morning_announcements
 from homeaudio.audio.scene import HomeAssistantScene
 from homeaudio.vcal.notifications.core import stop_alarm, test_alarm, mute_alarm_for_area_of_player
-from homeaudio.vcal.cli import refresh_calendar_data
+from homeaudio.vcal.cli import refresh_calendar_data, refresh_task_data
 from queue import Queue
 
 logger = logging.getLogger(__name__)
@@ -61,6 +61,10 @@ class AlarmHandler:
         threading.Thread(target=refresh_calendar_data, daemon=True).start()
         return "Refreshing calendar data..."
 
+    def refresh_task_data(self) -> str:
+        threading.Thread(target=refresh_task_data, daemon=True).start()
+        return "Refreshing task data..."
+
 class AlarmRoutes:
     def __init__(self):
         self.alarm_handler = AlarmHandler()
@@ -103,6 +107,13 @@ class AlarmRoutes:
             name="refresh_calendar_data",
         )
 
+        self.router.add_api_route(
+            "/refresh-task-data",
+            self.refresh_task_data_endpoint,
+            methods=["POST"],
+            name="refresh_task_data",
+        )
+
     async def index(self):
         return FileResponse(Path(__file__).resolve().parent / "index.html")
 
@@ -124,6 +135,10 @@ class AlarmRoutes:
 
     async def refresh_calendar_data_endpoint(self):
         message = self.alarm_handler.refresh_calendar_data()
+        return Response(content=message, status_code=202, media_type="text/plain")
+
+    async def refresh_task_data_endpoint(self):
+        message = self.alarm_handler.refresh_task_data()
         return Response(content=message, status_code=202, media_type="text/plain")
 
 

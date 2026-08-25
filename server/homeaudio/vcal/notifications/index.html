@@ -18,6 +18,7 @@
     <li><a class="button" id="stop-alarm"><span class="emoji">🔕</span><span>Stop alarm</span></a></li>
     <li><a class="button" id="play-morning-announcements"><span class="emoji">🌅</span><span>Play morning announcements</span></a></li>
     <li><a class="button" id="refresh-calendar-data"><span class="emoji">🔄</span><span>Refresh calendar data</span></a></li>
+    <li><a class="button" id="refresh-task-data"><span class="emoji">🔄</span><span>Refresh task data</span></a></li>
     <li><a class="button" id="test-alarm"><span class="emoji">📋</span><span>Test alarm</span></a></li>
     <li><a class="button" id="mute-area"><span class="emoji">📋</span><span>Mute area</span></a></li>
     <li><a class="button" href="/token/upload"><span class="emoji">📤</span><span>Upload Google API token.json</span></a></li>
@@ -57,6 +58,10 @@
 
   document.getElementById('refresh-calendar-data').addEventListener('click', function () {
     callEndpoint("/alarm/refresh-calendar-data");
+  });
+
+  document.getElementById('refresh-task-data').addEventListener('click', function () {
+    callEndpoint("/alarm/refresh-task-data");
   });
 
   document.getElementById('google-login').addEventListener('click', function () {
