@@ -54,7 +54,7 @@ class VolumeController:
         return volume
 
     def set_volume(self, volume: int):
-        logging.info("Setting volume to %s", volume)
+        logging.debug("Setting volume to %s", volume)
 
         result = subprocess.run(
             ["amixer", "set", "Speaker", str(volume)],
