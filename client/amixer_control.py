@@ -63,7 +63,7 @@ class VolumeController:
             check=True,
         )
 
-        logging.info("amixer set output:\n%s", result.stdout)
+        #logging.info("amixer set output:\n%s", result.stdout)
 
     def mute(self):
         logging.info("Handling amixer mute request")
