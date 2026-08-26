@@ -96,3 +96,9 @@ Single-file FastAPI app (`client/index.py`) exposing `/audio/toggle` and `/audio
 ### bluetooth-button-listener/
 
 `btb/listen.py` uses `bleak` to scan for BLE advertisements from one specific Shelly BLU button (matched by MAC address), decodes the BTHome v2 TLV payload to extract click type and battery level, and POSTs to the corresponding endpoint from `SINGLE_CLICK_ENDPOINT` / `DOUBLE_CLICK_ENDPOINT` / `LONG_CLICK_ENDPOINT` env vars (these normally point at a `client/` instance's `/audio/*` routes). `parse_bthome`/`extract_button_event` are pure functions kept separate from the bleak callback specifically so they're unit-testable against raw captured payloads — the test file doubles as a payload-replay tool (`--replay captured.jsonl`) for debugging real-world button behavior.
+
+# Guidelines
+
+# Testing
+
+Use pytest, not unittest.
