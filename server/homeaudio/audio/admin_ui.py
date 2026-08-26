@@ -9,6 +9,9 @@ class AdminRoutes:
     def __init__(self):
         self.router = APIRouter()
 
+        settings = AppSettings()
+
+
         self.ui_router = create_pydantic_ui(
             AppSettings,
             prefix="",
@@ -19,16 +22,39 @@ class AdminRoutes:
                 show_types=False,
                 footer_text="Home",
                 footer_url="/",
-                attr_configs={
+                attr_configs=self.attr_configs(settings),
+            ),
+            data_saver=self._save_settings,
+            data_loader=lambda: AppSettings()
+        )
+
+        self.router.include_router(self.ui_router)
+
+    def attr_configs(self, settings: AppSettings):
+
+        calendar_options = [ { "value": c.id, "label": c.name } for c in settings.google_calendar_settings.calendars ]
+
+        return {
                     "google_calendar_settings.calendars.[]": FieldConfig(
                         display=DisplayConfig(
                             title="{name}",
                             subtitle="{id}"
                         )
                     ),
-                    "google_calendar_settings.notification_rules.[].owner": FieldConfig(
+                    "event_notification_settings.notification_rules.[]": FieldConfig(
+                        display=DisplayConfig(
+                            title="{pattern} @ {offset_minutes} minutes before",
+                            subtitle="{notification_type}"
+                        )
+                    ),
+                    "event_notification_settings.notification_rules.[].calendar_id": FieldConfig(
+                        display=DisplayConfig(
+                            title="Calendar"
+                        ),
                         renderer=Renderer.SELECT,
-                        options_from="google_calendar_settings.calendars.[].name"
+                        props={
+                            "options": calendar_options
+                        }
                     ),
                     "snapcast_settings.snapclients.[]": FieldConfig(
                         display=DisplayConfig(
@@ -60,20 +86,7 @@ class AdminRoutes:
                     "housie_talkie_settings": FieldConfig(
                         visible_when=f"{str(HOUSIE_TALKIE_ENABLED).lower()} == true"
                     ),
-                    "event_notification_settings.notification_rules.[]": FieldConfig(
-                        display=DisplayConfig(
-                            title="{pattern} @ {offset_minutes} minutes before",
-                            subtitle="{notification_type}"
-
-                        )
-                    )
-                },
-            ),
-            data_saver=self._save_settings,
-            data_loader=lambda: AppSettings()
-        )
-
-        self.router.include_router(self.ui_router)
+                }
 
     def _save_settings(self, data: dict):
         validated = AppSettings.model_validate(data)

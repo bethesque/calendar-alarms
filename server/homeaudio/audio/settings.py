@@ -123,6 +123,7 @@ class CalendarSetting(BaseModel):
 class NotificationRule(BaseModel):
     pattern: str = Field(..., description="The substring to match in the event description")
     owner: str | None = Field(default=None, description="The event owner that must match for the rule to apply")
+    calendar_id: str | None = Field(default="None", description="The ID of the calendar that must match for the rule to apply")
     notification_type: Literal["alarm", "announce"] = Field(default="alarm", description="The notification type: alarm or announce")
     offset_minutes: int = Field(default=0, ge=0, description="Minutes before the event start")
     reminder: str | None = None
