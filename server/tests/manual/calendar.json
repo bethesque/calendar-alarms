@@ -7,6 +7,7 @@
                 "description": "#alarm",
                 "end_time": null,
                 "owner": "Kids",
+                "owner_count": 2,
                 "recurring": true,
                 "start_time": "2026-04-06T08:00:00+10:00",
                 "summary": "Kaylee: music books"
@@ -14,7 +15,8 @@
             {
                 "description": "#announce",
                 "end_time": null,
-                "owner": "Beth",
+                "owner": "Kids",
+                "owner_count": 2,
                 "recurring": false,
                 "start_time": "2026-04-06T08:30:00+10:00",
                 "summary": "Testing the audio"
@@ -23,6 +25,7 @@
                 "description": "#alarm10",
                 "end_time": null,
                 "owner": "Kids",
+                "owner_count": 2,
                 "recurring": true,
                 "start_time": "2026-04-06T19:40:00+10:00",
                 "summary": "Test event"
@@ -30,14 +33,16 @@
             {
                 "description": "#alarm",
                 "end_time": null,
-                "owner": "B & T",
+                "owner": "Family",
+                "owner_count": 4,
                 "recurring": true,
                 "start_time": "2026-04-06T19:30:00+10:00",
                 "summary": "Bin night (recycling)"
             },{
                 "description": "#announce",
                 "end_time": null,
-                "owner": "B & T",
+                "owner": "Family",
+                "owner_count": 4,
                 "recurring": true,
                 "start_time": "2026-04-06T19:30:00+10:00",
                 "summary": "Miller is a dog"

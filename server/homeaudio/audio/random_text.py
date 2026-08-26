@@ -58,7 +58,7 @@ class FileListOptionsSource:
     def __str__(self):
         return f"File list options source {self.directory}"
 
-def select_text(default_text: str | None,
+def select_option_pseudorandomly(default_text: str | None,
                          threshold: float,
                          options_source: OptionsSource,
                          choice_history_dir = CHOICE_HISTORY_DIR) -> str | None:

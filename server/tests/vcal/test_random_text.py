@@ -3,7 +3,7 @@ import random
 import os
 from pathlib import Path
 
-from homeaudio.audio.random_text import ListOptionsSource, select_text
+from homeaudio.audio.random_text import ListOptionsSource, select_option_pseudorandomly
 
 def write_file(path: Path, lines):
     os.makedirs(path.parent, exist_ok=True)
@@ -23,7 +23,7 @@ def test_returns_default_when_above_threshold(tmp_path, monkeypatch):
 
     options_source = ListOptionsSource("choices", ["A", "B", "C"])
 
-    result = select_text(
+    result = select_option_pseudorandomly(
         default_text="DEFAULT",
         threshold=0.3,
         options_source=options_source,
@@ -43,7 +43,7 @@ def test_selects_and_appends_when_below_threshold(tmp_path, monkeypatch):
 
     options_source = ListOptionsSource("choices", ["A", "B", "C"])
 
-    result = select_text(
+    result = select_option_pseudorandomly(
         default_text="DEFAULT",
         threshold=0.3,
         options_source=options_source,
@@ -66,7 +66,7 @@ def test_excludes_previously_chosen(tmp_path, monkeypatch):
 
     options_source = ListOptionsSource("choices", ["A", "B", "C"])
 
-    result = select_text(
+    result = select_option_pseudorandomly(
         default_text="DEFAULT",
         threshold=0.3,
         options_source=options_source,
@@ -90,7 +90,7 @@ def test_resets_when_all_used(tmp_path, monkeypatch):
 
     options_source = ListOptionsSource("choices", ["A", "B"])
 
-    result = select_text(
+    result = select_option_pseudorandomly(
         default_text="DEFAULT",
         threshold=0.3,
         options_source=options_source,
@@ -121,7 +121,7 @@ def test_multiset_behavior(tmp_path, monkeypatch):
 
     options_source = ListOptionsSource("choices", ["A", "A", "B"])
 
-    select_text(
+    select_option_pseudorandomly(
         default_text="DEFAULT",
         threshold=0.3,
         options_source=options_source,
@@ -143,7 +143,7 @@ def test_missing_previously_chosen_file(tmp_path, monkeypatch):
 
     options_source = ListOptionsSource("choices", ["X"])
 
-    result = select_text(
+    result = select_option_pseudorandomly(
         default_text="DEFAULT",
         threshold=0.3,
         options_source=options_source,

@@ -4,7 +4,7 @@ import threading
 
 from homeaudio.audio.snapcast import SnapserverManager
 from homeaudio.audio.mpd import fade_up, mpd_connection
-from homeaudio.audio.random_text import FileListOptionsSource, select_text
+from homeaudio.audio.random_text import FileListOptionsSource, select_option_pseudorandomly
 from homeaudio.audio.settings import MpdSettings, SnapcastSettings
 from homeaudio.env import WAKE_UP_ALARMS_DIRECTORY
 
@@ -27,7 +27,7 @@ def _play_wake_up_alarm_via_mpd(alarm_file, mpd_settings: MpdSettings):
 
 
 def start_wake_up_alarm():
-    selected_alarm = select_text(None, 1, FileListOptionsSource(directory=WAKE_UP_ALARMS_DIRECTORY, extensions=["mp3"]))
+    selected_alarm = select_option_pseudorandomly(None, 1, FileListOptionsSource(directory=WAKE_UP_ALARMS_DIRECTORY, extensions=["mp3"]))
     if selected_alarm:
         threading.Thread(
                 target=_play_wake_up_alarm_via_mpd,

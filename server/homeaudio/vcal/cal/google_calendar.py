@@ -15,7 +15,7 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from homeaudio.audio.settings import GoogleCalendarSettings, NotificationRule
+from homeaudio.audio.settings import NotificationRule
 from homeaudio.env import CALENDAR_DATA_DIRECTORY
 
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
@@ -85,6 +85,7 @@ class Event:
     start_time: datetime.datetime = None
     end_time: datetime.datetime = None
     recurring: bool = False
+    owner_count: int = 0
 
     def notifications(self, rules: list[NotificationRule] | None = None) -> list[EventNotification]:
         notifications = []
@@ -127,6 +128,7 @@ class Event:
         departure_time = self.start_time - datetime.timedelta(minutes=offset_int)
         event = LeaveForEvent(
                             owner=self.owner,
+                            owner_count=self.owner_count,
                             summary=f"Leave for {self.summary}",
                             description=self.description,
                             start_time=departure_time,
@@ -172,7 +174,6 @@ def load_google_creds():
     # The file token.json stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
     # time.
-    settings = GoogleCalendarSettings()
 
     if os.path.exists(TOKEN_PATH):
         creds = Credentials.from_authorized_user_file(TOKEN_PATH, SCOPES)
@@ -218,13 +219,13 @@ def list_google_events(creds, calendar_id, min, max):
         return []
 
 
-def add_events_to_calendars(events_from_google, calendar_name, displayed_calendar_days):
+def add_events_to_calendars(events_from_google, calendar_name, displayed_calendar_days, owner_count):
     for event_dict in events_from_google:
 
         matched_days = [d for d in displayed_calendar_days if displayed_day_includes_event(d, event_dict)]
 
         for matched_day in matched_days:
-            event = build_event(event_dict, calendar_name)
+            event = event_from_google_dict(event_dict, calendar_name, owner_count)
 
             if "dateTime" in event_dict["start"]: # has a time specified
                 event.start_time = datetime.datetime.fromisoformat(event_dict["start"]["dateTime"])
@@ -237,16 +238,18 @@ def is_weather_forecast(event_dict):
     return event_dict["summary"].startswith("Min ") or event_dict["summary"].startswith("Max ")
 
 
-def build_event(event_dict, calendar_name):
+def event_from_google_dict(event_dict, calendar_name, owner_count):
     if is_weather_forecast(event_dict):
         return WeatherForecast(
             owner=calendar_name,
+            owner_count=0,
             summary=event_dict["summary"],
             description="",
         )
     else:
         return Event(
             owner=calendar_name,
+            owner_count=owner_count,
             summary=event_dict["summary"],
             description=event_dict.get("description"),
             recurring=bool(event_dict.get("recurringEventId")),
@@ -287,7 +290,7 @@ def get_calendars(creds, filter):
     end_of_tomorrow = tomorrow + datetime.timedelta(days=1) - datetime.timedelta(seconds=1)
     displayed_calendar_days = [CalendarDay(date=start_of_today.date()), CalendarDay(date=tomorrow.date())]
 
-    for cal_id, display_name in filter:
+    for cal_id, display_name, owner_count in filter:
         gcal = google_calendars_by_id[cal_id]
         if gcal:
             events = list_google_events(
@@ -297,7 +300,7 @@ def get_calendars(creds, filter):
                 end_of_tomorrow,
             )
             logger.info(f"Adding events from id: {gcal.id} name: {gcal.name}")
-            add_events_to_calendars(events, display_name, displayed_calendar_days)
+            add_events_to_calendars(events, display_name, displayed_calendar_days, owner_count)
 
     for cal in displayed_calendar_days:
         cal.timed_events.sort(key=attrgetter("start_time"))

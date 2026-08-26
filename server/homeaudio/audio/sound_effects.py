@@ -1,7 +1,7 @@
 import logging
 import os
 from homeaudio.env import SOUND_EFFECTS_DIRECTORY
-from homeaudio.audio.random_text import FileListOptionsSource, select_text
+from homeaudio.audio.random_text import FileListOptionsSource, select_option_pseudorandomly
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ class SoundEffectSelector:
         return self.options_source
 
     def get_random_sound_effect_file(self) -> str | None:
-        selected = select_text(None, self.sound_effect_probability, self.options_source)
+        selected = select_option_pseudorandomly(None, self.sound_effect_probability, self.options_source)
         if selected:
             logger.info(f"Selected random sound effect {selected} (probability {self.sound_effect_probability})")
             return selected

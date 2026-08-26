@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 import yaml
+from enum import Enum
 
 logger = logging.getLogger(__name__)
 
@@ -114,10 +115,10 @@ class SnapcastSettings(YAMLSettings):
     def snapclient_settings(self, name: str) -> SnapclientConfig:
         return next((snapclient for snapclient in self.snapclients if snapclient.name == name))
 
-
 class CalendarSetting(BaseModel):
     id: str
     name: str
+    owner_count: int = 0
 
 class NotificationRule(BaseModel):
     pattern: str = Field(..., description="The substring to match in the event description")
@@ -149,7 +150,7 @@ class GoogleCalendarSettings(YAMLSettings):
     calendars: list[CalendarSetting] = Field(default_factory=list)
 
     def calendar_filter(self)-> list[tuple]:
-        return [(cal.id, cal.name) for cal in self.calendars]
+        return [(cal.id, cal.name, cal.owner_count) for cal in self.calendars]
 
     model_config = SettingsConfigDict(
         yaml_file="config/google_calendar.yaml"

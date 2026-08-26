@@ -9,7 +9,7 @@ from homeaudio.audio.settings import MorningAnnouncementsSettings, MpdSettings, 
 from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException, load_data_from_file, get_events_for_date
 from homeaudio.vcal.notifications.text_to_voice import text_to_voice_file_daily_summary
 from homeaudio.audio.sound import mix_announcement_audio, track_length
-from homeaudio.audio.random_text import ListOptionsSource, select_text
+from homeaudio.audio.random_text import ListOptionsSource, select_option_pseudorandomly
 from homeaudio.audio.select_item import select_item_by_date, select_option
 
 from homeaudio.vcal.notifications import BACKGROUND_MUSIC_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
