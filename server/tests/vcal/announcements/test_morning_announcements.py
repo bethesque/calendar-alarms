@@ -18,9 +18,9 @@ def fake_select_option(opts):
 
 def test_get_morning_announcements_text_includes_weather_and_facts(monkeypatch):
     # Create three events: two normal and one weather forecast
-    e1 = Event(owner="cal", summary="Meeting", description="")
-    e2 = Event(owner="cal", summary="Appointment", description="")
-    weather = WeatherForecast(owner="cal", summary="Min 10 Max 20", description="")
+    e1 = Event(owner="cal", summary="Meeting", description="", calendar_id="id")
+    e2 = Event(owner="cal", summary="Appointment", description="", calendar_id="id")
+    weather = WeatherForecast(owner="cal", summary="Min 10 Max 20", description="", calendar_id="id")
 
     events = [weather, e1, e2]
 

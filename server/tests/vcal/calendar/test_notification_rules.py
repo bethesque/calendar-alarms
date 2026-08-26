@@ -22,6 +22,7 @@ def test_notification_rule_with_reminder_e2e():
                     "description": "#announce",
                     "end_time": None,
                     "owner": "Beth",
+                    "calendar_id": "id",
                     "recurring": False,
                     "start_time": date_string,
                     "summary": "Gym"

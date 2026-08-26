@@ -12,6 +12,7 @@ TIMEZONE = ZoneInfo("Australia/Melbourne")
 def test_alarm_time_with_no_offset_returns_event_start_time():
     start_time = datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
     event = Event(
+        calendar_id="id",
         owner="Beth",
         summary="Morning meeting",
         description="#alarm 20",
@@ -23,6 +24,7 @@ def test_alarm_time_with_no_offset_returns_event_start_time():
 def test_alarm_time_with_weird_tag():
     start_time = datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
     event = Event(
+        calendar_id="id",
         owner="Beth",
         summary="Morning meeting",
         description="#alarmfoo",
@@ -34,6 +36,7 @@ def test_alarm_time_with_weird_tag():
 def test_alarm_time_returns_offset_from_start_time():
     start_time = datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
     event = Event(
+        calendar_id="id",
         owner="Beth",
         summary="Morning meeting",
         description="#alarm20",
@@ -45,6 +48,7 @@ def test_alarm_time_returns_offset_from_start_time():
 def test_announce_time_returns_offset_from_start_time():
     start_time = datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
     event = Event(
+        calendar_id="id",
         owner="Beth",
         summary="Morning meeting",
         description="#announce20",
@@ -55,6 +59,7 @@ def test_announce_time_returns_offset_from_start_time():
 
 def test_alarm_time_returns_none_when_no_alarm_tag_present():
     event = Event(
+        calendar_id="id",
         owner="Beth",
         summary="No alarm event",
         description="Regular description",
@@ -66,6 +71,7 @@ def test_alarm_time_returns_none_when_no_alarm_tag_present():
 
 def test_alarm_time_returns_none_when_start_time_missing():
     event = Event(
+        calendar_id="id",
         owner="Beth",
         summary="Alarm without start",
         description="#alarm20",
@@ -77,6 +83,7 @@ def test_alarm_time_returns_none_when_start_time_missing():
 
 def test_notification_offset_returns_parsed_number():
     event = Event(
+        calendar_id="id",
         owner="Beth",
         summary="Meeting",
         description="#alarm20",
@@ -88,6 +95,7 @@ def test_notification_offset_returns_parsed_number():
 
 def test_notification_offset_returns_different_numbers():
     event = Event(
+        calendar_id="id",
         owner="Beth",
         summary="Meeting",
         description="#alarm5",
@@ -99,6 +107,7 @@ def test_notification_offset_returns_different_numbers():
 
 def test_notification_offset_returns_zero_when_no_number():
     event = Event(
+        calendar_id="id",
         owner="Beth",
         summary="Meeting",
         description="#alarm",
@@ -110,6 +119,7 @@ def test_notification_offset_returns_zero_when_no_number():
 
 def test_notification_offset_returns_zero_when_no_alarm_tag():
     event = Event(
+        calendar_id="id",
         owner="Beth",
         summary="Meeting",
         description="Regular description",
@@ -121,6 +131,7 @@ def test_notification_offset_returns_zero_when_no_alarm_tag():
 
 def test_notification_offset_returns_zero_when_no_start_time():
     event = Event(
+        calendar_id="id",
         owner="Beth",
         summary="Meeting",
         description="#alarm20",
@@ -132,6 +143,7 @@ def test_notification_offset_returns_zero_when_no_start_time():
 
 def test_notification_offset_caches_result():
     event = Event(
+        calendar_id="id",
         owner="Beth",
         summary="Meeting",
         description="#alarm15",
@@ -150,6 +162,7 @@ def test_notification_offset_caches_result():
 def test_notifications_returns_no_alarm_event_notification():
     start_time = datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
     event = Event(
+        calendar_id="id",
         owner="Beth",
         summary="Morning meeting",
         description=None,
@@ -163,6 +176,7 @@ def test_notifications_returns_no_alarm_event_notification():
 def test_notifications_returns_alarm_event_notification():
     start_time = datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
     event = Event(
+        calendar_id="id",
         owner="Beth",
         summary="Morning meeting",
         description="#alarm20",
@@ -180,6 +194,7 @@ def test_notifications_returns_alarm_event_notification():
 def test_notifications_returns_announce_event_notification_without_offset():
     start_time = datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
     event = Event(
+        calendar_id="id",
         owner="Beth",
         summary="Morning meeting",
         description="#announce",
@@ -196,6 +211,7 @@ def test_notifications_returns_announce_event_notification_without_offset():
 def test_notifications_can_parse_multiple_tags_in_description():
     start_time = datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
     event = Event(
+        calendar_id="id",
         owner="Beth",
         summary="Morning meeting",
         description="#alarm10 #announce5",
@@ -213,6 +229,7 @@ def test_notifications_can_parse_multiple_tags_in_description():
 def test_travel_notifications():
     start_time = datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE)
     event = Event(
+        calendar_id="id",
         owner="Beth",
         summary="Morning meeting",
         description="#travel20",
@@ -236,6 +253,7 @@ def test_travel_notifications():
 def test_notifications_support_description_rules():
     start_time = datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
     event = Event(
+        calendar_id="id",
         owner="Beth",
         summary="Gym session",
         description="This is a workout",
@@ -264,6 +282,7 @@ def test_notification_rule_rejects_invalid_notification_type():
 def test_notifications_deduplicate_matching_tag_and_rule_notifications():
     start_time = datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
     event = Event(
+        calendar_id="id",
         owner="Beth",
         summary="Gym session",
         description="#alarm20 #alarm20",
@@ -288,12 +307,14 @@ def test_notifications_deduplicate_matching_tag_and_rule_notifications():
 def test_notifications_description_rules_require_matching_owner():
     start_time = datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
     matching_event = Event(
+        calendar_id="id",
         owner="Beth",
         summary="Gym session",
         description="This is a gym workout",
         start_time=start_time,
     )
     non_matching_event = Event(
+        calendar_id="id",
         owner="Alex",
         summary="Gym session",
         description="This is a gym workout",
