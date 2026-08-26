@@ -120,7 +120,7 @@ class NotificationTextBuilder:
                 announcement.append(f"It's time {self.to_or_for(summary)} {summary}.")
 
             if event_notification.notification_rule and event_notification.notification_rule.reminder:
-                announcement.append(event_notification.notification_rule.reminder + ".")
+                announcement.append(event_notification.notification_rule.reminder)
 
         if extra == "after" and event_notification.event.owner_count > 0:
             announcement.append(self.encouragement())
