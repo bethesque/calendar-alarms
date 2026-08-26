@@ -46,7 +46,7 @@ def listen_for_bt006(audio_config: dict):
     for event in device.read_loop():
         if handle_bt006_button(event):
             print("BT006 Play/Pause pressed")
-            toggle(audio_config, {})
+            toggle(audio_config)
             # Call your calendar alarm stop function here.
             # stop_calendar_alarm()
 

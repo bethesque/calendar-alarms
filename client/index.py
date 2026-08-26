@@ -69,7 +69,7 @@ def toggle(audio_config, params = None):
             _mute_snapclient(audio_config["snapserver_url"], client_id)
         else:
             _toggle_music_assistant_player(audio_config)
-    _report_battery_level(audio_config, params)
+    _report_battery_level(audio_config, params) if params else None
 
 
 def stop(audio_config, params = None):
