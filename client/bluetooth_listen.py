@@ -3,18 +3,17 @@ import argparse
 import yaml
 import logging
 from index import Config, toggle
+import time
+import subprocess
 
 logger = logging.getLogger(__name__)
 
-import time
 
-from evdev import InputDevice, ecodes, list_devices
-
-
+BT006_ADDRESS = "41:42:E2:24:3A:CE"
 BT006_NAME = "BT006 Keyboard"
 
-
 def find_bt006():
+    """Return the BT006 input device, or None if it isn't connected."""
     for path in list_devices():
         device = InputDevice(path)
 
@@ -26,12 +25,45 @@ def find_bt006():
     return None
 
 
+def connect_bt006():
+    """Ask BlueZ to connect to the BT006."""
+    print(f"Attempting to connect to BT006 ({BT006_ADDRESS})...")
+
+    result = subprocess.run(
+        ["bluetoothctl", "connect", BT006_ADDRESS],
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+
+    if result.returncode == 0:
+        print("Bluetooth connection successful")
+        return True
+
+    print(f"Bluetooth connection failed: {result.stdout.strip()}")
+    return False
+
+
 def listen_for_bt006(stop_alarm):
     while True:
         device = find_bt006()
 
         if device is None:
-            print("BT006 not connected; waiting...")
+            print("BT006 input device not found")
+
+            connect_bt006()
+
+            # Give BlueZ time to establish the HID connection
+            # and create the /dev/input/eventX device.
+            for _ in range(10):
+                time.sleep(1)
+
+                device = find_bt006()
+                if device is not None:
+                    break
+
+        if device is None:
+            print("BT006 still not connected; retrying...")
             time.sleep(5)
             continue
 
@@ -48,7 +80,7 @@ def listen_for_bt006(stop_alarm):
                     stop_alarm()
 
         except OSError as e:
-            # The Bluetooth device disappeared while we were reading it.
+            # The Bluetooth device disappeared while reading events.
             print(f"BT006 disconnected: {e}")
 
         finally:
