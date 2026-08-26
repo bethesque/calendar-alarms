@@ -80,6 +80,7 @@ def notifications_from_rules(event: "Event", rules: list[NotificationRule]) -> l
 @dataclass
 class Event:
     owner: str
+    calendar_id: str
     summary: str
     description: str
     start_time: datetime.datetime = None
@@ -128,6 +129,7 @@ class Event:
         departure_time = self.start_time - datetime.timedelta(minutes=offset_int)
         event = LeaveForEvent(
                             owner=self.owner,
+                            calendar_id=self.calendar_id,
                             owner_count=self.owner_count,
                             summary=f"Leave for {self.summary}",
                             description=self.description,
@@ -219,13 +221,13 @@ def list_google_events(creds, calendar_id, min, max):
         return []
 
 
-def add_events_to_calendars(events_from_google, calendar_name, displayed_calendar_days, owner_count):
+def add_events_to_calendars(events_from_google, calendar_id, calendar_name, displayed_calendar_days, owner_count):
     for event_dict in events_from_google:
 
         matched_days = [d for d in displayed_calendar_days if displayed_day_includes_event(d, event_dict)]
 
         for matched_day in matched_days:
-            event = event_from_google_dict(event_dict, calendar_name, owner_count)
+            event = event_from_google_dict(event_dict, calendar_id, calendar_name, owner_count)
 
             if "dateTime" in event_dict["start"]: # has a time specified
                 event.start_time = datetime.datetime.fromisoformat(event_dict["start"]["dateTime"])
@@ -238,10 +240,11 @@ def is_weather_forecast(event_dict):
     return event_dict["summary"].startswith("Min ") or event_dict["summary"].startswith("Max ")
 
 
-def event_from_google_dict(event_dict, calendar_name, owner_count):
+def event_from_google_dict(event_dict, calendar_id, calendar_name, owner_count):
     if is_weather_forecast(event_dict):
         return WeatherForecast(
             owner=calendar_name,
+            calendar_id=calendar_id,
             owner_count=0,
             summary=event_dict["summary"],
             description="",
@@ -249,6 +252,7 @@ def event_from_google_dict(event_dict, calendar_name, owner_count):
     else:
         return Event(
             owner=calendar_name,
+            calendar_id=calendar_id,
             owner_count=owner_count,
             summary=event_dict["summary"],
             description=event_dict.get("description"),
@@ -300,7 +304,7 @@ def get_calendars(creds, filter):
                 end_of_tomorrow,
             )
             logger.info(f"Adding events from id: {gcal.id} name: {gcal.name}")
-            add_events_to_calendars(events, display_name, displayed_calendar_days, owner_count)
+            add_events_to_calendars(events, cal_id, display_name, displayed_calendar_days, owner_count)
 
     for cal in displayed_calendar_days:
         cal.timed_events.sort(key=attrgetter("start_time"))
