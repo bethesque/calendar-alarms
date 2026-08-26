@@ -338,6 +338,7 @@ def test_alarm():
                     "description": "#alarm",
                     "end_time": None,
                     "owner": "Beth",
+                    "calendar_id": "id",
                     "recurring": False,
                     "start_time": date_string,
                     "summary": "test the alarm"
