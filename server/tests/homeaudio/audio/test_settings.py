@@ -61,3 +61,17 @@ def test_label_is_excluded_when_saving_to_file(tmp_path, monkeypatch):
 
     assert "label" not in saved_rule
     assert saved_rule["summary_pattern"] == "gym"
+
+
+def test_notification_rule_is_enabled_by_default():
+    rule = NotificationRule(summary_pattern="gym")
+
+    assert rule.enabled is True
+
+
+def test_enabled_notification_rules_excludes_disabled_rules():
+    enabled_rule = NotificationRule(summary_pattern="gym", enabled=True)
+    disabled_rule = NotificationRule(summary_pattern="swim", enabled=False)
+    settings = EventNotificationSettings(notification_rules=[enabled_rule, disabled_rule])
+
+    assert settings.enabled_notification_rules() == [enabled_rule]

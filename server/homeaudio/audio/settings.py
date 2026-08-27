@@ -132,6 +132,7 @@ class NotificationRule(BaseModel):
     offset_minutes: int = Field(default=0, ge=0, description="Minutes before the event start")
     reminder: str | None = None
     replace: bool = Field(default=False, description="When true, the reminder replaces the announcement text, otherwise it is appended.")
+    enabled: bool = Field(default=True, description="Set to false to disable this notification")
 
     @model_validator(mode="after")
     def _require_a_matcher(self) -> "NotificationRule":
@@ -166,8 +167,11 @@ class EventNotificationSettings(YAMLSettings):
     )
 
     def _dump_for_save(self) -> dict:
-        # display_pattern is a computed, read-only label for the UI - it shouldn't be persisted.
+        # label is a computed, read-only field for the UI - it shouldn't be persisted.
         return self.model_dump(mode="python", exclude={"notification_rules": {"__all__": {"label"}}})
+
+    def enabled_notification_rules(self) -> list[NotificationRule]:
+        return [rule for rule in self.notification_rules if rule.enabled]
 
 class GoogleCalendarSettings(YAMLSettings):
     calendars: list[CalendarSetting] = Field(default_factory=list)

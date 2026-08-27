@@ -376,7 +376,7 @@ def check_for_notifications(base_time, window, calendar_days: list[CalendarDay],
         play_notifications(announcements_file, alarm_audio_file, scene)
 
 def get_event_notifications(base_time, window, calendar_data: list[CalendarDay], event_notification_settings: EventNotificationSettings):
-    notification_rules = event_notification_settings.notification_rules
+    notification_rules = event_notification_settings.enabled_notification_rules()
     alarm_finder = NotificationFinder(calendar_data, base_time, window, notification_rules)
     event_notifications = alarm_finder.find_notification_events()
     return event_notifications
@@ -384,10 +384,11 @@ def get_event_notifications(base_time, window, calendar_data: list[CalendarDay],
 def get_all_event_notifications(event_notification_settings: EventNotificationSettings = EventNotificationSettings(), calendar_source: CalendarSource = CalendarSource(DATA_FILE)):
     calendar_days = calendar_source.load_data_from_file()
 
+    notification_rules = event_notification_settings.enabled_notification_rules()
     notifications = []
     for day in calendar_days:
         for event in day.timed_events:
-            notifications.extend(event.notifications(event_notification_settings.notification_rules))
+            notifications.extend(event.notifications(notification_rules))
 
     return notifications
 
