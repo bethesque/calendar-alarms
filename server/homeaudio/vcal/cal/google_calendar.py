@@ -56,25 +56,44 @@ class EventNotification:
             and self.notification_time == other.notification_time
         )
 
+def _pattern_matches(pattern: str | None, value: str | None) -> bool:
+    """A pattern that is empty/unset always matches; otherwise it must be a
+    case-insensitive substring of value."""
+    if not pattern:
+        return True
+    if not value:
+        return False
+    return pattern.lower() in value.lower()
+
+def _calendar_id_matches(rule_calendar_id: str | None, event_calendar_id: str | None) -> bool:
+    """An unset rule calendar_id matches any calendar. An unset event calendar_id
+    matches any rule. Otherwise the two IDs must match exactly."""
+    if not rule_calendar_id or not event_calendar_id:
+        return True
+    return rule_calendar_id == event_calendar_id
+
 def notifications_from_rules(event: "Event", rules: list[NotificationRule]) -> list[EventNotification]:
     notifications: list[EventNotification] = []
     if not event.start_time or not event.summary:
         return notifications
 
-    summary = event.summary
     for rule in rules:
-        if rule.owner is not None and rule.owner != "" and event.owner.lower() != rule.owner.lower():
+        if not _calendar_id_matches(rule.calendar_id, event.calendar_id):
             continue
 
-        haystack = summary.lower()
-        needle = rule.pattern.lower()
-        if needle in haystack:
-            notifications.append(EventNotification(
-                event=event,
-                type=NotificationType[rule.notification_type.upper()],
-                offset=rule.offset_minutes,
-                notification_rule = rule
-            ))
+        if not _pattern_matches(rule.summary_pattern, event.summary):
+            continue
+        if not _pattern_matches(rule.description_pattern, event.description):
+            continue
+        if not _pattern_matches(rule.location_pattern, event.location):
+            continue
+
+        notifications.append(EventNotification(
+            event=event,
+            type=NotificationType[rule.notification_type.upper()],
+            offset=rule.offset_minutes,
+            notification_rule = rule
+        ))
     return notifications
 
 @dataclass
@@ -87,6 +106,7 @@ class Event:
     end_time: datetime.datetime = None
     recurring: bool = False
     owner_count: int = 0
+    location: str | None = None
 
     def notifications(self, rules: list[NotificationRule] | None = None) -> list[EventNotification]:
         notifications = []
@@ -134,7 +154,8 @@ class Event:
                             summary=f"Leave for {self.summary}",
                             description=self.description,
                             start_time=departure_time,
-                            end_time=self.start_time
+                            end_time=self.start_time,
+                            location=self.location
                         )
         notifications.append(EventNotification(type=NotificationType.ANNOUNCE, offset=5, event=event))
         notifications.append(EventNotification(type=NotificationType.ANNOUNCE, offset=0, event=event))
@@ -241,6 +262,7 @@ def is_weather_forecast(event_dict):
 
 
 def event_from_google_dict(event_dict, calendar_id, calendar_name, owner_count):
+    print(event_dict)
     if is_weather_forecast(event_dict):
         return WeatherForecast(
             owner=calendar_name,
@@ -257,6 +279,7 @@ def event_from_google_dict(event_dict, calendar_id, calendar_name, owner_count):
             summary=event_dict["summary"],
             description=event_dict.get("description"),
             recurring=bool(event_dict.get("recurringEventId")),
+            location=event_dict.get("location", None)
         )
 
 

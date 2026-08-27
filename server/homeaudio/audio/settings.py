@@ -2,7 +2,7 @@ from datetime import datetime
 import logging
 from pathlib import Path
 from typing import Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 import yaml
 from enum import Enum
@@ -121,13 +121,22 @@ class CalendarSetting(BaseModel):
     owner_count: int = 0
 
 class NotificationRule(BaseModel):
-    pattern: str = Field(..., description="The substring to match in the event description")
-    owner: str | None = Field(default=None, description="The event owner that must match for the rule to apply")
-    calendar_id: str | None = Field(default="None", description="The ID of the calendar that must match for the rule to apply")
+    summary_pattern: str | None = Field(default=None, description="The substring to match in the event summary")
+    description_pattern: str | None = Field(default=None, description="The substring to match in the event description")
+    location_pattern: str | None = Field(default=None, description="The substring to match in the location")
+    calendar_id: str | None = Field(default=None, description="The ID of the calendar that must match for the rule to apply")
     notification_type: Literal["alarm", "announce"] = Field(default="alarm", description="The notification type: alarm or announce")
     offset_minutes: int = Field(default=0, ge=0, description="Minutes before the event start")
     reminder: str | None = None
     replace: bool = Field(default=False, description="When true, the reminder replaces the announcement text, otherwise it is appended.")
+
+    @model_validator(mode="after")
+    def _require_a_matcher(self) -> "NotificationRule":
+        if not (self.summary_pattern or self.description_pattern or self.location_pattern or self.calendar_id):
+            raise ValueError(
+                "At least one of summary pattern, description pattern, location pattern, or calendar must be set"
+            )
+        return self
 
 
 class AlarmSettings(BaseModel):
