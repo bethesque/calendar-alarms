@@ -1,10 +1,9 @@
 import logging
-import json
 import logging
 import os
 import argparse
+import yaml
 from datetime import datetime
-from homeaudio.vcal.notifications.core import _play_event_alarm
 from homeaudio.env import LOG_LEVEL
 from homeaudio.audio.mpd import fade_out, fade_up, mpd_connection
 from homeaudio.audio.log_config import setup_logging_for_alarms
@@ -13,7 +12,7 @@ from homeaudio.audio.scene import NullScene, HomeAssistantScene
 from homeaudio.audio.settings import MainSettings
 
 from homeaudio.env import CALENDAR_DATA_DIRECTORY, HOME_ASSISTANT_SUPPORTED
-from homeaudio.vcal.notifications.core import check_for_notifications
+from homeaudio.vcal.notifications.core import check_for_notifications, get_all_event_notifications
 
 setup_logging_for_alarms(str(LOG_LEVEL))
 
@@ -92,3 +91,6 @@ def play_test_file():
     except Exception as e:
         logger.error(f"Error playing alarm: {e}")
         exit(1)
+
+def list_notifications():
+    print(yaml.dump(get_all_event_notifications(), default_flow_style=False, sort_keys=False))

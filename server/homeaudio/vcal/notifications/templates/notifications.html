@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Event notifications</title>
+<link rel="stylesheet" href="/static/styles.css">
+<style>
+  table.notifications { width: 100%; max-width: 900px; border-collapse: collapse; background: var(--card-bg); box-shadow: var(--shadow); border-radius: var(--radius); overflow: hidden; }
+  table.notifications th, table.notifications td { padding: 10px 14px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); }
+  table.notifications th { background: var(--bg); color: var(--muted); font-weight: 600; }
+  table.notifications tr:last-child td { border-bottom: none; }
+  span.type { padding: 2px 8px; border-radius: 999px; font-size: 0.85rem; }
+  span.type.alarm { background: #fde2e2; color: #b42318; }
+  span.type.announce { background: #e0e7ff; color: #4338ca; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <a href="/alarm" class="back">⬅️</a>
+    <h1>Event notifications</h1>
+  </div>
+  {% if notifications %}
+  <table class="notifications">
+    <thead>
+      <tr>
+        <th>Notification time</th>
+        <th>Type</th>
+        <th>Event</th>
+        <th>Offset (mins)</th>
+        <th>Calendar</th>
+        <th>Notification Source</th>
+        <th>Reminder</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for notification in notifications %}
+      <tr>
+        <td>{{ notification.notification_time.strftime("%a, %d %b %y") }}<br>{{ notification.notification_time.strftime("%I:%M %p") }}</td>
+        <td><span class="type {{ notification.type.name.lower() }}">{{ notification.type.name }}</span></td>
+        <td>{{ notification.event.summary }}</td>
+        <td>{{ notification.offset }}</td>
+        <td>{{ notification.event.owner }}</td>
+        <td>{{ "Rule" if notification.notification_rule else "Event" }}</td>
+        <td>{{ notification.notification_rule.reminder if notification.notification_rule and notification.notification_rule.reminder else "" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No upcoming notifications.</p>
+  {% endif %}
+</body>
+</html>

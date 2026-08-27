@@ -1,15 +1,18 @@
 import logging
 from pathlib import Path
 import threading
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.templating import Jinja2Templates
 from homeaudio.vcal.morning_announcements import play_morning_announcements
 from homeaudio.audio.scene import HomeAssistantScene
-from homeaudio.vcal.notifications.core import stop_alarm, test_alarm, mute_alarm_for_area_of_player
+from homeaudio.vcal.notifications.core import stop_alarm, test_alarm, mute_alarm_for_area_of_player, get_all_event_notifications
 from homeaudio.vcal.cli import refresh_calendar_data
 from queue import Queue
 
 logger = logging.getLogger(__name__)
+
+templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
 
 class AlarmHandler:
     def __init__(self):
@@ -103,6 +106,13 @@ class AlarmRoutes:
             name="refresh_calendar_data",
         )
 
+        self.router.add_api_route(
+            "/notifications",
+            self.notifications,
+            methods=["GET"],
+            name="notifications",
+        )
+
     async def index(self):
         return FileResponse(Path(__file__).resolve().parent / "index.html")
 
@@ -125,6 +135,14 @@ class AlarmRoutes:
     async def refresh_calendar_data_endpoint(self):
         message = self.alarm_handler.refresh_calendar_data()
         return Response(content=message, status_code=202, media_type="text/plain")
+
+    async def notifications(self, request: Request):
+        event_notifications = sorted(get_all_event_notifications(), key=lambda notification: notification.notification_time)
+        return templates.TemplateResponse(
+            request=request,
+            name="notifications.html",
+            context={"notifications": event_notifications},
+        )
 
 
 

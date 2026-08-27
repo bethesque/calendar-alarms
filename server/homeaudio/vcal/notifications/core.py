@@ -5,7 +5,7 @@ import random
 import re
 import time
 from datetime import datetime, timedelta
-from homeaudio.vcal.cal.google_calendar import EventNotification, NotificationType, CalendarSource
+from homeaudio.vcal.cal.google_calendar import CalendarDay, EventNotification, NotificationType, CalendarSource
 from homeaudio.audio.sound import build_alarm_audio, join_mp3s_to_wav, build_aggressive_alarm_audio, join_mixed_files_to_wav
 from homeaudio.vcal.notifications.text_to_voice import text_to_voice_file
 from homeaudio.audio.mpd import fade_out, fade_up, mpd_connection
@@ -18,8 +18,11 @@ from homeaudio.audio.snapcast import SnapserverManager
 from homeaudio.audio.snapserver import Snapserver
 from homeaudio.housie_talkie.models import SoundEffectSelector
 from homeaudio.audio.random_text import ListOptionsSource, select_option_pseudorandomly
+from homeaudio.env import CALENDAR_DATA_DIRECTORY
 
 logger = logging.getLogger(__name__)
+
+DATA_FILE = CALENDAR_DATA_DIRECTORY + "/calendar.json"
 
 """
 Takes a list of CalenderDays and finds any alarms due within the given time window.
@@ -353,10 +356,8 @@ def test_alarm():
     check_for_notifications(base_time, 5, calendar_data, HomeAssistantScene())
 
 
-def check_for_notifications(base_time, window, calendar_data, scene:SceneProtocol, event_notification_settings: EventNotificationSettings = EventNotificationSettings()):
-    notification_rules = event_notification_settings.notification_rules
-    alarm_finder = NotificationFinder(calendar_data, base_time, window, notification_rules)
-    event_notifications = alarm_finder.find_notification_events()
+def check_for_notifications(base_time, window, calendar_days: list[CalendarDay], scene:SceneProtocol, event_notification_settings: EventNotificationSettings = EventNotificationSettings()):
+    event_notifications = get_event_notifications(base_time, window, calendar_days, event_notification_settings)
 
     if event_notifications:
         # Separate alarm and announcement notifications
@@ -373,4 +374,17 @@ def check_for_notifications(base_time, window, calendar_data, scene:SceneProtoco
         alarm_audio_file = AlarmAudio(alarm_texts, event_notification_settings.alarms, base_time).build_alarm_file() if alarm_event_notifications else None
 
         play_notifications(announcements_file, alarm_audio_file, scene)
+
+def get_event_notifications(base_time, window, calendar_data: list[CalendarDay], event_notification_settings: EventNotificationSettings):
+    notification_rules = event_notification_settings.notification_rules
+    alarm_finder = NotificationFinder(calendar_data, base_time, window, notification_rules)
+    event_notifications = alarm_finder.find_notification_events()
+    return event_notifications
+
+def get_all_event_notifications(event_notification_settings: EventNotificationSettings = EventNotificationSettings(), calendar_source: CalendarSource = CalendarSource(DATA_FILE)):
+    calendar_days = calendar_source.load_data_from_file()
+    if calendar_days:
+        return get_event_notifications(calendar_days[0].date_time, 60 * 24, calendar_days, event_notification_settings)
+    else:
+        return []
 
