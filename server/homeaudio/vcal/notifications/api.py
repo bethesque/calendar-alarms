@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from homeaudio.vcal.morning_announcements import play_morning_announcements
 from homeaudio.audio.scene import HomeAssistantScene
-from homeaudio.vcal.notifications.core import stop_alarm, test_alarm, mute_alarm_for_area_of_player, get_all_event_notifications
+from homeaudio.vcal.notifications.core import stop_alarm, test_alarm, mute_alarm_for_area_of_player, get_all_event_notifications, get_all_events
 from homeaudio.vcal.cli import refresh_calendar_data
 from queue import Queue
 
@@ -113,6 +113,13 @@ class AlarmRoutes:
             name="notifications",
         )
 
+        self.router.add_api_route(
+            "/events",
+            self.events,
+            methods=["GET"],
+            name="events",
+        )
+
     async def index(self):
         return FileResponse(Path(__file__).resolve().parent / "index.html")
 
@@ -144,5 +151,10 @@ class AlarmRoutes:
             context={"notifications": event_notifications},
         )
 
-
-
+    async def events(self, request: Request):
+        events = get_all_events()
+        return templates.TemplateResponse(
+            request=request,
+            name="events.html",
+            context={"events": events},
+        )

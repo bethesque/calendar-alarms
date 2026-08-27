@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calendar events</title>
+<link rel="stylesheet" href="/static/styles.css">
+<style>
+  table.events { width: 100%; max-width: 900px; border-collapse: collapse; background: var(--card-bg); box-shadow: var(--shadow); border-radius: var(--radius); overflow: hidden; }
+  table.events th, table.events td { padding: 10px 14px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); }
+  table.events th { background: var(--bg); color: var(--muted); font-weight: 600; }
+  table.events tr:last-child td { border-bottom: none; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <a href="/alarm" class="back">⬅️</a>
+    <h1>Calendar events</h1>
+  </div>
+  {% if events %}
+  <table class="events">
+    <thead>
+      <tr>
+        <th>Start</th>
+        <th>Calendar</th>
+        <th>Summary</th>
+        <th>Description</th>
+        <th>Location</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for event in events %}
+      <tr>
+        <td>
+          {% if event.start_time %}
+            {{ event.start_time.strftime("%a, %d %b %Y") }}<br>{{ event.start_time.strftime("%I:%M %p") }}
+          {% else %}
+            &nbsp;
+          {% endif %}
+        </td>
+        <td>{{ event.owner }}</td>
+        <td>{{ event.summary }}</td>
+        <td>{{ event.description or "" }}</td>
+        <td>{{ event.location or "" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No calendar events found.</p>
+  {% endif %}
+</body>
+</html>

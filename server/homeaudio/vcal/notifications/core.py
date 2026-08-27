@@ -388,3 +388,13 @@ def get_all_event_notifications(event_notification_settings: EventNotificationSe
     else:
         return []
 
+def get_all_events(calendar_source: CalendarSource = CalendarSource(DATA_FILE)):
+    calendar_days = calendar_source.load_data_from_file()
+    events_by_day = [
+        (calendar_day.date, event.start_time is not None, event.start_time, event)
+        for calendar_day in calendar_days
+        for event in calendar_day.all_events()
+    ]
+    events_by_day.sort(key=lambda item: (item[0], item[1], item[2] or datetime.min))
+    return [event for *_, event in events_by_day]
+
