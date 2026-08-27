@@ -2,7 +2,7 @@ from datetime import datetime
 import logging
 from pathlib import Path
 from typing import Literal
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 import yaml
 from enum import Enum
@@ -27,13 +27,16 @@ class YAMLSettings(BaseSettings):
             file_secret_settings,
         )
 
+    def _dump_for_save(self) -> dict:
+        return self.model_dump(mode="python")
+
     def save(self) -> None:
         path = Path(self.model_config["yaml_file"]) # pyright: ignore[reportArgumentType, reportTypedDictNotRequiredAccess]
         path.parent.mkdir(parents=True, exist_ok=True)
 
         with path.open("w") as f:
             yaml.safe_dump(
-                self.model_dump(mode="python"),
+                self._dump_for_save(),
                 f,
                 sort_keys=True,
             )
@@ -138,6 +141,12 @@ class NotificationRule(BaseModel):
             )
         return self
 
+    @computed_field
+    @property
+    def label(self) -> str:
+        patterns = [p for p in [self.summary_pattern, self.description_pattern, self.location_pattern] if p]
+        return f"{("/".join(patterns) or self.calendar_id)} @ {self.offset_minutes} minutes before"
+
 
 class AlarmSettings(BaseModel):
     gentle_alarm_duration: int = Field(default=120, description="The number of seconds to play the gentle alarm", ge=0)
@@ -155,6 +164,10 @@ class EventNotificationSettings(YAMLSettings):
     model_config = SettingsConfigDict(
         yaml_file="config/notifications.yaml"
     )
+
+    def _dump_for_save(self) -> dict:
+        # display_pattern is a computed, read-only label for the UI - it shouldn't be persisted.
+        return self.model_dump(mode="python", exclude={"notification_rules": {"__all__": {"label"}}})
 
 class GoogleCalendarSettings(YAMLSettings):
     calendars: list[CalendarSetting] = Field(default_factory=list)

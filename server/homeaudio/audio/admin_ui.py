@@ -43,7 +43,7 @@ class AdminRoutes:
                     ),
                     "event_notification_settings.notification_rules.[]": FieldConfig(
                         display=DisplayConfig(
-                            title="{pattern} @ {offset_minutes} minutes before",
+                            title="{label}",
                             subtitle="{notification_type}"
                         )
                     ),
