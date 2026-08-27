@@ -29,7 +29,7 @@ Takes a list of CalenderDays and finds any alarms due within the given time wind
 """
 
 class NotificationFinder:
-    def __init__(self, calendar_days, base_time, window, notification_rules=None):
+    def __init__(self, calendar_days: list[CalendarDay], base_time, window, notification_rules=None):
         self.calendar_days = calendar_days
         self.base_time = base_time
         self.window = window
@@ -383,10 +383,13 @@ def get_event_notifications(base_time, window, calendar_data: list[CalendarDay],
 
 def get_all_event_notifications(event_notification_settings: EventNotificationSettings = EventNotificationSettings(), calendar_source: CalendarSource = CalendarSource(DATA_FILE)):
     calendar_days = calendar_source.load_data_from_file()
-    if calendar_days:
-        return get_event_notifications(calendar_days[0].date_time, 60 * 24, calendar_days, event_notification_settings)
-    else:
-        return []
+
+    notifications = []
+    for day in calendar_days:
+        for event in day.timed_events:
+            notifications.extend(event.notifications(event_notification_settings.notification_rules))
+
+    return notifications
 
 def get_all_events(calendar_source: CalendarSource = CalendarSource(DATA_FILE)):
     calendar_days = calendar_source.load_data_from_file()
