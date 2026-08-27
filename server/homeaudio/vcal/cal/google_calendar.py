@@ -75,7 +75,7 @@ def _calendar_id_matches(rule_calendar_id: str | None, event_calendar_id: str | 
 
 def notifications_from_rules(event: "Event", rules: list[NotificationRule]) -> list[EventNotification]:
     notifications: list[EventNotification] = []
-    if not event.start_time or not event.summary:
+    if not event.start_time:
         return notifications
 
     for rule in rules:
