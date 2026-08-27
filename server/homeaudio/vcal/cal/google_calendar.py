@@ -20,6 +20,7 @@ from homeaudio.env import CALENDAR_DATA_DIRECTORY
 
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
 TOKEN_PATH = f"{CALENDAR_DATA_DIRECTORY}/token.json"
+DAYS_TO_FETCH = 7
 
 TIMEZONE = "Australia/Melbourne"
 
@@ -262,7 +263,6 @@ def is_weather_forecast(event_dict):
 
 
 def event_from_google_dict(event_dict, calendar_id, calendar_name, owner_count):
-    print(event_dict)
     if is_weather_forecast(event_dict):
         return WeatherForecast(
             owner=calendar_name,
@@ -307,15 +307,17 @@ def displayed_day_includes_event(displayed_calendar_day, event_dict):
     return displayed_calendar_day.date == start_date or ( start_date < displayed_calendar_day.date and displayed_calendar_day.date_time < end_date_time )
 
 
-def get_calendars(creds, filter):
+def get_calendar_days(creds, filter):
     google_calendars = list_google_calendars(creds)
     google_calendars_by_id = {calendar.id: calendar for calendar in google_calendars}
     start_of_today = datetime.datetime.combine(
         datetime.date.today(), datetime.time.min, tzinfo=ZoneInfo(TIMEZONE)
     )
-    tomorrow = start_of_today + datetime.timedelta(days=1)
-    end_of_tomorrow = tomorrow + datetime.timedelta(days=1) - datetime.timedelta(seconds=1)
-    displayed_calendar_days = [CalendarDay(date=start_of_today.date()), CalendarDay(date=tomorrow.date())]
+    end_of_period = start_of_today + datetime.timedelta(days=DAYS_TO_FETCH) - datetime.timedelta(seconds=1)
+    displayed_calendar_days = [
+        CalendarDay(date=(start_of_today + datetime.timedelta(days=offset)).date())
+        for offset in range(DAYS_TO_FETCH)
+    ]
 
     for cal_id, display_name, owner_count in filter:
         gcal = google_calendars_by_id[cal_id]
@@ -324,7 +326,7 @@ def get_calendars(creds, filter):
                 creds,
                 gcal.id,
                 start_of_today,
-                end_of_tomorrow,
+                end_of_period,
             )
             logger.info(f"Adding events from id: {gcal.id} name: {gcal.name}")
             add_events_to_calendars(events, cal_id, display_name, displayed_calendar_days, owner_count)
@@ -390,8 +392,7 @@ class CalendarSource:
         return self.creds and self.creds.valid
 
     def fetch_data(self, filter):
-
-        self.calendar_days = get_calendars(self.creds, filter)
+        self.calendar_days = get_calendar_days(self.creds, filter)
         return self.calendar_days
 
     def load_data_from_file(self) -> list[CalendarDay]:
