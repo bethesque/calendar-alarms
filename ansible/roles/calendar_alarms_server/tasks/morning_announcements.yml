@@ -1,0 +1,28 @@
+# Logs can be viewed with `journalctl SYSLOG_IDENTIFIER=calendar-alarms-morning-announcements`
+# Triggered by calendar-alarms-morning-announcements.timer, on the schedule in server/crontab.txt.
+# Not started/restarted by this deploy, since that would play the announcement immediately.
+- name: Install Calendar Alarms morning announcements service
+  ansible.builtin.template:
+    src: calendar-alarms-morning-announcements.service.j2
+    dest: "/home/{{ ansible_user }}/.config/systemd/user/calendar-alarms-morning-announcements.service"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+  notify:
+    - reload user systemd daemon
+
+
+# force: false means this only seeds the timer on a fresh install - it never overwrites an
+# existing file, since the schedule in it may since have been changed live via the admin UI
+# (see homeaudio/vcal/morning_announcements/timer.py), and a deploy shouldn't clobber that.
+- name: Install Calendar Alarms morning announcements timer if it doesn't already exist
+  ansible.builtin.template:
+    src: calendar-alarms-morning-announcements.timer.j2
+    dest: "/home/{{ ansible_user }}/.config/systemd/user/calendar-alarms-morning-announcements.timer"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+    force: false
+  notify:
+    - reload user systemd daemon
+    - restart calendar-alarms-morning-announcements.timer

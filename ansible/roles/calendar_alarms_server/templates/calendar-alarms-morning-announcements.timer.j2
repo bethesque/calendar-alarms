@@ -1,0 +1,13 @@
+[Unit]
+Description=Calendar Alarms Morning Announcements Timer
+
+[Timer]
+# Weekdays at 7:17am (avoid any alarms) - see server/crontab.txt
+OnCalendar=Mon..Fri *-*-* 07:17:00 Australia/Melbourne
+# Weekends at 8:33am - see server/crontab.txt
+OnCalendar=Sat,Sun *-*-* 08:33:00 Australia/Melbourne
+Unit=calendar-alarms-morning-announcements.service
+Persistent=false
+
+[Install]
+WantedBy=timers.target

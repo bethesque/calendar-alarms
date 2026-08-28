@@ -3,6 +3,7 @@ from typing import get_args, get_origin
 
 from pydantic import BaseModel
 
+import homeaudio.audio.admin_ui as admin_ui_module
 from homeaudio.audio.admin_ui import AdminRoutes
 from homeaudio.audio.settings import AppSettings
 
@@ -55,3 +56,56 @@ def test_attr_configs_keys_exist_on_app_settings():
     assert not unknown_keys, (
         f"attr_configs references paths that don't exist on AppSettings: {unknown_keys}"
     )
+
+
+def _fake_app_settings_class(previous, validated):
+    """A stand-in for AppSettings supporting both AppSettings() (-> previous) and
+    AppSettings.model_validate(data) (-> validated), without touching real config files."""
+
+    class _FakeAppSettings:
+        def __new__(cls):
+            return previous
+
+        @classmethod
+        def model_validate(cls, data):
+            return validated
+
+    return _FakeAppSettings
+
+
+def _fake_settings(schedule):
+    settings = types.SimpleNamespace()
+    settings.morning_announcements_settings = types.SimpleNamespace(schedule=schedule)
+    settings.saved = False
+    settings.save = lambda: setattr(settings, "saved", True)
+    return settings
+
+
+def test_save_settings_updates_timer_when_schedule_changes(monkeypatch):
+    previous = _fake_settings(schedule="old-schedule")
+    validated = _fake_settings(schedule="new-schedule")
+    monkeypatch.setattr(admin_ui_module, "AppSettings", _fake_app_settings_class(previous, validated))
+
+    calls = []
+    admin_routes = AdminRoutes.__new__(AdminRoutes)
+    admin_routes.morning_announcements_schedule_changed = lambda schedule: calls.append(schedule)
+
+    result = admin_routes._save_settings({})
+
+    assert calls == ["new-schedule"]
+    assert result is validated
+    assert validated.saved is True
+
+
+def test_save_settings_does_not_update_timer_when_schedule_unchanged(monkeypatch):
+    previous = _fake_settings(schedule="same-schedule")
+    validated = _fake_settings(schedule="same-schedule")
+    monkeypatch.setattr(admin_ui_module, "AppSettings", _fake_app_settings_class(previous, validated))
+
+    calls = []
+    admin_routes = AdminRoutes.__new__(AdminRoutes)
+    admin_routes.morning_announcements_schedule_changed = lambda schedule: calls.append(schedule)
+
+    admin_routes._save_settings({})
+
+    assert calls == []

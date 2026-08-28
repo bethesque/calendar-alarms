@@ -24,3 +24,10 @@
     name: calendar-alarms-http
     scope: user
     state: restarted
+
+- name: restart calendar-alarms-morning-announcements.timer
+  systemd:
+    name: calendar-alarms-morning-announcements.timer
+    scope: user
+    state: restarted
+    enabled: true

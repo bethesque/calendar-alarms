@@ -37,6 +37,10 @@
   ansible.builtin.import_tasks: http.yml
   tags: http
 
+- name: Install morning announcements service
+  ansible.builtin.import_tasks: morning_announcements.yml
+  tags: morning_announcements
+
 - name: Install bash functions
   ansible.builtin.import_tasks: bash_functions.yml
   tags:

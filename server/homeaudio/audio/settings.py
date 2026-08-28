@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, time
 import logging
 from pathlib import Path
 from typing import Literal
@@ -28,7 +28,9 @@ class YAMLSettings(BaseSettings):
         )
 
     def _dump_for_save(self) -> dict:
-        return self.model_dump(mode="python")
+        # mode="json" so types yaml.safe_dump can't represent directly (time, datetime, Enum, ...)
+        # are serialized to plain strings first, instead of being dumped as raw Python objects.
+        return self.model_dump(mode="json")
 
     def save(self) -> None:
         path = Path(self.model_config["yaml_file"]) # pyright: ignore[reportArgumentType, reportTypedDictNotRequiredAccess]
@@ -168,7 +170,7 @@ class EventNotificationSettings(YAMLSettings):
 
     def _dump_for_save(self) -> dict:
         # label is a computed, read-only field for the UI - it shouldn't be persisted.
-        return self.model_dump(mode="python", exclude={"notification_rules": {"__all__": {"label"}}})
+        return self.model_dump(mode="json", exclude={"notification_rules": {"__all__": {"label"}}})
 
     def enabled_notification_rules(self) -> list[NotificationRule]:
         return [rule for rule in self.notification_rules if rule.enabled]
@@ -200,9 +202,15 @@ class Option(BaseModel):
     def never_used(self) -> bool:
         return self.last_used is None or self.last_used.strip() == ""
 
+class MorningAnnouncementsSchedule(BaseModel):
+    weekdays: time | None = Field(default=time(7, 17, 0), description="When to play the morning announcements on weekdays (24 hour time format)")
+    weekends: time  | None = Field(default=time(9, 00, 0), description="When to play the morning announcements on weekends (24 hour time format)")
+
 class MorningAnnouncementsSettings(YAMLSettings):
-    prelude_options: list[Option] = Field(default_factory=list, description="Text to read after 'Good morning' and before the day's events")
+    enabled: bool = Field(default=True)
+    schedule: MorningAnnouncementsSchedule = Field(default_factory=MorningAnnouncementsSchedule)
     prelude_probability: float = Field(default=1, description="The probability that a prelude will be included")
+    prelude_options: list[Option] = Field(default_factory=list, description="Text to read after 'Good morning' and before the day's events")
     facts: list[Option] = Field(default_factory=list, description="List of facts to read after the day's events")
 
     model_config = SettingsConfigDict(

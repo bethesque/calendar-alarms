@@ -1,0 +1,13 @@
+[Unit]
+Description=Calendar Alarms Morning Announcements
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory={{ server_root }}
+ExecStart={{ server_root }}/script/morning_announcements.sh
+SyslogIdentifier=calendar-alarms-morning-announcements
+
+[Install]
+WantedBy=default.target
