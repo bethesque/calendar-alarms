@@ -37,7 +37,7 @@ def test_update_timer_unit_writes_file_and_reloads_systemd(tmp_path, monkeypatch
     schedule = MorningAnnouncementsSchedule(weekdays=time(7, 17, 0), weekends=time(9, 0, 0))
     timer_path = tmp_path / "calendar-alarms-morning-announcements.timer"
 
-    update_timer_unit(schedule, timer_unit_path=timer_path)
+    update_timer_unit(True, schedule, timer_unit_path=timer_path)
 
     assert "OnCalendar=Mon..Fri" in timer_path.read_text()
     assert ["systemctl", "--user", "daemon-reload"] in calls
@@ -51,10 +51,36 @@ def test_update_timer_unit_disables_timer_when_schedule_is_empty(tmp_path, monke
     schedule = MorningAnnouncementsSchedule(weekdays=None, weekends=None)
     timer_path = tmp_path / "calendar-alarms-morning-announcements.timer"
 
-    update_timer_unit(schedule, timer_unit_path=timer_path)
+    update_timer_unit(True, schedule, timer_unit_path=timer_path)
 
     assert not timer_path.exists()
     assert ["systemctl", "--user", "disable", "--now", "calendar-alarms-morning-announcements.timer"] in calls
+
+
+def test_update_timer_unit_disables_timer_when_not_enabled(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(subprocess, "run", lambda args, **kwargs: calls.append(args))
+
+    schedule = MorningAnnouncementsSchedule(weekdays=time(7, 17, 0), weekends=time(9, 0, 0))
+    timer_path = tmp_path / "calendar-alarms-morning-announcements.timer"
+
+    update_timer_unit(False, schedule, timer_unit_path=timer_path)
+
+    assert not timer_path.exists()
+    assert ["systemctl", "--user", "disable", "--now", "calendar-alarms-morning-announcements.timer"] in calls
+
+
+def test_update_timer_unit_enables_timer_when_re_enabled(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(subprocess, "run", lambda args, **kwargs: calls.append(args))
+
+    schedule = MorningAnnouncementsSchedule(weekdays=time(7, 17, 0), weekends=time(9, 0, 0))
+    timer_path = tmp_path / "calendar-alarms-morning-announcements.timer"
+
+    update_timer_unit(True, schedule, timer_unit_path=timer_path)
+
+    assert timer_path.exists()
+    assert ["systemctl", "--user", "enable", "--now", "calendar-alarms-morning-announcements.timer"] in calls
 
 
 def test_update_timer_unit_does_not_raise_when_systemctl_is_missing(tmp_path, monkeypatch):
@@ -65,7 +91,7 @@ def test_update_timer_unit_does_not_raise_when_systemctl_is_missing(tmp_path, mo
 
     schedule = MorningAnnouncementsSchedule(weekdays=time(7, 17, 0), weekends=time(9, 0, 0))
 
-    update_timer_unit(schedule, timer_unit_path=tmp_path / "timer")
+    update_timer_unit(True, schedule, timer_unit_path=tmp_path / "timer")
 
 
 def test_update_timer_unit_does_not_raise_when_systemctl_fails(tmp_path, monkeypatch):
@@ -76,4 +102,4 @@ def test_update_timer_unit_does_not_raise_when_systemctl_fails(tmp_path, monkeyp
 
     schedule = MorningAnnouncementsSchedule(weekdays=time(7, 17, 0), weekends=time(9, 0, 0))
 
-    update_timer_unit(schedule, timer_unit_path=tmp_path / "timer")
+    update_timer_unit(True, schedule, timer_unit_path=tmp_path / "timer")

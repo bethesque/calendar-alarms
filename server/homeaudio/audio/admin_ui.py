@@ -8,8 +8,8 @@ from pydantic_ui import create_pydantic_ui, UIConfig, FieldConfig, DisplayConfig
 from homeaudio.env import APP_NAME
 
 class AdminRoutes:
-    def __init__(self, morning_announcements_schedule_changed: Callable[[MorningAnnouncementsSchedule], None] = update_timer_unit):
-        self.morning_announcements_schedule_changed = morning_announcements_schedule_changed
+    def __init__(self, morning_announcements_settings_changed: Callable[[bool, MorningAnnouncementsSchedule], None] = update_timer_unit):
+        self.morning_announcements_schedule_changed = morning_announcements_settings_changed
         self.router = APIRouter()
 
         settings = AppSettings()
@@ -94,8 +94,16 @@ class AdminRoutes:
         previous = AppSettings()
         validated = AppSettings.model_validate(data)
 
-        if previous.morning_announcements_settings.schedule != validated.morning_announcements_settings.schedule:
-            self.morning_announcements_schedule_changed(validated.morning_announcements_settings.schedule)
+        previous_morning_announcements = previous.morning_announcements_settings
+        validated_morning_announcements = validated.morning_announcements_settings
+
+        schedule_changed = previous_morning_announcements.schedule != validated_morning_announcements.schedule
+        enabled_changed = previous_morning_announcements.enabled != validated_morning_announcements.enabled
+
+        if schedule_changed or enabled_changed:
+            self.morning_announcements_schedule_changed(
+                validated_morning_announcements.enabled, validated_morning_announcements.schedule
+            )
 
         validated.save()
         return validated

@@ -41,21 +41,23 @@ def render_timer_unit(schedule: MorningAnnouncementsSchedule) -> str | None:
     )
 
 
-def update_timer_unit(schedule: MorningAnnouncementsSchedule, timer_unit_path: Path = DEFAULT_TIMER_UNIT_PATH) -> None:
-    """Writes the live systemd timer unit reflecting `schedule` and reloads/restarts it.
+def update_timer_unit(enabled: bool, schedule: MorningAnnouncementsSchedule, timer_unit_path: Path = DEFAULT_TIMER_UNIT_PATH) -> None:
+    """Writes the live systemd timer unit reflecting `enabled`/`schedule` and reloads/restarts it.
 
     This is separate from the ansible-managed .j2 template (which just seeds the timer on a
-    fresh deploy) - it updates the timer actually running on this host, so a schedule change
-    saved through the admin UI takes effect immediately without needing a redeploy.
+    fresh deploy) - it updates the timer actually running on this host, so a schedule or
+    enabled/disabled change saved through the admin UI takes effect immediately without
+    needing a redeploy.
     """
-    rendered = render_timer_unit(schedule)
+    rendered = render_timer_unit(schedule) if enabled else None
 
     try:
         if rendered:
             timer_unit_path.parent.mkdir(parents=True, exist_ok=True)
             timer_unit_path.write_text(rendered)
         else:
-            logger.info("Morning announcements schedule is empty; disabling %s.timer", SERVICE_NAME)
+            reason = "disabled" if not enabled else "schedule is empty"
+            logger.info("Morning announcements %s; disabling %s.timer", reason, SERVICE_NAME)
             subprocess.run(["systemctl", "--user", "disable", "--now", f"{SERVICE_NAME}.timer"], check=True)
             return
 
