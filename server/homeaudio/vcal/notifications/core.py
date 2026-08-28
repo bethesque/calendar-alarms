@@ -59,14 +59,14 @@ class NotificationFinder:
         return start_time, end_time
 
     def _log_results(self, start, end, results:list[EventNotification]):
-        logging.info(
+        logger.info(
             "Time window: %s → %s (WINDOW=%d mins)",
             start.isoformat(),
             end.isoformat(),
             self.window)
 
         for event_notification in results:
-            logging.info(
+            logger.info(
                 "Matched event: %s | %s with %s offset by %d mins at %s)",
                 event_notification.event.start_time,
                 event_notification.event.summary,
@@ -74,7 +74,7 @@ class NotificationFinder:
                 event_notification.offset,
                 event_notification.notification_time
             )
-        logging.info("Total matched events: %d", len(results))
+        logger.info("Total matched events: %d", len(results))
         return results
 
 class VerbIdentifier:
