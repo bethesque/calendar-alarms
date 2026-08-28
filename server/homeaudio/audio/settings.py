@@ -204,7 +204,7 @@ class Option(BaseModel):
 
 class MorningAnnouncementsSchedule(BaseModel):
     weekdays: time | None = Field(default=time(7, 17, 0), description="When to play the morning announcements on weekdays (24 hour time format)")
-    weekends: time  | None = Field(default=time(9, 00, 0), description="When to play the morning announcements on weekends (24 hour time format)")
+    weekends: time  | None = Field(default=time(9, 57, 0), description="When to play the morning announcements on weekends (24 hour time format)")
 
 class MorningAnnouncementsSettings(YAMLSettings):
     enabled: bool = Field(default=True)
