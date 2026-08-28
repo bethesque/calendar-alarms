@@ -52,3 +52,27 @@ function calendar-alarms-http-stop {
 function calendar-alarms-http-logs {
     journalctl SYSLOG_IDENTIFIER=calendar-alarms-http "$@"
 }
+
+function calendar-alarms-status {
+    systemctl --user status calendar-alarms
+}
+
+function calendar-alarms-start {
+    systemctl --user start calendar-alarms
+}
+
+function calendar-alarms-restart {
+    systemctl --user restart calendar-alarms
+}
+
+function calendar-alarms-stop {
+    systemctl --user stop calendar-alarms
+}
+
+function calendar-alarms-logs {
+    journalctl SYSLOG_IDENTIFIER=calendar-alarms "$@"
+}
+
+function calendar-alarms-morning-announcements-logs {
+    journalctl SYSLOG_IDENTIFIER=calendar-alarms-morning-announcements "$@"
+}
