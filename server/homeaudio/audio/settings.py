@@ -159,10 +159,20 @@ class AlarmSettings(BaseModel):
 class AnnouncementSettings(BaseModel):
     sound_effect_probability: float = Field(default=0.25, description="Probability of a sound effect being played before an event announcement (0=never, 1=always)")
 
+class TimeRange(BaseModel):
+    start: time
+    end: time
+
+class EventNotificationSchedule(BaseModel):
+    weekdays: TimeRange = Field(default=TimeRange(start=time(7, 0), end=time(21)))
+    weekends: TimeRange = Field(default=TimeRange(start=time(9, 0), end=time(21)))
+
 class EventNotificationSettings(YAMLSettings):
+    enabled: bool = True
     notification_rules: list[NotificationRule] = Field(default_factory=list, description="Rules for creating notifications from event descriptions")
     alarms: AlarmSettings = Field(default_factory=AlarmSettings)
     announcements: AnnouncementSettings = Field(default_factory=AnnouncementSettings)
+    schedule: EventNotificationSchedule = Field(default_factory=EventNotificationSchedule)
 
     model_config = SettingsConfigDict(
         yaml_file="config/notifications.yaml"

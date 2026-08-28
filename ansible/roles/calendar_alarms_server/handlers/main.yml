@@ -31,3 +31,10 @@
     scope: user
     state: restarted
     enabled: true
+
+- name: restart calendar-alarms.service
+  systemd:
+    name: calendar-alarms
+    scope: user
+    state: restarted
+    enabled: true

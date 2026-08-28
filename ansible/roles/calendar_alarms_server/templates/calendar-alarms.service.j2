@@ -1,0 +1,13 @@
+[Unit]
+Description=Calendar Alarms Daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory={{ server_root }}
+ExecStart={{ server_root }}/script/calendar_alarms_daemon.sh
+SyslogIdentifier=calendar-alarms
+Restart=always
+
+[Install]
+WantedBy=default.target

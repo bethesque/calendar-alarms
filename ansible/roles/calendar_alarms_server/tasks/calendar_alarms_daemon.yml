@@ -1,0 +1,15 @@
+# Logs can be viewed with `journalctl SYSLOG_IDENTIFIER=calendar-alarms`
+# Experimental long-running replacement for the check_for_alarms cron lines in
+# server/crontab.txt. The cron job remains the fallback if this design doesn't work
+# out; disable it there (systemctl --user disable --now) rather than removing this
+# service, so it's easy to roll back.
+- name: Install Calendar Alarms daemon service
+  ansible.builtin.template:
+    src: calendar-alarms.service.j2
+    dest: "/home/{{ ansible_user }}/.config/systemd/user/calendar-alarms.service"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+  notify:
+    - reload user systemd daemon
+    - restart calendar-alarms.service
