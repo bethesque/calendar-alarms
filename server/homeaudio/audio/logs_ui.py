@@ -42,6 +42,9 @@ class JournalctlRoutes:
         level: str | None = Query(default=None),
     ) -> HTMLResponse:
         line_count = n or self.default_lines
+
+        if level is None:
+            level = "INFO"  # default on first load; submitting "All" sends level="" explicitly
         level = level if level in self.LOG_LEVELS else None
 
         try:

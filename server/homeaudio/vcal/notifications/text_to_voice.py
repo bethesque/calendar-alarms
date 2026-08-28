@@ -16,7 +16,7 @@ Converts text to a voice file and saves it to the cache directory.
 Returns the path to the saved audio file.
 """
 def text_to_voice_file(text, tld: str| None = None, word_limit=1000, audio_cache_directory=AUDIO_CACHE_DIR):
-    logger.info(f"Converting text to voice: {text}")
+    logger.debug(f"Converting text to voice: {text}")
     if word_limit is not None:
         words = text.split()
         text_to_say = " ".join(words[:word_limit])
