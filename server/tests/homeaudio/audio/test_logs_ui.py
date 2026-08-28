@@ -28,6 +28,7 @@ def test_journalctl_routes_shows_journal_output(monkeypatch):
     assert response.status_code == 200
     assert "log line one" in response.text
     assert "log line two" in response.text
+    assert '<a href="/" class="back">' in response.text
     assert "calendar-alarms" in response.text  # title
 
     args = captured_args[0]
@@ -36,7 +37,7 @@ def test_journalctl_routes_shows_journal_output(monkeypatch):
     assert "SYSLOG_IDENTIFIER=calendar-alarms" in args
     assert "-r" in args  # newest first
     assert "-n" in args and args[args.index("-n") + 1] == "50"  # default_lines
-    assert "-p" not in args  # no level filter requested
+    assert "--grep" not in args  # no level filter requested
 
 
 def test_journalctl_routes_filters_by_level_query_param(monkeypatch):
@@ -48,13 +49,17 @@ def test_journalctl_routes_filters_by_level_query_param(monkeypatch):
 
     monkeypatch.setattr(logs_ui_module, "run", fake_run)
 
-    response = _client().get("/journalctl/calendar-alarms?level=warning")
+    response = _client().get("/journalctl/calendar-alarms?level=WARNING")
 
     assert response.status_code == 200
-    assert '<option value="warning" selected>warning</option>' in response.text
+    assert '<option value="WARNING" selected>WARNING</option>' in response.text
 
     args = captured_args[0]
-    assert "-p" in args and args[args.index("-p") + 1] == "warning"
+    # Matches the " | WARNING | " field in log_config.py's format string, not
+    # journalctl's own -p priority (which is uniformly "info" for stdout-captured
+    # services regardless of the Python logging level - see the comment in
+    # logs_ui.py for why -p can't be used here).
+    assert "--grep" in args and args[args.index("--grep") + 1] == r"\| WARNING \|"
 
 
 def test_journalctl_routes_ignores_invalid_level_value(monkeypatch):
@@ -72,7 +77,7 @@ def test_journalctl_routes_ignores_invalid_level_value(monkeypatch):
     assert '<option value="" selected>All</option>' in response.text
 
     args = captured_args[0]
-    assert "-p" not in args
+    assert "--grep" not in args
 
 
 def test_journalctl_routes_uses_n_query_param_over_default(monkeypatch):

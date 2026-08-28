@@ -12,9 +12,12 @@ from fastapi import APIRouter, Query
 from fastapi.responses import HTMLResponse
 
 class JournalctlRoutes:
-    # journalctl's -p accepts these syslog priority names; selecting one shows
-    # messages at that level or more severe (e.g. "warning" also shows err/crit/...).
-    LOG_LEVELS = ["emerg", "alert", "crit", "err", "warning", "notice", "info", "debug"]
+    # These services log via a plain StreamHandler to stdout (see log_config.py's
+    # "%(levelname)s" format), and systemd's journal capture tags every stdout line
+    # with the same syslog priority regardless of that - so journalctl's -p (which
+    # filters on that priority metadata) can't distinguish them. Match the level
+    # name as it actually appears in the formatted message text instead.
+    LOG_LEVELS = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
     def __init__(
         self,
@@ -51,7 +54,8 @@ class JournalctlRoutes:
                 "--no-pager",
             ]
             if level:
-                args += ["-p", level]
+                # Matches the " | LEVEL | " field written by log_config.py's format string.
+                args += ["--grep", rf"\| {level} \|", "--case-sensitive=true"]
 
             result = run(args, capture_output=True, text=True)
 
@@ -78,7 +82,10 @@ class JournalctlRoutes:
                 <link rel="stylesheet" href="/static/styles.css">
             </head>
             <body>
-                <h1>{escape(self.service_name)}</h1>
+                <div class="header">
+                    <a href="/" class="back">⬅️</a>
+                    <h1>{escape(self.service_name)}</h1>
+                </div>
 
                 <form method="get">
                     <label for="n">Lines:</label>
