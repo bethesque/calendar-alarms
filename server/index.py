@@ -12,7 +12,7 @@ from homeaudio.housie_talkie.tts_api import TtsRoutes
 from homeaudio.housie_talkie.voice_api import VoiceRoutes
 from homeaudio.audio.admin_ui import AdminRoutes
 from homeaudio.vcal.notifications.api import AlarmRoutes
-from homeaudio.audio.logs_ui import CalendarAlarmsStatusRoutes, LogRoutes
+from homeaudio.audio.logs_ui import CalendarAlarmsStatusRoutes, JournalctlRoutes, LogRoutes
 from homeaudio.vcal.wake_up_alarm.api import WakeUpAlarmRoutes
 from homeaudio.housie_talkie.ui import UserInterfaceRoutes
 from homeaudio.audio.settings import SnapcastSettings
@@ -51,10 +51,13 @@ def index(request: Request):
             <ul class="buttons">
                 <li><a href="/status/calendar-alarms-service"class="button" >Calendar Alarms HTTP Service Status</a></li>
                 <li><a href="/logs/server" class="button">Calendar Alarms HTTP Server logs</a></li>
-                <li><a href="/logs/alarms" class="button">Alarms logs</a></li>
-                <li><a href="/logs/announcements" class="button">Announcements logs</a></li>
                 <li><a href="/logs/data-refresh" class="button">Data Refresh logs</a></li>
                 <li><a href="/logs/cron" class="button">Cron logs</a></li>
+            </ul>
+            <ul class="buttons">
+                <li><a href="/logs/http" class="button">HTTP service journal</a></li>
+                <li><a href="/logs/morning-announcements" class="button">Morning announcements journal</a></li>
+                <li><a href="/logs/calendar-alarms" class="button">Calendar alarms journal</a></li>
             </ul>
         </body>
     </html>
@@ -68,11 +71,11 @@ app.include_router(AlarmRoutes().router, prefix="/alarm")
 app.include_router(WakeUpAlarmRoutes().router, prefix="/wake-up-alarm")
 app.include_router(AdminRoutes().router, prefix="/settings")
 app.include_router(CalendarAlarmsStatusRoutes().router, prefix="/status/calendar-alarms-service")
-app.include_router(LogRoutes(file_path="logs/server.log", route="/server").router, prefix="/logs")
-app.include_router(LogRoutes(file_path="logs/alarms.log", route="/alarms").router, prefix="/logs")
-app.include_router(LogRoutes(file_path="logs/announcements.log", route="/announcements").router, prefix="/logs")
 app.include_router(LogRoutes(file_path="logs/data_refresh.log", route="/data-refresh").router, prefix="/logs")
 app.include_router(LogRoutes(file_path="logs/cron.log", route="/cron").router, prefix="/logs")
+app.include_router(JournalctlRoutes(service_name="calendar-alarms-http", route="/http").router, prefix="/logs")
+app.include_router(JournalctlRoutes(service_name="calendar-alarms-morning-announcements", route="/morning-announcements").router, prefix="/logs")
+app.include_router(JournalctlRoutes(service_name="calendar-alarms", route="/calendar-alarms").router, prefix="/logs")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 if __name__ == "__main__":

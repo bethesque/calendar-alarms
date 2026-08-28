@@ -11,6 +11,85 @@ from pathlib import Path
 from fastapi import APIRouter, Query
 from fastapi.responses import HTMLResponse
 
+class JournalctlRoutes:
+    def __init__(
+        self,
+        service_name: str,
+        route: str,
+        default_lines: int = 50,
+    ) -> None:
+        self.service_name = service_name
+        self.default_lines = default_lines
+
+        self.router = APIRouter()
+        self.router.add_api_route(
+            route,
+            self.get_log,
+            methods=["GET"],
+            response_class=HTMLResponse,
+        )
+
+    async def get_log(
+        self,
+        n: int = Query(default=None, ge=1, le=1000),
+    ) -> HTMLResponse:
+        line_count = n or self.default_lines
+
+        try:
+            result = run(
+                [
+                    "journalctl",
+                    "--user",
+                    f"SYSLOG_IDENTIFIER={self.service_name}",
+                    "-n", str(line_count),
+                    "-r",  # newest first
+                    "--no-pager",
+                ],
+                capture_output=True,
+                text=True,
+            )
+
+            content = escape(result.stdout) if result.returncode == 0 else f"Error reading journal: {escape(result.stderr)}"
+
+        except FileNotFoundError:
+            content = "journalctl is not available on this host."
+        except Exception as exc:
+            content = f"Error reading journal: {escape(str(exc))}"
+
+        return HTMLResponse(
+            f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <title>Log Viewer</title>
+                <link rel="stylesheet" href="/static/styles.css">
+            </head>
+            <body>
+                <h1>{escape(self.service_name)}</h1>
+
+                <form method="get">
+                    <label for="n">Lines:</label>
+                    <input
+                        id="n"
+                        name="n"
+                        type="number"
+                        min="1"
+                        max="1000"
+                        value="{line_count}"
+                    >
+                    <button type="submit">Refresh</button>
+                </form>
+
+                <pre>{content}</pre>
+            </body>
+            </html>
+            """
+        )
+
+
+
 
 class LogRoutes:
     def __init__(
