@@ -36,6 +36,43 @@ def test_journalctl_routes_shows_journal_output(monkeypatch):
     assert "SYSLOG_IDENTIFIER=calendar-alarms" in args
     assert "-r" in args  # newest first
     assert "-n" in args and args[args.index("-n") + 1] == "50"  # default_lines
+    assert "-p" not in args  # no level filter requested
+
+
+def test_journalctl_routes_filters_by_level_query_param(monkeypatch):
+    captured_args = []
+
+    def fake_run(args, **kwargs):
+        captured_args.append(args)
+        return CompletedProcess(args, returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(logs_ui_module, "run", fake_run)
+
+    response = _client().get("/journalctl/calendar-alarms?level=warning")
+
+    assert response.status_code == 200
+    assert '<option value="warning" selected>warning</option>' in response.text
+
+    args = captured_args[0]
+    assert "-p" in args and args[args.index("-p") + 1] == "warning"
+
+
+def test_journalctl_routes_ignores_invalid_level_value(monkeypatch):
+    captured_args = []
+
+    def fake_run(args, **kwargs):
+        captured_args.append(args)
+        return CompletedProcess(args, returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(logs_ui_module, "run", fake_run)
+
+    response = _client().get("/journalctl/calendar-alarms?level=bogus")
+
+    assert response.status_code == 200
+    assert '<option value="" selected>All</option>' in response.text
+
+    args = captured_args[0]
+    assert "-p" not in args
 
 
 def test_journalctl_routes_uses_n_query_param_over_default(monkeypatch):

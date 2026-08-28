@@ -12,6 +12,10 @@ from fastapi import APIRouter, Query
 from fastapi.responses import HTMLResponse
 
 class JournalctlRoutes:
+    # journalctl's -p accepts these syslog priority names; selecting one shows
+    # messages at that level or more severe (e.g. "warning" also shows err/crit/...).
+    LOG_LEVELS = ["emerg", "alert", "crit", "err", "warning", "notice", "info", "debug"]
+
     def __init__(
         self,
         service_name: str,
@@ -32,22 +36,24 @@ class JournalctlRoutes:
     async def get_log(
         self,
         n: int = Query(default=None, ge=1, le=1000),
+        level: str | None = Query(default=None),
     ) -> HTMLResponse:
         line_count = n or self.default_lines
+        level = level if level in self.LOG_LEVELS else None
 
         try:
-            result = run(
-                [
-                    "journalctl",
-                    "--user",
-                    f"SYSLOG_IDENTIFIER={self.service_name}",
-                    "-n", str(line_count),
-                    "-r",  # newest first
-                    "--no-pager",
-                ],
-                capture_output=True,
-                text=True,
-            )
+            args = [
+                "journalctl",
+                "--user",
+                f"SYSLOG_IDENTIFIER={self.service_name}",
+                "-n", str(line_count),
+                "-r",  # newest first
+                "--no-pager",
+            ]
+            if level:
+                args += ["-p", level]
+
+            result = run(args, capture_output=True, text=True)
 
             content = escape(result.stdout) if result.returncode == 0 else f"Error reading journal: {escape(result.stderr)}"
 
@@ -55,6 +61,11 @@ class JournalctlRoutes:
             content = "journalctl is not available on this host."
         except Exception as exc:
             content = f"Error reading journal: {escape(str(exc))}"
+
+        level_options = "\n".join(
+            f'<option value="{lvl}"{" selected" if lvl == level else ""}>{lvl}</option>'
+            for lvl in self.LOG_LEVELS
+        )
 
         return HTMLResponse(
             f"""
@@ -79,6 +90,13 @@ class JournalctlRoutes:
                         max="1000"
                         value="{line_count}"
                     >
+
+                    <label for="level">Level:</label>
+                    <select id="level" name="level">
+                        <option value=""{" selected" if not level else ""}>All</option>
+                        {level_options}
+                    </select>
+
                     <button type="submit">Refresh</button>
                 </form>
 
