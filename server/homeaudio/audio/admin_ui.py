@@ -79,6 +79,20 @@ class AdminRoutes:
                             subtitle="enabled: {enabled}"
                         )
                     ),
+                    "morning_announcements_settings.schedule.weekdays": FieldConfig(
+                        placeholder="HH:MM:SS",
+                        display=DisplayConfig(
+                            title="Weekdays",
+                            subtitle="When to play the morning announcements on weekdays (24 hour time format, eg 07:17:00 for 7:17am)",
+                        )
+                    ),
+                    "morning_announcements_settings.schedule.weekends": FieldConfig(
+                        placeholder="HH:MM:SS",
+                        display=DisplayConfig(
+                            title="Weekends",
+                            subtitle="When to play the morning announcements on weekends (24 hour time format, eg 07:17:00 for 7:17am)",
+                        ),
+                    ),
                     "morning_announcements_settings.prelude_options.[]": FieldConfig(
                         display=DisplayConfig(
                             title="{text}",

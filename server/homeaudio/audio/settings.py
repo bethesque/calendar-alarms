@@ -203,8 +203,8 @@ class Option(BaseModel):
         return self.last_used is None or self.last_used.strip() == ""
 
 class MorningAnnouncementsSchedule(BaseModel):
-    weekdays: time | None = Field(default=time(7, 17, 0), description="When to play the morning announcements on weekdays (24 hour time format)")
-    weekends: time  | None = Field(default=time(9, 57, 0), description="When to play the morning announcements on weekends (24 hour time format)")
+    weekdays: time | None = Field(default=time(7, 17, 0))
+    weekends: time  | None = Field(default=time(9, 57, 0))
 
 class MorningAnnouncementsSettings(YAMLSettings):
     enabled: bool = Field(default=True)
