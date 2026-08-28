@@ -50,7 +50,6 @@ def index(request: Request):
             </ul>
             <ul class="buttons">
                 <li><a href="/status/calendar-alarms-service"class="button" >Calendar Alarms HTTP Service Status</a></li>
-                <li><a href="/logs/server" class="button">Calendar Alarms HTTP Server logs</a></li>
                 <li><a href="/logs/data-refresh" class="button">Data Refresh logs</a></li>
                 <li><a href="/logs/cron" class="button">Cron logs</a></li>
             </ul>
