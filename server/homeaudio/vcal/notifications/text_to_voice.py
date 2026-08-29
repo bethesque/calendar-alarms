@@ -1,7 +1,7 @@
+import hashlib
 import os
 import logging
 from gtts import gTTS
-from homeaudio.audio.string_utils import sanitise_filename
 from homeaudio.env import CACHE_DIRECTORY, GOOGLE_TRANSLATE_LANG, DEFAULT_GOOGLE_TRANSLATE_TLD
 from homeaudio.audio.sound import join_mp3s_to_wav
 
@@ -59,7 +59,8 @@ def text_to_voice_file_daily_summary(text: list[str], cache_directory=AUDIO_CACH
     return MORNING_ANNOUNCEMENT_FILE
 
 def get_file_path_for_text(text, tld, cache_directory=AUDIO_CACHE_DIR):
-    audio_file_path = os.path.join(cache_directory, sanitise_filename(text + "_" + tld) + ".mp3")
+    file_hash = hashlib.sha256(f"{text}_{tld}".encode("utf-8")).hexdigest()
+    audio_file_path = os.path.join(cache_directory, file_hash + ".mp3")
     return audio_file_path
 
 def gtts_tld():
