@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 DATA_FILE = CALENDAR_DATA_DIRECTORY + "/calendar.json"
 
+
 """
 Takes a list of CalenderDays and finds any alarms due within the given time window.
 """
@@ -91,6 +92,7 @@ class NotificationTextBuilder:
     COMPLIMENTS_FOR_1 = ListOptionsSource("compliments_for_1", ["What a beautiful name.", "Everyone loves working with you.", "You are fabulous.", "What beautiful eyes you have.", "You're the best!", "You are one of the most talented people we know.", "Lots of people love you.", "You are thoughful, intelligent and beautiful."])
     COMPLIEMENTS_FOR_2 = ListOptionsSource("compliments_for_2", ["What a great looking pair you are.", "You're both awesome.", "It's a great day because you're here."])
     COMPLIEMENTS_FOR_MANY = ListOptionsSource("compliments_for_many", ["What a good looking bunch you are.", "You are all awesome."])
+    CHANCE_OF_ANNOUNCEMENT_WITH_NO_EXTRAS = 1/4 # Sometimes, just read out the name of the event.
 
     def __init__(self, event_notifications: list[EventNotification], base_time):
         self.event_notifications = event_notifications
@@ -106,34 +108,79 @@ class NotificationTextBuilder:
     def _announcement_for_event(self, event_notification: EventNotification) -> list[str]:
         announcement: list[str] = []
 
-        announcement.append(random.choice([f"Hi {event_notification.event.owner}. ", f"Hey {event_notification.event.owner}. ", f"Hey there {event_notification.event.owner}.", f"Hello {event_notification.event.owner}."]))
+        # 1/4 of the time, just say the name of the event - no extras.
+        if event_notification.notification_rule is None and event_notification.offset == 0 and random.random() < self.CHANCE_OF_ANNOUNCEMENT_WITH_NO_EXTRAS:
+            announcement.append(event_notification.event.summary)
+            return announcement
 
-        extra = random.choice(["before", "after"])
+        announcement.append(self.greeting(event_notification))
 
-        if extra == "before" and event_notification.event.owner_count > 0 and (comp := self.compliment(event_notification.event.owner_count)):
+        extra = self.select_type_of_extra(event_notification)
+
+        if extra == "compliment" and (comp := self.compliment(event_notification.event.owner_count)):
             announcement.append(comp)
 
         if event_notification.notification_rule and event_notification.notification_rule.replace and event_notification.notification_rule.reminder:
+            # Append the reminder only, no summary
             announcement.append(event_notification.notification_rule.reminder)
         else:
-            summary = event_notification.event.summary if event_notification.event.summary else "an event"
-            if event_notification.offset > 0:
-                announcement.append(f"It will be time {self.to_or_for(summary)} {summary} in {event_notification.offset} minutes.")
-            else:
-                announcement.append(f"It's time {self.to_or_for(summary)} {summary}.")
+            # Append "it will be time..."
+            announcement.append(self.it_will_be_time_for_summary(event_notification))
 
             if event_notification.notification_rule and event_notification.notification_rule.reminder:
+                # Append the reminder
                 announcement.append(event_notification.notification_rule.reminder)
 
-        if extra == "after" and event_notification.event.owner_count > 0:
+        if extra == "encouragement":
             announcement.append(self.encouragement())
 
         return announcement
 
+    # Add a compliment, an encouragement, or nothing
+    def select_type_of_extra(self, event_notification):
+        extras: list[str|None] = [None]
+        # Only do encouragement for individuals and groups
+        if event_notification.event.owner_count > 0:
+            extras.append("compliment")
+            extras.append("encouragement")
+        # 1/3 of the time, do a compliment
+        # 1/3 of the time, do an encouragement
+        # 1/3 of the time, do neither
+        extra = random.choice(extras)
+        return extra
+
+    def it_will_be_time_for_summary(self, event_notification: EventNotification):
+        summary = event_notification.event.summary
+        if event_notification.offset > 0:
+            return f"It will be time {self.to_or_for(summary)} {summary} in {event_notification.offset} minutes."
+        else:
+            return f"It's time {self.to_or_for(summary)} {summary}."
+
+    def greeting(self, event_notification: EventNotification):
+        good_greeting = "Good morning" if self.base_time.hour < 12 else "Good afternoon" if self.base_time.hour < 17 else "Good evening"
+
+        choices = [
+            f"{good_greeting}.",
+            "Hi there.",
+            "Hey.",
+            "Hey there.",
+            "Hello.",
+        ]
+
+        if event_notification.event.owner_count > 0:
+            choices.extend([
+                f"{good_greeting} {event_notification.event.owner}.",
+                f"Hi {event_notification.event.owner}. ",
+                f"Hey {event_notification.event.owner}.",
+                f"Hey there {event_notification.event.owner}.",
+                f"Hello {event_notification.event.owner}.",
+                f"Attention {event_notification.event.owner}.",
+            ])
+
+        return random.choice(choices)
+
     def compliment(self, owner_count: int) -> str | None:
-        if owner_count == 0:
-            return None
-        elif owner_count == 1:
+        if owner_count == 1:
             return select_option_pseudorandomly(None, 1, self.COMPLIMENTS_FOR_1)
         elif owner_count == 2:
             return select_option_pseudorandomly(None, 1, self.COMPLIEMENTS_FOR_2)
@@ -242,7 +289,7 @@ class AnnouncementAudio:
 
     def build_announcement_file(self):
         joined_announcement_file = OUTPUT_AUDIO_DIRECTORY + "/announcement.wav"
-        files = self.preannouncement_files() + self._announcement_files_for_events()
+        files = self.preannouncement_files() + self._announcement_files_for_events() + [SILENCE_HALF_SEC]
         join_mp3s_to_wav(files, joined_announcement_file)
 
         return joined_announcement_file

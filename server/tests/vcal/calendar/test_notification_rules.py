@@ -41,4 +41,4 @@ def test_notification_rule_with_reminder_e2e(monkeypatch):
     monkeypatch.setattr("homeaudio.vcal.notifications.core.random.choice", lambda seq: seq[0])
     announcement_texts = NotificationTextBuilder(event_notifications, base_time).build()
 
-    assert announcement_texts == ["Hi Beth. ", "It's time for Gym.", "Remember to eat."]
+    assert announcement_texts == ["Good morning.", "It's time for Gym.", "Remember to eat."]
