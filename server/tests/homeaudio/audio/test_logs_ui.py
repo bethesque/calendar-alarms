@@ -37,7 +37,7 @@ def test_journalctl_routes_shows_journal_output(monkeypatch):
     assert "SYSLOG_IDENTIFIER=calendar-alarms" in args
     assert "-r" in args  # newest first
     assert "-n" in args and args[args.index("-n") + 1] == "50"  # default_lines
-    assert "--grep" in args and args[args.index("--grep") + 1] == r"\| INFO \|"  # defaults to INFO
+    assert "--grep" in args and args[args.index("--grep") + 1] == r"\| (INFO|WARNING|ERROR|CRITICAL) \|"  # defaults to INFO
     assert '<option value="INFO" selected>INFO</option>' in response.text
 
 
@@ -59,8 +59,33 @@ def test_journalctl_routes_filters_by_level_query_param(monkeypatch):
     # Matches the " | WARNING | " field in log_config.py's format string, not
     # journalctl's own -p priority (which is uniformly "info" for stdout-captured
     # services regardless of the Python logging level - see the comment in
-    # logs_ui.py for why -p can't be used here).
-    assert "--grep" in args and args[args.index("--grep") + 1] == r"\| WARNING \|"
+    # logs_ui.py for why -p can't be used here). Also includes every level more
+    # severe than WARNING.
+    assert "--grep" in args and args[args.index("--grep") + 1] == r"\| (WARNING|ERROR|CRITICAL) \|"
+
+
+def test_journalctl_routes_level_filter_includes_more_severe_levels(monkeypatch):
+    captured_args = []
+
+    def fake_run(args, **kwargs):
+        captured_args.append(args)
+        return CompletedProcess(args, returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(logs_ui_module, "run", fake_run)
+
+    expected_patterns = {
+        "DEBUG": r"\| (DEBUG|INFO|WARNING|ERROR|CRITICAL) \|",
+        "INFO": r"\| (INFO|WARNING|ERROR|CRITICAL) \|",
+        "WARNING": r"\| (WARNING|ERROR|CRITICAL) \|",
+        "ERROR": r"\| (ERROR|CRITICAL) \|",
+        "CRITICAL": r"\| (CRITICAL) \|",
+    }
+
+    for level, expected_pattern in expected_patterns.items():
+        _client().get(f"/journalctl/calendar-alarms?level={level}")
+
+        args = captured_args[-1]
+        assert args[args.index("--grep") + 1] == expected_pattern, level
 
 
 def test_journalctl_routes_all_option_shows_every_level(monkeypatch):

@@ -58,7 +58,11 @@ class JournalctlRoutes:
             ]
             if level:
                 # Matches the " | LEVEL | " field written by log_config.py's format string.
-                args += ["--grep", rf"\| {level} \|", "--case-sensitive=true"]
+                # LOG_LEVELS is in increasing severity order, so this also matches every
+                # level more severe than the selected one (e.g. INFO also shows WARNING/ERROR/CRITICAL).
+                levels_at_or_above = self.LOG_LEVELS[self.LOG_LEVELS.index(level):]
+                pattern = "|".join(levels_at_or_above)
+                args += ["--grep", rf"\| ({pattern}) \|", "--case-sensitive=true"]
 
             result = run(args, capture_output=True, text=True)
 
