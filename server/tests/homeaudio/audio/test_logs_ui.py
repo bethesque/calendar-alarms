@@ -41,6 +41,24 @@ def test_journalctl_routes_shows_journal_output(monkeypatch):
     assert '<option value="INFO" selected>INFO</option>' in response.text
 
 
+def test_journalctl_routes_strips_journald_prefix(monkeypatch):
+    raw_line = (
+        "Aug 29 08:31:07 travnas calendar-alarms-morning-announcements[2750502]: "
+        "2026-08-29 08:31:07.081 | INFO | homeaudio.audio.scene | "
+        "Not restoring Music Assistant state as the state file is either too old or does not exist"
+    )
+
+    def fake_run(args, **kwargs):
+        return CompletedProcess(args, returncode=0, stdout=raw_line + "\n", stderr="")
+
+    monkeypatch.setattr(logs_ui_module, "run", fake_run)
+
+    response = _client().get("/journalctl/calendar-alarms")
+
+    assert "Aug 29 08:31:07 travnas calendar-alarms-morning-announcements[2750502]:" not in response.text
+    assert "2026-08-29 08:31:07.081 | INFO | homeaudio.audio.scene | Not restoring Music Assistant state" in response.text
+
+
 def test_journalctl_routes_filters_by_level_query_param(monkeypatch):
     captured_args = []
 

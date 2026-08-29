@@ -1,3 +1,4 @@
+import re
 from subprocess import run
 from unittest import result
 from fastapi import APIRouter
@@ -10,6 +11,12 @@ from pathlib import Path
 
 from fastapi import APIRouter, Query
 from fastapi.responses import HTMLResponse
+
+# Strips journald's own "Aug 29 08:31:07 travnas calendar-alarms-morning-announcements[2750502]: "
+# prefix from each line, leaving just the app's own formatted log line (which already has its
+# own timestamp). \s+ (rather than fixed widths) tolerates journald's extra space before
+# single-digit days (e.g. "Jan  5"), and [^\[]+ matches the unit name regardless of its length.
+JOURNALD_PREFIX = re.compile(r"^\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\S+\s+[^\[]+\[\d+\]:\s*", re.MULTILINE)
 
 class JournalctlRoutes:
     # These services log via a plain StreamHandler to stdout (see log_config.py's
@@ -66,7 +73,10 @@ class JournalctlRoutes:
 
             result = run(args, capture_output=True, text=True)
 
-            content = escape(result.stdout) if result.returncode == 0 else f"Error reading journal: {escape(result.stderr)}"
+            if result.returncode == 0:
+                content = escape(JOURNALD_PREFIX.sub("", result.stdout))
+            else:
+                content = f"Error reading journal: {escape(result.stderr)}"
 
         except FileNotFoundError:
             content = "journalctl is not available on this host."
