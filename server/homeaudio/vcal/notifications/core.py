@@ -331,30 +331,30 @@ def play_notifications(announcements_file: str | None, alarms_file: str | None, 
         _play_event_alarm(alarms_file, mpd_settings)
 
 def _play_event_announcement(announcements_file, mpd_settings):
-    with mpd_connection(mpd_settings) as alarm_player:
+    with mpd_connection(mpd_settings) as mpd:
         logger.info(f"Playing announcements {announcements_file}")
-        alarm_player.set_volume(mpd_settings.volumes.tts)
-        alarm_player.play_file(announcements_file)
+        mpd.set_volume(mpd_settings.volumes.tts)
+        mpd.play_file(announcements_file)
     time.sleep(track_length(announcements_file))
 
 def _play_event_alarm(alarms_file, mpd_settings: MpdSettings):
-    with mpd_connection(mpd_settings) as alarm_player:
+    with mpd_connection(mpd_settings) as mpd:
         fade_up_duration = 45
         logger.info(f"Playing alarm {alarms_file}, increasing volume from {mpd_settings.volumes.alarm_start} to {mpd_settings.volumes.alarm_end} over {fade_up_duration} seconds")
-        alarm_player.set_volume(mpd_settings.volumes.alarm_start)
-        alarm_player.play_file(alarms_file)
-        fade_up([(alarm_player, mpd_settings.volumes.alarm_end)], fade_up_duration, 10)
+        mpd.set_volume(mpd_settings.volumes.alarm_start)
+        mpd.play_file(alarms_file)
+        fade_up([(mpd, mpd_settings.volumes.alarm_end)], fade_up_duration, 10)
 
 def stop_alarm(after_alarm_hook=None):
     # Stop alarm
     logger.info("Stopping alarm...")
     message = ""
     try:
-        with mpd_connection() as alarm_player:
-            if alarm_player.is_running():
-                alarm_player.set_volume(0)
+        with mpd_connection() as mpd:
+            if mpd.is_running():
+                mpd.set_volume(0)
                 #fade_out([alarm_player], 1, 5)
-                alarm_player.stop()
+                mpd.stop()
                 message = "Alarm stopped."
             else:
                 message = "MPD is not running. No alarm to stop."
@@ -364,6 +364,11 @@ def stop_alarm(after_alarm_hook=None):
     logger.info(message)
 
     after_alarm_hook() if after_alarm_hook else None
+
+def replay_last_notification(mpd_settings: MpdSettings = MpdSettings()):
+    with mpd_connection() as mpd:
+        mpd.set_volume(mpd_settings.volumes.tts)
+        mpd.play()
 
 # TODO mute Music Assistant also
 def mute_alarm_for_area_of_player(player, snapcast_settings: SnapcastSettings = SnapcastSettings()):

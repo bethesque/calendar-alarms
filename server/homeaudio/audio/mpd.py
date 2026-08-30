@@ -168,6 +168,14 @@ class MpdClient:
             logger.error(f"Failed to play files {file_paths}: {e}")
             raise e
 
+    def play(self):
+        try:
+            logger.info("Playing existing playlist")
+            self.client.play()
+        except musicpd.CommandError as e:
+            logger.error(f"Failed to play existing playlist: {e}")
+            raise e
+
     def set_volume(self, vol: int):
         try:
             # Clamp volume to 0-100 range
@@ -180,8 +188,6 @@ class MpdClient:
     def stop(self):
         try:
             self.client.stop()
-            self.client.clear()
-            self.client.repeat(0)  # Disable repeat mode
             logger.info("Stopped MPD playback")
         except musicpd.CommandError as e:
             logger.error(f"Failed to stop MPD: {e}")
