@@ -352,9 +352,12 @@ def stop_alarm(after_alarm_hook=None):
     try:
         with mpd_connection() as mpd:
             if mpd.is_running():
-                mpd.set_volume(0)
+                #mpd.set_volume(0)
                 #fade_out([alarm_player], 1, 5)
-                mpd.stop()
+                # If any HousieTalkie files have been added while notification is playing,
+                # play them next.
+                # If no other files have been added, it will just stop playback
+                mpd.next()
                 message = "Alarm stopped."
             else:
                 message = "MPD is not running. No alarm to stop."

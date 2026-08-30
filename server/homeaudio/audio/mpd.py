@@ -142,31 +142,46 @@ class MpdClient:
     def wait_for_queue_to_finish(self, timeout: float = 30.0, interval: float = 0.2) -> bool:
         deadline = time.time() + timeout
         while time.time() < deadline:
-            status = self.client.status()
-            state = status.get("state")
-
-            if state in {"stop", "pause", "idle"}:
+            if not self.is_playing():
                 return True
 
             time.sleep(interval)
 
         return False
 
+    def is_playing(self) -> bool:
+        return self.client.status().get("state", None) == "play"
+
     def play_files(self, file_paths: list[str]):
         try:
             self.client.clear()
-            for file_path in file_paths:
-                full_path = f"file://{os.path.abspath(file_path)}"
-
-                if not file_path.startswith("/tmp/"):
-                    full_path = f"file://{shutil.copy(file_path, "/tmp")}"
-
-                logger.info(f"Adding file: {full_path}")
-                self.client.add(full_path)
+            self.add_files_to_playlist(file_paths)
             self.client.play()
         except musicpd.CommandError as e:
             logger.error(f"Failed to play files {file_paths}: {e}")
             raise e
+
+    def add_files_to_playlist(self, file_paths):
+        for file_path in file_paths:
+            full_path = f"file://{os.path.abspath(file_path)}"
+
+            if not file_path.startswith("/tmp/"):
+                full_path = f"file://{shutil.copy(file_path, "/tmp")}"
+
+            logger.info(f"Adding file: {full_path}")
+            self.client.add(full_path)
+
+    def play_next(self, file_paths: list[str]):
+        """
+            If something is already playing, play these files next.
+            Otherwise, play the files immediately.
+        """
+        if self.is_playing():
+            self.add_files_to_playlist(file_paths)
+            # Add an extra play in case playback is stopped while adding the files.
+            self.client.play()
+        else:
+            self.play_files(file_paths)
 
     def play(self):
         try:
@@ -184,6 +199,13 @@ class MpdClient:
             logger.debug(f"Set volume to {vol}")
         except musicpd.CommandError as e:
             logger.error(f"Failed to set volume: {e}")
+
+    def next(self):
+        try:
+            self.client.next()
+            logger.info("MPD next called")
+        except musicpd.CommandError as e:
+            logger.error(f"Failed to stop MPD: {e}")
 
     def stop(self):
         try:
