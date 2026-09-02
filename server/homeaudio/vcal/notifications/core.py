@@ -17,7 +17,6 @@ from homeaudio.audio.snapserver import Snapserver
 from homeaudio.housie_talkie.models import SoundEffectSelector
 from homeaudio.vcal.notifications.text import NotificationTextBuilder
 from homeaudio.vcal.notifications.snooze import LastPlayedState, SnoozeState, due_snoozed_event_notifications
-from homeaudio.env import TIMEZONE
 from homeaudio.env import CALENDAR_DATA_DIRECTORY
 
 logger = logging.getLogger(__name__)

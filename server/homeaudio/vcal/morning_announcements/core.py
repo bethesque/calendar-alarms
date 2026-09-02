@@ -6,7 +6,7 @@ from datetime import datetime
 from homeaudio.audio.mpd import fade_up, mpd_connection
 from homeaudio.audio.snapcast import SnapserverManager
 from homeaudio.audio.settings import MorningAnnouncementsSettings, MpdSettings, SnapcastSettings
-from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException, load_data_from_file, get_events_for_date
+from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException, CalendarSource, get_events_for_date
 from homeaudio.vcal.notifications.text_to_voice import text_to_voice_file_daily_summary
 from homeaudio.audio.sound import mix_announcement_audio, track_length
 from homeaudio.audio.random_text import ListOptionsSource, select_option_pseudorandomly
@@ -125,7 +125,7 @@ class AudioFileBuilder:
 Top level entry point. Generate a summary of today's events, convert them to voice, and play them.
 """
 def play_morning_announcements(calendar_file = os.path.join(CALENDAR_DATA_DIRECTORY, "calendar.json"), base_time = datetime.now().astimezone(), before_announcement_hook=None, after_announcement_hook=None):
-    events = get_events_for_date(load_data_from_file(calendar_file), base_time)
+    events = get_events_for_date(CalendarSource(cache_file_path=calendar_file).load_data_from_file(), base_time)
     text_builder = TextBuilder(events)
     bg_music_selector = BackgroundMusicSelector(base_time)
     output_file = AudioFileBuilder(text_builder, bg_music_selector).build_audio_file()

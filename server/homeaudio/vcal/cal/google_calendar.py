@@ -335,12 +335,6 @@ def get_calendar_days(creds, filter):
         cal.timed_events.sort(key=attrgetter("start_time"))
     return displayed_calendar_days
 
-# Load calendar data from a JSON file.
-def load_data_from_file(file_path: str) -> list[CalendarDay]:
-    with open(file_path, "r") as f:
-        days = json.load(f)
-        return load_data_from_any(days)
-
 def load_data_from_any(days: Any) -> list[CalendarDay]:
         calendar_days = []
         for day in days:
@@ -383,6 +377,7 @@ class CalendarSource:
     cache_file_path: str
     calendar_days: list = None
     creds: any = None
+    refreshed_at: datetime.datetime | None = None
 
     def load_creds(self):
         self.creds = load_google_creds()
@@ -393,10 +388,21 @@ class CalendarSource:
 
     def fetch_data(self, filter):
         self.calendar_days = get_calendar_days(self.creds, filter)
+        self.refreshed_at = datetime.datetime.now().astimezone()
         return self.calendar_days
 
     def load_data_from_file(self) -> list[CalendarDay]:
-        self.calendar_days = load_data_from_file(self.cache_file_path)
+        with open(self.cache_file_path, "r") as f:
+            data = json.load(f)
+
+        if isinstance(data, dict):  # new format
+            self.refreshed_at = datetime.datetime.fromisoformat(data["refreshed_at"]) if data.get("refreshed_at") else None
+            events = data["events"]
+        else:  # old format was a bare array, with no refreshed_at
+            self.refreshed_at = None
+            events = data
+
+        self.calendar_days = load_data_from_any(events)
         return self.calendar_days
 
     def load_data_from_any(self, any: Any) -> list[CalendarDay]:
@@ -404,7 +410,11 @@ class CalendarSource:
         return self.calendar_days
 
     def save_data_to_file(self):
-        data_json = json.dumps(self.calendar_days, sort_keys=True, default=json_default_encoder)
+        data = {
+            "events": self.calendar_days,
+            "refreshed_at": self.refreshed_at,
+        }
+        data_json = json.dumps(data, sort_keys=True, default=json_default_encoder)
         with open(self.cache_file_path, "w") as f:
             f.write(data_json)
 
