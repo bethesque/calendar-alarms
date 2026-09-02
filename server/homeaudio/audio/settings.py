@@ -173,6 +173,7 @@ class EventNotificationSettings(YAMLSettings):
     alarms: AlarmSettings = Field(default_factory=AlarmSettings)
     announcements: AnnouncementSettings = Field(default_factory=AnnouncementSettings)
     schedule: EventNotificationSchedule = Field(default_factory=EventNotificationSchedule)
+    snooze_minutes: int = Field(default=10, ge=1, multiple_of=5, description="Minutes to wait before replaying a snoozed alarm or announcement")
 
     model_config = SettingsConfigDict(
         yaml_file="config/notifications.yaml"

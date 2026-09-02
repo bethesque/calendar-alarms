@@ -66,3 +66,14 @@ def test_notifications_page_handles_no_notifications(monkeypatch):
 
     assert response.status_code == 200
     assert "No upcoming notifications." in response.text
+
+
+def test_snooze_endpoint_stops_the_alarm_with_snooze_flag_set(monkeypatch):
+    calls = []
+    monkeypatch.setattr(api_module.AlarmHandler, "stop_alarm", lambda self, snooze=False: calls.append(snooze) or "Stopping alarm...")
+
+    response = _client().post("/alarm/snooze")
+
+    assert response.status_code == 202
+    assert response.text == "Stopping alarm..."
+    assert calls == [True]

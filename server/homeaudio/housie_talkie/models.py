@@ -7,12 +7,10 @@ from dataclasses import dataclass
 from homeaudio.audio.scene import SceneProtocol
 from homeaudio.vcal.notifications.text_to_voice import text_to_voice_file
 from homeaudio.audio.sound import join_mp3s_to_wav, join_mixed_files_to_wav
-from homeaudio.vcal.notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, SILENCE_QUARTER_SEC, SILENCE_HALF_SEC
+from homeaudio.vcal.notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, POST_ANNOUNCEMENT_SILENCE, SILENCE_HALF_SEC
 from homeaudio.audio.sound_effects import SoundEffectSelector
 
 logger = logging.getLogger(__name__)
-
-POST_ANNOUNCEMENT_SILENCE = SILENCE_QUARTER_SEC
 
 class AnnouncementUsecase(Enum):
     TTS = 1

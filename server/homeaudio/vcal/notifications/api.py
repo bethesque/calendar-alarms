@@ -1,13 +1,15 @@
 import logging
+from datetime import timedelta
 from pathlib import Path
 import threading
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from homeaudio.vcal.morning_announcements import play_morning_announcements
-from homeaudio.audio.scene import HomeAssistantScene
-from homeaudio.vcal.notifications.core import stop_alarm, test_alarm, mute_alarm_for_area_of_player, get_all_event_notifications, get_all_events, replay_last_notification
+from homeaudio.audio.scene import HomeAssistantScene, NullScene
+from homeaudio.vcal.notifications.core import stop_alarm, test_alarm, mute_alarm_for_area_of_player, get_all_event_notifications, get_all_events, replay_last_notification, snooze_alarm
 from homeaudio.vcal.cli import refresh_calendar_data
+from homeaudio.env import HOME_ASSISTANT_SUPPORTED
 from queue import Queue
 
 logger = logging.getLogger(__name__)
@@ -24,28 +26,32 @@ class AlarmHandler:
 
     def _worker(self):
         while True:
-            self.queue.get()
+            action = self.queue.get()
+            scene = HomeAssistantScene if HOME_ASSISTANT_SUPPORTED else NullScene
             try:
-                stop_alarm(HomeAssistantScene.restore_after_alarm)
+                if action.get("snooze", False):
+                    snooze_alarm(scene.restore_after_alarm)
+                else:
+                    stop_alarm(scene.restore_after_alarm)
             finally:
                 with self._lock:
                     self._pending = False
                 self.queue.task_done()
 
-    def stop_alarm(self) -> str:
+    def stop_alarm(self, snooze: bool = False) -> str:
         with self._lock:
             if self._pending:
-                return "Alarm currently being stopped"
+                return "Alarm currently being stopped/snoozed"
 
             self._pending = True
 
         try:
-            self.queue.put_nowait(None)
+            self.queue.put_nowait({ "snooze": snooze } )
             return "Stopping alarm..."
         except Exception:
             with self._lock:
                 self._pending = False
-            return "Alarm currently being stopped"
+            return "Alarm currently being stopped/snoozed"
 
     def mute_area_of_player(self, player: str) -> str:
         threading.Thread(target=mute_alarm_for_area_of_player, args=(player,), daemon=True).start()
@@ -131,6 +137,13 @@ class AlarmRoutes:
             name="replay_last_notification",
         )
 
+        self.router.add_api_route(
+            "/snooze",
+            self.snooze_endpoint,
+            methods=["POST"],
+            name="alarm_snooze",
+        )
+
     async def index(self):
         return FileResponse(Path(__file__).resolve().parent / "index.html")
 
@@ -172,4 +185,8 @@ class AlarmRoutes:
 
     async def replay_last_notification(self):
         message = self.alarm_handler.replay_last_notification()
+        return Response(content=message, status_code=202, media_type="text/plain")
+
+    async def snooze_endpoint(self):
+        message = self.alarm_handler.stop_alarm(snooze=True)
         return Response(content=message, status_code=202, media_type="text/plain")

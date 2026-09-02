@@ -26,7 +26,8 @@ class NullScene:
     def prepare_for_alarm(self, areas: set[str] | None = None):
         pass
 
-    def restore_after_alarm(self):
+    @staticmethod
+    def restore_after_alarm():
         pass
 
     def prepare_for_announcement(self, areas: set[str] | None = None):
