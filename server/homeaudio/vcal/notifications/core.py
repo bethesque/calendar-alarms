@@ -387,3 +387,7 @@ def get_all_events(calendar_source: CalendarSource = CalendarSource(DATA_FILE)):
     events_by_day.sort(key=lambda item: (item[0], item[1], item[2] or datetime.min))
     return [event for *_, event in events_by_day]
 
+def get_calendar_refreshed_at(calendar_source: CalendarSource = CalendarSource(DATA_FILE)) -> datetime | None:
+    calendar_source.load_data_from_file()
+    return calendar_source.refreshed_at
+

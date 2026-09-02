@@ -77,3 +77,22 @@ def test_snooze_endpoint_stops_the_alarm_with_snooze_flag_set(monkeypatch):
     assert response.status_code == 202
     assert response.text == "Stopping alarm..."
     assert calls == [True]
+
+
+def test_calendar_refreshed_at_endpoint_returns_the_refreshed_at_isoformat(monkeypatch):
+    refreshed_at = datetime(2026, 4, 28, 9, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr(api_module, "get_calendar_refreshed_at", lambda: refreshed_at)
+
+    response = _client().get("/alarm/calendar-refreshed-at")
+
+    assert response.status_code == 200
+    assert response.text == refreshed_at.isoformat()
+
+
+def test_calendar_refreshed_at_endpoint_returns_empty_string_when_never_refreshed(monkeypatch):
+    monkeypatch.setattr(api_module, "get_calendar_refreshed_at", lambda: None)
+
+    response = _client().get("/alarm/calendar-refreshed-at")
+
+    assert response.status_code == 200
+    assert response.text == ""

@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 from homeaudio.audio.settings import EventNotificationSettings, NotificationRule
 from homeaudio.vcal.cal.google_calendar import CalendarSource, Event, EventNotification, NotificationType
 import homeaudio.vcal.notifications.core as core_module
-from homeaudio.vcal.notifications.core import get_event_notifications, snooze_alarm
+from homeaudio.vcal.notifications.core import get_calendar_refreshed_at, get_event_notifications, snooze_alarm
 from homeaudio.vcal.notifications.snooze import LastPlayedState, SnoozeState
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
@@ -42,6 +42,25 @@ def test_get_event_notifications_ignores_disabled_rules():
 
     assert len(notifications) == 1
     assert notifications[0].notification_rule is enabled_rule
+
+
+def test_get_calendar_refreshed_at_returns_the_stored_refreshed_at(tmp_path):
+    cache_file = str(tmp_path / "calendar.json")
+    refreshed_at = datetime(2026, 4, 28, 9, 0, tzinfo=TIMEZONE)
+    CalendarSource(cache_file_path=cache_file, calendar_days=[], refreshed_at=refreshed_at).save_data_to_file()
+
+    result = get_calendar_refreshed_at(CalendarSource(cache_file_path=cache_file))
+
+    assert result == refreshed_at
+
+
+def test_get_calendar_refreshed_at_returns_none_when_never_refreshed(tmp_path):
+    cache_file = str(tmp_path / "calendar.json")
+    CalendarSource(cache_file_path=cache_file, calendar_days=[], refreshed_at=None).save_data_to_file()
+
+    result = get_calendar_refreshed_at(CalendarSource(cache_file_path=cache_file))
+
+    assert result is None
 
 
 def _event_notification():

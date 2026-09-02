@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from homeaudio.vcal.morning_announcements import play_morning_announcements
 from homeaudio.audio.scene import HomeAssistantScene, NullScene
-from homeaudio.vcal.notifications.core import stop_alarm, test_alarm, mute_alarm_for_area_of_player, get_all_event_notifications, get_all_events, replay_last_notification, snooze_alarm
+from homeaudio.vcal.notifications.core import stop_alarm, test_alarm, mute_alarm_for_area_of_player, get_all_event_notifications, get_all_events, get_calendar_refreshed_at, replay_last_notification, snooze_alarm
 from homeaudio.vcal.cli import refresh_calendar_data
 from homeaudio.env import HOME_ASSISTANT_SUPPORTED
 from queue import Queue
@@ -67,8 +67,8 @@ class AlarmHandler:
         return "Playing morning announcements..."
 
     def refresh_calendar_data(self) -> str:
-        threading.Thread(target=refresh_calendar_data, daemon=True).start()
-        return "Refreshing calendar data..."
+        refresh_calendar_data()
+        return "Calendar data refreshed"
 
     def replay_last_notification(self) -> str:
         threading.Thread(target=replay_last_notification, daemon=True).start()
@@ -114,6 +114,13 @@ class AlarmRoutes:
             self.refresh_calendar_data_endpoint,
             methods=["POST"],
             name="refresh_calendar_data",
+        )
+
+        self.router.add_api_route(
+            "/calendar-refreshed-at",
+            self.calendar_refreshed_at_endpoint,
+            methods=["GET"],
+            name="calendar_refreshed_at",
         )
 
         self.router.add_api_route(
@@ -165,7 +172,11 @@ class AlarmRoutes:
 
     async def refresh_calendar_data_endpoint(self):
         message = self.alarm_handler.refresh_calendar_data()
-        return Response(content=message, status_code=202, media_type="text/plain")
+        return Response(content=message, status_code=200, media_type="text/plain")
+
+    async def calendar_refreshed_at_endpoint(self):
+        refreshed_at = get_calendar_refreshed_at()
+        return Response(content=refreshed_at.isoformat() if refreshed_at else "", status_code=200, media_type="text/plain")
 
     async def notifications(self, request: Request):
         event_notifications = sorted(get_all_event_notifications(), key=lambda notification: notification.notification_time)

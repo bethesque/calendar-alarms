@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="/static/styles.css">
 <style>
   #stop-alarm { background: #e24a4a; color: white; }
+  #refresh-calendar-data.refreshing { background: #f0ad4e; color: white; }
 </style>
 </head>
 <body>
@@ -21,7 +22,7 @@
     <li><a class="button" id="replay-last-notification"><span class="emoji">🔁</span><span>Replay last notification</span></a></li>
   </ul>
   <ul class="buttons">
-    <li><a class="button" id="refresh-calendar-data"><span class="emoji">🔄</span><span>Refresh calendar data</span></a></li>
+    <li><a class="button" id="refresh-calendar-data"><span class="emoji">🔄</span><span>Refresh calendar data<span id="refreshed-at"></span></span></a></li>
     <li><a class="button" href="/alarm/notifications"><span class="emoji">🔔</span><span>Show all notifications</span></a></li>
     <li><a class="button" href="/alarm/events"><span class="emoji">📅</span><span>Show calendar events</span></a></li>
     <li><a class="button" href="/token/upload"><span class="emoji">📤</span><span>Upload Google API token.json</span></a></li>
@@ -64,7 +65,27 @@
   });
 
   document.getElementById('refresh-calendar-data').addEventListener('click', function () {
-    callEndpoint("/alarm/refresh-calendar-data");
+    const button = this;
+    const resultEl = document.getElementById('result');
+    const path = "/alarm/refresh-calendar-data";
+
+    button.classList.add('refreshing');
+    resultEl.textContent = 'Sending request to ' + path + '...';
+    document.getElementById('refreshed-at').textContent = ' (Refreshing...)';
+
+    fetch(path, { method: 'POST' })
+      .then(function (response) {
+        return response.text().then(function (text) {
+          resultEl.textContent = 'Status: ' + response.status + ' ' + response.statusText + '\n\n' + text;
+        });
+      })
+      .catch(function () {
+        resultEl.textContent = 'Request failed (network error).';
+      })
+      .finally(function () {
+        button.classList.remove('refreshing');
+        updateRefreshedAt();
+      });
   });
 
   document.getElementById('mute-area').addEventListener('click', function () {
@@ -79,6 +100,36 @@
     callEndpoint("/alarm/snooze", "POST");
   });
 
+  function formatTimeAgo(refreshedAt) {
+    var totalMinutes = Math.max(0, Math.floor((Date.now() - new Date(refreshedAt).getTime()) / 60000));
+    var hours = Math.floor(totalMinutes / 60);
+    var minutes = totalMinutes % 60;
+
+    if (hours === 0 && minutes === 0) {
+      return "just now";
+    }
+
+    var parts = [];
+    if (hours > 0) {
+      parts.push(hours + (hours === 1 ? " hour" : " hours"));
+    }
+    if (minutes > 0) {
+      parts.push(minutes + (minutes === 1 ? " minute" : " minutes"));
+    }
+    return parts.join(" ") + " ago";
+  }
+
+  function updateRefreshedAt() {
+    fetch("/alarm/calendar-refreshed-at")
+      .then(function (response) { return response.text(); })
+      .then(function (refreshedAt) {
+        var el = document.getElementById('refreshed-at');
+        el.textContent = refreshedAt ? " (last refreshed: " + formatTimeAgo(refreshedAt) + ")" : "";
+      });
+  }
+
+  updateRefreshedAt();
+  setInterval(updateRefreshedAt, 60000);
 </script>
 </body>
 </html>
