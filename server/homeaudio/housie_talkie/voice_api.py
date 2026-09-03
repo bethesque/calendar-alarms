@@ -3,7 +3,7 @@ import os
 import threading
 from pathlib import Path
 from fastapi import APIRouter, File, Form, UploadFile
-from homeaudio.audio.scene import HomeAssistantScene
+from homeaudio.audio.scene import scene_for_env
 from homeaudio.audio.snapserver import Client
 from homeaudio.housie_talkie.voice import play_audio_file_as_announcement
 from homeaudio.housie_talkie.core import VoiceAnnouncementRequest, list_clients, list_sound_effects
@@ -81,7 +81,7 @@ class VoiceRoutes:
 
         talkie_request = VoiceAnnouncementRequest(
             audio_file=audio_file_path,
-            scene=HomeAssistantScene(),
+            scene=scene_for_env(),
             sound_effect=sound_effect,
             player_names=players_list
         )
@@ -126,7 +126,7 @@ class VoiceRoutes:
 
         talkie_request = VoiceAnnouncementRequest(
             audio_file=audio_file_path,
-            scene=HomeAssistantScene(),
+            scene=scene_for_env(),
             sound_effect=sound_effect,
             player_names=players_list
         )

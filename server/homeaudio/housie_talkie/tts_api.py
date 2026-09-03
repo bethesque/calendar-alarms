@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi import Query
 from pydantic import BaseModel
 from homeaudio.housie_talkie.core import play_tts_announcement, list_sound_effects, TtsAnnouncementRequest
-from homeaudio.audio.scene import HomeAssistantScene
+from homeaudio.audio.scene import scene_for_env
 
 class HttpAnnouncementRequest(BaseModel):
     message: Optional[str] = None
@@ -51,7 +51,7 @@ class TtsRoutes:
 
         players = ensure_list(players) if players is not None else None
 
-        announcement_request = TtsAnnouncementRequest(scene=HomeAssistantScene(), message=message, sound_effect=sound_effect, player_names=players)
+        announcement_request = TtsAnnouncementRequest(scene=scene_for_env(), message=message, sound_effect=sound_effect, player_names=players)
 
         Thread(
             target=play_tts_announcement,

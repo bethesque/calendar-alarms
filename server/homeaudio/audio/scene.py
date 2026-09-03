@@ -1,5 +1,6 @@
 from homeaudio.audio.music_assistant import MusicAssistant, MusicAssistantState
 from homeaudio.audio.settings import HomeAssistantSettings
+from homeaudio.env import HOME_ASSISTANT_SUPPORTED
 from typing import Protocol
 import logging
 
@@ -114,3 +115,6 @@ class HomeAssistantScene:
                 ma_state.clear()
         except Exception:
             logger.exception(f"Exception determining or saving Music Assistant state")
+
+def scene_for_env() -> SceneProtocol:
+    return HomeAssistantScene() if HOME_ASSISTANT_SUPPORTED else NullScene()

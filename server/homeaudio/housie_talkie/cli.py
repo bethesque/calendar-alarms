@@ -2,7 +2,7 @@ import logging
 import argparse
 from homeaudio.env import LOG_LEVEL
 from homeaudio.audio.log_config import setup_logging_for_announcements
-from homeaudio.audio.scene import HomeAssistantScene
+from homeaudio.audio.scene import scene_for_env
 from homeaudio.housie_talkie.core import play_tts_announcement as play_announcement_func, TtsAnnouncementRequest
 
 setup_logging_for_announcements(str(LOG_LEVEL))
@@ -25,7 +25,7 @@ def play_announcement():
 
     try:
         logger.info(f"Playing announcement: {args.message}")
-        play_announcement_func(TtsAnnouncementRequest(message=args.message, sound_effect=args.sound_effect_file_name,  scene= HomeAssistantScene()))
+        play_announcement_func(TtsAnnouncementRequest(message=args.message, sound_effect=args.sound_effect_file_name,  scene= scene_for_env()))
     except Exception:
         logger.exception("Error playing announcements")
         exit(1)

@@ -8,9 +8,9 @@ import threading
 from datetime import date, datetime, timedelta
 
 from homeaudio.audio.log_config import setup_logging_for_alarms
-from homeaudio.audio.scene import HomeAssistantScene, NullScene
+from homeaudio.audio.scene import scene_for_env
 from homeaudio.audio.settings import EventNotificationSchedule, EventNotificationSettings, MainSettings, TimeRange
-from homeaudio.env import HOME_ASSISTANT_SUPPORTED, LOG_LEVEL
+from homeaudio.env import LOG_LEVEL
 from homeaudio.vcal.cal.google_calendar import CalendarSource
 from homeaudio.vcal.notifications.core import DATA_FILE, check_for_notifications
 
@@ -67,8 +67,7 @@ def run_check(base_time: datetime) -> None:
     try:
         logger.info("Checking for alarms at %s", base_time)
         calendar_data = CalendarSource(cache_file_path=DATA_FILE).load_data_from_file()
-        scene = HomeAssistantScene() if HOME_ASSISTANT_SUPPORTED else NullScene()
-        check_for_notifications(base_time, CHECK_WINDOW_MINUTES, calendar_data, scene)
+        check_for_notifications(base_time, CHECK_WINDOW_MINUTES, calendar_data, scene_for_env())
     except Exception:
         # A single bad tick must never kill the loop - log and try again next boundary.
         logger.exception("Error checking for alarms at %s", base_time)

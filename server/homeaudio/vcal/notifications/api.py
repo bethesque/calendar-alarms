@@ -1,13 +1,13 @@
 import logging
-from datetime import timedelta
 from pathlib import Path
 import threading
 from fastapi import APIRouter, Request, Response
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse
 from fastapi.templating import Jinja2Templates
 from homeaudio.vcal.morning_announcements import play_morning_announcements
-from homeaudio.audio.scene import HomeAssistantScene, NullScene
-from homeaudio.vcal.notifications.core import stop_alarm, test_alarm, mute_alarm_for_area_of_player, get_all_event_notifications, get_all_events, get_calendar_refreshed_at, replay_last_notification, snooze_alarm
+from homeaudio.audio.scene import scene_for_env
+from homeaudio.vcal.notifications.core import stop_alarm, test_alarm, mute_alarm_for_area_of_player, replay_last_notification, snooze_alarm
+from homeaudio.vcal.notifications.events import get_all_event_notifications, get_all_events, get_calendar_refreshed_at
 from homeaudio.vcal.cli import refresh_calendar_data
 from homeaudio.env import HOME_ASSISTANT_SUPPORTED
 from queue import Queue
@@ -27,7 +27,7 @@ class AlarmHandler:
     def _worker(self):
         while True:
             action = self.queue.get()
-            scene = HomeAssistantScene if HOME_ASSISTANT_SUPPORTED else NullScene
+            scene = scene_for_env().__class__
             try:
                 if action.get("snooze", False):
                     snooze_alarm(scene.restore_after_alarm)

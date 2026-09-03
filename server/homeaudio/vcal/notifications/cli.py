@@ -8,7 +8,7 @@ from homeaudio.env import LOG_LEVEL
 from homeaudio.audio.mpd import fade_out, fade_up, mpd_connection
 from homeaudio.audio.log_config import setup_logging_for_alarms
 from homeaudio.vcal.cal.google_calendar import CalendarSource, CalendarDay
-from homeaudio.audio.scene import NullScene, HomeAssistantScene
+from homeaudio.audio.scene import scene_for_env
 from homeaudio.audio.settings import MainSettings
 
 from homeaudio.env import CALENDAR_DATA_DIRECTORY, HOME_ASSISTANT_SUPPORTED
@@ -56,9 +56,7 @@ def check_alarms():
         base_time = args.base_time or datetime.now().astimezone()
         calendar_data = load_calendar_days(args.calendar_file)
 
-        scene = HomeAssistantScene() if HOME_ASSISTANT_SUPPORTED else NullScene()
-
-        check_for_notifications(base_time, args.window, calendar_data, scene)
+        check_for_notifications(base_time, args.window, calendar_data, scene_for_env())
     except Exception:
         logger.exception("Error checking for alarms")
         exit(1)
