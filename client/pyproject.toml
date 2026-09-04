@@ -24,15 +24,15 @@ dependencies = [
     "fastapi==0.139.2",
     "uvicorn==0.51.0",
     "pydantic-settings==2.14.2",
-    "pydantic-settings[yaml]",
-    "evdev"
+    "pydantic-settings[yaml]"
 ]
 
 [project.optional-dependencies]
 # Extra dependencies installed via `pip install ".[dev]"`
 dev = [
     "black",
-    "pytest==9.0.3"
+    "pytest==9.0.3",
+    "httpx2==2.12.0"
 ]
 
 [project.urls]
@@ -47,4 +47,4 @@ packages = []
 
 [tool.pytest.ini_options]
 # Configuration for other tools (like pytest) can also live here
-testpaths = []
+testpaths = ["tests"]
