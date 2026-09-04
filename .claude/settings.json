@@ -5,7 +5,17 @@
       "Read(//Users/beth/.claude/projects/**)",
       "Bash(mpc status)",
       "Bash(pip list)",
-      "Bash(pip show *)"
+      "Bash(pip show *)",
+      "Bash(pytest:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(source .venv/bin/activate*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(cat:*)",
+      "Bash(ls:*)"
     ]
   }
 }
