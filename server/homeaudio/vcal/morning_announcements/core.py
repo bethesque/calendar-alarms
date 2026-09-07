@@ -1,14 +1,12 @@
 import logging
 import glob
-import time
 import os
 from datetime import datetime
-from homeaudio.audio.mpd import fade_up, mpd_connection
-from homeaudio.audio.snapcast import SnapserverManager
 from homeaudio.audio.settings import MorningAnnouncementsSettings, MpdSettings, SnapcastSettings
+from homeaudio.audio.tts_playback import play_tts_audio_file
 from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException, CalendarSource, get_events_for_date
 from homeaudio.vcal.notifications.text_to_voice import text_to_voice_file_daily_summary
-from homeaudio.audio.sound import mix_announcement_audio, track_length
+from homeaudio.audio.sound import mix_announcement_audio
 from homeaudio.audio.random_text import ListOptionsSource, select_option_pseudorandomly
 from homeaudio.audio.select_item import select_item_by_date, select_option
 
@@ -135,17 +133,4 @@ def play_morning_announcements(calendar_file = os.path.join(CALENDAR_DATA_DIRECT
 Helper method to play the cached announcement speech audio file to avoid a round trip to the text-to-speech service.
 """
 def play_morning_announcements_audio_file(audio_file, snapcast_settings: SnapcastSettings, mpd_settings: MpdSettings, before_announcement_hook=None, after_announcement_hook=None):
-    SnapserverManager(snapcast_settings).set_volumes("tts")
-
-    before_announcement_hook() if before_announcement_hook else None
-
-    # Play the mixed audio file
-    with mpd_connection(mpd_settings) as alarm_player:
-        volumes = mpd_settings.volumes
-        alarm_player.set_volume(volumes.alarm_start)
-        alarm_player.play_file(audio_file)
-        fade_up([(alarm_player, volumes.tts)], 5, 10)
-
-    if after_announcement_hook:
-        time.sleep(track_length(audio_file))
-        after_announcement_hook()
+    play_tts_audio_file(audio_file, snapcast_settings, mpd_settings, before_announcement_hook, after_announcement_hook)

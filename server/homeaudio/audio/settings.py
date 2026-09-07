@@ -236,6 +236,25 @@ class MorningAnnouncementsSettings(YAMLSettings):
     def enabled_prelude_options(self) -> list[Option]:
         return [prelude_option for prelude_option in self.prelude_options if prelude_option.enabled]
 
+class SchoolAnnouncementsSchedule(BaseModel):
+    weekdays: time | None = Field(default=time(8, 30, 0))
+
+class SchoolAnnouncementsSettings(YAMLSettings):
+    enabled: bool = Field(default=True)
+    schedule: SchoolAnnouncementsSchedule = Field(default_factory=SchoolAnnouncementsSchedule)
+    holiday_keywords: list[str] = Field(
+        default_factory=lambda: ["no school", "school holidays"],
+        description="If an event's summary contains any of these (case-insensitive), the school announcement is skipped entirely"
+    )
+    school_event_keywords: list[str] = Field(
+        default_factory=lambda: ["#school"],
+        description="An event is read out in the school announcement if its summary or description contains any of these (case-insensitive)"
+    )
+
+    model_config = SettingsConfigDict(
+        yaml_file="config/school_announcements.yaml"
+    )
+
 class MusicAssistantPlayer(BaseModel):
     name: str = Field(description="The name of the Music Assistant player in Home Assistant (excluding the 'media_player.' prefix)")
     area: str | None = Field(description="The area of the house where the Music Assistant player is located")
@@ -276,6 +295,7 @@ class AppSettings(BaseSettings):
     home_assistant_settings: HomeAssistantSettings = Field(default_factory=HomeAssistantSettings, description="Home Assistant settings")
     housie_talkie_settings: HousieTalkieSettings = Field(default_factory=HousieTalkieSettings, description="Housie Talkie settings")
     morning_announcements_settings: MorningAnnouncementsSettings = Field(default_factory=MorningAnnouncementsSettings, description="Morning announcements settings")
+    school_announcements_settings: SchoolAnnouncementsSettings = Field(default_factory=SchoolAnnouncementsSettings, description="School announcements settings")
     mpd_settings: MpdSettings = Field(default_factory=MpdSettings, description="MPD settings")
     snapcast_settings: SnapcastSettings = Field(default_factory=SnapcastSettings, description="Snapcast settings") # pyright: ignore[reportArgumentType]
 
@@ -287,5 +307,6 @@ class AppSettings(BaseSettings):
         self.housie_talkie_settings.save()
         self.main_settings.save()
         self.morning_announcements_settings.save()
+        self.school_announcements_settings.save()
         self.mpd_settings.save()
         self.snapcast_settings.save()

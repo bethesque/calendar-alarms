@@ -1,0 +1,83 @@
+import logging
+import os
+from datetime import datetime
+from homeaudio.audio.settings import SchoolAnnouncementsSettings, MpdSettings, SnapcastSettings
+from homeaudio.audio.tts_playback import play_tts_audio_file
+from homeaudio.audio.sound import join_mp3s_to_wav
+from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException, CalendarSource, get_events_for_date
+from homeaudio.vcal.notifications.text_to_voice import text_to_voice_file, gtts_tld
+from homeaudio.vcal.notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, POST_ANNOUNCEMENT_SILENCE
+from homeaudio.env import CALENDAR_DATA_DIRECTORY
+
+
+logger = logging.getLogger(__name__)
+
+def is_school_holiday(events: list[Event], holiday_keywords: list[str]) -> bool:
+    keywords = [keyword.lower() for keyword in holiday_keywords]
+    return any(
+        keyword in (event.summary or "").lower()
+        for event in events
+        for keyword in keywords
+    )
+
+def is_school_event(event: Event, school_event_keywords: list[str]) -> bool:
+    keywords = [keyword.lower() for keyword in school_event_keywords]
+    return any(
+        keyword in (event.summary or "").lower() or keyword in (event.description or "").lower()
+        for keyword in keywords
+    )
+
+def get_school_events(events: list[Event], school_event_keywords: list[str]) -> list[Event]:
+    return [event for event in events if is_school_event(event, school_event_keywords)]
+
+def get_weather_forecast(events: list[Event]) -> WeatherForecast | None:
+    return next((event for event in events if isinstance(event, WeatherForecast)), None)
+
+"""
+Build a list of sentences to speak aloud for the school announcement.
+"""
+def build_text(school_events: list[Event], weather_forecast: WeatherForecast | None = None) -> list[str]:
+    sentences = ["It's time to leave for school."]
+
+    if weather_forecast and "rain" in weather_forecast.summary.lower():
+        sentences.append("You may wish to pack an umbrella.")
+
+    if school_events:
+        sentences.append("Today's school events are:")
+        sentences.extend(event.summary + "." for event in school_events if event.summary)
+
+    logger.info(f"Generated school announcement: {" ".join(sentences)}")
+    return sentences
+
+def _datestamp() -> str:
+    now = datetime.now()
+    return f"{now.strftime('%y%m%d%H%M%S')}{now.microsecond // 1000:03d}"
+
+def build_audio_file(sentences: list[str]) -> str:
+    tld = gtts_tld()
+    speech_files = [text_to_voice_file(sentence, tld) for sentence in sentences]
+    output_file = f"{OUTPUT_AUDIO_DIRECTORY}/school_announcement_{_datestamp()}.wav"
+    join_mp3s_to_wav([PRE_ANNOUNCEMENT_BELL] + speech_files + [POST_ANNOUNCEMENT_SILENCE], output_file)
+    return output_file
+
+"""
+Top level entry point. Announce today's school events, or skip entirely if school is cancelled.
+"""
+def play_school_announcements(calendar_file=os.path.join(CALENDAR_DATA_DIRECTORY, "calendar.json"), base_time=datetime.now().astimezone(), before_announcement_hook=None, after_announcement_hook=None):
+    try:
+        events = get_events_for_date(CalendarSource(cache_file_path=calendar_file).load_data_from_file(), base_time)
+    except MissingCalendarDataException:
+        logger.info("No calendar data found for today's date, proceeding with no events.")
+        events = []
+
+    settings = SchoolAnnouncementsSettings()
+
+    if is_school_holiday(events, settings.holiday_keywords):
+        logger.info("A holiday keyword matched an event today; skipping school announcement.")
+        return
+
+    school_events = get_school_events(events, settings.school_event_keywords)
+    weather_forecast = get_weather_forecast(events)
+    sentences = build_text(school_events, weather_forecast)
+    output_file = build_audio_file(sentences)
+    play_tts_audio_file(output_file, SnapcastSettings(), MpdSettings(), before_announcement_hook, after_announcement_hook)

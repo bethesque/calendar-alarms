@@ -41,6 +41,10 @@
   ansible.builtin.import_tasks: morning_announcements.yml
   tags: morning_announcements
 
+- name: Install school announcements service
+  ansible.builtin.import_tasks: school_announcements.yml
+  tags: school_announcements
+
 - name: Install calendar alarms daemon service
   ansible.builtin.import_tasks: calendar_alarms_daemon.yml
   tags: calendar_alarms_daemon

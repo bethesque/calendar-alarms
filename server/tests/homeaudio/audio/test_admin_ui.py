@@ -73,53 +73,63 @@ def _fake_app_settings_class(previous, validated):
     return _FakeAppSettings
 
 
-def _fake_settings(schedule, enabled=True):
+def _fake_settings(schedule, enabled=True, school_schedule=None, school_enabled=None):
     settings = types.SimpleNamespace()
     settings.morning_announcements_settings = types.SimpleNamespace(schedule=schedule, enabled=enabled)
+    settings.school_announcements_settings = types.SimpleNamespace(
+        schedule=school_schedule if school_schedule is not None else schedule,
+        enabled=school_enabled if school_enabled is not None else enabled,
+    )
     settings.saved = False
     settings.save = lambda: setattr(settings, "saved", True)
     return settings
 
 
-def test_save_settings_updates_timer_when_schedule_changes(monkeypatch):
-    previous = _fake_settings(schedule="old-schedule")
-    validated = _fake_settings(schedule="new-schedule")
-    monkeypatch.setattr(admin_ui_module, "AppSettings", _fake_app_settings_class(previous, validated))
-
+def _admin_routes_with_calls():
     calls = []
+    school_calls = []
     admin_routes = AdminRoutes.__new__(AdminRoutes)
     admin_routes.morning_announcements_schedule_changed = lambda enabled, schedule: calls.append((enabled, schedule))
+    admin_routes.school_announcements_schedule_changed = lambda enabled, schedule: school_calls.append((enabled, schedule))
+    return admin_routes, calls, school_calls
+
+
+def test_save_settings_updates_timer_when_schedule_changes(monkeypatch):
+    previous = _fake_settings(schedule="old-schedule", school_schedule="old-school-schedule")
+    validated = _fake_settings(schedule="new-schedule", school_schedule="new-school-schedule")
+    monkeypatch.setattr(admin_ui_module, "AppSettings", _fake_app_settings_class(previous, validated))
+
+    admin_routes, calls, school_calls = _admin_routes_with_calls()
 
     result = admin_routes._save_settings({})
 
     assert calls == [(validated.morning_announcements_settings.enabled, validated.morning_announcements_settings.schedule)]
+    assert school_calls == [(validated.school_announcements_settings.enabled, validated.school_announcements_settings.schedule)]
     assert result is validated
     assert validated.saved is True
 
 
 def test_save_settings_updates_timer_when_enabled_changes(monkeypatch):
-    previous = _fake_settings(schedule="same-schedule", enabled=True)
-    validated = _fake_settings(schedule="same-schedule", enabled=False)
+    previous = _fake_settings(schedule="same-schedule", enabled=True, school_schedule="same-school-schedule", school_enabled=True)
+    validated = _fake_settings(schedule="same-schedule", enabled=False, school_schedule="same-school-schedule", school_enabled=False)
     monkeypatch.setattr(admin_ui_module, "AppSettings", _fake_app_settings_class(previous, validated))
 
-    calls = []
-    admin_routes = AdminRoutes.__new__(AdminRoutes)
-    admin_routes.morning_announcements_schedule_changed = lambda enabled, schedule: calls.append((enabled, schedule))
+    admin_routes, calls, school_calls = _admin_routes_with_calls()
 
     admin_routes._save_settings({})
 
     assert calls == [(validated.morning_announcements_settings.enabled, validated.morning_announcements_settings.schedule)]
+    assert school_calls == [(validated.school_announcements_settings.enabled, validated.school_announcements_settings.schedule)]
 
 
 def test_save_settings_does_not_update_timer_when_schedule_and_enabled_unchanged(monkeypatch):
-    previous = _fake_settings(schedule="same-schedule", enabled=True)
-    validated = _fake_settings(schedule="same-schedule", enabled=True)
+    previous = _fake_settings(schedule="same-schedule", enabled=True, school_schedule="same-school-schedule", school_enabled=True)
+    validated = _fake_settings(schedule="same-schedule", enabled=True, school_schedule="same-school-schedule", school_enabled=True)
     monkeypatch.setattr(admin_ui_module, "AppSettings", _fake_app_settings_class(previous, validated))
 
-    calls = []
-    admin_routes = AdminRoutes.__new__(AdminRoutes)
-    admin_routes.morning_announcements_schedule_changed = lambda enabled, schedule: calls.append((enabled, schedule))
+    admin_routes, calls, school_calls = _admin_routes_with_calls()
 
     admin_routes._save_settings({})
 
     assert calls == []
+    assert school_calls == []

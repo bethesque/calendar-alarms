@@ -1,15 +1,21 @@
 from typing import Callable
 from fastapi import APIRouter
-from homeaudio.audio.settings import AppSettings, MorningAnnouncementsSchedule
+from homeaudio.audio.settings import AppSettings, MorningAnnouncementsSchedule, SchoolAnnouncementsSchedule
 from homeaudio.env import HOME_ASSISTANT_SUPPORTED, HOUSIE_TALKIE_ENABLED
 from homeaudio.vcal.morning_announcements.timer import update_timer_unit
+from homeaudio.vcal.school_announcements.timer import update_timer_unit as update_school_announcements_timer_unit
 from pydantic_ui import create_pydantic_ui, UIConfig, FieldConfig, DisplayConfig, Renderer
 
 from homeaudio.env import APP_NAME
 
 class AdminRoutes:
-    def __init__(self, morning_announcements_settings_changed: Callable[[bool, MorningAnnouncementsSchedule], None] = update_timer_unit):
+    def __init__(
+        self,
+        morning_announcements_settings_changed: Callable[[bool, MorningAnnouncementsSchedule], None] = update_timer_unit,
+        school_announcements_settings_changed: Callable[[bool, SchoolAnnouncementsSchedule], None] = update_school_announcements_timer_unit,
+    ):
         self.morning_announcements_schedule_changed = morning_announcements_settings_changed
+        self.school_announcements_schedule_changed = school_announcements_settings_changed
         self.router = APIRouter()
 
         settings = AppSettings()
@@ -99,6 +105,13 @@ class AdminRoutes:
                             subtitle="enabled: {enabled}"
                         )
                     ),
+                    "school_announcements_settings.schedule.weekdays": FieldConfig(
+                        placeholder="HH:MM:SS",
+                        display=DisplayConfig(
+                            title="Weekdays",
+                            subtitle="When to play the school announcement on weekdays (24 hour time format, eg 08:30:00 for 8:30am)",
+                        )
+                    ),
                     "housie_talkie_settings": FieldConfig(
                         visible_when=f"{str(HOUSIE_TALKIE_ENABLED).lower()} == true"
                     ),
@@ -117,6 +130,17 @@ class AdminRoutes:
         if schedule_changed or enabled_changed:
             self.morning_announcements_schedule_changed(
                 validated_morning_announcements.enabled, validated_morning_announcements.schedule
+            )
+
+        previous_school_announcements = previous.school_announcements_settings
+        validated_school_announcements = validated.school_announcements_settings
+
+        school_schedule_changed = previous_school_announcements.schedule != validated_school_announcements.schedule
+        school_enabled_changed = previous_school_announcements.enabled != validated_school_announcements.enabled
+
+        if school_schedule_changed or school_enabled_changed:
+            self.school_announcements_schedule_changed(
+                validated_school_announcements.enabled, validated_school_announcements.schedule
             )
 
         validated.save()

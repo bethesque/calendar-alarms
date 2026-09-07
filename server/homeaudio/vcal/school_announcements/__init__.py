@@ -1,0 +1,1 @@
+from homeaudio.vcal.school_announcements.core import play_school_announcements

@@ -76,3 +76,7 @@ function calendar-alarms-logs {
 function calendar-alarms-morning-announcements-logs {
     journalctl SYSLOG_IDENTIFIER=calendar-alarms-morning-announcements "$@"
 }
+
+function calendar-alarms-school-announcements-logs {
+    journalctl SYSLOG_IDENTIFIER=calendar-alarms-school-announcements "$@"
+}

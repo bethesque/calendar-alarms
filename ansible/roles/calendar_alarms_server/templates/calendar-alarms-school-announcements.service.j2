@@ -1,0 +1,13 @@
+[Unit]
+Description=Calendar Alarms School Announcements
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory={{ server_root }}
+ExecStart={{ server_root }}/script/school_announcements.sh
+SyslogIdentifier=calendar-alarms-school-announcements
+
+[Install]
+WantedBy=default.target

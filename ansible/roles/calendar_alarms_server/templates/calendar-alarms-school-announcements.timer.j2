@@ -1,0 +1,11 @@
+[Unit]
+Description=Calendar Alarms School Announcements Timer
+
+[Timer]
+# Weekdays at 8:30am
+OnCalendar=Mon..Fri *-*-* 08:30:00 Australia/Melbourne
+Unit=calendar-alarms-school-announcements.service
+Persistent=false
+
+[Install]
+WantedBy=timers.target
