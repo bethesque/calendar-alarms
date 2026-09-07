@@ -46,14 +46,20 @@ def test_build_text_adds_umbrella_reminder_when_forecast_mentions_rain():
 
     assert build_text([], weather_forecast) == [
         "It's time to leave for school.",
-        "You may wish to pack an umbrella.",
+        "You may wish to pack an umbrella as there is rain forecast.",
     ]
 
 
 def test_build_text_matches_rain_case_insensitively():
     weather_forecast = WeatherForecast(owner="cal", summary="Possible RAIN", description="", calendar_id="id")
 
-    assert "You may wish to pack an umbrella." in build_text([], weather_forecast)
+    assert "You may wish to pack an umbrella as there is rain forecast." in build_text([], weather_forecast)
+
+
+def test_build_text_adds_umbrella_reminder_when_forecast_mentions_showers():
+    weather_forecast = WeatherForecast(owner="cal", summary="Scattered showers", description="", calendar_id="id")
+
+    assert "You may wish to pack an umbrella as there is rain forecast." in build_text([], weather_forecast)
 
 
 def test_build_text_omits_umbrella_reminder_when_forecast_has_no_rain():
@@ -72,7 +78,7 @@ def test_build_text_puts_umbrella_reminder_before_school_events():
 
     assert build_text(school_events, weather_forecast) == [
         "It's time to leave for school.",
-        "You may wish to pack an umbrella.",
+        "You may wish to pack an umbrella as there is rain forecast.",
         "Today's school events are:",
         "School excursion.",
     ]

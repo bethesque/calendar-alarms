@@ -39,8 +39,8 @@ Build a list of sentences to speak aloud for the school announcement.
 def build_text(school_events: list[Event], weather_forecast: WeatherForecast | None = None) -> list[str]:
     sentences = ["It's time to leave for school."]
 
-    if weather_forecast and "rain" in weather_forecast.summary.lower():
-        sentences.append("You may wish to pack an umbrella.")
+    if weather_forecast and any(keyword in weather_forecast.summary.lower() for keyword in ("rain", "showers")):
+        sentences.append("You may wish to pack an umbrella as there is rain forecast.")
 
     if school_events:
         sentences.append("Today's school events are:")
