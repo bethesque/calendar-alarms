@@ -5,6 +5,7 @@ from fastapi import APIRouter, Request, Response
 from fastapi.responses import FileResponse
 from fastapi.templating import Jinja2Templates
 from homeaudio.vcal.morning_announcements import play_morning_announcements
+from homeaudio.vcal.school_announcements import play_school_announcements
 from homeaudio.audio.scene import scene_for_env
 from homeaudio.vcal.notifications.core import stop_alarm, test_alarm, mute_alarm_for_area_of_player, replay_last_notification, snooze_alarm
 from homeaudio.vcal.notifications.events import get_all_event_notifications, get_all_events, get_calendar_refreshed_at
@@ -66,6 +67,10 @@ class AlarmHandler:
         threading.Thread(target=play_morning_announcements, daemon=True).start()
         return "Playing morning announcements..."
 
+    def play_school_announcements(self) -> str:
+        threading.Thread(target=play_school_announcements, daemon=True).start()
+        return "Playing school announcements..."
+
     def refresh_calendar_data(self) -> str:
         refresh_calendar_data()
         return "Calendar data refreshed"
@@ -107,6 +112,13 @@ class AlarmRoutes:
             self.play_morning_announcements_endpoint,
             methods=["POST"],
             name="play_morning_announcements",
+        )
+
+        self.router.add_api_route(
+            "/school-announcements",
+            self.play_school_announcements_endpoint,
+            methods=["POST"],
+            name="play_school_announcements",
         )
 
         self.router.add_api_route(
@@ -168,6 +180,10 @@ class AlarmRoutes:
 
     async def play_morning_announcements_endpoint(self):
         message = self.alarm_handler.play_morning_announcements()
+        return Response(content=message, status_code=202, media_type="text/plain")
+
+    async def play_school_announcements_endpoint(self):
+        message = self.alarm_handler.play_school_announcements()
         return Response(content=message, status_code=202, media_type="text/plain")
 
     async def refresh_calendar_data_endpoint(self):
