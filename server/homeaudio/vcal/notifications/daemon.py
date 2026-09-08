@@ -19,7 +19,7 @@ setup_logging_for_alarms(str(LOG_LEVEL))
 
 logger = logging.getLogger(__name__)
 
-CHECK_WINDOW_MINUTES = 5
+CHECK_WINDOW_MINUTES = 1
 
 # How many seconds before each check tick the daemon wakes up to build notification audio,
 # so playback can start exactly on the tick instead of after however long that build takes.
