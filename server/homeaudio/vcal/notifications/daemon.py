@@ -60,10 +60,10 @@ def next_boundary(now: datetime, schedule: EventNotificationSchedule | None = No
     return candidate
 
 
-PreparedNotifications = tuple[str | None, str | None]
+NotificationFiles = tuple[str | None, str | None]
 
 
-def prepare_check(base_time: datetime) -> PreparedNotifications | None:
+def check_for_notifications(base_time: datetime) -> NotificationFiles | None:
     """Gathers what's due at `base_time` and builds its audio, without playing it - the
     "early wake-up" half of a tick. Returns None if there's nothing to play or the tick
     should be skipped (settings disabled, or an error while preparing)."""
@@ -86,9 +86,9 @@ def prepare_check(base_time: datetime) -> PreparedNotifications | None:
         return None
 
 
-def play_notification_files(prepared: PreparedNotifications) -> None:
-    """Plays audio already built by prepare_check - the "on time" half of a tick."""
-    announcements_file, alarm_audio_file = prepared
+def play_notification_files(notification_files: NotificationFiles) -> None:
+    """Plays audio already built by check_for_notifications - the "on time" half of a tick."""
+    announcements_file, alarm_audio_file = notification_files
     try:
         _play_notifications(announcements_file, alarm_audio_file, scene_for_env())
     except Exception:
@@ -96,12 +96,12 @@ def play_notification_files(prepared: PreparedNotifications) -> None:
         logger.exception("Error playing prepared notifications")
 
 
-def run_check(base_time: datetime) -> None:
+def check_for_and_play_notifications(base_time: datetime) -> None:
     """Prepares and immediately plays a tick's notifications, with no early wake-up - used for
     the daemon's startup catch-up, where there's no upcoming boundary to build ahead of."""
-    prepared = prepare_check(base_time)
-    if prepared is not None:
-        play_notification_files(prepared)
+    notification_files = check_for_notifications(base_time)
+    if notification_files is not None:
+        play_notification_files(notification_files)
 
 
 class AlarmCheckDaemon:
@@ -125,7 +125,7 @@ class AlarmCheckDaemon:
         signal.signal(signal.SIGINT, self.request_stop)
 
         logger.info("Alarm check daemon starting")
-        run_check(datetime.now().astimezone())  # startup catch-up, don't wait for the first boundary
+        check_for_and_play_notifications(datetime.now().astimezone())  # startup catch-up, don't wait for the first boundary
 
         while not self._stop_event.is_set():
             target = next_boundary(datetime.now().astimezone())
@@ -134,12 +134,12 @@ class AlarmCheckDaemon:
             if self._interruptible_wait_until(prepare_at):
                 break
 
-            prepared = prepare_check(target)
+            notification_files = check_for_notifications(target)
 
-            if prepared is not None:
+            if notification_files is not None:
                 if self._interruptible_wait_until(target):
                     break
-                play_notification_files(prepared)
+                play_notification_files(notification_files)
 
         logger.info("Alarm check daemon stopped")
 

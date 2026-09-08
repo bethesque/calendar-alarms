@@ -5,7 +5,7 @@ from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from homeaudio.audio.settings import EventNotificationSchedule, TimeRange
-from homeaudio.vcal.notifications.daemon import AlarmCheckDaemon, next_boundary, run_check, prepare_check, play_notification_files
+from homeaudio.vcal.notifications.daemon import AlarmCheckDaemon, next_boundary, check_for_and_play_notifications, check_for_notifications, play_notification_files
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
 
@@ -90,7 +90,7 @@ def test_run_check_skips_when_main_settings_disabled(monkeypatch):
         lambda *a, **k: calls.append("should not be constructed"),
     )
 
-    run_check(datetime.now(TIMEZONE))
+    check_for_and_play_notifications(datetime.now(TIMEZONE))
 
     assert calls == []
 
@@ -104,7 +104,7 @@ def test_run_check_skips_when_event_notification_settings_disabled(monkeypatch):
         lambda *a, **k: calls.append("should not be constructed"),
     )
 
-    run_check(datetime.now(TIMEZONE))
+    check_for_and_play_notifications(datetime.now(TIMEZONE))
 
     assert calls == []
 
@@ -121,7 +121,7 @@ def test_run_check_does_not_raise_when_check_for_notifications_fails(monkeypatch
 
     monkeypatch.setattr("homeaudio.vcal.notifications.daemon.CalendarSource", _FakeCalendarSource)
 
-    run_check(datetime.now(TIMEZONE))  # must not raise
+    check_for_and_play_notifications(datetime.now(TIMEZONE))  # must not raise
 
 
 def test_alarm_check_daemon_stops_promptly_instead_of_waiting_out_the_full_boundary(monkeypatch):
@@ -155,13 +155,13 @@ def test_alarm_check_daemon_stops_promptly_instead_of_waiting_out_the_full_bound
 def test_prepare_check_returns_none_when_main_settings_disabled(monkeypatch):
     _patch_enabled(monkeypatch, main_settings_enabled=False)
 
-    assert prepare_check(datetime.now(TIMEZONE)) is None
+    assert check_for_notifications(datetime.now(TIMEZONE)) is None
 
 
 def test_prepare_check_returns_none_when_event_notification_settings_disabled(monkeypatch):
     _patch_enabled(monkeypatch, event_notification_settings_enabled=False)
 
-    assert prepare_check(datetime.now(TIMEZONE)) is None
+    assert check_for_notifications(datetime.now(TIMEZONE)) is None
 
 
 def test_prepare_check_returns_none_when_preparing_raises(monkeypatch):
@@ -176,7 +176,7 @@ def test_prepare_check_returns_none_when_preparing_raises(monkeypatch):
 
     monkeypatch.setattr("homeaudio.vcal.notifications.daemon.CalendarSource", _FakeCalendarSource)
 
-    assert prepare_check(datetime.now(TIMEZONE)) is None  # must not raise
+    assert check_for_notifications(datetime.now(TIMEZONE)) is None  # must not raise
 
 
 def test_prepare_check_returns_none_when_nothing_is_due(monkeypatch):
@@ -190,7 +190,7 @@ def test_prepare_check_returns_none_when_nothing_is_due(monkeypatch):
         lambda base_time, window, calendar_data: (None, None),
     )
 
-    assert prepare_check(datetime.now(TIMEZONE)) is None
+    assert check_for_notifications(datetime.now(TIMEZONE)) is None
 
 
 def test_prepare_check_returns_the_prepared_files_when_something_is_due(monkeypatch):
@@ -204,7 +204,7 @@ def test_prepare_check_returns_the_prepared_files_when_something_is_due(monkeypa
         lambda base_time, window, calendar_data: ("announce.wav", None),
     )
 
-    assert prepare_check(datetime.now(TIMEZONE)) == ("announce.wav", None)
+    assert check_for_notifications(datetime.now(TIMEZONE)) == ("announce.wav", None)
 
 
 def test_play_notification_files_plays_the_prepared_files(monkeypatch):
