@@ -10,8 +10,8 @@ def test_render_timer_unit_includes_both_on_calendar_lines():
 
     rendered = render_timer_unit(schedule)
 
-    assert "OnCalendar=Mon..Fri *-*-* 07:17:00 Australia/Melbourne" in rendered
-    assert "OnCalendar=Sat,Sun *-*-* 09:00:00 Australia/Melbourne" in rendered
+    assert "OnCalendar=Mon..Fri *-*-* 07:16:00 Australia/Melbourne" in rendered
+    assert "OnCalendar=Sat,Sun *-*-* 08:59:00 Australia/Melbourne" in rendered
     assert "Unit=calendar-alarms-morning-announcements.service" in rendered
 
 

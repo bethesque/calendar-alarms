@@ -1,7 +1,9 @@
 import logging
 import glob
 import os
-from datetime import datetime
+import time as time_module
+from datetime import datetime, time
+from typing import Callable
 from homeaudio.audio.settings import MorningAnnouncementsSettings, MpdSettings, SnapcastSettings
 from homeaudio.audio.tts_playback import play_tts_audio_file
 from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException, CalendarSource, get_events_for_date
@@ -119,14 +121,31 @@ class AudioFileBuilder:
         )
         return MORNING_ANNOUNCEMENTS_AUDIO_FILE
 
+def _seconds_until(target_time: time, now: datetime) -> float:
+    target_datetime = datetime.combine(now.date(), target_time, tzinfo=now.tzinfo)
+    return max(0.0, (target_datetime - now).total_seconds())
+
 """
 Top level entry point. Generate a summary of today's events, convert them to voice, and play them.
 """
-def play_morning_announcements(calendar_file = os.path.join(CALENDAR_DATA_DIRECTORY, "calendar.json"), base_time = datetime.now().astimezone(), before_announcement_hook=None, after_announcement_hook=None):
+def play_morning_announcements(
+        calendar_file = os.path.join(CALENDAR_DATA_DIRECTORY, "calendar.json"),
+        base_time = datetime.now().astimezone(),
+        play_time: time | None = None,
+        settings: MorningAnnouncementsSettings = MorningAnnouncementsSettings(),
+        before_announcement_hook: Callable | None = None,
+        after_announcement_hook: Callable | None = None
+    ):
     events = get_events_for_date(CalendarSource(cache_file_path=calendar_file).load_data_from_file(), base_time)
-    text_builder = TextBuilder(events)
+    text_builder = TextBuilder(events, settings)
     bg_music_selector = BackgroundMusicSelector(base_time)
     output_file = AudioFileBuilder(text_builder, bg_music_selector).build_audio_file()
+
+    if play_time is not None:
+        wait_seconds = _seconds_until(play_time, datetime.now().astimezone())
+        logger.info(f"Sleeping {wait_seconds:.1f}s until the scheduled announcement time.")
+        time_module.sleep(wait_seconds)
+
     play_morning_announcements_audio_file(output_file, SnapcastSettings(), MpdSettings(), before_announcement_hook, after_announcement_hook)
 
 """

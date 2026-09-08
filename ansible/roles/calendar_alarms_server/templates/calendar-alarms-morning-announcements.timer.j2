@@ -2,10 +2,12 @@
 Description=Calendar Alarms Morning Announcements Timer
 
 [Timer]
+# Fires 1 minute before the announcement time, so play_morning_announcements has time to build the
+# audio file before sleeping until the exact moment to play it (see timer.py LEAD_TIME).
 # Weekdays at 7:17am (avoid any alarms) - see server/crontab.txt
-OnCalendar=Mon..Fri *-*-* 07:17:00 Australia/Melbourne
+OnCalendar=Mon..Fri *-*-* 07:16:00 Australia/Melbourne
 # Weekends at 8:33am - see server/crontab.txt
-OnCalendar=Sat,Sun *-*-* 9:57:00 Australia/Melbourne
+OnCalendar=Sat,Sun *-*-* 9:56:00 Australia/Melbourne
 Unit=calendar-alarms-morning-announcements.service
 Persistent=false
 

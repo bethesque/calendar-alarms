@@ -1,5 +1,6 @@
 import logging
 import subprocess
+from datetime import datetime, time, timedelta
 from pathlib import Path
 from homeaudio.env import TIMEZONE, SYSTEMD_USER_DIR
 
@@ -8,6 +9,10 @@ from homeaudio.audio.settings import MorningAnnouncementsSchedule
 logger = logging.getLogger(__name__)
 
 SERVICE_NAME = "calendar-alarms-morning-announcements"
+
+# The timer fires this long before the configured announcement time, so play_morning_announcements
+# has time to build the audio file before sleeping until the exact moment to play it.
+LEAD_TIME = timedelta(minutes=1)
 
 DEFAULT_TIMER_UNIT_PATH = Path(SYSTEMD_USER_DIR) / f"{SERVICE_NAME}.timer"
 
@@ -24,13 +29,19 @@ WantedBy=timers.target
 """
 
 
+def _lead_time_before(target_time: time) -> time:
+    return (datetime.combine(datetime.min, target_time) - LEAD_TIME).time()
+
+
 def render_timer_unit(schedule: MorningAnnouncementsSchedule) -> str | None:
     """Renders the timer unit for `schedule`, or None if neither weekdays nor weekends is set."""
     on_calendar_lines = []
     if schedule.weekdays is not None:
-        on_calendar_lines.append(f"OnCalendar=Mon..Fri *-*-* {schedule.weekdays.strftime('%H:%M:%S')} {TIMEZONE}")
+        trigger_time = _lead_time_before(schedule.weekdays)
+        on_calendar_lines.append(f"OnCalendar=Mon..Fri *-*-* {trigger_time.strftime('%H:%M:%S')} {TIMEZONE}")
     if schedule.weekends is not None:
-        on_calendar_lines.append(f"OnCalendar=Sat,Sun *-*-* {schedule.weekends.strftime('%H:%M:%S')} {TIMEZONE}")
+        trigger_time = _lead_time_before(schedule.weekends)
+        on_calendar_lines.append(f"OnCalendar=Sat,Sun *-*-* {trigger_time.strftime('%H:%M:%S')} {TIMEZONE}")
 
     if not on_calendar_lines:
         return None
