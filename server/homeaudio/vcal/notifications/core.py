@@ -176,30 +176,38 @@ def test_alarm():
 
 
 def check_for_notifications(base_time, window, calendar_days: list[CalendarDay], scene:SceneProtocol, event_notification_settings: EventNotificationSettings = EventNotificationSettings()):
+    announcements_file, alarm_audio_file = prepare_notification_files(base_time, window, calendar_days, event_notification_settings)
+    if announcements_file or alarm_audio_file:
+        play_notifications(announcements_file, alarm_audio_file, scene)
+
+# Gathers what's due at base_time (calendar-driven notifications plus any due snoozes) and builds
+# their announcement/alarm audio files, without playing them. Used by the daemon's early wake-up
+# (homeaudio/vcal/notifications/daemon.py) so it can build audio ahead of a scheduled tick and play
+# right on time; check_for_notifications above uses it too, just followed immediately by playing.
+def prepare_notification_files(base_time, window, calendar_days: list[CalendarDay], event_notification_settings: EventNotificationSettings = EventNotificationSettings()) -> tuple[str | None, str | None]:
     event_notifications = get_event_notifications(base_time, window, calendar_days, event_notification_settings)
     event_notifications = event_notifications + due_snoozed_event_notifications(base_time)
 
-    build_and_play_notifications(event_notifications, base_time, scene, event_notification_settings)
+    return build_notification_files(event_notifications, base_time, event_notification_settings)
 
-# Shared by the regular calendar-tick path above and the daemon's early wake-up for a
-# due snooze (homeaudio/vcal/notifications/daemon.py's check_for_due_snooze), so a snoozed
-# notification goes through the exact same text/audio pipeline either way.
-def build_and_play_notifications(event_notifications: list[EventNotification], base_time, scene: SceneProtocol, event_notification_settings: EventNotificationSettings = EventNotificationSettings()):
-    if event_notifications:
-        LastPlayedState().save(event_notifications, base_time)
+def build_notification_files(event_notifications: list[EventNotification], base_time, event_notification_settings: EventNotificationSettings = EventNotificationSettings()) -> tuple[str | None, str | None]:
+    if not event_notifications:
+        return None, None
 
-        # Separate alarm and announcement notifications
-        announcement_event_notifications = [event for event in event_notifications if event.type == NotificationType.ANNOUNCE]
-        alarm_event_notifications = [event for event in event_notifications if event.type == NotificationType.ALARM]
+    LastPlayedState().save(event_notifications, base_time)
 
-        announcement_texts = NotificationTextBuilder(announcement_event_notifications, base_time).build()
-        alarm_texts = NotificationTextBuilder(alarm_event_notifications, base_time).build()
+    # Separate alarm and announcement notifications
+    announcement_event_notifications = [event for event in event_notifications if event.type == NotificationType.ANNOUNCE]
+    alarm_event_notifications = [event for event in event_notifications if event.type == NotificationType.ALARM]
 
-        announcements_file = (
-            AnnouncementAudio(announcement_texts, base_time, SoundEffectSelector(event_notification_settings.announcements.sound_effect_probability)).build_announcement_file()
-            if announcement_event_notifications else None
-        )
-        alarm_audio_file = AlarmAudio(alarm_texts, event_notification_settings.alarms, base_time).build_alarm_file() if alarm_event_notifications else None
+    announcement_texts = NotificationTextBuilder(announcement_event_notifications, base_time).build()
+    alarm_texts = NotificationTextBuilder(alarm_event_notifications, base_time).build()
 
-        play_notifications(announcements_file, alarm_audio_file, scene)
+    announcements_file = (
+        AnnouncementAudio(announcement_texts, base_time, SoundEffectSelector(event_notification_settings.announcements.sound_effect_probability)).build_announcement_file()
+        if announcement_event_notifications else None
+    )
+    alarm_audio_file = AlarmAudio(alarm_texts, event_notification_settings.alarms, base_time).build_alarm_file() if alarm_event_notifications else None
+
+    return announcements_file, alarm_audio_file
 

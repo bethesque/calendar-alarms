@@ -12,13 +12,18 @@ from homeaudio.audio.scene import scene_for_env
 from homeaudio.audio.settings import EventNotificationSchedule, EventNotificationSettings, MainSettings, TimeRange
 from homeaudio.env import LOG_LEVEL
 from homeaudio.vcal.cal.google_calendar import CalendarSource
-from homeaudio.vcal.notifications.core import DATA_FILE, check_for_notifications
+from homeaudio.vcal.notifications.core import DATA_FILE, prepare_notification_files
+from homeaudio.vcal.notifications.core import play_notifications as _play_notifications
 
 setup_logging_for_alarms(str(LOG_LEVEL))
 
 logger = logging.getLogger(__name__)
 
 CHECK_WINDOW_MINUTES = 5
+
+# How many seconds before each check tick the daemon wakes up to build notification audio,
+# so playback can start exactly on the tick instead of after however long that build takes.
+EARLY_WAKE_SECONDS = 15
 
 
 def _time_range_for_day(schedule: EventNotificationSchedule, day: date) -> TimeRange:
@@ -55,22 +60,48 @@ def next_boundary(now: datetime, schedule: EventNotificationSchedule | None = No
     return candidate
 
 
-def run_check(base_time: datetime) -> None:
+PreparedNotifications = tuple[str | None, str | None]
+
+
+def prepare_check(base_time: datetime) -> PreparedNotifications | None:
+    """Gathers what's due at `base_time` and builds its audio, without playing it - the
+    "early wake-up" half of a tick. Returns None if there's nothing to play or the tick
+    should be skipped (settings disabled, or an error while preparing)."""
     if not MainSettings().enabled:
         logger.info("Calendar Alarms are disabled in main settings; skipping this tick")
-        return
+        return None
 
     if not EventNotificationSettings().enabled:
         logger.info("Event notifications are disabled in settings; skipping this tick")
-        return
+        return None
 
     try:
         logger.info("Checking for alarms at %s", base_time)
         calendar_data = CalendarSource(cache_file_path=DATA_FILE).load_data_from_file()
-        check_for_notifications(base_time, CHECK_WINDOW_MINUTES, calendar_data, scene_for_env())
+        announcements_file, alarm_audio_file = prepare_notification_files(base_time, CHECK_WINDOW_MINUTES, calendar_data)
+        return (announcements_file, alarm_audio_file) if (announcements_file or alarm_audio_file) else None
     except Exception:
         # A single bad tick must never kill the loop - log and try again next boundary.
         logger.exception("Error checking for alarms at %s", base_time)
+        return None
+
+
+def play_notification_files(prepared: PreparedNotifications) -> None:
+    """Plays audio already built by prepare_check - the "on time" half of a tick."""
+    announcements_file, alarm_audio_file = prepared
+    try:
+        _play_notifications(announcements_file, alarm_audio_file, scene_for_env())
+    except Exception:
+        # A single bad tick must never kill the loop - log and try again next boundary.
+        logger.exception("Error playing prepared notifications")
+
+
+def run_check(base_time: datetime) -> None:
+    """Prepares and immediately plays a tick's notifications, with no early wake-up - used for
+    the daemon's startup catch-up, where there's no upcoming boundary to build ahead of."""
+    prepared = prepare_check(base_time)
+    if prepared is not None:
+        play_notification_files(prepared)
 
 
 class AlarmCheckDaemon:
@@ -81,6 +112,14 @@ class AlarmCheckDaemon:
         logger.info("Shutdown requested; exiting after the current sleep")
         self._stop_event.set()
 
+    def _interruptible_wait_until(self, target: datetime) -> bool:
+        """Sleeps (interruptibly) until `target`. Returns True if a stop was requested during
+        or before the sleep, so the caller should exit."""
+        remaining = (target - datetime.now().astimezone()).total_seconds()
+        if remaining > 0 and self._stop_event.wait(timeout=remaining):
+            return True
+        return self._stop_event.is_set()
+
     def run(self) -> None:
         signal.signal(signal.SIGTERM, self.request_stop)
         signal.signal(signal.SIGINT, self.request_stop)
@@ -90,15 +129,17 @@ class AlarmCheckDaemon:
 
         while not self._stop_event.is_set():
             target = next_boundary(datetime.now().astimezone())
-            remaining = (target - datetime.now().astimezone()).total_seconds()
+            prepare_at = target - timedelta(seconds=EARLY_WAKE_SECONDS)
 
-            if remaining > 0 and self._stop_event.wait(timeout=remaining):
-                break  # stop was requested during the sleep
-
-            if self._stop_event.is_set():
+            if self._interruptible_wait_until(prepare_at):
                 break
 
-            run_check(target)
+            prepared = prepare_check(target)
+
+            if prepared is not None:
+                if self._interruptible_wait_until(target):
+                    break
+                play_notification_files(prepared)
 
         logger.info("Alarm check daemon stopped")
 
