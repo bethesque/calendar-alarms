@@ -10,9 +10,17 @@ def test_render_timer_unit_includes_weekday_on_calendar_line():
 
     rendered = render_timer_unit(schedule)
 
-    assert "OnCalendar=Mon..Fri *-*-* 08:30:00 Australia/Melbourne" in rendered
+    assert "OnCalendar=Mon..Fri *-*-* 08:29:00 Australia/Melbourne" in rendered
     assert "Sat,Sun" not in rendered
     assert "Unit=calendar-alarms-school-announcements.service" in rendered
+
+
+def test_render_timer_unit_fires_one_lead_time_before_the_configured_weekdays_time():
+    schedule = SchoolAnnouncementsSchedule(weekdays=time(7, 0, 30))
+
+    rendered = render_timer_unit(schedule)
+
+    assert "OnCalendar=Mon..Fri *-*-* 06:59:30 Australia/Melbourne" in rendered
 
 
 def test_render_timer_unit_returns_none_when_weekdays_unset():

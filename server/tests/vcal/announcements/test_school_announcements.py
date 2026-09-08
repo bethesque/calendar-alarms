@@ -1,9 +1,20 @@
 import sys
+from datetime import datetime, time as time_of_day
 from pathlib import Path
+from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from homeaudio.vcal.school_announcements.core import build_text, build_audio_file, is_school_holiday, get_school_events, get_weather_forecast
+import homeaudio.vcal.school_announcements.core as school_announcements_core
+from homeaudio.vcal.school_announcements.core import (
+    build_text,
+    build_audio_file,
+    is_school_holiday,
+    get_school_events,
+    get_weather_forecast,
+    _seconds_until,
+    play_school_announcements,
+)
 from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast
 from homeaudio.vcal.notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, POST_ANNOUNCEMENT_SILENCE
 
@@ -24,6 +35,7 @@ def test_build_text_lists_school_events():
         "It's time to leave for school.",
         "Today's school events are:",
         "SCHOOL Assembly.",
+        "Have a nice day.",
     ]
 
 
@@ -38,6 +50,7 @@ def test_build_text_preserves_event_order_for_multiple_events():
         "Today's school events are:",
         "School drop off.",
         "School excursion.",
+        "Have a nice day.",
     ]
 
 
@@ -81,6 +94,7 @@ def test_build_text_puts_umbrella_reminder_before_school_events():
         "You may wish to pack an umbrella as there is rain forecast.",
         "Today's school events are:",
         "School excursion.",
+        "Have a nice day.",
     ]
 
 
@@ -148,6 +162,88 @@ def test_build_audio_file_joins_bell_and_speech_files(monkeypatch):
     assert output_file == joined["output_file"]
     assert output_file.startswith(f"{OUTPUT_AUDIO_DIRECTORY}/school_announcement_")
     assert output_file.endswith(".wav")
+
+
+def test_seconds_until_returns_seconds_remaining_before_target_time():
+    now = datetime(2026, 9, 8, 8, 29, 0)
+
+    assert _seconds_until(time_of_day(8, 30, 0), now) == 60.0
+
+
+def test_seconds_until_returns_zero_when_target_time_has_passed():
+    now = datetime(2026, 9, 8, 8, 31, 0)
+
+    assert _seconds_until(time_of_day(8, 30, 0), now) == 0.0
+
+
+def test_seconds_until_returns_zero_when_target_time_is_now():
+    now = datetime(2026, 9, 8, 8, 30, 0)
+
+    assert _seconds_until(time_of_day(8, 30, 0), now) == 0.0
+
+
+def test_play_school_announcements_sleeps_until_the_scheduled_time_before_playing(monkeypatch):
+    fake_settings = SimpleNamespace(
+        holiday_keywords=[],
+        school_event_keywords=["school"],
+    )
+
+    class FakeCalendarSource:
+        def __init__(self, cache_file_path):
+            pass
+
+        def load_data_from_file(self):
+            return None
+
+    monkeypatch.setattr(school_announcements_core, "SchoolAnnouncementsSettings", lambda: fake_settings)
+    monkeypatch.setattr(school_announcements_core, "CalendarSource", FakeCalendarSource)
+    monkeypatch.setattr(school_announcements_core, "get_events_for_date", lambda calendar_days, base_time: [])
+    monkeypatch.setattr(school_announcements_core, "text_to_voice_file", lambda sentence, tld: "speech.mp3")
+    monkeypatch.setattr(school_announcements_core, "join_mp3s_to_wav", lambda files, output: None)
+
+    seen_target_times = []
+    monkeypatch.setattr(
+        school_announcements_core,
+        "_seconds_until",
+        lambda target_time, now: seen_target_times.append(target_time) or 42.0,
+    )
+
+    calls = []
+    monkeypatch.setattr(school_announcements_core.time_module, "sleep", lambda seconds: calls.append(("sleep", seconds)))
+    monkeypatch.setattr(school_announcements_core, "play_tts_audio_file", lambda *args, **kwargs: calls.append(("play", None)))
+
+    play_school_announcements(play_time=time_of_day(8, 30, 0))
+
+    assert seen_target_times == [time_of_day(8, 30, 0)]
+    assert calls == [("sleep", 42.0), ("play", None)]
+
+
+def test_play_school_announcements_does_not_sleep_when_no_play_time_given(monkeypatch):
+    fake_settings = SimpleNamespace(
+        holiday_keywords=[],
+        school_event_keywords=["school"],
+    )
+
+    class FakeCalendarSource:
+        def __init__(self, cache_file_path):
+            pass
+
+        def load_data_from_file(self):
+            return None
+
+    monkeypatch.setattr(school_announcements_core, "SchoolAnnouncementsSettings", lambda: fake_settings)
+    monkeypatch.setattr(school_announcements_core, "CalendarSource", FakeCalendarSource)
+    monkeypatch.setattr(school_announcements_core, "get_events_for_date", lambda calendar_days, base_time: [])
+    monkeypatch.setattr(school_announcements_core, "text_to_voice_file", lambda sentence, tld: "speech.mp3")
+    monkeypatch.setattr(school_announcements_core, "join_mp3s_to_wav", lambda files, output: None)
+
+    calls = []
+    monkeypatch.setattr(school_announcements_core.time_module, "sleep", lambda seconds: calls.append(("sleep", seconds)))
+    monkeypatch.setattr(school_announcements_core, "play_tts_audio_file", lambda *args, **kwargs: calls.append(("play", None)))
+
+    play_school_announcements()
+
+    assert calls == [("play", None)]
 
 
 def test_is_school_holiday_true_when_holiday_keyword_matches_case_insensitively():

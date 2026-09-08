@@ -1,5 +1,6 @@
 import logging
 import subprocess
+from datetime import datetime, timedelta
 from pathlib import Path
 from homeaudio.env import TIMEZONE, SYSTEMD_USER_DIR
 
@@ -8,6 +9,10 @@ from homeaudio.audio.settings import SchoolAnnouncementsSchedule
 logger = logging.getLogger(__name__)
 
 SERVICE_NAME = "calendar-alarms-school-announcements"
+
+# The timer fires this long before the configured announcement time, so play_school_announcements
+# has time to build the audio file before sleeping until the exact moment to play it.
+LEAD_TIME = timedelta(minutes=1)
 
 DEFAULT_TIMER_UNIT_PATH = Path(SYSTEMD_USER_DIR) / f"{SERVICE_NAME}.timer"
 
@@ -29,8 +34,10 @@ def render_timer_unit(schedule: SchoolAnnouncementsSchedule) -> str | None:
     if schedule.weekdays is None:
         return None
 
+    trigger_time = (datetime.combine(datetime.min, schedule.weekdays) - LEAD_TIME).time()
+
     return TIMER_UNIT_TEMPLATE.format(
-        on_calendar_lines=f"OnCalendar=Mon..Fri *-*-* {schedule.weekdays.strftime('%H:%M:%S')} {TIMEZONE}",
+        on_calendar_lines=f"OnCalendar=Mon..Fri *-*-* {trigger_time.strftime('%H:%M:%S')} {TIMEZONE}",
         service_name=SERVICE_NAME,
     )
 
