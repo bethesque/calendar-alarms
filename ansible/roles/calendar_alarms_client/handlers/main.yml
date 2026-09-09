@@ -18,3 +18,15 @@
     scope: user
     state: restarted
     enabled: true
+
+- name: reload system systemd daemon
+  become: true
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: enable and start set-amixer-volume service
+  become: true
+  ansible.builtin.systemd:
+    name: set-amixer-volume
+    state: started
+    enabled: true

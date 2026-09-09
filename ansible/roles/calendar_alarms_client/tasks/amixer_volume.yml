@@ -1,0 +1,12 @@
+# Logs can be viewed with `journalctl -u set-amixer-volume`
+- name: Install set-amixer-volume systemd service
+  become: true
+  ansible.builtin.template:
+    src: set-amixer-volume.service.j2
+    dest: /etc/systemd/system/set-amixer-volume.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - reload system systemd daemon
+    - enable and start set-amixer-volume service

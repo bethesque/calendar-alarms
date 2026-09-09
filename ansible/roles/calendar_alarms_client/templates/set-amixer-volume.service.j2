@@ -1,0 +1,11 @@
+[Unit]
+Description=Set speaker volume at boot
+After=sound.target alsa-restore.service
+Wants=alsa-restore.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/amixer set Speaker {{ default_amixer_volume }}
+
+[Install]
+WantedBy=multi-user.target

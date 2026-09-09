@@ -35,6 +35,13 @@
     name: alsa-utils
     state: present
 
+- name: Install set-amixer-volume systemd service
+  ansible.builtin.import_tasks: amixer_volume.yml
+  when: not is_bluetooth_audio
+  tags:
+    - audio
+    - default_volume
+
 - name: Install HTTP service
   ansible.builtin.import_tasks: http.yml
   tags:
