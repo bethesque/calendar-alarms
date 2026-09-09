@@ -7,7 +7,7 @@ from fastapi.templating import Jinja2Templates
 from homeaudio.vcal.morning_announcements import play_morning_announcements
 from homeaudio.vcal.school_announcements import play_school_announcements
 from homeaudio.audio.scene import scene_for_env
-from homeaudio.vcal.event_notifications.core import stop_alarm, test_alarm, mute_alarm_for_area_of_player, replay_last_notification, snooze_alarm
+from homeaudio.vcal.core import stop_alarm, test_alarm, mute_alarm_for_area_of_player, replay_last_notification, snooze_alarm
 from homeaudio.vcal.event_notifications.events import get_all_event_notifications, get_all_events, get_calendar_refreshed_at
 from homeaudio.vcal.cli import refresh_calendar_data
 from homeaudio.env import HOME_ASSISTANT_SUPPORTED

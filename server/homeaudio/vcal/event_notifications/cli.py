@@ -12,7 +12,7 @@ from homeaudio.audio.scene import scene_for_env
 from homeaudio.audio.settings import MainSettings
 
 from homeaudio.env import CALENDAR_DATA_DIRECTORY, HOME_ASSISTANT_SUPPORTED
-from homeaudio.vcal.event_notifications.core import check_for_notifications, get_all_event_notifications
+from homeaudio.vcal.core import check_for_notifications, get_all_event_notifications
 
 setup_logging_for_alarms(str(LOG_LEVEL))
 

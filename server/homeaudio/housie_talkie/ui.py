@@ -6,7 +6,7 @@ from fastapi.responses import  FileResponse
 from fastapi import APIRouter
 
 from homeaudio.vcal.wake_up_alarm.core import start_wake_up_alarm
-from homeaudio.vcal.event_notifications.core import stop_alarm
+from homeaudio.vcal.core import stop_alarm
 
 class UserInterfaceRoutes:
     def __init__(self):
