@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 from homeaudio.audio.settings import EventNotificationSchedule, TimeRange
 from homeaudio.vcal.notifications.core import NotificationFiles
-from homeaudio.vcal.notifications.daemon import AlarmCheckDaemon, next_boundary, check_for_and_play_notifications, check_for_notifications, play_notification_files
+from homeaudio.vcal.daemon import AlarmCheckDaemon, next_boundary, check_for_and_play_notifications, check_for_notifications, play_notification_files
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
 
@@ -17,21 +17,21 @@ SCHEDULE = EventNotificationSchedule(
 
 
 def test_next_boundary_rounds_up_to_next_five_minutes(monkeypatch):
-    monkeypatch.setattr("homeaudio.vcal.notifications.daemon.CHECK_WINDOW_MINUTES", 5)
+    monkeypatch.setattr("homeaudio.vcal.daemon.CHECK_WINDOW_MINUTES", 5)
     now = datetime(2026, 4, 27, 7, 3, tzinfo=TIMEZONE)  # Monday
 
     assert next_boundary(now, SCHEDULE) == datetime(2026, 4, 27, 7, 5, tzinfo=TIMEZONE)
 
 
 def test_next_boundary_lands_exactly_on_a_five_minute_mark(monkeypatch):
-    monkeypatch.setattr("homeaudio.vcal.notifications.daemon.CHECK_WINDOW_MINUTES", 5)
+    monkeypatch.setattr("homeaudio.vcal.daemon.CHECK_WINDOW_MINUTES", 5)
     now = datetime(2026, 4, 27, 7, 5, tzinfo=TIMEZONE)  # Monday, exactly on a mark
 
     assert next_boundary(now, SCHEDULE) == datetime(2026, 4, 27, 7, 10, tzinfo=TIMEZONE)
 
 
 def test_next_boundary_skips_to_next_days_start_hour_after_operating_window(monkeypatch):
-    monkeypatch.setattr("homeaudio.vcal.notifications.daemon.CHECK_WINDOW_MINUTES", 5)
+    monkeypatch.setattr("homeaudio.vcal.daemon.CHECK_WINDOW_MINUTES", 5)
     now = datetime(2026, 4, 27, 20, 57, tzinfo=TIMEZONE)  # Monday, after last weekday tick
 
     assert next_boundary(now, SCHEDULE) == datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE)  # Tuesday 7am
@@ -79,7 +79,7 @@ def test_next_boundary_respects_non_hour_aligned_start_time():
 
 def test_next_boundary_defaults_to_live_event_notification_settings_schedule(monkeypatch):
     fake_settings = type("_S", (), {"schedule": SCHEDULE})()
-    monkeypatch.setattr("homeaudio.vcal.notifications.daemon.EventNotificationSettings", lambda: fake_settings)
+    monkeypatch.setattr("homeaudio.vcal.daemon.EventNotificationSettings", lambda: fake_settings)
 
     now = datetime(2026, 4, 27, 6, 0, tzinfo=TIMEZONE)  # Monday, before 7am start
 
@@ -88,11 +88,11 @@ def test_next_boundary_defaults_to_live_event_notification_settings_schedule(mon
 
 def _patch_enabled(monkeypatch, *, main_settings_enabled=True, event_notification_settings_enabled=True):
     monkeypatch.setattr(
-        "homeaudio.vcal.notifications.daemon.MainSettings",
+        "homeaudio.vcal.daemon.MainSettings",
         lambda: type("_S", (), {"enabled": main_settings_enabled})(),
     )
     monkeypatch.setattr(
-        "homeaudio.vcal.notifications.daemon.EventNotificationSettings",
+        "homeaudio.vcal.daemon.EventNotificationSettings",
         lambda: type("_S", (), {"enabled": event_notification_settings_enabled})(),
     )
 
@@ -102,7 +102,7 @@ def test_check_for_and_play_notifications_skips_when_main_settings_disabled(monk
 
     calls = []
     monkeypatch.setattr(
-        "homeaudio.vcal.notifications.daemon.CalendarSource",
+        "homeaudio.vcal.daemon.CalendarSource",
         lambda *a, **k: calls.append("should not be constructed"),
     )
 
@@ -116,7 +116,7 @@ def test_check_for_and_play_notifications_skips_when_event_notification_settings
 
     calls = []
     monkeypatch.setattr(
-        "homeaudio.vcal.notifications.daemon.CalendarSource",
+        "homeaudio.vcal.daemon.CalendarSource",
         lambda *a, **k: calls.append("should not be constructed"),
     )
 
@@ -135,7 +135,7 @@ def test_check_for_and_play_notifications_does_not_raise_when_preparing_fails(mo
         def load_data_from_file(self):
             raise RuntimeError("boom")
 
-    monkeypatch.setattr("homeaudio.vcal.notifications.daemon.CalendarSource", _FakeCalendarSource)
+    monkeypatch.setattr("homeaudio.vcal.daemon.CalendarSource", _FakeCalendarSource)
 
     check_for_and_play_notifications(datetime.now(TIMEZONE))  # must not raise
 
@@ -147,12 +147,12 @@ def test_alarm_check_daemon_stops_promptly_instead_of_waiting_out_the_full_bound
 
     check_calls = []
     monkeypatch.setattr(
-        "homeaudio.vcal.notifications.daemon.check_for_and_play_notifications",
+        "homeaudio.vcal.daemon.check_for_and_play_notifications",
         lambda base_time: check_calls.append(base_time),
     )
     # Far enough in the future that a real wait would still be blocked when the test checks.
     monkeypatch.setattr(
-        "homeaudio.vcal.notifications.daemon.next_boundary",
+        "homeaudio.vcal.daemon.next_boundary",
         lambda now, schedule=None: now + timedelta(seconds=30),
     )
 
@@ -190,7 +190,7 @@ def test_check_for_notifications_returns_none_when_preparing_raises(monkeypatch)
         def load_data_from_file(self):
             raise RuntimeError("boom")
 
-    monkeypatch.setattr("homeaudio.vcal.notifications.daemon.CalendarSource", _FakeCalendarSource)
+    monkeypatch.setattr("homeaudio.vcal.daemon.CalendarSource", _FakeCalendarSource)
 
     assert check_for_notifications(datetime.now(TIMEZONE)) is None  # must not raise
 
@@ -198,11 +198,11 @@ def test_check_for_notifications_returns_none_when_preparing_raises(monkeypatch)
 def test_check_for_notifications_returns_none_when_nothing_is_due(monkeypatch):
     _patch_enabled(monkeypatch)
     monkeypatch.setattr(
-        "homeaudio.vcal.notifications.daemon.CalendarSource",
+        "homeaudio.vcal.daemon.CalendarSource",
         lambda *a, **k: type("_C", (), {"load_data_from_file": lambda self: None})(),
     )
     monkeypatch.setattr(
-        "homeaudio.vcal.notifications.daemon.prepare_notification_files",
+        "homeaudio.vcal.daemon.prepare_notification_files",
         lambda base_time, window, calendar_data: None,
     )
 
@@ -212,12 +212,12 @@ def test_check_for_notifications_returns_none_when_nothing_is_due(monkeypatch):
 def test_check_for_notifications_returns_the_prepared_files_when_something_is_due(monkeypatch):
     _patch_enabled(monkeypatch)
     monkeypatch.setattr(
-        "homeaudio.vcal.notifications.daemon.CalendarSource",
+        "homeaudio.vcal.daemon.CalendarSource",
         lambda *a, **k: type("_C", (), {"load_data_from_file": lambda self: None})(),
     )
     prepared = NotificationFiles(event_announcements_file="announce.wav")
     monkeypatch.setattr(
-        "homeaudio.vcal.notifications.daemon.prepare_notification_files",
+        "homeaudio.vcal.daemon.prepare_notification_files",
         lambda base_time, window, calendar_data: prepared,
     )
 
@@ -227,7 +227,7 @@ def test_check_for_notifications_returns_the_prepared_files_when_something_is_du
 def test_play_notification_files_plays_the_prepared_files(monkeypatch):
     calls = []
     monkeypatch.setattr(
-        "homeaudio.vcal.notifications.daemon._play_notifications",
+        "homeaudio.vcal.daemon._play_notifications",
         lambda notification_files, scene: calls.append(notification_files),
     )
 
@@ -241,7 +241,7 @@ def test_play_notification_files_does_not_raise_when_playing_fails(monkeypatch):
     def raise_error(*a, **k):
         raise RuntimeError("boom")
 
-    monkeypatch.setattr("homeaudio.vcal.notifications.daemon._play_notifications", raise_error)
+    monkeypatch.setattr("homeaudio.vcal.daemon._play_notifications", raise_error)
 
     play_notification_files(NotificationFiles(event_announcements_file="announce.wav"))  # must not raise
 
@@ -251,9 +251,9 @@ def _daemon_with_fake_wait(monkeypatch, boundary, early_wake_seconds, wait_retur
     `_interruptible_wait_until` returns each value in turn, so the last one should be True
     to stop the loop and keep the test from hanging."""
     monkeypatch.setattr(signal, "signal", lambda *a, **k: None)
-    monkeypatch.setattr("homeaudio.vcal.notifications.daemon.check_for_and_play_notifications", lambda base_time: None)
-    monkeypatch.setattr("homeaudio.vcal.notifications.daemon.next_boundary", lambda now, schedule=None: boundary)
-    monkeypatch.setattr("homeaudio.vcal.notifications.daemon.EARLY_WAKE_SECONDS", early_wake_seconds)
+    monkeypatch.setattr("homeaudio.vcal.daemon.check_for_and_play_notifications", lambda base_time: None)
+    monkeypatch.setattr("homeaudio.vcal.daemon.next_boundary", lambda now, schedule=None: boundary)
+    monkeypatch.setattr("homeaudio.vcal.daemon.EARLY_WAKE_SECONDS", early_wake_seconds)
 
     daemon = AlarmCheckDaemon()
     wait_calls = []
@@ -271,7 +271,7 @@ def test_daemon_wakes_up_early_wake_seconds_before_the_boundary_to_prepare(monke
     boundary = datetime(2026, 4, 27, 7, 5, tzinfo=TIMEZONE)
     daemon, wait_calls = _daemon_with_fake_wait(monkeypatch, boundary, early_wake_seconds=15, wait_returns=[True])
 
-    monkeypatch.setattr("homeaudio.vcal.notifications.daemon.check_for_notifications", lambda target: None)
+    monkeypatch.setattr("homeaudio.vcal.daemon.check_for_notifications", lambda target: None)
 
     daemon.run()
 
@@ -282,7 +282,7 @@ def test_daemon_uses_the_configured_early_wake_seconds(monkeypatch):
     boundary = datetime(2026, 4, 27, 7, 5, tzinfo=TIMEZONE)
     daemon, wait_calls = _daemon_with_fake_wait(monkeypatch, boundary, early_wake_seconds=30, wait_returns=[True])
 
-    monkeypatch.setattr("homeaudio.vcal.notifications.daemon.check_for_notifications", lambda target: None)
+    monkeypatch.setattr("homeaudio.vcal.daemon.check_for_notifications", lambda target: None)
 
     daemon.run()
 
@@ -296,9 +296,9 @@ def test_daemon_still_waits_until_the_boundary_when_nothing_is_prepared(monkeypa
     boundary = datetime(2026, 4, 27, 7, 5, tzinfo=TIMEZONE)
     daemon, wait_calls = _daemon_with_fake_wait(monkeypatch, boundary, early_wake_seconds=15, wait_returns=[False, False, True])
 
-    monkeypatch.setattr("homeaudio.vcal.notifications.daemon.check_for_notifications", lambda target: None)
+    monkeypatch.setattr("homeaudio.vcal.daemon.check_for_notifications", lambda target: None)
     play_calls = []
-    monkeypatch.setattr("homeaudio.vcal.notifications.daemon.play_notification_files", lambda prepared: play_calls.append(prepared))
+    monkeypatch.setattr("homeaudio.vcal.daemon.play_notification_files", lambda prepared: play_calls.append(prepared))
 
     daemon.run()
 
@@ -312,9 +312,9 @@ def test_daemon_plays_at_the_boundary_when_something_is_prepared(monkeypatch):
     daemon, wait_calls = _daemon_with_fake_wait(monkeypatch, boundary, early_wake_seconds=15, wait_returns=[False, False, True])
 
     prepared = ("announce.wav", None)
-    monkeypatch.setattr("homeaudio.vcal.notifications.daemon.check_for_notifications", lambda target: prepared)
+    monkeypatch.setattr("homeaudio.vcal.daemon.check_for_notifications", lambda target: prepared)
     play_calls = []
-    monkeypatch.setattr("homeaudio.vcal.notifications.daemon.play_notification_files", lambda p: play_calls.append(p))
+    monkeypatch.setattr("homeaudio.vcal.daemon.play_notification_files", lambda p: play_calls.append(p))
 
     daemon.run()
 
