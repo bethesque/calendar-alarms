@@ -63,6 +63,7 @@ cal-announce-cached = "vcal.morning_announcements.cli:play_morning_announcements
 cal-school-announce = "vcal.school_announcements.cli:play_school_announcements" # School events announcement
 
 cal-data-refresh = "homeaudio.vcal.cli:refresh_calendar_data"
+cal-data-insert-test = "homeaudio.vcal.cli:insert_test_event"
 cal-list-notifications = "homeaudio.vcal.notifications.cli:list_notifications"
 
 [tool.setuptools]

@@ -112,6 +112,7 @@ class AlarmCheckDaemon:
         """Sleeps (interruptibly) until `target`. Returns True if a stop was requested during
         or before the sleep, so the caller should exit."""
         remaining = (target - datetime.now().astimezone()).total_seconds()
+        logger.debug(f"Sleeping for {remaining:.2f} seconds")
         if remaining > 0 and self._stop_event.wait(timeout=remaining):
             return True
         return self._stop_event.is_set()
@@ -132,9 +133,10 @@ class AlarmCheckDaemon:
 
             notification_files = check_for_notifications(target)
 
+            if self._interruptible_wait_until(target):
+                break
+
             if notification_files is not None:
-                if self._interruptible_wait_until(target):
-                    break
                 play_notification_files(notification_files)
 
         logger.info("Alarm check daemon stopped")
