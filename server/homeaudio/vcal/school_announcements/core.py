@@ -63,11 +63,6 @@ def build_audio_file(sentences: list[str]) -> str:
     join_mp3s_to_wav([PRE_ANNOUNCEMENT_BELL] + speech_files + [POST_ANNOUNCEMENT_SILENCE], output_file)
     return output_file
 
-
-"""
-Top level entry point. Announce today's school events, or skip entirely if school is cancelled.
-"""
-
 def _missing_calendar_data_response():
     return build_audio_file(["It's time to leave for school.","There was no calendar data found for today's date.", "You may need to fix the authentication."])
 
@@ -95,6 +90,9 @@ def _create_audio_file_for_calendar_days(base_time: datetime, calendar_days: lis
         logger.info("No calendar data found for today's date, proceeding with no events.")
         return _missing_calendar_data_response()
 
+"""
+Top level entry point. Announce today's school events, or skip entirely if school is cancelled.
+"""
 def check_for_announcement(
         base_time: datetime,
         window: int,
@@ -111,6 +109,9 @@ def check_for_announcement(
 
     return _create_audio_file_for_calendar_days(base_time, calendar_days, settings)
 
+"""
+UI entrypoint
+"""
 def play_school_announcements(
         calendar_file=os.path.join(CALENDAR_DATA_DIRECTORY, "calendar.json"),
         base_time=datetime.now().astimezone(),

@@ -6,8 +6,15 @@ from unittest.mock import Mock
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import homeaudio.vcal.morning_announcements.core as morning_announcements_core
-from homeaudio.vcal.morning_announcements.core import TextBuilder, _seconds_until, play_morning_announcements
-from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast
+from homeaudio.vcal.morning_announcements.core import (
+    TextBuilder,
+    _announcement_due,
+    _create_audio_file_for_calendar_days,
+    check_for_announcement,
+    play_morning_announcements,
+)
+from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException
+from homeaudio.audio.settings import MorningAnnouncementsSchedule, MorningAnnouncementsSettings
 
 select_option_call_count = 0
 
@@ -55,22 +62,111 @@ def test_get_morning_announcements_text_includes_weather_and_facts(monkeypatch):
     assert text == expected
 
 
-def test_seconds_until_returns_seconds_remaining_before_target_time():
-    now = datetime(2026, 9, 8, 7, 16, 0)
+# Monday/Saturday reference dates, matching the convention used in test_daemon.py.
+MONDAY_7_17 = datetime(2026, 4, 27, 7, 17, 0)
+SATURDAY_9_57 = datetime(2026, 4, 25, 9, 57, 0)
 
-    assert _seconds_until(time_of_day(7, 17, 0), now) == 60.0
-
-
-def test_seconds_until_returns_zero_when_target_time_has_passed():
-    now = datetime(2026, 9, 8, 7, 18, 0)
-
-    assert _seconds_until(time_of_day(7, 17, 0), now) == 0.0
+DEFAULT_SCHEDULE = MorningAnnouncementsSchedule(weekdays=time_of_day(7, 17, 0), weekends=time_of_day(9, 57, 0))
 
 
-def test_seconds_until_returns_zero_when_target_time_is_now():
-    now = datetime(2026, 9, 8, 7, 17, 0)
+def test_announcement_due_true_exactly_at_the_weekday_scheduled_time():
+    assert _announcement_due(MONDAY_7_17, 1, DEFAULT_SCHEDULE) is True
 
-    assert _seconds_until(time_of_day(7, 17, 0), now) == 0.0
+
+def test_announcement_due_true_exactly_at_the_weekend_scheduled_time():
+    assert _announcement_due(SATURDAY_9_57, 1, DEFAULT_SCHEDULE) is True
+
+
+def test_announcement_due_false_before_the_window():
+    base_time = datetime(2026, 4, 27, 7, 15, 0)  # Monday, too early
+
+    assert _announcement_due(base_time, 1, DEFAULT_SCHEDULE) is False
+
+
+def test_announcement_due_false_after_the_scheduled_time_has_passed():
+    base_time = datetime(2026, 4, 27, 7, 18, 0)  # Monday, already past
+
+    assert _announcement_due(base_time, 1, DEFAULT_SCHEDULE) is False
+
+
+def test_announcement_due_false_when_weekdays_schedule_unset_on_a_weekday():
+    schedule = MorningAnnouncementsSchedule(weekdays=None, weekends=time_of_day(9, 57, 0))
+
+    assert _announcement_due(MONDAY_7_17, 1, schedule) is False
+
+
+def test_announcement_due_false_when_weekends_schedule_unset_on_a_weekend():
+    schedule = MorningAnnouncementsSchedule(weekdays=time_of_day(7, 17, 0), weekends=None)
+
+    assert _announcement_due(SATURDAY_9_57, 1, schedule) is False
+
+
+def test_check_for_announcement_returns_none_when_settings_disabled():
+    settings = MorningAnnouncementsSettings(enabled=False, schedule=DEFAULT_SCHEDULE)
+
+    assert check_for_announcement(MONDAY_7_17, 1, [], settings) is None
+
+
+def test_check_for_announcement_returns_none_when_not_due():
+    settings = MorningAnnouncementsSettings(enabled=True, schedule=DEFAULT_SCHEDULE)
+    base_time = datetime(2026, 4, 27, 7, 0, 0)  # Monday, well before 7:17
+
+    assert check_for_announcement(base_time, 1, [], settings) is None
+
+
+def test_check_for_announcement_builds_the_audio_file_when_due(monkeypatch):
+    settings = MorningAnnouncementsSettings(enabled=True, schedule=DEFAULT_SCHEDULE)
+
+    seen = {}
+
+    def fake_create_audio_file(base_time, calendar_days, s):
+        seen["args"] = (base_time, calendar_days, s)
+        return "morning_announcement.wav"
+
+    monkeypatch.setattr(morning_announcements_core, "_create_audio_file_for_calendar_days", fake_create_audio_file)
+
+    result = check_for_announcement(MONDAY_7_17, 1, "calendar-days", settings)
+
+    assert result == "morning_announcement.wav"
+    assert seen["args"] == (MONDAY_7_17, "calendar-days", settings)
+
+
+class _FakeAudioFileBuilder:
+    def __init__(self, text_builder, bg_music_selector):
+        self.text_builder = text_builder
+        self.bg_music_selector = bg_music_selector
+
+    def build_audio_file(self):
+        return "built.wav"
+
+
+def test_create_audio_file_for_calendar_days_builds_the_audio_file(monkeypatch):
+    events = [Event(owner="cal", summary="Meeting", description="", calendar_id="id")]
+    monkeypatch.setattr(morning_announcements_core, "get_events_for_date", lambda calendar_days, base_time: events)
+    monkeypatch.setattr(morning_announcements_core, "AudioFileBuilder", _FakeAudioFileBuilder)
+
+    assert _create_audio_file_for_calendar_days(MONDAY_7_17, [], MorningAnnouncementsSettings()) == "built.wav"
+
+
+def test_create_audio_file_for_calendar_days_proceeds_with_no_events_when_calendar_data_missing(monkeypatch):
+    def raise_missing(calendar_days, base_time):
+        raise MissingCalendarDataException("no data")
+
+    monkeypatch.setattr(morning_announcements_core, "get_events_for_date", raise_missing)
+
+    seen = {}
+
+    class RecordingAudioFileBuilder:
+        def __init__(self, text_builder, bg_music_selector):
+            seen["events"] = text_builder.events
+
+        def build_audio_file(self):
+            return "fallback.wav"
+
+    monkeypatch.setattr(morning_announcements_core, "AudioFileBuilder", RecordingAudioFileBuilder)
+
+    assert _create_audio_file_for_calendar_days(MONDAY_7_17, [], MorningAnnouncementsSettings()) == "fallback.wav"
+    assert seen["events"] == []
 
 
 class _FakeCalendarSource:
@@ -78,48 +174,33 @@ class _FakeCalendarSource:
         pass
 
     def load_data_from_file(self):
-        return None
+        return "calendar-days"
 
 
-class _FakeAudioFileBuilder:
-    def __init__(self, text_builder, bg_music_selector):
-        pass
+def test_play_morning_announcements_builds_and_plays_the_audio_file(monkeypatch):
+    settings = MorningAnnouncementsSettings()
 
-    def build_audio_file(self):
-        return "output.wav"
-
-
-def test_play_morning_announcements_sleeps_until_the_scheduled_time_before_playing(monkeypatch):
     monkeypatch.setattr(morning_announcements_core, "CalendarSource", _FakeCalendarSource)
-    monkeypatch.setattr(morning_announcements_core, "get_events_for_date", lambda calendar_days, base_time: [])
-    monkeypatch.setattr(morning_announcements_core, "AudioFileBuilder", _FakeAudioFileBuilder)
 
-    seen_target_times = []
+    seen = {}
+
+    def fake_create_audio_file(base_time, calendar_days, s):
+        seen["args"] = (base_time, calendar_days, s)
+        return "built.wav"
+
+    monkeypatch.setattr(morning_announcements_core, "_create_audio_file_for_calendar_days", fake_create_audio_file)
+
+    play_calls = []
     monkeypatch.setattr(
         morning_announcements_core,
-        "_seconds_until",
-        lambda target_time, now: seen_target_times.append(target_time) or 42.0,
+        "play_morning_announcements_audio_file",
+        lambda audio_file, snapcast_settings, mpd_settings, before_hook, after_hook: play_calls.append((audio_file, before_hook, after_hook)),
     )
 
-    calls = []
-    monkeypatch.setattr(morning_announcements_core.time_module, "sleep", lambda seconds: calls.append(("sleep", seconds)))
-    monkeypatch.setattr(morning_announcements_core, "play_morning_announcements_audio_file", lambda *args, **kwargs: calls.append(("play", None)))
+    before_hook = lambda: None
+    after_hook = lambda: None
 
-    play_morning_announcements(play_time=time_of_day(7, 17, 0))
+    play_morning_announcements(base_time=MONDAY_7_17, settings=settings, before_announcement_hook=before_hook, after_announcement_hook=after_hook)
 
-    assert seen_target_times == [time_of_day(7, 17, 0)]
-    assert calls == [("sleep", 42.0), ("play", None)]
-
-
-def test_play_morning_announcements_does_not_sleep_when_no_play_time_given(monkeypatch):
-    monkeypatch.setattr(morning_announcements_core, "CalendarSource", _FakeCalendarSource)
-    monkeypatch.setattr(morning_announcements_core, "get_events_for_date", lambda calendar_days, base_time: [])
-    monkeypatch.setattr(morning_announcements_core, "AudioFileBuilder", _FakeAudioFileBuilder)
-
-    calls = []
-    monkeypatch.setattr(morning_announcements_core.time_module, "sleep", lambda seconds: calls.append(("sleep", seconds)))
-    monkeypatch.setattr(morning_announcements_core, "play_morning_announcements_audio_file", lambda *args, **kwargs: calls.append(("play", None)))
-
-    play_morning_announcements()
-
-    assert calls == [("play", None)]
+    assert seen["args"] == (MONDAY_7_17, "calendar-days", settings)
+    assert play_calls == [("built.wav", before_hook, after_hook)]

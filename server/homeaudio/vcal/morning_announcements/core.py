@@ -1,12 +1,11 @@
 import logging
 import glob
 import os
-import time as time_module
-from datetime import datetime, time
+from datetime import datetime, timedelta
 from typing import Callable
-from homeaudio.audio.settings import MorningAnnouncementsSettings, MpdSettings, SnapcastSettings
+from homeaudio.audio.settings import MorningAnnouncementsSchedule, MorningAnnouncementsSettings, MpdSettings, SnapcastSettings
 from homeaudio.audio.tts_playback import play_tts_audio_file
-from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException, CalendarSource, get_events_for_date
+from homeaudio.vcal.cal.google_calendar import CalendarDay, Event, WeatherForecast, MissingCalendarDataException, CalendarSource, get_events_for_date
 from homeaudio.vcal.notifications.text_to_voice import text_to_voice_file_daily_summary
 from homeaudio.audio.sound import mix_announcement_audio
 from homeaudio.audio.random_text import ListOptionsSource, select_option_pseudorandomly
@@ -121,9 +120,44 @@ class AudioFileBuilder:
         )
         return MORNING_ANNOUNCEMENTS_AUDIO_FILE
 
-def _seconds_until(target_time: time, now: datetime) -> float:
-    target_datetime = datetime.combine(now.date(), target_time, tzinfo=now.tzinfo)
-    return max(0.0, (target_datetime - now).total_seconds())
+def _announcement_due(base_time: datetime, window: int, schedule: MorningAnnouncementsSchedule) -> bool:
+    scheduled_time_of_day = schedule.weekdays if base_time.weekday() < 5 else schedule.weekends
+    if scheduled_time_of_day is None:
+        return False
+
+    scheduled_time = datetime.combine(base_time.date(), scheduled_time_of_day, tzinfo=base_time.tzinfo)
+    return base_time <= scheduled_time < base_time + timedelta(minutes=window)
+
+def _create_audio_file_for_calendar_days(base_time: datetime, calendar_days: list[CalendarDay], settings: MorningAnnouncementsSettings = MorningAnnouncementsSettings()) -> str:
+    try:
+        events = get_events_for_date(calendar_days, base_time)
+    except MissingCalendarDataException:
+        logger.info("No calendar data found for today's date, proceeding with no events.")
+        events = []
+
+    text_builder = TextBuilder(events, settings)
+    bg_music_selector = BackgroundMusicSelector(base_time)
+    return AudioFileBuilder(text_builder, bg_music_selector).build_audio_file()
+
+"""
+Called by the notifications daemon on every tick (homeaudio/vcal/notifications/core.py). Returns
+the built audio file if the morning announcement is due this tick, or None otherwise.
+"""
+def check_for_announcement(
+        base_time: datetime,
+        window: int,
+        calendar_days: list[CalendarDay],
+        settings: MorningAnnouncementsSettings = MorningAnnouncementsSettings()
+    ) -> str | None:
+
+    if not settings.enabled:
+        return None
+
+    if not _announcement_due(base_time, window, settings.schedule):
+        logger.debug(f"Morning announcements not due at {base_time}")
+        return None
+
+    return _create_audio_file_for_calendar_days(base_time, calendar_days, settings)
 
 """
 Top level entry point. Generate a summary of today's events, convert them to voice, and play them.
@@ -131,21 +165,12 @@ Top level entry point. Generate a summary of today's events, convert them to voi
 def play_morning_announcements(
         calendar_file = os.path.join(CALENDAR_DATA_DIRECTORY, "calendar.json"),
         base_time = datetime.now().astimezone(),
-        play_time: time | None = None,
         settings: MorningAnnouncementsSettings = MorningAnnouncementsSettings(),
         before_announcement_hook: Callable | None = None,
         after_announcement_hook: Callable | None = None
     ):
-    events = get_events_for_date(CalendarSource(cache_file_path=calendar_file).load_data_from_file(), base_time)
-    text_builder = TextBuilder(events, settings)
-    bg_music_selector = BackgroundMusicSelector(base_time)
-    output_file = AudioFileBuilder(text_builder, bg_music_selector).build_audio_file()
-
-    if play_time is not None:
-        wait_seconds = _seconds_until(play_time, datetime.now().astimezone())
-        logger.info(f"Sleeping {wait_seconds:.1f}s until the scheduled announcement time.")
-        time_module.sleep(wait_seconds)
-
+    calendar_days = CalendarSource(cache_file_path=calendar_file).load_data_from_file()
+    output_file = _create_audio_file_for_calendar_days(base_time, calendar_days, settings)
     play_morning_announcements_audio_file(output_file, SnapcastSettings(), MpdSettings(), before_announcement_hook, after_announcement_hook)
 
 """

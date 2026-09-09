@@ -1,6 +1,6 @@
 import logging
 
-from datetime import datetime, time
+from datetime import datetime
 import argparse
 from homeaudio.vcal.school_announcements.core import play_school_announcements as do_play_school_announcements
 from homeaudio.env import CALENDAR_DATA_DIRECTORY, LOG_LEVEL
@@ -28,13 +28,6 @@ def play_school_announcements():
     )
 
     parser.add_argument(
-        "--play_time",
-        type=lambda s: time.fromisoformat(s),
-        default=None,
-        help="The time at which to play the announcements (ISO format, defaults to now)"
-    )
-
-    parser.add_argument(
         "--calendar_file",
         default=os.path.join(CALENDAR_DATA_DIRECTORY, "calendar.json"),
         help=f"Path to the calendar JSON file (default: {os.path.join(CALENDAR_DATA_DIRECTORY, 'calendar.json')})"
@@ -47,10 +40,7 @@ def play_school_announcements():
 
         scene = scene_for_env()
 
-        settings = SchoolAnnouncementsSettings()
-        play_time = args.play_time or settings.schedule.weekdays
-
-        do_play_school_announcements(args.calendar_file, base_time, play_time, settings, scene.prepare_for_alarm, scene.restore_after_alarm)
+        do_play_school_announcements(args.calendar_file, base_time, SchoolAnnouncementsSettings(), scene.prepare_for_alarm, scene.restore_after_alarm)
     except Exception:
         logger.exception("Error playing school announcements")
         exit(1)

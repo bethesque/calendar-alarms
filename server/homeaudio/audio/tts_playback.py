@@ -17,9 +17,8 @@ def play_tts_audio_file(audio_file, snapcast_settings: SnapcastSettings, mpd_set
 
     with mpd_connection(mpd_settings) as alarm_player:
         volumes = mpd_settings.volumes
-        alarm_player.set_volume(volumes.alarm_start)
+        alarm_player.set_volume(volumes.tts)
         alarm_player.play_file(audio_file)
-        fade_up([(alarm_player, volumes.tts)], 5, 10)
 
     if after_announcement_hook:
         time.sleep(track_length(audio_file))

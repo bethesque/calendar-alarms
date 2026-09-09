@@ -73,11 +73,3 @@ function calendar-alarms-logs {
     journalctl SYSLOG_IDENTIFIER=calendar-alarms "$@"
 }
 
-function calendar-alarms-morning-announcements-logs {
-    journalctl SYSLOG_IDENTIFIER=calendar-alarms-morning-announcements "$@"
-}
-
-function calendar-alarms-morning-announcements-timer {
-    systemctl --user list-timers calendar-alarms-morning-announcements.timer
-}
-

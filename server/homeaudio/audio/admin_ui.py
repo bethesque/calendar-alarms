@@ -1,18 +1,12 @@
-from typing import Callable
 from fastapi import APIRouter
-from homeaudio.audio.settings import AppSettings, MorningAnnouncementsSchedule
+from homeaudio.audio.settings import AppSettings
 from homeaudio.env import HOME_ASSISTANT_SUPPORTED, HOUSIE_TALKIE_ENABLED
-from homeaudio.vcal.morning_announcements.timer import update_timer_unit
 from pydantic_ui import create_pydantic_ui, UIConfig, FieldConfig, DisplayConfig, Renderer
 
 from homeaudio.env import APP_NAME
 
 class AdminRoutes:
-    def __init__(
-        self,
-        morning_announcements_settings_changed: Callable[[bool, MorningAnnouncementsSchedule], None] = update_timer_unit,
-    ):
-        self.morning_announcements_schedule_changed = morning_announcements_settings_changed
+    def __init__(self):
         self.router = APIRouter()
 
         settings = AppSettings()
@@ -115,19 +109,6 @@ class AdminRoutes:
                 }
 
     def _save_settings(self, data: dict):
-        previous = AppSettings()
         validated = AppSettings.model_validate(data)
-
-        previous_morning_announcements = previous.morning_announcements_settings
-        validated_morning_announcements = validated.morning_announcements_settings
-
-        schedule_changed = previous_morning_announcements.schedule != validated_morning_announcements.schedule
-        enabled_changed = previous_morning_announcements.enabled != validated_morning_announcements.enabled
-
-        if schedule_changed or enabled_changed:
-            self.morning_announcements_schedule_changed(
-                validated_morning_announcements.enabled, validated_morning_announcements.schedule
-            )
-
         validated.save()
         return validated

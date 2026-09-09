@@ -10,7 +10,7 @@ from homeaudio.audio.mpd import fade_out, fade_up, mpd_connection
 from homeaudio.vcal.notifications import OUTPUT_AUDIO_DIRECTORY, POST_ANNOUNCEMENT_SILENCE
 from homeaudio.audio.sound import track_length
 from homeaudio.audio.scene import scene_for_env, SceneProtocol
-from homeaudio.audio.settings import SchoolAnnouncementsSettings, SnapcastSettings, MpdSettings, EventNotificationSettings
+from homeaudio.audio.settings import MorningAnnouncementsSettings, SchoolAnnouncementsSettings, SnapcastSettings, MpdSettings, EventNotificationSettings
 from homeaudio.audio.snapcast import SnapserverManager
 from homeaudio.audio.snapserver import Snapserver
 from homeaudio.housie_talkie.models import SoundEffectSelector
@@ -20,6 +20,7 @@ from homeaudio.vcal.notifications.snooze import LastPlayedState, SnoozeState, du
 from homeaudio.vcal.notifications.events import get_event_notifications
 from homeaudio.env import CALENDAR_DATA_DIRECTORY
 from homeaudio.vcal.school_announcements.core import check_for_announcement as check_for_school_announcements
+from homeaudio.vcal.morning_announcements.core import check_for_announcement as check_for_morning_announcements
 
 logger = logging.getLogger(__name__)
 
@@ -214,6 +215,8 @@ def prepare_notification_files(base_time, window, calendar_days: list[CalendarDa
     announcements_file, alarm_audio_file = _build_notification_files(event_notifications, base_time, event_notification_settings)
 
     scheduled_announcements_files = []
+    if file := check_for_morning_announcements(base_time, window, calendar_days, MorningAnnouncementsSettings()):
+        scheduled_announcements_files.append(file)
     if file := check_for_school_announcements(base_time, window, calendar_days, SchoolAnnouncementsSettings()):
         scheduled_announcements_files.append(file)
 

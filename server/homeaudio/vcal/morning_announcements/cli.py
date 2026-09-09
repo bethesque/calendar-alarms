@@ -2,7 +2,7 @@ import logging
 
 from homeaudio.vcal.morning_announcements.core import play_morning_announcements_audio_file
 from homeaudio.vcal.morning_announcements.core import MORNING_ANNOUNCEMENTS_AUDIO_FILE
-from datetime import datetime, time
+from datetime import datetime
 import argparse
 from homeaudio.env import CALENDAR_DATA_DIRECTORY, LOG_LEVEL
 import os
@@ -36,13 +36,6 @@ def play_morning_announcements():
     )
 
     parser.add_argument(
-        "--play_time",
-        type=lambda s: time.fromisoformat(s),
-        default=None,
-        help="The time at which to play the announcements (ISO format, defaults to now)"
-    )
-
-    parser.add_argument(
         "--calendar_file",
         default=os.path.join(CALENDAR_DATA_DIRECTORY, "calendar.json"),
         help=f"Path to the calendar JSON file (default: {os.path.join(CALENDAR_DATA_DIRECTORY, 'calendar.json')})"
@@ -58,11 +51,7 @@ def play_morning_announcements():
         if args.cached:
             play_morning_announcements_cached()
         else:
-            settings = MorningAnnouncementsSettings()
-            scheduled_time = settings.schedule.weekdays if base_time.weekday() < 5 else settings.schedule.weekends
-            play_time = args.play_time or scheduled_time
-
-            do_play_morning_announcements(args.calendar_file, base_time, play_time, settings, scene.prepare_for_alarm, scene.restore_after_alarm)
+            do_play_morning_announcements(args.calendar_file, base_time, MorningAnnouncementsSettings(), scene.prepare_for_alarm, scene.restore_after_alarm)
     except Exception:
         logger.exception("Error playing morning announcements")
         exit(1)
