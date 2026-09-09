@@ -7,8 +7,8 @@ from homeaudio.audio.settings import SchoolAnnouncementsSchedule, SchoolAnnounce
 from homeaudio.audio.tts_playback import play_tts_audio_file
 from homeaudio.audio.sound import join_mp3s_to_wav
 from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException, CalendarSource, get_events_for_date, CalendarDay
-from homeaudio.vcal.notifications.text_to_voice import text_to_voice_file, gtts_tld
-from homeaudio.vcal.notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, POST_ANNOUNCEMENT_SILENCE
+from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file, gtts_tld
+from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, POST_ANNOUNCEMENT_SILENCE
 from homeaudio.env import CALENDAR_DATA_DIRECTORY
 
 

@@ -1,9 +1,9 @@
 import glob
 import random
 from homeaudio.audio.sound import build_alarm_audio, join_mp3s_to_wav, build_aggressive_alarm_audio, join_mixed_files_to_wav
-from homeaudio.vcal.notifications.text_to_voice import text_to_voice_file
+from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file
 from homeaudio.audio.select_item import select_item_by_date
-from homeaudio.vcal.notifications import GENTLE_ALARMS_DIRECTORY, AGGRESSIVE_ALARMS_DIRECTORY, PRE_ANNOUNCEMENT_BELL, OUTPUT_AUDIO_DIRECTORY, SILENCE_HALF_SEC
+from homeaudio.vcal.event_notifications import GENTLE_ALARMS_DIRECTORY, AGGRESSIVE_ALARMS_DIRECTORY, PRE_ANNOUNCEMENT_BELL, OUTPUT_AUDIO_DIRECTORY, SILENCE_HALF_SEC
 from homeaudio.audio.settings import AlarmSettings
 from homeaudio.housie_talkie.models import SoundEffectSelector
 

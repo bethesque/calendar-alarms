@@ -2,22 +2,22 @@ from dataclasses import dataclass, field
 import logging
 import time
 from datetime import datetime, timedelta
-from homeaudio.vcal.notifications.events import NotificationFinder
+from homeaudio.vcal.event_notifications.events import NotificationFinder
 from homeaudio.vcal.cal.google_calendar import CalendarDay, EventNotification, NotificationType, CalendarSource
 from homeaudio.audio.sound import join_mp3s_to_wav
-from homeaudio.vcal.notifications.text_to_voice import text_to_voice_file
+from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file
 from homeaudio.audio.mpd import fade_out, fade_up, mpd_connection
-from homeaudio.vcal.notifications import OUTPUT_AUDIO_DIRECTORY, POST_ANNOUNCEMENT_SILENCE
+from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, POST_ANNOUNCEMENT_SILENCE
 from homeaudio.audio.sound import track_length
 from homeaudio.audio.scene import scene_for_env, SceneProtocol
 from homeaudio.audio.settings import MorningAnnouncementsSettings, SchoolAnnouncementsSettings, SnapcastSettings, MpdSettings, EventNotificationSettings
 from homeaudio.audio.snapcast import SnapserverManager
 from homeaudio.audio.snapserver import Snapserver
 from homeaudio.housie_talkie.models import SoundEffectSelector
-from homeaudio.vcal.notifications.audio import AlarmAudio, AnnouncementAudio
-from homeaudio.vcal.notifications.text import NotificationTextBuilder
-from homeaudio.vcal.notifications.snooze import LastPlayedState, SnoozeState, due_snoozed_event_notifications
-from homeaudio.vcal.notifications.events import get_event_notifications
+from homeaudio.vcal.event_notifications.audio import AlarmAudio, AnnouncementAudio
+from homeaudio.vcal.event_notifications.text import NotificationTextBuilder
+from homeaudio.vcal.event_notifications.snooze import LastPlayedState, SnoozeState, due_snoozed_event_notifications
+from homeaudio.vcal.event_notifications.events import get_event_notifications
 from homeaudio.env import CALENDAR_DATA_DIRECTORY
 from homeaudio.vcal.school_announcements.core import check_for_announcement as check_for_school_announcements
 from homeaudio.vcal.morning_announcements.core import check_for_announcement as check_for_morning_announcements

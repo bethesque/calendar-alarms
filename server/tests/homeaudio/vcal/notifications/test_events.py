@@ -3,7 +3,7 @@ from zoneinfo import ZoneInfo
 
 from homeaudio.audio.settings import EventNotificationSettings, NotificationRule
 from homeaudio.vcal.cal.google_calendar import CalendarSource
-from homeaudio.vcal.notifications.events import get_calendar_refreshed_at, get_event_notifications
+from homeaudio.vcal.event_notifications.events import get_calendar_refreshed_at, get_event_notifications
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
 

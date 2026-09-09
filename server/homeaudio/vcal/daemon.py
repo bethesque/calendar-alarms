@@ -12,8 +12,8 @@ from homeaudio.audio.scene import scene_for_env
 from homeaudio.audio.settings import EventNotificationSchedule, EventNotificationSettings, MainSettings, TimeRange
 from homeaudio.env import LOG_LEVEL
 from homeaudio.vcal.cal.google_calendar import CalendarSource
-from homeaudio.vcal.notifications.core import DATA_FILE, prepare_notification_files, NotificationFiles
-from homeaudio.vcal.notifications.core import play_notifications as _play_notifications
+from homeaudio.vcal.event_notifications.core import DATA_FILE, prepare_notification_files, NotificationFiles
+from homeaudio.vcal.event_notifications.core import play_notifications as _play_notifications
 
 setup_logging_for_alarms(str(LOG_LEVEL))
 

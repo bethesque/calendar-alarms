@@ -6,12 +6,12 @@ from typing import Callable
 from homeaudio.audio.settings import MorningAnnouncementsSchedule, MorningAnnouncementsSettings, MpdSettings, SnapcastSettings
 from homeaudio.audio.tts_playback import play_tts_audio_file
 from homeaudio.vcal.cal.google_calendar import CalendarDay, Event, WeatherForecast, MissingCalendarDataException, CalendarSource, get_events_for_date
-from homeaudio.vcal.notifications.text_to_voice import text_to_voice_file_daily_summary
+from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file_daily_summary
 from homeaudio.audio.sound import mix_announcement_audio
 from homeaudio.audio.random_text import ListOptionsSource, select_option_pseudorandomly
 from homeaudio.audio.select_item import select_item_by_date, select_option
 
-from homeaudio.vcal.notifications import BACKGROUND_MUSIC_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
+from homeaudio.vcal.event_notifications import BACKGROUND_MUSIC_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
 from homeaudio.env import CACHE_DIRECTORY, CALENDAR_DATA_DIRECTORY
 
 MORNING_ANNOUNCEMENTS_AUDIO_FILE = f"{OUTPUT_AUDIO_DIRECTORY}/morning_announcements.wav"

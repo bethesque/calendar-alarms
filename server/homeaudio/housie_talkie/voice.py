@@ -2,7 +2,7 @@ from pathlib import Path
 from homeaudio.audio.settings import HousieTalkieSettings
 from homeaudio.housie_talkie.voice_ffmpeg import normalize_audio
 from homeaudio.housie_talkie.core import play_voice_announcement as og_play_audio_file_as_announcement, VoiceAnnouncementRequest
-from homeaudio.vcal.notifications import OUTPUT_AUDIO_DIRECTORY
+from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY
 
 def play_audio_file_as_announcement(request: VoiceAnnouncementRequest):
     normalized_audio_file = _normalize_audio_file_to_match_tts_volume(request.audio_file)

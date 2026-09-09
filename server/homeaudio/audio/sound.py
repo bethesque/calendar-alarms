@@ -3,7 +3,7 @@ import logging
 import subprocess
 import tempfile
 import os
-from homeaudio.vcal.notifications import SAMPLE_RATE
+from homeaudio.vcal.event_notifications import SAMPLE_RATE
 
 logger = logging.getLogger(__name__)
 

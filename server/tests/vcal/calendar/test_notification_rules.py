@@ -6,7 +6,7 @@ from homeaudio.audio.settings import NotificationRule
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from homeaudio.vcal.notifications.core import NotificationFinder, NotificationTextBuilder
+from homeaudio.vcal.event_notifications.core import NotificationFinder, NotificationTextBuilder
 from homeaudio.vcal.cal.google_calendar import CalendarSource
 
 def test_notification_rule_with_reminder_e2e(monkeypatch):
@@ -38,7 +38,7 @@ def test_notification_rule_with_reminder_e2e(monkeypatch):
     event_notifications = alarm_finder.find_notification_events()
 
     # Greeting and before/after ordering are randomised; pin them for a deterministic assertion.
-    monkeypatch.setattr("homeaudio.vcal.notifications.text.random.choice", lambda seq: seq[0])
+    monkeypatch.setattr("homeaudio.vcal.event_notifications.text.random.choice", lambda seq: seq[0])
     announcement_texts = NotificationTextBuilder(event_notifications, base_time).build()
 
     assert "It's time for Gym." in announcement_texts

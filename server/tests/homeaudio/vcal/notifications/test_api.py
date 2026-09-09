@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from homeaudio.audio.settings import NotificationRule
 from homeaudio.vcal.cal.google_calendar import Event, EventNotification, NotificationType
-import homeaudio.vcal.notifications.api as api_module
+import homeaudio.vcal.event_notifications.api as api_module
 
 
 def _client():

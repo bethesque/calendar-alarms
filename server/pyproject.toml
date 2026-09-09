@@ -64,7 +64,7 @@ cal-school-announce = "vcal.school_announcements.cli:play_school_announcements" 
 
 cal-data-refresh = "homeaudio.vcal.cli:refresh_calendar_data"
 cal-data-insert-test = "homeaudio.vcal.cli:insert_test_event"
-cal-list-notifications = "homeaudio.vcal.notifications.cli:list_notifications"
+cal-list-notifications = "homeaudio.vcal.event_notifications.cli:list_notifications"
 
 [tool.setuptools]
 # Tells setuptools where to find your source code

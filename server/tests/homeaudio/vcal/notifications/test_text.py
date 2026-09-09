@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from homeaudio.vcal.cal.google_calendar import Event, EventNotification, LeaveForEvent, NotificationType
 from homeaudio.audio.settings import NotificationRule
-from homeaudio.vcal.notifications.text import NotificationTextBuilder
+from homeaudio.vcal.event_notifications.text import NotificationTextBuilder
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
 
@@ -27,8 +27,8 @@ def test_notification_text_builder_creates_text_for_travel_announcement(monkeypa
 
     # Whether extras/greeting are added, and which greeting/extra, are randomised; pin them
     # for a deterministic assertion.
-    monkeypatch.setattr("homeaudio.vcal.notifications.text.random.random", lambda: 0.0)
-    monkeypatch.setattr("homeaudio.vcal.notifications.text.random.choice", lambda seq: seq[0])
+    monkeypatch.setattr("homeaudio.vcal.event_notifications.text.random.random", lambda: 0.0)
+    monkeypatch.setattr("homeaudio.vcal.event_notifications.text.random.choice", lambda seq: seq[0])
     announcement_texts = NotificationTextBuilder([event_notification], base_time).build()
 
     assert announcement_texts == ["Good afternoon.", "It will be time to Leave for An appointment in 5 minutes."]
@@ -50,8 +50,8 @@ def test_notification_text_builder_adds_greeting_and_extras_when_lucky_roll(monk
     event_notification = _description_event_notification()
 
     # Below CHANCE_OF_ANNOUNCEMENT_WITH_EXTRAS - greeting/extras get added for the batch.
-    monkeypatch.setattr("homeaudio.vcal.notifications.text.random.random", lambda: 0.0)
-    monkeypatch.setattr("homeaudio.vcal.notifications.text.random.choice", lambda seq: seq[0])
+    monkeypatch.setattr("homeaudio.vcal.event_notifications.text.random.random", lambda: 0.0)
+    monkeypatch.setattr("homeaudio.vcal.event_notifications.text.random.choice", lambda seq: seq[0])
 
     announcement_texts = NotificationTextBuilder([event_notification], base_time).build()
 
@@ -63,7 +63,7 @@ def test_notification_text_builder_uses_bare_phrasing_when_unlucky_roll(monkeypa
     event_notification = _description_event_notification()
 
     # Above CHANCE_OF_ANNOUNCEMENT_WITH_EXTRAS - no greeting/extras, just the core text.
-    monkeypatch.setattr("homeaudio.vcal.notifications.text.random.random", lambda: 0.999)
+    monkeypatch.setattr("homeaudio.vcal.event_notifications.text.random.random", lambda: 0.999)
 
     announcement_texts = NotificationTextBuilder([event_notification], base_time).build()
 
@@ -76,8 +76,8 @@ def test_notification_text_builder_skips_bare_summary_when_notification_rule_pre
     event_notification.notification_rule = NotificationRule(summary_pattern="Gym", offset_minutes=0)
 
     # Even a lucky roll should never give a rule-based notification the bare-summary treatment.
-    monkeypatch.setattr("homeaudio.vcal.notifications.text.random.random", lambda: 0.0)
-    monkeypatch.setattr("homeaudio.vcal.notifications.text.random.choice", lambda seq: seq[0])
+    monkeypatch.setattr("homeaudio.vcal.event_notifications.text.random.random", lambda: 0.0)
+    monkeypatch.setattr("homeaudio.vcal.event_notifications.text.random.choice", lambda seq: seq[0])
 
     announcement_texts = NotificationTextBuilder([event_notification], base_time).build()
 
@@ -89,8 +89,8 @@ def test_notification_text_builder_skips_bare_summary_when_offset_is_nonzero(mon
     event_notification = _description_event_notification(offset=20)
 
     # Even a lucky roll should be ignored once there's a non-zero offset.
-    monkeypatch.setattr("homeaudio.vcal.notifications.text.random.random", lambda: 0.0)
-    monkeypatch.setattr("homeaudio.vcal.notifications.text.random.choice", lambda seq: seq[0])
+    monkeypatch.setattr("homeaudio.vcal.event_notifications.text.random.random", lambda: 0.0)
+    monkeypatch.setattr("homeaudio.vcal.event_notifications.text.random.choice", lambda seq: seq[0])
 
     announcement_texts = NotificationTextBuilder([event_notification], base_time).build()
 

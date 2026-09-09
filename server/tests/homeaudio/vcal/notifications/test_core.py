@@ -2,9 +2,9 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from homeaudio.vcal.cal.google_calendar import Event, EventNotification, NotificationType
-import homeaudio.vcal.notifications.core as core_module
-from homeaudio.vcal.notifications.core import snooze_alarm
-from homeaudio.vcal.notifications.snooze import LastPlayedState, SnoozeState
+import homeaudio.vcal.event_notifications.core as core_module
+from homeaudio.vcal.event_notifications.core import snooze_alarm
+from homeaudio.vcal.event_notifications.snooze import LastPlayedState, SnoozeState
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
 
