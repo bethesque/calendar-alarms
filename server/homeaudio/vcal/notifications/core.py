@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import logging
 import time
 from datetime import datetime, timedelta
@@ -10,7 +10,7 @@ from homeaudio.audio.mpd import fade_out, fade_up, mpd_connection
 from homeaudio.vcal.notifications import OUTPUT_AUDIO_DIRECTORY, POST_ANNOUNCEMENT_SILENCE
 from homeaudio.audio.sound import track_length
 from homeaudio.audio.scene import scene_for_env, SceneProtocol
-from homeaudio.audio.settings import SnapcastSettings, MpdSettings, EventNotificationSettings
+from homeaudio.audio.settings import SchoolAnnouncementsSettings, SnapcastSettings, MpdSettings, EventNotificationSettings
 from homeaudio.audio.snapcast import SnapserverManager
 from homeaudio.audio.snapserver import Snapserver
 from homeaudio.housie_talkie.models import SoundEffectSelector
@@ -19,6 +19,7 @@ from homeaudio.vcal.notifications.text import NotificationTextBuilder
 from homeaudio.vcal.notifications.snooze import LastPlayedState, SnoozeState, due_snoozed_event_notifications
 from homeaudio.vcal.notifications.events import get_event_notifications
 from homeaudio.env import CALENDAR_DATA_DIRECTORY
+from homeaudio.vcal.school_announcements.core import check_for_announcement as check_for_school_announcements
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ DATA_FILE = CALENDAR_DATA_DIRECTORY + "/calendar.json"
 class NotificationFiles:
     event_alarms_file: str | None = None
     event_announcements_file: str | None = None
-    scheduled_announcements_file: str | None = None
+    scheduled_announcements_files: list[str] = field(default_factory=list)
 
 """
 Takes a list of CalenderDays and finds any alarms due within the given time window.
@@ -40,7 +41,7 @@ def play_notifications(notification_files: NotificationFiles, scene: SceneProtoc
     snapserver_manager = SnapserverManager(snapcast_settings)
     areas = snapserver_manager.connected_player_areas()
     announcements_file = notification_files.event_announcements_file
-    scheduled_announcements_file = notification_files.scheduled_announcements_file
+    scheduled_announcements_files = notification_files.scheduled_announcements_files
     alarms_file = notification_files.event_alarms_file
 
 
@@ -48,7 +49,7 @@ def play_notifications(notification_files: NotificationFiles, scene: SceneProtoc
         snapserver_manager.set_volumes("tts")
 
     # Only announcement
-    if announcements_file and not alarms_file and not scheduled_announcements_file:
+    if announcements_file and not alarms_file and not scheduled_announcements_files:
         scene.around_announcement(lambda: _play_event_announcement(announcements_file, mpd_settings), areas)
         return
     # Announcement and/or alarm
@@ -57,11 +58,12 @@ def play_notifications(notification_files: NotificationFiles, scene: SceneProtoc
     if announcements_file:
         _play_event_announcement(announcements_file, mpd_settings)
 
-    if scheduled_announcements_file:
-        _play_event_announcement(announcements_file, mpd_settings)
+    if scheduled_announcements_files:
+        for file in scheduled_announcements_files:
+            _play_event_announcement(file, mpd_settings)
 
     if alarms_file:
-        if announcements_file or scheduled_announcements_file:
+        if announcements_file or scheduled_announcements_files:
             time.sleep(2)
         snapserver_manager.set_volumes("alarm")
         _play_event_alarm(alarms_file, mpd_settings)
@@ -209,11 +211,20 @@ def prepare_notification_files(base_time, window, calendar_days: list[CalendarDa
     event_notifications = get_event_notifications(base_time, window, calendar_days, event_notification_settings)
     event_notifications = event_notifications + due_snoozed_event_notifications(base_time)
 
-    return _build_notification_files(event_notifications, base_time, event_notification_settings)
+    announcements_file, alarm_audio_file = _build_notification_files(event_notifications, base_time, event_notification_settings)
 
-def _build_notification_files(event_notifications: list[EventNotification], base_time, event_notification_settings: EventNotificationSettings = EventNotificationSettings()) -> NotificationFiles | None:
-    if not event_notifications:
+    scheduled_announcements_files = []
+    if file := check_for_school_announcements(base_time, window, calendar_days, SchoolAnnouncementsSettings()):
+        scheduled_announcements_files.append(file)
+
+    if alarm_audio_file or announcements_file or scheduled_announcements_files:
+        return NotificationFiles(event_alarms_file=alarm_audio_file, event_announcements_file=announcements_file, scheduled_announcements_files=scheduled_announcements_files)
+    else:
         return None
+
+def _build_notification_files(event_notifications: list[EventNotification], base_time, event_notification_settings: EventNotificationSettings = EventNotificationSettings()) -> tuple[str | None, str | None]:
+    if not event_notifications:
+        return (None, None)
 
     LastPlayedState().save(event_notifications, base_time)
 
@@ -230,5 +241,6 @@ def _build_notification_files(event_notifications: list[EventNotification], base
     )
     alarm_audio_file = AlarmAudio(alarm_texts, event_notification_settings.alarms, base_time).build_alarm_file() if alarm_event_notifications else None
 
-    return NotificationFiles(event_alarms_file=alarm_audio_file, event_announcements_file=announcements_file)
+    return announcements_file, alarm_audio_file
+
 

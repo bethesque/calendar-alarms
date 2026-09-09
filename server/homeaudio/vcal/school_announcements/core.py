@@ -1,12 +1,12 @@
 import logging
 import os
 import time as time_module
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from typing import Callable
-from homeaudio.audio.settings import SchoolAnnouncementsSettings, MpdSettings, SnapcastSettings
+from homeaudio.audio.settings import SchoolAnnouncementsSchedule, SchoolAnnouncementsSettings, MpdSettings, SnapcastSettings
 from homeaudio.audio.tts_playback import play_tts_audio_file
 from homeaudio.audio.sound import join_mp3s_to_wav
-from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException, CalendarSource, get_events_for_date
+from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException, CalendarSource, get_events_for_date, CalendarDay
 from homeaudio.vcal.notifications.text_to_voice import text_to_voice_file, gtts_tld
 from homeaudio.vcal.notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, POST_ANNOUNCEMENT_SILENCE
 from homeaudio.env import CALENDAR_DATA_DIRECTORY
@@ -99,3 +99,39 @@ def play_school_announcements(
         time_module.sleep(wait_seconds)
 
     play_tts_audio_file(output_file, SnapcastSettings(), MpdSettings(), before_announcement_hook, after_announcement_hook)
+
+def _announcement_due(base_time: datetime, window: int, schedule: SchoolAnnouncementsSchedule) -> bool:
+    if base_time.weekday() >= 5 or schedule.weekdays is None:
+        return False
+
+    scheduled_time = datetime.combine(base_time.date(), schedule.weekdays, tzinfo=base_time.tzinfo)
+    return base_time <= scheduled_time < base_time + timedelta(minutes=window)
+
+def check_for_announcement(
+        base_time: datetime,
+        window: int,
+        calendar_days: list[CalendarDay],
+        settings: SchoolAnnouncementsSettings = SchoolAnnouncementsSettings()
+    ) -> str | None:
+
+    if not _announcement_due(base_time, window, settings.schedule):
+        logger.debug(f"School announcements not due {base_time} is not {settings.schedule.weekdays}")
+        return None
+
+    try:
+        events = get_events_for_date(calendar_days, base_time)
+    except MissingCalendarDataException:
+        logger.info("No calendar data found for today's date, proceeding with no events.")
+        return build_audio_file(["It's time to leave for school.","There was no calendar data found for today's date.", "You may need to fix the authentication."])
+
+    if is_school_holiday(events, settings.holiday_keywords):
+        logger.info("A holiday keyword matched an event today; skipping school announcement.")
+        return None
+
+    school_events = get_school_events(events, settings.school_event_keywords)
+    weather_forecast = get_weather_forecast(events)
+    sentences = build_text(school_events, weather_forecast)
+    return build_audio_file(sentences)
+
+
+
