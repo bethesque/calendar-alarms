@@ -32,13 +32,6 @@
     state: restarted
     enabled: true
 
-- name: restart calendar-alarms-school-announcements.timer
-  systemd:
-    name: calendar-alarms-school-announcements.timer
-    scope: user
-    state: restarted
-    enabled: true
-
 - name: restart calendar-alarms.service
   systemd:
     name: calendar-alarms

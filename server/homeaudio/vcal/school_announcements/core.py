@@ -114,6 +114,9 @@ def check_for_announcement(
         settings: SchoolAnnouncementsSettings = SchoolAnnouncementsSettings()
     ) -> str | None:
 
+    if not settings.enabled:
+        return None
+
     if not _announcement_due(base_time, window, settings.schedule):
         logger.debug(f"School announcements not due {base_time} is not {settings.schedule.weekdays}")
         return None
