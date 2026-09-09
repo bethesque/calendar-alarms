@@ -31,7 +31,7 @@ def _stub_snooze_alarm_playback(monkeypatch):
         "_build_one_off_announcement_file",
         lambda message: announcement_calls.append(message) or f"announcement_for::{message}",
     )
-    monkeypatch.setattr(core_module, "_play_file", lambda file: play_file_calls.append(file))
+    monkeypatch.setattr(core_module, "play_file", lambda file: play_file_calls.append(file))
 
     return announcement_calls, play_file_calls
 

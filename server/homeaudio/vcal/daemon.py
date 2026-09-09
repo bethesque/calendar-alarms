@@ -12,7 +12,7 @@ from homeaudio.audio.scene import scene_for_env
 from homeaudio.audio.settings import EventNotificationSchedule, EventNotificationSettings, MainSettings, TimeRange
 from homeaudio.env import LOG_LEVEL
 from homeaudio.vcal.cal.google_calendar import CalendarSource
-from homeaudio.vcal.core import DATA_FILE, prepare_notification_files, NotificationFiles
+from homeaudio.vcal.core import prepare_notification_files, NotificationFiles
 from homeaudio.vcal.core import play_notifications as _play_notifications
 
 setup_logging_for_alarms(str(LOG_LEVEL))
@@ -74,7 +74,7 @@ def check_for_notifications(base_time: datetime) -> NotificationFiles | None:
 
     try:
         logger.info("Checking for alarms at %s", base_time)
-        calendar_data = CalendarSource(cache_file_path=DATA_FILE).load_data_from_file()
+        calendar_data = CalendarSource().load_data_from_file()
         return prepare_notification_files(base_time, CHECK_WINDOW_MINUTES, calendar_data)
 
     except Exception:

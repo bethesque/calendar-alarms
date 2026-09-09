@@ -10,7 +10,6 @@ from homeaudio.audio.scene import scene_for_env
 from homeaudio.vcal.core import stop_alarm, test_alarm, mute_alarm_for_area_of_player, replay_last_notification, snooze_alarm
 from homeaudio.vcal.event_notifications.events import get_all_event_notifications, get_all_events, get_calendar_refreshed_at
 from homeaudio.vcal.cli import refresh_calendar_data
-from homeaudio.env import HOME_ASSISTANT_SUPPORTED
 from queue import Queue
 
 logger = logging.getLogger(__name__)

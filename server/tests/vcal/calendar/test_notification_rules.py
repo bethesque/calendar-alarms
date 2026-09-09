@@ -3,10 +3,11 @@ from pathlib import Path
 from datetime import datetime
 
 from homeaudio.audio.settings import NotificationRule
+from homeaudio.vcal.event_notifications.text import NotificationTextBuilder
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from homeaudio.vcal.core import NotificationFinder, NotificationTextBuilder
+from homeaudio.vcal.event_notifications.events import NotificationFinder
 from homeaudio.vcal.cal.google_calendar import CalendarSource
 
 def test_notification_rule_with_reminder_e2e(monkeypatch):

@@ -9,21 +9,19 @@ from homeaudio.audio.settings import GoogleCalendarSettings
 This script refreshes the calendar data and saves it to a local file.
 """
 
-DATA_FILE = CALENDAR_DATA_DIRECTORY + "/calendar.json"
-
 setup_logging_for_data_refresh(str(LOG_LEVEL))
 
 def refresh_calendar_data():
 
-    print(f"Refreshing calendar data in {DATA_FILE}...")
-    calendar_source = CalendarSource(cache_file_path=DATA_FILE)
+    calendar_source = CalendarSource()
+    print(f"Refreshing calendar data in {calendar_source.cache_file_path}...")
     calendar_source.load_creds()
     calendar_source.fetch_data(GoogleCalendarSettings().calendar_filter())
     calendar_source.save_data_to_file()
 
 
 def insert_test_event():
-    calendar_source = CalendarSource(cache_file_path=DATA_FILE)
+    calendar_source = CalendarSource()
     calendar_days = calendar_source.load_data_from_file()
     # find the calendar day for the current date
     today = next(day for day in calendar_days if day.date == datetime.now().date())

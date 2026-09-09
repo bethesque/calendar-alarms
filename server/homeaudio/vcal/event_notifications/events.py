@@ -2,9 +2,6 @@ import logging
 from datetime import datetime, timedelta
 from homeaudio.vcal.cal.google_calendar import CalendarDay, EventNotification, NotificationType, CalendarSource
 from homeaudio.audio.settings import EventNotificationSettings
-from homeaudio.env import CALENDAR_DATA_DIRECTORY
-
-DATA_FILE = CALENDAR_DATA_DIRECTORY + "/calendar.json"
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +60,7 @@ def get_event_notifications(base_time, window, calendar_data: list[CalendarDay],
     event_notifications = alarm_finder.find_notification_events()
     return event_notifications
 
-def get_all_event_notifications(event_notification_settings: EventNotificationSettings = EventNotificationSettings(), calendar_source: CalendarSource = CalendarSource(DATA_FILE)):
+def get_all_event_notifications(event_notification_settings: EventNotificationSettings = EventNotificationSettings(), calendar_source: CalendarSource = CalendarSource()):
     calendar_days = calendar_source.load_data_from_file()
 
     notification_rules = event_notification_settings.enabled_notification_rules()
@@ -74,7 +71,7 @@ def get_all_event_notifications(event_notification_settings: EventNotificationSe
 
     return notifications
 
-def get_all_events(calendar_source: CalendarSource = CalendarSource(DATA_FILE)):
+def get_all_events(calendar_source: CalendarSource = CalendarSource()):
     calendar_days = calendar_source.load_data_from_file()
     events_by_day = [
         (calendar_day.date, event.start_time is not None, event.start_time, event)
@@ -84,7 +81,7 @@ def get_all_events(calendar_source: CalendarSource = CalendarSource(DATA_FILE)):
     events_by_day.sort(key=lambda item: (item[0], item[1], item[2] or datetime.min))
     return [event for *_, event in events_by_day]
 
-def get_calendar_refreshed_at(calendar_source: CalendarSource = CalendarSource(DATA_FILE)) -> datetime | None:
+def get_calendar_refreshed_at(calendar_source: CalendarSource = CalendarSource()) -> datetime | None:
     calendar_source.load_data_from_file()
     return calendar_source.refreshed_at
 

@@ -18,8 +18,10 @@ from googleapiclient.errors import HttpError
 from homeaudio.audio.settings import NotificationRule
 from homeaudio.env import CALENDAR_DATA_DIRECTORY
 
+
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
 TOKEN_PATH = f"{CALENDAR_DATA_DIRECTORY}/token.json"
+DATA_FILE = CALENDAR_DATA_DIRECTORY + "/calendar.json"
 DAYS_TO_FETCH = 7
 
 TIMEZONE = "Australia/Melbourne"
@@ -374,7 +376,7 @@ def get_events_for_date(calendar_days, date_time):
 
 @dataclass
 class CalendarSource:
-    cache_file_path: str
+    cache_file_path: str = DATA_FILE
     calendar_days: list = None
     creds: any = None
     refreshed_at: datetime.datetime | None = None

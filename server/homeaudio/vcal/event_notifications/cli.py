@@ -12,7 +12,8 @@ from homeaudio.audio.scene import scene_for_env
 from homeaudio.audio.settings import MainSettings
 
 from homeaudio.env import CALENDAR_DATA_DIRECTORY, HOME_ASSISTANT_SUPPORTED
-from homeaudio.vcal.core import check_for_notifications, get_all_event_notifications
+from homeaudio.vcal.event_notifications.core import check_for_and_play_notifications
+from homeaudio.vcal.event_notifications.events import get_all_event_notifications
 
 setup_logging_for_alarms(str(LOG_LEVEL))
 
@@ -46,8 +47,6 @@ def check_alarms():
         help=f"Path to the calendar JSON file (default: {os.path.join(CALENDAR_DATA_DIRECTORY, 'calendar.json')})"
     )
 
-
-
     args = parser.parse_args()
 
     try:
@@ -56,39 +55,7 @@ def check_alarms():
         base_time = args.base_time or datetime.now().astimezone()
         calendar_data = load_calendar_days(args.calendar_file)
 
-        check_for_notifications(base_time, args.window, calendar_data, scene_for_env())
+        check_for_and_play_notifications(base_time, args.window, calendar_data, scene_for_env())
     except Exception:
         logger.exception("Error checking for alarms")
         exit(1)
-
-def stop_alarm():
-    try:
-        with mpd_connection() as alarm_player:
-            fade_out([alarm_player], 3)
-            logger.info("Alarm stopped.")
-    except Exception as e:
-        logger.error(f"Error stopping alarm: {e}")
-        exit(1)
-
-def play_test_file():
-    # get audio file path from the command line argument
-    parser = argparse.ArgumentParser(description="Play a test audio file")
-    parser.add_argument(
-        "audio_file",
-        help="Path to the audio file to play"
-    )
-    args = parser.parse_args()
-    audio_file = args.audio_file
-
-    try:
-        # Play the mixed audio file
-        with mpd_connection() as alarm_player:
-            alarm_player.set_volume(60)
-            alarm_player.play_file(audio_file)
-            fade_up([(alarm_player, 80)], 5, 10)
-    except Exception as e:
-        logger.error(f"Error playing alarm: {e}")
-        exit(1)
-
-def list_notifications():
-    print(yaml.dump(get_all_event_notifications(), default_flow_style=False, sort_keys=False))
