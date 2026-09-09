@@ -12,7 +12,7 @@ from homeaudio.audio.scene import scene_for_env
 from homeaudio.audio.settings import EventNotificationSchedule, EventNotificationSettings, MainSettings, TimeRange
 from homeaudio.env import LOG_LEVEL
 from homeaudio.vcal.cal.google_calendar import CalendarSource
-from homeaudio.vcal.notifications.core import DATA_FILE, prepare_notification_files
+from homeaudio.vcal.notifications.core import DATA_FILE, prepare_notification_files, NotificationFiles
 from homeaudio.vcal.notifications.core import play_notifications as _play_notifications
 
 setup_logging_for_alarms(str(LOG_LEVEL))
@@ -60,9 +60,6 @@ def next_boundary(now: datetime, schedule: EventNotificationSchedule | None = No
     return candidate
 
 
-NotificationFiles = tuple[str | None, str | None]
-
-
 def check_for_notifications(base_time: datetime) -> NotificationFiles | None:
     """Gathers what's due at `base_time` and builds its audio, without playing it - the
     "early wake-up" half of a tick. Returns None if there's nothing to play or the tick
@@ -78,8 +75,8 @@ def check_for_notifications(base_time: datetime) -> NotificationFiles | None:
     try:
         logger.info("Checking for alarms at %s", base_time)
         calendar_data = CalendarSource(cache_file_path=DATA_FILE).load_data_from_file()
-        announcements_file, alarm_audio_file = prepare_notification_files(base_time, CHECK_WINDOW_MINUTES, calendar_data)
-        return (announcements_file, alarm_audio_file) if (announcements_file or alarm_audio_file) else None
+        return prepare_notification_files(base_time, CHECK_WINDOW_MINUTES, calendar_data)
+
     except Exception:
         # A single bad tick must never kill the loop - log and try again next boundary.
         logger.exception("Error checking for alarms at %s", base_time)
@@ -88,9 +85,8 @@ def check_for_notifications(base_time: datetime) -> NotificationFiles | None:
 
 def play_notification_files(notification_files: NotificationFiles) -> None:
     """Plays audio already built by check_for_notifications - the "on time" half of a tick."""
-    announcements_file, alarm_audio_file = notification_files
     try:
-        _play_notifications(announcements_file, alarm_audio_file, scene_for_env())
+        _play_notifications(notification_files, scene_for_env())
     except Exception:
         # A single bad tick must never kill the loop - log and try again next boundary.
         logger.exception("Error playing prepared notifications")

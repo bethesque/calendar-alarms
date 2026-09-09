@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import logging
 import time
 from datetime import datetime, timedelta
@@ -23,34 +24,45 @@ logger = logging.getLogger(__name__)
 
 DATA_FILE = CALENDAR_DATA_DIRECTORY + "/calendar.json"
 
+@dataclass
+class NotificationFiles:
+    event_alarms_file: str | None = None
+    event_announcements_file: str | None = None
+    scheduled_announcements_file: str | None = None
 
 """
 Takes a list of CalenderDays and finds any alarms due within the given time window.
 """
 
-def play_notifications(announcements_file: str | None, alarms_file: str | None, scene: SceneProtocol):
+def play_notifications(notification_files: NotificationFiles, scene: SceneProtocol):
     mpd_settings = MpdSettings()
     snapcast_settings = SnapcastSettings()
     snapserver_manager = SnapserverManager(snapcast_settings)
     areas = snapserver_manager.connected_player_areas()
+    announcements_file = notification_files.event_announcements_file
+    scheduled_announcements_file = notification_files.scheduled_announcements_file
+    alarms_file = notification_files.event_alarms_file
+
 
     if announcements_file:
         snapserver_manager.set_volumes("tts")
 
     # Only announcement
-    if announcements_file and not alarms_file:
+    if announcements_file and not alarms_file and not scheduled_announcements_file:
         scene.around_announcement(lambda: _play_event_announcement(announcements_file, mpd_settings), areas)
         return
-
     # Announcement and/or alarm
     scene.prepare_for_alarm(areas)
+
     if announcements_file:
         _play_event_announcement(announcements_file, mpd_settings)
 
-    if announcements_file and alarms_file:
-        time.sleep(2)
+    if scheduled_announcements_file:
+        _play_event_announcement(announcements_file, mpd_settings)
 
     if alarms_file:
+        if announcements_file or scheduled_announcements_file:
+            time.sleep(2)
         snapserver_manager.set_volumes("alarm")
         _play_event_alarm(alarms_file, mpd_settings)
 
@@ -157,6 +169,15 @@ def test_alarm():
             "date_time": now.isoformat(),
             "timed_events": [
                 {
+                    "description": "#announce",
+                    "end_time": None,
+                    "owner": "Beth",
+                    "calendar_id": "id",
+                    "recurring": False,
+                    "start_time": now.isoformat(),
+                    "summary": "do an announcement"
+                },
+                {
                     "description": "#alarm",
                     "end_time": None,
                     "owner": "Beth",
@@ -176,23 +197,23 @@ def test_alarm():
 
 
 def check_for_notifications(base_time, window, calendar_days: list[CalendarDay], scene:SceneProtocol, event_notification_settings: EventNotificationSettings = EventNotificationSettings()):
-    announcements_file, alarm_audio_file = prepare_notification_files(base_time, window, calendar_days, event_notification_settings)
-    if announcements_file or alarm_audio_file:
-        play_notifications(announcements_file, alarm_audio_file, scene)
+    notification_files = prepare_notification_files(base_time, window, calendar_days, event_notification_settings)
+    if notification_files:
+        play_notifications(notification_files, scene)
 
 # Gathers what's due at base_time (calendar-driven notifications plus any due snoozes) and builds
 # their announcement/alarm audio files, without playing them. Used by the daemon's early wake-up
 # (homeaudio/vcal/notifications/daemon.py) so it can build audio ahead of a scheduled tick and play
 # right on time; check_for_notifications above uses it too, just followed immediately by playing.
-def prepare_notification_files(base_time, window, calendar_days: list[CalendarDay], event_notification_settings: EventNotificationSettings = EventNotificationSettings()) -> tuple[str | None, str | None]:
+def prepare_notification_files(base_time, window, calendar_days: list[CalendarDay], event_notification_settings: EventNotificationSettings = EventNotificationSettings()) -> NotificationFiles | None:
     event_notifications = get_event_notifications(base_time, window, calendar_days, event_notification_settings)
     event_notifications = event_notifications + due_snoozed_event_notifications(base_time)
 
-    return build_notification_files(event_notifications, base_time, event_notification_settings)
+    return _build_notification_files(event_notifications, base_time, event_notification_settings)
 
-def build_notification_files(event_notifications: list[EventNotification], base_time, event_notification_settings: EventNotificationSettings = EventNotificationSettings()) -> tuple[str | None, str | None]:
+def _build_notification_files(event_notifications: list[EventNotification], base_time, event_notification_settings: EventNotificationSettings = EventNotificationSettings()) -> NotificationFiles | None:
     if not event_notifications:
-        return None, None
+        return None
 
     LastPlayedState().save(event_notifications, base_time)
 
@@ -209,5 +230,5 @@ def build_notification_files(event_notifications: list[EventNotification], base_
     )
     alarm_audio_file = AlarmAudio(alarm_texts, event_notification_settings.alarms, base_time).build_alarm_file() if alarm_event_notifications else None
 
-    return announcements_file, alarm_audio_file
+    return NotificationFiles(event_alarms_file=alarm_audio_file, event_announcements_file=announcements_file)
 
