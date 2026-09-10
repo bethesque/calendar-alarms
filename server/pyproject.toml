@@ -57,7 +57,6 @@ cal-alarm-test = "vcal.alarms.cli:test_alarm"
 cal-alarm-check = "vcal.alarms.cli:check_alarms"
 
 cal-announce = "vcal.morning_announcements.cli:play_morning_announcements" # Morning summary announcement
-cal-announce-cached = "vcal.morning_announcements.cli:play_morning_announcements_cached" # Play the cached voice file
 
 cal-school-announce = "vcal.school_announcements.cli:play_school_announcements" # School events announcement
 

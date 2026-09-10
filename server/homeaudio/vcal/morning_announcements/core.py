@@ -1,24 +1,20 @@
 import logging
 import glob
-import os
 from datetime import datetime, timedelta
 from typing import Callable
 from homeaudio.audio.settings import MorningAnnouncementsSchedule, MorningAnnouncementsSettings, MpdSettings, SnapcastSettings
 from homeaudio.audio.tts_playback import play_tts_audio_file
-from homeaudio.vcal.cal.google_calendar import CalendarDay, Event, WeatherForecast, MissingCalendarDataException, CalendarSource, get_events_for_date
-from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file_daily_summary
-from homeaudio.audio.sound import mix_announcement_audio
-from homeaudio.audio.random_text import ListOptionsSource, select_option_pseudorandomly
+from homeaudio.vcal.cal.google_calendar import CalendarDay, Event, WeatherForecast, MissingCalendarDataException, CalendarSource, get_events_for_date, DATA_FILE
+from homeaudio.vcal.event_notifications.text_to_voice import gtts_tld, text_to_voice_file, TextToSpeechError
+from homeaudio.audio.sound import join_mp3s_to_wav, mix_announcement_audio
 from homeaudio.audio.select_item import select_item_by_date, select_option
 
-from homeaudio.vcal.event_notifications import BACKGROUND_MUSIC_DIRECTORY, OUTPUT_AUDIO_DIRECTORY
-from homeaudio.env import CACHE_DIRECTORY, CALENDAR_DATA_DIRECTORY
-
-MORNING_ANNOUNCEMENTS_AUDIO_FILE = f"{OUTPUT_AUDIO_DIRECTORY}/morning_announcements.wav"
-MORNING_ANNOUNCEMENTS_PRELUDE_CHOICES = "morning_announcements_prelude_choices.txt"
-SPEECH_FILE = CACHE_DIRECTORY + "/audio/morning_annoucements_speech.mp3"
+from homeaudio.vcal.event_notifications import BACKGROUND_MUSIC_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, POST_ANNOUNCEMENT_SILENCE
 
 logger = logging.getLogger(__name__)
+
+# gtts-cli  "An error occurred generating the morning announcements. Some of the notifications may have been missing. Please check the calendar for today's events." > audio_resources/morning_announcements_error_message.mp3
+ERROR_MESSAGE_AUDIO = "audio_resources/morning_announcements_error_message.mp3"
 
 class TextBuilder:
     def __init__(self, events: list[Event], settings: MorningAnnouncementsSettings = MorningAnnouncementsSettings()) -> None:
@@ -106,19 +102,35 @@ class BackgroundMusicSelector:
         return background_music_files
 
 
-class AudioFileBuilder:
-    def __init__(self, text_builder, bg_music_selector):
-        self.text_builder = text_builder
-        self.bg_music_selector = bg_music_selector
+def build_audio_file(sentences: list[str], music_file: str) -> str:
+    speech_file = f"{OUTPUT_AUDIO_DIRECTORY}/morning_announcements_{_datestamp()}.wav"
+    files = _collect_speech_files(sentences)
+    join_mp3s_to_wav(files + [POST_ANNOUNCEMENT_SILENCE], speech_file)
 
-    def build_audio_file(self):
-        speech_file = text_to_voice_file_daily_summary(self.text_builder.get_morning_announcements_text())
-        mix_announcement_audio(
-            speech_file=speech_file,
-            music_file=self.bg_music_selector.get_background_music_file(),
-            output_file=MORNING_ANNOUNCEMENTS_AUDIO_FILE
-        )
-        return MORNING_ANNOUNCEMENTS_AUDIO_FILE
+    mix_announcement_audio(
+        speech_file=speech_file,
+        music_file=music_file,
+        output_file=speech_file
+    )
+    return speech_file
+
+def _collect_speech_files(sentences: list[str]) -> list[str]:
+    tld = gtts_tld()
+
+    speech_files = []
+    error = False
+    for sentence in sentences:
+        try:
+            speech_files.append(text_to_voice_file(sentence, tld))
+        except TextToSpeechError:
+            if not error:
+                speech_files.append(ERROR_MESSAGE_AUDIO)
+                error = True
+    return speech_files
+
+def _datestamp() -> str:
+    now = datetime.now()
+    return f"{now.strftime('%y%m%d%H%M%S')}{now.microsecond // 1000:03d}"
 
 def _announcement_due(base_time: datetime, window: int, schedule: MorningAnnouncementsSchedule) -> bool:
     scheduled_time_of_day = schedule.weekdays if base_time.weekday() < 5 else schedule.weekends
@@ -137,7 +149,7 @@ def _create_audio_file_for_calendar_days(base_time: datetime, calendar_days: lis
 
     text_builder = TextBuilder(events, settings)
     bg_music_selector = BackgroundMusicSelector(base_time)
-    return AudioFileBuilder(text_builder, bg_music_selector).build_audio_file()
+    return build_audio_file(text_builder.get_morning_announcements_text(), bg_music_selector.get_background_music_file())
 
 """
 Called by the notifications daemon on every tick (homeaudio/vcal/notifications/core.py). Returns
@@ -163,7 +175,7 @@ def check_for_announcement(
 Top level entry point. Generate a summary of today's events, convert them to voice, and play them.
 """
 def play_morning_announcements(
-        calendar_file = os.path.join(CALENDAR_DATA_DIRECTORY, "calendar.json"),
+        calendar_file = DATA_FILE,
         base_time = datetime.now().astimezone(),
         settings: MorningAnnouncementsSettings = MorningAnnouncementsSettings(),
         before_announcement_hook: Callable | None = None,
@@ -171,10 +183,4 @@ def play_morning_announcements(
     ):
     calendar_days = CalendarSource(cache_file_path=calendar_file).load_data_from_file()
     output_file = _create_audio_file_for_calendar_days(base_time, calendar_days, settings)
-    play_morning_announcements_audio_file(output_file, SnapcastSettings(), MpdSettings(), before_announcement_hook, after_announcement_hook)
-
-"""
-Helper method to play the cached announcement speech audio file to avoid a round trip to the text-to-speech service.
-"""
-def play_morning_announcements_audio_file(audio_file, snapcast_settings: SnapcastSettings, mpd_settings: MpdSettings, before_announcement_hook=None, after_announcement_hook=None):
-    play_tts_audio_file(audio_file, snapcast_settings, mpd_settings, before_announcement_hook, after_announcement_hook)
+    play_tts_audio_file(output_file, SnapcastSettings(), MpdSettings(), before_announcement_hook, after_announcement_hook)

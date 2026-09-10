@@ -1,4 +1,5 @@
 from datetime import datetime, time
+import os
 
 import homeaudio.vcal.school_announcements.core as school_announcements_core
 from homeaudio.vcal.school_announcements.core import (
@@ -264,6 +265,8 @@ def test_collect_speech_files_uses_error_message_audio_in_place_of_first_failed_
 
     assert speech_files == [ERROR_MESSAGE_AUDIO, "speech2.mp3"]
 
+def test_error_message_audio_file_exists():
+    assert os.path.exists(ERROR_MESSAGE_AUDIO) is True
 
 def test_is_school_holiday_true_when_holiday_keyword_matches_case_insensitively():
     events = [

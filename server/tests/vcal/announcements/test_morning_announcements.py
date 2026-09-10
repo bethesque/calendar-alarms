@@ -1,4 +1,5 @@
 import sys
+import os
 from datetime import datetime, time as time_of_day
 from pathlib import Path
 from unittest.mock import Mock
@@ -9,14 +10,20 @@ import homeaudio.vcal.morning_announcements.core as morning_announcements_core
 from homeaudio.vcal.morning_announcements.core import (
     TextBuilder,
     _announcement_due,
+    _collect_speech_files,
     _create_audio_file_for_calendar_days,
     check_for_announcement,
     play_morning_announcements,
+    ERROR_MESSAGE_AUDIO,
 )
 from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException
+from homeaudio.vcal.event_notifications.text_to_voice import TextToSpeechError
 from homeaudio.audio.settings import MorningAnnouncementsSchedule, MorningAnnouncementsSettings
 
 select_option_call_count = 0
+
+def test_error_message_audio_file_exists():
+    assert os.path.exists(ERROR_MESSAGE_AUDIO) is True
 
 def fake_select_option(opts):
     global select_option_call_count
@@ -131,21 +138,39 @@ def test_check_for_announcement_builds_the_audio_file_when_due(monkeypatch):
     assert seen["args"] == (MONDAY_7_17, "calendar-days", settings)
 
 
-class _FakeAudioFileBuilder:
-    def __init__(self, text_builder, bg_music_selector):
-        self.text_builder = text_builder
-        self.bg_music_selector = bg_music_selector
+def _fake_settings():
+    settings = Mock()
+    settings.enabled_prelude_options = []
+    settings.unused_facts = []
+    settings.save = Mock()
+    return settings
 
-    def build_audio_file(self):
-        return "built.wav"
+
+class _FakeBackgroundMusicSelector:
+    def __init__(self, base_time):
+        self.base_time = base_time
+
+    def get_background_music_file(self):
+        return "music.mp3"
 
 
 def test_create_audio_file_for_calendar_days_builds_the_audio_file(monkeypatch):
     events = [Event(owner="cal", summary="Meeting", description="", calendar_id="id")]
     monkeypatch.setattr(morning_announcements_core, "get_events_for_date", lambda calendar_days, base_time: events)
-    monkeypatch.setattr(morning_announcements_core, "AudioFileBuilder", _FakeAudioFileBuilder)
+    monkeypatch.setattr(morning_announcements_core, "BackgroundMusicSelector", _FakeBackgroundMusicSelector)
 
-    assert _create_audio_file_for_calendar_days(MONDAY_7_17, [], MorningAnnouncementsSettings()) == "built.wav"
+    seen = {}
+
+    def fake_build_audio_file(sentences, music_file):
+        seen["args"] = (sentences, music_file)
+        return "built.wav"
+
+    monkeypatch.setattr(morning_announcements_core, "build_audio_file", fake_build_audio_file)
+
+    assert _create_audio_file_for_calendar_days(MONDAY_7_17, [], _fake_settings()) == "built.wav"
+    sentences, music_file = seen["args"]
+    assert music_file == "music.mp3"
+    assert "Meeting." in sentences
 
 
 def test_create_audio_file_for_calendar_days_proceeds_with_no_events_when_calendar_data_missing(monkeypatch):
@@ -153,20 +178,20 @@ def test_create_audio_file_for_calendar_days_proceeds_with_no_events_when_calend
         raise MissingCalendarDataException("no data")
 
     monkeypatch.setattr(morning_announcements_core, "get_events_for_date", raise_missing)
+    monkeypatch.setattr(morning_announcements_core, "BackgroundMusicSelector", _FakeBackgroundMusicSelector)
 
     seen = {}
 
-    class RecordingAudioFileBuilder:
-        def __init__(self, text_builder, bg_music_selector):
-            seen["events"] = text_builder.events
+    def fake_build_audio_file(sentences, music_file):
+        seen["args"] = (sentences, music_file)
+        return "fallback.wav"
 
-        def build_audio_file(self):
-            return "fallback.wav"
+    monkeypatch.setattr(morning_announcements_core, "build_audio_file", fake_build_audio_file)
 
-    monkeypatch.setattr(morning_announcements_core, "AudioFileBuilder", RecordingAudioFileBuilder)
-
-    assert _create_audio_file_for_calendar_days(MONDAY_7_17, [], MorningAnnouncementsSettings()) == "fallback.wav"
-    assert seen["events"] == []
+    assert _create_audio_file_for_calendar_days(MONDAY_7_17, [], _fake_settings()) == "fallback.wav"
+    sentences, music_file = seen["args"]
+    assert music_file == "music.mp3"
+    assert "There are no events scheduled for today." in sentences
 
 
 class _FakeCalendarSource:
@@ -193,7 +218,7 @@ def test_play_morning_announcements_builds_and_plays_the_audio_file(monkeypatch)
     play_calls = []
     monkeypatch.setattr(
         morning_announcements_core,
-        "play_morning_announcements_audio_file",
+        "play_tts_audio_file",
         lambda audio_file, snapcast_settings, mpd_settings, before_hook, after_hook: play_calls.append((audio_file, before_hook, after_hook)),
     )
 
@@ -204,3 +229,18 @@ def test_play_morning_announcements_builds_and_plays_the_audio_file(monkeypatch)
 
     assert seen["args"] == (MONDAY_7_17, "calendar-days", settings)
     assert play_calls == [("built.wav", before_hook, after_hook)]
+
+
+def test_collect_speech_files_uses_error_message_audio_in_place_of_first_failed_sentence(monkeypatch):
+    monkeypatch.setattr(morning_announcements_core, "gtts_tld", lambda: "com")
+
+    def fake_text_to_voice_file(sentence, tld):
+        if sentence in ("Sentence one.", "Sentence three."):
+            raise TextToSpeechError(sentence)
+        return "speech2.mp3"
+
+    monkeypatch.setattr(morning_announcements_core, "text_to_voice_file", fake_text_to_voice_file)
+
+    speech_files = _collect_speech_files(["Sentence one.", "Sentence two.", "Sentence three."])
+
+    assert speech_files == [ERROR_MESSAGE_AUDIO, "speech2.mp3"]

@@ -13,6 +13,7 @@ from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOU
 from homeaudio.env import CALENDAR_DATA_DIRECTORY
 
 CHANCE_OF_I_AM_NOT_THE_BOSS = 1/5
+# gtts-cli  "An error occurred generating the school announcements. Some of the notifications may have been missing. Please check the calendar for today's events." > audio_resources/school_announcements_error_message.mp3
 ERROR_MESSAGE_AUDIO = "audio_resources/school_announcements_error_message.mp3"
 
 logger = logging.getLogger(__name__)
@@ -72,7 +73,7 @@ def build_audio_file(sentences: list[str]) -> str:
     join_mp3s_to_wav([PRE_ANNOUNCEMENT_BELL] + speech_files + [POST_ANNOUNCEMENT_SILENCE], output_file)
     return output_file
 
-def _collect_speech_files(sentences):
+def _collect_speech_files(sentences: list[str]) -> list[str]:
     tld = gtts_tld()
 
     speech_files = []
