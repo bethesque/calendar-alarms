@@ -99,6 +99,10 @@ Single-file FastAPI app (`client/index.py`) exposing `/audio/toggle` and `/audio
 
 # Guidelines
 
+Do not rename any functions unless instructed to.
+
 # Testing
 
 Use pytest, not unittest.
+
+The tests for any file should be under the module path with "tests/" prepended to the module path and "test_" at the start of the base name of the file. eg. foo/bar.py should have a test at tests/foo/test_bar.py. The exception to this is where there is a pytest conflict due to test file names being the same (eg. core_test.py ) in which case an appropriate differentiator may be included in the file name.
