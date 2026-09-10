@@ -103,16 +103,19 @@ class BackgroundMusicSelector:
 
 
 def build_audio_file(sentences: list[str], music_file: str) -> str:
-    speech_file = f"{OUTPUT_AUDIO_DIRECTORY}/morning_announcements_{_datestamp()}.wav"
-    files = _collect_speech_files(sentences)
-    join_mp3s_to_wav(files + [POST_ANNOUNCEMENT_SILENCE], speech_file)
+    datestr = _datestamp()
+    speech_files = _collect_speech_files(sentences)
+    joined_speech_file = f"{OUTPUT_AUDIO_DIRECTORY}/morning_announcements_speech_{datestr}.wav"
+    join_mp3s_to_wav(speech_files + [POST_ANNOUNCEMENT_SILENCE], joined_speech_file)
+
+    output_file = f"{OUTPUT_AUDIO_DIRECTORY}/morning_announcements_{datestr}.wav"
 
     mix_announcement_audio(
-        speech_file=speech_file,
+        speech_file=joined_speech_file,
         music_file=music_file,
-        output_file=speech_file
+        output_file=output_file
     )
-    return speech_file
+    return output_file
 
 def _collect_speech_files(sentences: list[str]) -> list[str]:
     tld = gtts_tld()
