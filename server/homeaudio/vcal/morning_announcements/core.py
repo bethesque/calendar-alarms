@@ -163,10 +163,11 @@ def check_for_announcement(
     ) -> str | None:
 
     if not settings.enabled:
+        logger.debug(f"Morning announcements disabled")
         return None
 
     if not _announcement_due(base_time, window, settings.schedule):
-        logger.debug(f"Morning announcements not due at {base_time}")
+        logger.debug(f"Morning announcements not due")
         return None
 
     return _create_audio_file_for_calendar_days(base_time, calendar_days, settings)
@@ -181,6 +182,7 @@ def play_morning_announcements(
         before_announcement_hook: Callable | None = None,
         after_announcement_hook: Callable | None = None
     ):
+    logger.info(f"Loading calendar data from {calendar_file}")
     calendar_days = CalendarSource(cache_file_path=calendar_file).load_data_from_file()
     output_file = _create_audio_file_for_calendar_days(base_time, calendar_days, settings)
     play_tts_audio_file(output_file, SnapcastSettings(), MpdSettings(), before_announcement_hook, after_announcement_hook)

@@ -125,10 +125,11 @@ def check_for_announcement(
     ) -> str | None:
 
     if not settings.enabled:
+        logger.debug(f"School announcements disabled")
         return None
 
     if not _announcement_due(base_time, window, settings.schedule):
-        logger.debug(f"School announcements not due {base_time} is not {settings.schedule.weekdays}")
+        logger.debug(f"School announcements not due")
         return None
 
     return _create_audio_file_for_calendar_days(base_time, calendar_days, settings)

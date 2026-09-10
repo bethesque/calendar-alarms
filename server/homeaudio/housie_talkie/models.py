@@ -56,7 +56,7 @@ class PlayableRequestBuilder:
         )
 
     def build_playable_request_for_voice_announcement(self, request: VoiceAnnouncementRequest) -> PlayableRequest:
-        announcement_file = OUTPUT_AUDIO_DIRECTORY +  f"/{Path(request.audio_file).stem}_" + self._datestamp() + ".wav"
+        announcement_file = f"{OUTPUT_AUDIO_DIRECTORY}/{Path(request.audio_file).stem}_{self._datestamp()}.wav"
         mp3_files = self.get_pre_announcement_files(request.sound_effect) + [request.audio_file, POST_ANNOUNCEMENT_SILENCE]
         join_mixed_files_to_wav(mp3_files, announcement_file)
         return PlayableRequest(
@@ -68,7 +68,7 @@ class PlayableRequestBuilder:
 
     def _build_one_off_announcement_file(self, message: str, sound_effect: str | None = None):
         speech_file = text_to_voice_file(message)
-        announcement_file = OUTPUT_AUDIO_DIRECTORY + "/tts_" + self._datestamp() + ".wav"
+        announcement_file = f"{OUTPUT_AUDIO_DIRECTORY}/tts_{self._datestamp()}.wav"
         mp3_files = self.get_pre_announcement_files(sound_effect) + [speech_file, POST_ANNOUNCEMENT_SILENCE]
         join_mp3s_to_wav(mp3_files, announcement_file)
         return announcement_file

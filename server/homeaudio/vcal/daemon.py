@@ -74,7 +74,9 @@ def check_for_notifications(base_time: datetime) -> NotificationFiles | None:
 
     try:
         logger.info("Checking for alarms at %s", base_time)
-        calendar_data = CalendarSource().load_data_from_file()
+        calendar_source = CalendarSource()
+        logger.info(f"Loading calendar data from {calendar_source.cache_file_path}")
+        calendar_data = calendar_source.load_data_from_file()
         return prepare_notification_files(base_time, CHECK_WINDOW_MINUTES, calendar_data)
 
     except Exception:
@@ -125,15 +127,15 @@ class AlarmCheckDaemon:
         check_for_and_play_notifications(datetime.now().astimezone())  # startup catch-up, don't wait for the first boundary
 
         while not self._stop_event.is_set():
-            target = next_boundary(datetime.now().astimezone())
-            prepare_at = target - timedelta(seconds=EARLY_WAKE_SECONDS)
+            target_datetime = next_boundary(datetime.now().astimezone())
+            prepare_at = target_datetime - timedelta(seconds=EARLY_WAKE_SECONDS)
 
             if self._interruptible_wait_until(prepare_at):
                 break
 
-            notification_files = check_for_notifications(target)
+            notification_files = check_for_notifications(target_datetime)
 
-            if self._interruptible_wait_until(target):
+            if self._interruptible_wait_until(target_datetime):
                 break
 
             if notification_files is not None:

@@ -1,9 +1,10 @@
+from pathlib import Path
 
-AUDIO_DIRECTORY = "audio_resources"
-GENTLE_ALARMS_DIRECTORY = f"{AUDIO_DIRECTORY}/alarms_gentle"
-AGGRESSIVE_ALARMS_DIRECTORY = f"{AUDIO_DIRECTORY}/alarms_aggressive"
-BACKGROUND_MUSIC_DIRECTORY = f"{AUDIO_DIRECTORY}/background_music"
-OUTPUT_AUDIO_DIRECTORY = "/tmp"
+AUDIO_DIRECTORY = Path("audio_resources").absolute()
+GENTLE_ALARMS_DIRECTORY = Path(f"{AUDIO_DIRECTORY}/alarms_gentle").absolute()
+AGGRESSIVE_ALARMS_DIRECTORY = Path(f"{AUDIO_DIRECTORY}/alarms_aggressive").absolute()
+BACKGROUND_MUSIC_DIRECTORY = Path(f"{AUDIO_DIRECTORY}/background_music").absolute()
+OUTPUT_AUDIO_DIRECTORY = Path("/tmp") # Do not resolve this one or Mac gets confused
 SAMPLE_RATE = 44100
 
 # ffmpeg -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 -t 0.25 -q:a 9 -acodec libmp3lame silence.mp3

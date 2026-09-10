@@ -31,7 +31,7 @@ Requires `mpd`, `mpc`, `snapcast`, `ffmpeg` installed locally (see `server/READM
 
 Entry points (defined in `server/pyproject.toml`, callable after `pip install -e .`):
 - `cal-alarm-check` / `cal-alarm-stop` / `cal-alarm-test` / `play-test-file`
-- `cal-announce` / `cal-announce-cached`
+- `cal-announce`
 - `cal-data-refresh`
 
 Run the HTTP admin server locally: `python index.py` (from `server/`, reads `config/uvicorn.yaml`).

@@ -11,7 +11,6 @@ from homeaudio.audio.settings import MorningAnnouncementsSettings, SchoolAnnounc
 
 from homeaudio.audio.snapserver import Snapserver
 from homeaudio.vcal.event_notifications.snooze import LastPlayedState, SnoozeState
-from homeaudio.env import CALENDAR_DATA_DIRECTORY
 from homeaudio.vcal.school_announcements.core import check_for_announcement as check_for_school_announcements
 from homeaudio.vcal.morning_announcements.core import check_for_announcement as check_for_morning_announcements
 from homeaudio.vcal.event_notifications.core import check_for_event_notifications as check_for_event_notifications
@@ -70,7 +69,7 @@ def snooze_alarm(after_alarm_hook=None):
 
 def _build_one_off_announcement_file(message: str):
     speech_file = text_to_voice_file(message)
-    announcement_file = OUTPUT_AUDIO_DIRECTORY + "/tts_" + _datestamp() + ".wav"
+    announcement_file = f"{OUTPUT_AUDIO_DIRECTORY}/tts_{_datestamp()}.wav"
     join_mp3s_to_wav([speech_file, POST_ANNOUNCEMENT_SILENCE], announcement_file)
     return announcement_file
 

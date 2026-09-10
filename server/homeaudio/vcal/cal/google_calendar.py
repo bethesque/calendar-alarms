@@ -420,6 +420,3 @@ class CalendarSource:
         with open(self.cache_file_path, "w") as f:
             f.write(data_json)
 
-    def cache_file_exists(self):
-        return os.path.exists(self.cache_file_path)
-

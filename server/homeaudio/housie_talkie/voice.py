@@ -28,5 +28,5 @@ def _normalize_audio_file_to_match_tts_volume(audio_file):
 
 def _normalize_audio_file_path(audio_file):
     path = Path(audio_file)
-    return OUTPUT_AUDIO_DIRECTORY + "/" + path.stem + "_normalized" + path.suffix
+    return f"{OUTPUT_AUDIO_DIRECTORY}/{path.stem}_normalized{path.suffix}"
 

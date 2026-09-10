@@ -20,10 +20,10 @@ class AlarmAudio:
 
 
     def build_alarm_file(self):
-        joined_announcement_file = OUTPUT_AUDIO_DIRECTORY + "/alarm.wav"
+        joined_announcement_file = f"{OUTPUT_AUDIO_DIRECTORY}/alarm.wav"
         join_mp3s_to_wav(self._announcement_files_for_events(), joined_announcement_file)
 
-        gentle_audio_file = OUTPUT_AUDIO_DIRECTORY + "/alarm_mixed.wav"
+        gentle_audio_file = f"{OUTPUT_AUDIO_DIRECTORY}/alarm_mixed.wav"
 
         alarm_file = self._get_alarm_file()
 
@@ -39,7 +39,7 @@ class AlarmAudio:
         if self.alarm_settings.aggressive_alarm_loops > 0:
             loud_noise_warning_file = text_to_voice_file("Warning - an aggressively loud noise is about to be played to get your attention.")
 
-            aggressive_audio_file = OUTPUT_AUDIO_DIRECTORY + "/alarm_aggressive.wav"
+            aggressive_audio_file = f"{OUTPUT_AUDIO_DIRECTORY}/alarm_aggressive.wav"
 
             build_aggressive_alarm_audio(
                 announcement_file=joined_announcement_file,
@@ -53,7 +53,7 @@ class AlarmAudio:
             files_to_loop.append(aggressive_audio_file)
 
         all_files = files_to_loop * self.alarm_settings.full_loops
-        alarm_file = OUTPUT_AUDIO_DIRECTORY + "/alarm.wav"
+        alarm_file = f"{OUTPUT_AUDIO_DIRECTORY}/alarm.wav"
 
         join_mixed_files_to_wav(all_files, alarm_file)
 
@@ -98,7 +98,7 @@ class AnnouncementAudio:
         self.sound_effect_selector = sound_effect_selector
 
     def build_announcement_file(self):
-        joined_announcement_file = OUTPUT_AUDIO_DIRECTORY + "/announcement.wav"
+        joined_announcement_file = f"{OUTPUT_AUDIO_DIRECTORY}/announcement.wav"
         files = self.preannouncement_files() + self._announcement_files_for_events() + [SILENCE_HALF_SEC]
         join_mp3s_to_wav(files, joined_announcement_file)
 
