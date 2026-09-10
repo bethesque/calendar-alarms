@@ -13,19 +13,28 @@ from homeaudio.vcal.school_announcements.core import (
     get_weather_forecast,
     _announcement_due,
     _create_audio_file_for_calendar_days,
+    _collect_speech_files,
     check_for_announcement,
     play_school_announcements,
+    ERROR_MESSAGE_AUDIO,
 )
 from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException
+from homeaudio.vcal.event_notifications.text_to_voice import TextToSpeechError
 from homeaudio.audio.settings import SchoolAnnouncementsSchedule, SchoolAnnouncementsSettings
 from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, POST_ANNOUNCEMENT_SILENCE
 
 DEFAULT_HOLIDAY_KEYWORDS = ["no school", "school holidays"]
 DEFAULT_SCHOOL_EVENT_KEYWORDS = ["school"]
 
+def rand_true():
+    return 0
+
+def rand_false():
+    return 1
+
 
 def test_build_text_with_no_school_events():
-    assert build_text([]) == ["It's time to leave for school."]
+    assert build_text([], rand=rand_false) == ["It's time to leave for school.", "Have a nice day."]
 
 
 def test_build_text_lists_school_events():
@@ -33,11 +42,25 @@ def test_build_text_lists_school_events():
         Event(owner="cal", summary="SCHOOL Assembly", description="", calendar_id="id"),
     ]
 
-    assert build_text(school_events) == [
+    assert build_text(school_events, rand=rand_false) == [
         "It's time to leave for school.",
         "Today's school events are:",
         "SCHOOL Assembly.",
         "Have a nice day.",
+    ]
+
+def test_build_text_lists_school_events_with_if_you_want():
+    school_events = [
+        Event(owner="cal", summary="SCHOOL Assembly", description="", calendar_id="id"),
+    ]
+
+    assert build_text(school_events, rand=rand_true) == [
+        "It's time to leave for school.",
+        "Today's school events are:",
+        "SCHOOL Assembly.",
+        "Have a nice day.",
+        "If you want.",
+        "I'm not the boss of you.",
     ]
 
 
@@ -47,7 +70,7 @@ def test_build_text_preserves_event_order_for_multiple_events():
         Event(owner="cal", summary="School excursion", description="", calendar_id="id"),
     ]
 
-    assert build_text(school_events) == [
+    assert build_text(school_events, rand=rand_false) == [
         "It's time to leave for school.",
         "Today's school events are:",
         "School drop off.",
@@ -59,39 +82,40 @@ def test_build_text_preserves_event_order_for_multiple_events():
 def test_build_text_adds_umbrella_reminder_when_forecast_mentions_rain():
     weather_forecast = WeatherForecast(owner="cal", summary="Rain clearing later", description="", calendar_id="id")
 
-    assert build_text([], weather_forecast) == [
+    assert build_text([], weather_forecast, rand=rand_false) == [
         "It's time to leave for school.",
         "You may wish to pack an umbrella as there is rain forecast.",
+        "Have a nice day.",
     ]
 
 
 def test_build_text_matches_rain_case_insensitively():
     weather_forecast = WeatherForecast(owner="cal", summary="Possible RAIN", description="", calendar_id="id")
 
-    assert "You may wish to pack an umbrella as there is rain forecast." in build_text([], weather_forecast)
+    assert "You may wish to pack an umbrella as there is rain forecast." in build_text([], weather_forecast, rand=rand_false)
 
 
 def test_build_text_adds_umbrella_reminder_when_forecast_mentions_showers():
     weather_forecast = WeatherForecast(owner="cal", summary="Scattered showers", description="", calendar_id="id")
 
-    assert "You may wish to pack an umbrella as there is rain forecast." in build_text([], weather_forecast)
+    assert "You may wish to pack an umbrella as there is rain forecast." in build_text([], weather_forecast, rand=rand_false)
 
 
 def test_build_text_omits_umbrella_reminder_when_forecast_has_no_rain():
     weather_forecast = WeatherForecast(owner="cal", summary="Sunny", description="", calendar_id="id")
 
-    assert build_text([], weather_forecast) == ["It's time to leave for school."]
+    assert build_text([], weather_forecast, rand=rand_false) == ["It's time to leave for school.", "Have a nice day."]
 
 
 def test_build_text_omits_umbrella_reminder_when_no_forecast():
-    assert build_text([], None) == ["It's time to leave for school."]
+    assert build_text([], None, rand=rand_false) == ["It's time to leave for school.", "Have a nice day."]
 
 
 def test_build_text_puts_umbrella_reminder_before_school_events():
     school_events = [Event(owner="cal", summary="School excursion", description="", calendar_id="id")]
     weather_forecast = WeatherForecast(owner="cal", summary="Heavy rain", description="", calendar_id="id")
 
-    assert build_text(school_events, weather_forecast) == [
+    assert build_text(school_events, weather_forecast, rand=rand_false) == [
         "It's time to leave for school.",
         "You may wish to pack an umbrella as there is rain forecast.",
         "Today's school events are:",
@@ -164,6 +188,24 @@ def test_build_audio_file_joins_bell_and_speech_files(monkeypatch):
     assert output_file == joined["output_file"]
     assert output_file.startswith(f"{OUTPUT_AUDIO_DIRECTORY}/school_announcement_")
     assert output_file.endswith(".wav")
+
+
+def test_collect_speech_files_uses_error_message_audio_in_place_of_first_failed_sentence(monkeypatch):
+    monkeypatch.setattr("homeaudio.vcal.school_announcements.core.gtts_tld", lambda: "com")
+
+    def fake_text_to_voice_file(sentence, tld):
+        if sentence in ("Sentence one.", "Sentence three."):
+            raise TextToSpeechError(sentence)
+        return "speech2.mp3"
+
+    monkeypatch.setattr(
+        "homeaudio.vcal.school_announcements.core.text_to_voice_file",
+        fake_text_to_voice_file,
+    )
+
+    speech_files = _collect_speech_files(["Sentence one.", "Sentence two.", "Sentence three."])
+
+    assert speech_files == [ERROR_MESSAGE_AUDIO, "speech2.mp3"]
 
 
 def test_is_school_holiday_true_when_holiday_keyword_matches_case_insensitively():
@@ -276,6 +318,11 @@ def test_create_audio_file_for_calendar_days_returns_none_when_school_holiday(mo
 def test_create_audio_file_for_calendar_days_builds_audio_when_not_a_holiday(monkeypatch):
     events = [Event(owner="cal", summary="School excursion", description="", calendar_id="id")]
     monkeypatch.setattr(school_announcements_core, "get_events_for_date", lambda calendar_days, base_time: events)
+    monkeypatch.setattr(
+        school_announcements_core,
+        "build_text",
+        lambda school_events, weather_forecast=None: build_text(school_events, weather_forecast, rand=rand_false),
+    )
 
     seen_sentences = {}
 
@@ -288,7 +335,7 @@ def test_create_audio_file_for_calendar_days_builds_audio_when_not_a_holiday(mon
     settings = SchoolAnnouncementsSettings(holiday_keywords=DEFAULT_HOLIDAY_KEYWORDS, school_event_keywords=DEFAULT_SCHOOL_EVENT_KEYWORDS)
 
     assert _create_audio_file_for_calendar_days(MONDAY_8_30, [], settings) == "built.wav"
-    assert seen_sentences["sentences"] == build_text(events)
+    assert seen_sentences["sentences"] == build_text(events, rand=rand_false)
 
 
 def test_create_audio_file_for_calendar_days_falls_back_when_calendar_data_missing(monkeypatch):

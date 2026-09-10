@@ -1,16 +1,19 @@
 import logging
 import os
 import time as time_module
+import random
 from datetime import datetime, time, timedelta
 from typing import Callable
 from homeaudio.audio.settings import SchoolAnnouncementsSchedule, SchoolAnnouncementsSettings, MpdSettings, SnapcastSettings
 from homeaudio.audio.tts_playback import play_tts_audio_file
 from homeaudio.audio.sound import join_mp3s_to_wav
 from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException, CalendarSource, get_events_for_date, CalendarDay
-from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file, gtts_tld
+from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file, gtts_tld, TextToSpeechError
 from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, POST_ANNOUNCEMENT_SILENCE
 from homeaudio.env import CALENDAR_DATA_DIRECTORY
 
+CHANCE_OF_I_AM_NOT_THE_BOSS = 1/5
+ERROR_MESSAGE_AUDIO = "audio_resources/school_announcements_error_message.mp3"
 
 logger = logging.getLogger(__name__)
 
@@ -35,10 +38,11 @@ def get_school_events(events: list[Event], school_event_keywords: list[str]) -> 
 def get_weather_forecast(events: list[Event]) -> WeatherForecast | None:
     return next((event for event in events if isinstance(event, WeatherForecast)), None)
 
+
 """
 Build a list of sentences to speak aloud for the school announcement.
 """
-def build_text(school_events: list[Event], weather_forecast: WeatherForecast | None = None) -> list[str]:
+def build_text(school_events: list[Event], weather_forecast: WeatherForecast | None = None, rand = random.random) -> list[str]:
     sentences = ["It's time to leave for school."]
 
     if weather_forecast and any(keyword in weather_forecast.summary.lower() for keyword in ("rain", "showers")):
@@ -47,7 +51,12 @@ def build_text(school_events: list[Event], weather_forecast: WeatherForecast | N
     if school_events:
         sentences.append("Today's school events are:")
         sentences.extend(event.summary + "." for event in school_events if event.summary)
-        sentences.append("Have a nice day.")
+
+    sentences.append("Have a nice day.")
+
+    if rand() < CHANCE_OF_I_AM_NOT_THE_BOSS:
+        sentences.append("If you want.")
+        sentences.append("I'm not the boss of you.")
 
     logger.info(f"Generated school announcement: {" ".join(sentences)}")
     return sentences
@@ -57,11 +66,25 @@ def _datestamp() -> str:
     return f"{now.strftime('%y%m%d%H%M%S')}{now.microsecond // 1000:03d}"
 
 def build_audio_file(sentences: list[str]) -> str:
-    tld = gtts_tld()
-    speech_files = [text_to_voice_file(sentence, tld) for sentence in sentences]
+    speech_files = _collect_speech_files(sentences)
+
     output_file = f"{OUTPUT_AUDIO_DIRECTORY}/school_announcement_{_datestamp()}.wav"
     join_mp3s_to_wav([PRE_ANNOUNCEMENT_BELL] + speech_files + [POST_ANNOUNCEMENT_SILENCE], output_file)
     return output_file
+
+def _collect_speech_files(sentences):
+    tld = gtts_tld()
+
+    speech_files = []
+    error = False
+    for sentence in sentences:
+        try:
+            speech_files.append(text_to_voice_file(sentence, tld))
+        except TextToSpeechError:
+            if not error:
+                speech_files.append(ERROR_MESSAGE_AUDIO)
+                error = True
+    return speech_files
 
 def _missing_calendar_data_response():
     return build_audio_file(["It's time to leave for school.","There was no calendar data found for today's date.", "You may need to fix the authentication."])

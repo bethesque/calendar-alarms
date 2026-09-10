@@ -1,15 +1,23 @@
 import hashlib
 import os
 import logging
-from gtts import gTTS
+import time
+from gtts import gTTS, gTTSError
 from homeaudio.env import CACHE_DIRECTORY, GOOGLE_TRANSLATE_LANG, DEFAULT_GOOGLE_TRANSLATE_TLD
 from homeaudio.audio.sound import join_mp3s_to_wav
 
-DEFAULT_ANNOUCEMENT_FILE = "audio/default_announcement.mp3"
+DEFAULT_ANNOUCEMENT_FILE = "audio_resources/default_announcement.mp3"
 AUDIO_CACHE_DIR = os.path.join(CACHE_DIRECTORY, "audio")
 MORNING_ANNOUNCEMENT_FILE = "/tmp/morning_announcement.wav"
+TTS_RETRY_DELAY_SECONDS = 2
+TTS_MAX_ATTEMPTS = 3
 
 logger = logging.getLogger(__name__)
+
+
+class TextToSpeechError(Exception):
+    """Raised when TTS generation fails after all retry attempts."""
+
 
 """
 Converts text to a voice file and saves it to the cache directory.
@@ -31,23 +39,29 @@ def text_to_voice_file(text, tld: str| None = None, word_limit=1000, audio_cache
         return audio_file_path
 
     tmp_file_path = audio_file_path + ".tmp"
-    try:
-        logger.debug("Generating TTS for text: %s, saving to: %s", text_to_say, audio_file_path)
-        tts = gTTS(text_to_say, timeout=5, lang=GOOGLE_TRANSLATE_LANG, tld=tld)
+    max_attempts = TTS_MAX_ATTEMPTS
+    last_error = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            logger.debug("Generating TTS for text: %s, saving to: %s (attempt %d/%d)", text_to_say, audio_file_path, attempt, max_attempts)
+            tts = gTTS(text_to_say, timeout=5, lang=GOOGLE_TRANSLATE_LANG, tld=tld)
 
-        # Ensure the cache directory exists
-        os.makedirs(os.path.dirname(audio_file_path), exist_ok=True)
-        tts.save(tmp_file_path)
-        if os.path.getsize(tmp_file_path) == 0:
-            raise ValueError("gTTS produced an empty file")
-        os.replace(tmp_file_path, audio_file_path)
-    except Exception as e:
-        logger.error(f"Error generating TTS for text: {text_to_say}. Error: {e}")
-        if os.path.exists(tmp_file_path):
-            os.remove(tmp_file_path)
-        return DEFAULT_ANNOUCEMENT_FILE
+            # Ensure the cache directory exists
+            os.makedirs(os.path.dirname(audio_file_path), exist_ok=True)
+            tts.save(tmp_file_path)
+            if os.path.getsize(tmp_file_path) == 0:
+                raise ValueError("gTTS produced an empty file")
+            os.replace(tmp_file_path, audio_file_path)
+            return audio_file_path
+        except gTTSError as e:
+            last_error = e
+            logger.error(f"Error generating TTS for text: {text_to_say} (attempt {attempt}/{max_attempts}). Error: {e}")
+            if os.path.exists(tmp_file_path):
+                os.remove(tmp_file_path)
+            if attempt < max_attempts:
+                time.sleep(TTS_RETRY_DELAY_SECONDS)
 
-    return audio_file_path
+    raise TextToSpeechError(f"Failed to generate TTS after {max_attempts} attempts for text: {text_to_say!r}") from last_error
 
 def text_to_voice_file_daily_summary(text: list[str], cache_directory=AUDIO_CACHE_DIR):
 
