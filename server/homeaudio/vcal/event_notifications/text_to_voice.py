@@ -53,7 +53,7 @@ def text_to_voice_file(text, tld: str| None = None, word_limit=1000, audio_cache
                 raise ValueError("gTTS produced an empty file")
             os.replace(tmp_file_path, audio_file_path)
             return audio_file_path
-        except gTTSError as e:
+        except (gTTSError, ValueError, ConnectionError) as e:
             last_error = e
             logger.error(f"Error generating TTS for text: {text_to_say} (attempt {attempt}/{max_attempts}). Error: {e}")
             if os.path.exists(tmp_file_path):
