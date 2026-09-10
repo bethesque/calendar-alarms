@@ -25,20 +25,26 @@ def text_to_voice_file(text, tld: str| None = None, word_limit=1000, audio_cache
     tld = tld or gtts_tld()
     logger.debug(f"Using tld '{tld}' for gTTS")
     audio_file_path = get_file_path_for_text(text_to_say, tld, audio_cache_directory)
-    # if the file already exists, return it
-    if os.path.exists(audio_file_path):
+    # if the file already exists and isn't a leftover empty/corrupt write, return it
+    if os.path.exists(audio_file_path) and os.path.getsize(audio_file_path) > 0:
         logger.debug("Audio file already exists for text: %s, returning existing file: %s", text_to_say, audio_file_path)
         return audio_file_path
 
+    tmp_file_path = audio_file_path + ".tmp"
     try:
         logger.debug("Generating TTS for text: %s, saving to: %s", text_to_say, audio_file_path)
         tts = gTTS(text_to_say, timeout=5, lang=GOOGLE_TRANSLATE_LANG, tld=tld)
 
         # Ensure the cache directory exists
         os.makedirs(os.path.dirname(audio_file_path), exist_ok=True)
-        tts.save(audio_file_path)
+        tts.save(tmp_file_path)
+        if os.path.getsize(tmp_file_path) == 0:
+            raise ValueError("gTTS produced an empty file")
+        os.replace(tmp_file_path, audio_file_path)
     except Exception as e:
         logger.error(f"Error generating TTS for text: {text_to_say}. Error: {e}")
+        if os.path.exists(tmp_file_path):
+            os.remove(tmp_file_path)
         return DEFAULT_ANNOUCEMENT_FILE
 
     return audio_file_path
