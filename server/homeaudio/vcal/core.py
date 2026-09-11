@@ -83,7 +83,7 @@ def replay_last_notification(mpd_settings: MpdSettings = MpdSettings()):
         mpd.play()
 
 # TODO mute Music Assistant also
-def mute_alarm_for_area_of_player(player, snapcast_settings: SnapcastSettings = SnapcastSettings()):
+def mute_alarm_for_area_of_player(player, snapcast_settings: SnapcastSettings):
     area = snapcast_settings.snapclient_settings(player).area
     if area:
         names = [ snapclient.name for snapclient in snapcast_settings.snapclients_for_area(area)]

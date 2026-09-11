@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 import threading
+from queue import Queue
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import FileResponse
 from fastapi.templating import Jinja2Templates
@@ -10,7 +11,7 @@ from homeaudio.audio.scene import scene_for_env
 from homeaudio.vcal.core import stop_alarm, test_alarm, mute_alarm_for_area_of_player, replay_last_notification, snooze_alarm
 from homeaudio.vcal.event_notifications.events import get_all_event_notifications, get_all_events, get_calendar_refreshed_at
 from homeaudio.vcal.cli import refresh_calendar_data
-from queue import Queue
+from homeaudio.audio.settings import SnapcastSettings
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,7 @@ class AlarmHandler:
             return "Alarm currently being stopped/snoozed"
 
     def mute_area_of_player(self, player: str) -> str:
-        threading.Thread(target=mute_alarm_for_area_of_player, args=(player,), daemon=True).start()
+        threading.Thread(target=mute_alarm_for_area_of_player, args=(player,SnapcastSettings()), daemon=True).start()
         return f"Muting area for {player}"
 
 
