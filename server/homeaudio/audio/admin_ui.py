@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from homeaudio.audio.settings import AppSettings
-from homeaudio.env import HOME_ASSISTANT_SUPPORTED, HOUSIE_TALKIE_ENABLED, SNAPCAST_ENABLED
+from homeaudio.env import HOME_ASSISTANT_SUPPORTED, HOUSIE_TALKIE_ENABLED, SNAPCAST_ENABLED, WAKE_UP_ALARM_ENABLED
 from pydantic_ui import create_pydantic_ui, UIConfig, FieldConfig, DisplayConfig, Renderer
 
 from homeaudio.env import APP_NAME
@@ -107,6 +107,12 @@ class AdminRoutes:
                         )
                     ),
                     "housie_talkie_settings": FieldConfig(
+                        visible_when=f"{str(HOUSIE_TALKIE_ENABLED).lower()} == true"
+                    ),
+                    "mpd_settings.volumes.wake_up_alarm_end": FieldConfig(
+                        visible_when=f"{str(WAKE_UP_ALARM_ENABLED).lower()} == true"
+                    ),
+                    "mpd_settings.volumes.voice": FieldConfig(
                         visible_when=f"{str(HOUSIE_TALKIE_ENABLED).lower()} == true"
                     ),
                 }
