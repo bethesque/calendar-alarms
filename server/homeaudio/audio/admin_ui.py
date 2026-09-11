@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from homeaudio.audio.settings import AppSettings
-from homeaudio.env import HOME_ASSISTANT_SUPPORTED, HOUSIE_TALKIE_ENABLED
+from homeaudio.env import HOME_ASSISTANT_SUPPORTED, HOUSIE_TALKIE_ENABLED, SNAPCAST_ENABLED
 from pydantic_ui import create_pydantic_ui, UIConfig, FieldConfig, DisplayConfig, Renderer
 
 from homeaudio.env import APP_NAME
@@ -54,6 +54,9 @@ class AdminRoutes:
                         props={
                             "options": calendar_options
                         }
+                    ),
+                    "snapcast_settings": FieldConfig(
+                        visible_when=f"{str(SNAPCAST_ENABLED).lower()} == true"
                     ),
                     "snapcast_settings.snapclients.[]": FieldConfig(
                         display=DisplayConfig(

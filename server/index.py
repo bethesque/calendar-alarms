@@ -16,7 +16,7 @@ from homeaudio.audio.logs_ui import CalendarAlarmsStatusRoutes, JournalctlRoutes
 from homeaudio.vcal.wake_up_alarm.api import WakeUpAlarmRoutes
 from homeaudio.housie_talkie.ui import UserInterfaceRoutes
 from homeaudio.audio.settings import SnapcastSettings
-from homeaudio.env import APP_NAME, HOUSIE_TALKIE_ENABLED, WAKE_UP_ALARM_ENABLED
+from homeaudio.env import APP_NAME, HOUSIE_TALKIE_ENABLED, WAKE_UP_ALARM_ENABLED, SNAPCAST_ENABLED
 
 setup_logging_for_http_server(logging.INFO)
 
@@ -29,6 +29,7 @@ def index(request: Request):
     snapclient_settings = SnapcastSettings()
     housie_talkie_link = """<li><a href="/housie-talkie" class="button"><span class="emoji">🎤</span><span>Housie Talkie</span></a></li>""" if HOUSIE_TALKIE_ENABLED else ""
     wake_up_alarm_link = """<li><a href="/wake-up-alarm" class="button"><span class="emoji">⏰</span><span>Wake up alarm</a></span></li>""" if WAKE_UP_ALARM_ENABLED else ""
+    snapweb_link = """<li><a href="{snapclient_settings.snapserver}" class="button"><span class="emoji">🔊</span><span>Snapweb</span></a>""" if SNAPCAST_ENABLED else ""
     return f"""
     <html>
         <head>
@@ -45,13 +46,12 @@ def index(request: Request):
             </ul>
             <ul class="buttons">
                 <li><a href="/settings" class="button"><span class="emoji">⚙️</span><span>Settings</span></a></li>
-                <li><a href="{snapclient_settings.snapserver}" class="button"><span class="emoji">🔊</span><span>Snapweb</span></a>
+                {snapweb_link}
       </li>
             </ul>
             <ul class="buttons">
                 <li><a href="/status/calendar-alarms-service"class="button" >Calendar Alarms HTTP Service Status</a></li>
                 <li><a href="/logs/data-refresh" class="button">Data Refresh logs</a></li>
-                <li><a href="/logs/cron" class="button">Cron logs</a></li>
             </ul>
             <ul class="buttons">
                 <li><a href="/logs/http" class="button">HTTP service journal</a></li>
@@ -71,7 +71,6 @@ app.include_router(WakeUpAlarmRoutes().router, prefix="/wake-up-alarm")
 app.include_router(AdminRoutes().router, prefix="/settings")
 app.include_router(CalendarAlarmsStatusRoutes().router, prefix="/status/calendar-alarms-service")
 app.include_router(LogRoutes(file_path="logs/data_refresh.log", route="/data-refresh").router, prefix="/logs")
-app.include_router(LogRoutes(file_path="logs/cron.log", route="/cron").router, prefix="/logs")
 app.include_router(JournalctlRoutes(service_name="calendar-alarms-http", route="/http").router, prefix="/logs")
 app.include_router(JournalctlRoutes(service_name="calendar-alarms-morning-announcements", route="/morning-announcements").router, prefix="/logs")
 app.include_router(JournalctlRoutes(service_name="calendar-alarms", route="/calendar-alarms").router, prefix="/logs")
