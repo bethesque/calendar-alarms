@@ -4,7 +4,12 @@ import time as time_module
 from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
-from homeaudio.audio.settings import EventNotificationSchedule, TimeRange
+from homeaudio.audio.settings import (
+    EventNotificationSchedule,
+    MorningAnnouncementsSchedule,
+    SchoolAnnouncementsSchedule,
+    TimeRange,
+)
 from homeaudio.vcal.core import NotificationFiles
 from homeaudio.vcal.daemon import AlarmCheckDaemon, next_boundary, check_for_and_play_notifications, check_for_notifications, play_notification_files
 
@@ -15,56 +20,61 @@ SCHEDULE = EventNotificationSchedule(
     weekends=TimeRange(start=time(8, 0), end=time(21, 0)),
 )
 
+# Schedules with no configured times, so tests that aren't exercising morning/school
+# announcements aren't affected by them (and don't need to know their default schedule).
+NO_MORNING_SCHEDULE = MorningAnnouncementsSchedule(weekdays=None, weekends=None)
+NO_SCHOOL_SCHEDULE = SchoolAnnouncementsSchedule(weekdays=None)
+
 
 def test_next_boundary_rounds_up_to_next_five_minutes(monkeypatch):
     monkeypatch.setattr("homeaudio.vcal.daemon.CHECK_WINDOW_MINUTES", 5)
     now = datetime(2026, 4, 27, 7, 3, tzinfo=TIMEZONE)  # Monday
 
-    assert next_boundary(now, SCHEDULE) == datetime(2026, 4, 27, 7, 5, tzinfo=TIMEZONE)
+    assert next_boundary(now, SCHEDULE, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE) == datetime(2026, 4, 27, 7, 5, tzinfo=TIMEZONE)
 
 
 def test_next_boundary_lands_exactly_on_a_five_minute_mark(monkeypatch):
     monkeypatch.setattr("homeaudio.vcal.daemon.CHECK_WINDOW_MINUTES", 5)
     now = datetime(2026, 4, 27, 7, 5, tzinfo=TIMEZONE)  # Monday, exactly on a mark
 
-    assert next_boundary(now, SCHEDULE) == datetime(2026, 4, 27, 7, 10, tzinfo=TIMEZONE)
+    assert next_boundary(now, SCHEDULE, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE) == datetime(2026, 4, 27, 7, 10, tzinfo=TIMEZONE)
 
 
 def test_next_boundary_skips_to_next_days_start_hour_after_operating_window(monkeypatch):
     monkeypatch.setattr("homeaudio.vcal.daemon.CHECK_WINDOW_MINUTES", 5)
     now = datetime(2026, 4, 27, 20, 57, tzinfo=TIMEZONE)  # Monday, after last weekday tick
 
-    assert next_boundary(now, SCHEDULE) == datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE)  # Tuesday 7am
+    assert next_boundary(now, SCHEDULE, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE) == datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE)  # Tuesday 7am
 
 
 def test_next_boundary_rounds_up_to_the_next_minute():
     now = datetime(2026, 4, 27, 7, 3, 20, tzinfo=TIMEZONE)  # Monday
 
-    assert next_boundary(now, SCHEDULE) == datetime(2026, 4, 27, 7, 4, tzinfo=TIMEZONE)
+    assert next_boundary(now, SCHEDULE, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE) == datetime(2026, 4, 27, 7, 4, tzinfo=TIMEZONE)
 
 
 def test_next_boundary_skips_to_next_days_start_hour_after_the_last_minute_tick():
     now = datetime(2026, 4, 27, 20, 59, 30, tzinfo=TIMEZONE)  # Monday, after the last weekday tick
 
-    assert next_boundary(now, SCHEDULE) == datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE)  # Tuesday 7am
+    assert next_boundary(now, SCHEDULE, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE) == datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE)  # Tuesday 7am
 
 
 def test_next_boundary_skips_forward_to_weekday_start_hour():
     now = datetime(2026, 4, 24, 6, 0, tzinfo=TIMEZONE)  # Friday, before 7am start
 
-    assert next_boundary(now, SCHEDULE) == datetime(2026, 4, 24, 7, 0, tzinfo=TIMEZONE)
+    assert next_boundary(now, SCHEDULE, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE) == datetime(2026, 4, 24, 7, 0, tzinfo=TIMEZONE)
 
 
 def test_next_boundary_uses_later_start_hour_on_weekends():
     now = datetime(2026, 4, 25, 6, 0, tzinfo=TIMEZONE)  # Saturday, before 8am start
 
-    assert next_boundary(now, SCHEDULE) == datetime(2026, 4, 25, 8, 0, tzinfo=TIMEZONE)
+    assert next_boundary(now, SCHEDULE, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE) == datetime(2026, 4, 25, 8, 0, tzinfo=TIMEZONE)
 
 
 def test_next_boundary_from_saturday_night_lands_on_sunday_8am():
     now = datetime(2026, 4, 25, 21, 0, tzinfo=TIMEZONE)  # Saturday, after last weekend tick
 
-    assert next_boundary(now, SCHEDULE) == datetime(2026, 4, 26, 8, 0, tzinfo=TIMEZONE)  # Sunday
+    assert next_boundary(now, SCHEDULE, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE) == datetime(2026, 4, 26, 8, 0, tzinfo=TIMEZONE)  # Sunday
 
 
 def test_next_boundary_respects_non_hour_aligned_start_time():
@@ -74,16 +84,67 @@ def test_next_boundary_respects_non_hour_aligned_start_time():
     )
     now = datetime(2026, 4, 27, 7, 0, tzinfo=TIMEZONE)  # Monday, before the 7:30 start
 
-    assert next_boundary(now, schedule) == datetime(2026, 4, 27, 7, 30, tzinfo=TIMEZONE)
+    assert next_boundary(now, schedule, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE) == datetime(2026, 4, 27, 7, 30, tzinfo=TIMEZONE)
 
 
 def test_next_boundary_defaults_to_live_event_notification_settings_schedule(monkeypatch):
     fake_settings = type("_S", (), {"schedule": SCHEDULE})()
     monkeypatch.setattr("homeaudio.vcal.daemon.EventNotificationSettings", lambda: fake_settings)
+    monkeypatch.setattr(
+        "homeaudio.vcal.daemon.MorningAnnouncementsSettings",
+        lambda: type("_S", (), {"schedule": NO_MORNING_SCHEDULE})(),
+    )
+    monkeypatch.setattr(
+        "homeaudio.vcal.daemon.SchoolAnnouncementsSettings",
+        lambda: type("_S", (), {"schedule": NO_SCHOOL_SCHEDULE})(),
+    )
 
     now = datetime(2026, 4, 27, 6, 0, tzinfo=TIMEZONE)  # Monday, before 7am start
 
     assert next_boundary(now) == datetime(2026, 4, 27, 7, 0, tzinfo=TIMEZONE)
+
+
+def test_next_boundary_wakes_for_a_morning_announcement_outside_operating_hours():
+    morning_schedule = MorningAnnouncementsSchedule(weekdays=time(6, 30), weekends=None)
+    now = datetime(2026, 4, 27, 6, 0, tzinfo=TIMEZONE)  # Monday, before both the 6:30 announcement and the 7am start
+
+    assert next_boundary(now, SCHEDULE, morning_schedule, NO_SCHOOL_SCHEDULE) == datetime(2026, 4, 27, 6, 30, tzinfo=TIMEZONE)
+
+
+def test_next_boundary_wakes_for_a_school_announcement_outside_operating_hours():
+    school_schedule = SchoolAnnouncementsSchedule(weekdays=time(6, 45))
+    now = datetime(2026, 4, 27, 6, 0, tzinfo=TIMEZONE)  # Monday, before both the 6:45 announcement and the 7am start
+
+    assert next_boundary(now, SCHEDULE, NO_MORNING_SCHEDULE, school_schedule) == datetime(2026, 4, 27, 6, 45, tzinfo=TIMEZONE)
+
+
+def test_next_boundary_lands_exactly_on_an_announcement_time_even_though_it_is_outside_operating_hours():
+    morning_schedule = MorningAnnouncementsSchedule(weekdays=time(6, 30), weekends=None)
+    now = datetime(2026, 4, 27, 6, 29, 30, tzinfo=TIMEZONE)  # Monday, just before the 6:30 announcement rounds up onto it
+
+    assert next_boundary(now, SCHEDULE, morning_schedule, NO_SCHOOL_SCHEDULE) == datetime(2026, 4, 27, 6, 30, tzinfo=TIMEZONE)
+
+
+def test_next_boundary_picks_the_earliest_of_several_out_of_hours_wake_times():
+    morning_schedule = MorningAnnouncementsSchedule(weekdays=time(6, 45), weekends=None)
+    school_schedule = SchoolAnnouncementsSchedule(weekdays=time(6, 30))
+    now = datetime(2026, 4, 27, 6, 0, tzinfo=TIMEZONE)  # Monday, before the school (6:30), morning (6:45) and 7am start
+
+    assert next_boundary(now, SCHEDULE, morning_schedule, school_schedule) == datetime(2026, 4, 27, 6, 30, tzinfo=TIMEZONE)
+
+
+def test_next_boundary_ignores_school_announcement_schedule_on_weekends():
+    school_schedule = SchoolAnnouncementsSchedule(weekdays=time(6, 30))
+    now = datetime(2026, 4, 25, 6, 0, tzinfo=TIMEZONE)  # Saturday, before the weekday-only 6:30 school time and 8am start
+
+    assert next_boundary(now, SCHEDULE, NO_MORNING_SCHEDULE, school_schedule) == datetime(2026, 4, 25, 8, 0, tzinfo=TIMEZONE)
+
+
+def test_next_boundary_wakes_for_a_morning_announcement_after_the_operating_window_closes():
+    morning_schedule = MorningAnnouncementsSchedule(weekdays=time(22, 0), weekends=None)
+    now = datetime(2026, 4, 27, 21, 30, tzinfo=TIMEZONE)  # Monday, after the 9pm operating window closes
+
+    assert next_boundary(now, SCHEDULE, morning_schedule, NO_SCHOOL_SCHEDULE) == datetime(2026, 4, 27, 22, 0, tzinfo=TIMEZONE)
 
 
 def _patch_enabled(monkeypatch, *, main_settings_enabled=True, event_notification_settings_enabled=True):
@@ -131,6 +192,9 @@ def test_check_for_and_play_notifications_does_not_raise_when_preparing_fails(mo
     class _FakeCalendarSource:
         def __init__(self, *a, **k):
             pass
+
+        def file_exists(self):
+            return True
 
         def load_data_from_file(self):
             raise RuntimeError("boom")
@@ -187,6 +251,9 @@ def test_check_for_notifications_returns_none_when_preparing_raises(monkeypatch)
         def __init__(self, *a, **k):
             pass
 
+        def file_exists(self):
+            return True
+
         def load_data_from_file(self):
             raise RuntimeError("boom")
 
@@ -199,7 +266,9 @@ def test_check_for_notifications_returns_none_when_nothing_is_due(monkeypatch):
     _patch_enabled(monkeypatch)
     monkeypatch.setattr(
         "homeaudio.vcal.daemon.CalendarSource",
-        lambda *a, **k: type("_C", (), {"load_data_from_file": lambda self: None})(),
+        lambda *a, **k: type(
+            "_C", (), {"file_exists": lambda self: True, "cache_file_path": "calendar.json", "load_data_from_file": lambda self: None}
+        )(),
     )
     monkeypatch.setattr(
         "homeaudio.vcal.daemon.prepare_notification_files",
@@ -213,7 +282,9 @@ def test_check_for_notifications_returns_the_prepared_files_when_something_is_du
     _patch_enabled(monkeypatch)
     monkeypatch.setattr(
         "homeaudio.vcal.daemon.CalendarSource",
-        lambda *a, **k: type("_C", (), {"load_data_from_file": lambda self: None})(),
+        lambda *a, **k: type(
+            "_C", (), {"file_exists": lambda self: True, "cache_file_path": "calendar.json", "load_data_from_file": lambda self: None}
+        )(),
     )
     prepared = NotificationFiles(event_announcements_file="announce.wav")
     monkeypatch.setattr(

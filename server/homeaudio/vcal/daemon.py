@@ -5,11 +5,20 @@
 import logging
 import signal
 import threading
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 
 from homeaudio.audio.log_config import setup_logging_for_alarms
 from homeaudio.audio.scene import scene_for_env
-from homeaudio.audio.settings import EventNotificationSchedule, EventNotificationSettings, MainSettings, TimeRange
+from homeaudio.audio.settings import (
+    EventNotificationSchedule,
+    EventNotificationSettings,
+    MainSettings,
+    MorningAnnouncementsSchedule,
+    MorningAnnouncementsSettings,
+    SchoolAnnouncementsSchedule,
+    SchoolAnnouncementsSettings,
+    TimeRange,
+)
 from homeaudio.env import LOG_LEVEL
 from homeaudio.vcal.cal.google_calendar import CalendarSource
 from homeaudio.vcal.core import prepare_notification_files, NotificationFiles
@@ -30,32 +39,89 @@ def _time_range_for_day(schedule: EventNotificationSchedule, day: date) -> TimeR
     return schedule.weekdays if day.weekday() < 5 else schedule.weekends  # Monday=0 ... Sunday=6
 
 
-def _within_operating_hours(dt: datetime, schedule: EventNotificationSchedule) -> bool:
+def _within_event_notification_operating_hours(dt: datetime, schedule: EventNotificationSchedule) -> bool:
     time_range = _time_range_for_day(schedule, dt.date())
     return time_range.start <= dt.time() < time_range.end
 
 
-def next_boundary(now: datetime, schedule: EventNotificationSchedule | None = None) -> datetime:
-    """The next CHECK_WINDOW_MINUTES-aligned time at or after `now`, skipping forward
-    over hours outside EventNotificationSettings.schedule's weekdays/weekends window.
+def _announcement_times_for_day(
+    day: date,
+    morning_schedule: MorningAnnouncementsSchedule,
+    school_schedule: SchoolAnnouncementsSchedule,
+) -> list[time]:
+    """Times on `day` a morning/school announcement is due outside of - and so not otherwise
+    covered by - EventNotificationSettings.schedule's operating hours."""
+    is_weekday = day.weekday() < 5  # Monday=0 ... Sunday=6
+    morning_time = morning_schedule.weekdays if is_weekday else morning_schedule.weekends
+    school_time = school_schedule.weekdays if is_weekday else None  # school announcements never run on weekends
+    return [scheduled_time for scheduled_time in (morning_time, school_time) if scheduled_time is not None]
 
-    `schedule` is read fresh from EventNotificationSettings() by default (rather than
-    as a mutable default argument) so a change saved through the admin UI takes effect
-    on the daemon's very next wake-up, not just at process start.
+
+def _is_scheduled_announcement(
+    dt: datetime,
+    morning_schedule: MorningAnnouncementsSchedule,
+    school_schedule: SchoolAnnouncementsSchedule,
+) -> bool:
+    return dt.time() in _announcement_times_for_day(dt.date(), morning_schedule, school_schedule)
+
+
+def _wake_times_for_day(
+    day: date,
+    schedule: EventNotificationSchedule,
+    morning_schedule: MorningAnnouncementsSchedule,
+    school_schedule: SchoolAnnouncementsSchedule,
+) -> list[time]:
+    """
+    The announcement times and the start of the event notification time range.
+    """
+    return [
+        _time_range_for_day(schedule, day).start,
+        *_announcement_times_for_day(day, morning_schedule, school_schedule),
+    ]
+
+
+def next_boundary(
+    now: datetime,
+    schedule: EventNotificationSchedule | None = None,
+    morning_schedule: MorningAnnouncementsSchedule | None = None,
+    school_schedule: SchoolAnnouncementsSchedule | None = None,
+) -> datetime:
+    """The next CHECK_WINDOW_MINUTES-aligned time at or after `now`, skipping forward over hours
+    outside EventNotificationSettings.schedule's weekdays/weekends window - except for any
+    MorningAnnouncementsSettings/SchoolAnnouncementsSettings scheduled time that falls in one of
+    those skipped hours, since those announcements are due regardless of that window.
+
+    Each schedule is read fresh from its settings by default (rather than as a mutable default
+    argument) so a change saved through the admin UI takes effect on the daemon's very next
+    wake-up, not just at process start.
     """
     schedule = schedule or EventNotificationSettings().schedule
+    morning_schedule = morning_schedule or MorningAnnouncementsSettings().schedule
+    school_schedule = school_schedule or SchoolAnnouncementsSettings().schedule
 
     minute = (now.minute // CHECK_WINDOW_MINUTES + 1) * CHECK_WINDOW_MINUTES
+    # Wind back to the previous whole minute and add the CHECK_WINDOW_MINUTES to it
     candidate = now.replace(minute=0, second=0, microsecond=0) + timedelta(minutes=minute)
 
-    while not _within_operating_hours(candidate, schedule):
-        time_range = _time_range_for_day(schedule, candidate.date())
-        if candidate.time() >= time_range.end:
-            next_day = candidate.date() + timedelta(days=1)
-            next_start = _time_range_for_day(schedule, next_day).start
-            candidate = datetime.combine(next_day, next_start, tzinfo=candidate.tzinfo)
+    while not _within_event_notification_operating_hours(candidate, schedule) and not _is_scheduled_announcement(
+        candidate, morning_schedule, school_schedule
+    ):
+        # The next regular CHECK_WINDOW_MINUTES is outside the normal event notification operating hours.
+        # Collect the future wake up times for today (the start of event notifications and the announcement times)
+        wake_times_today = [
+            wake_time
+            for wake_time in _wake_times_for_day(candidate.date(), schedule, morning_schedule, school_schedule)
+            if wake_time > candidate.time()
+        ]
+        # If there are future wake up times
+        if wake_times_today:
+            #... take the first one
+            candidate = datetime.combine(candidate.date(), min(wake_times_today), tzinfo=candidate.tzinfo)
         else:
-            candidate = datetime.combine(candidate.date(), time_range.start, tzinfo=candidate.tzinfo)
+            # ... else get the next wake up time for tomorrow
+            next_day = candidate.date() + timedelta(days=1)
+            next_wake_times = _wake_times_for_day(next_day, schedule, morning_schedule, school_schedule)
+            candidate = datetime.combine(next_day, min(next_wake_times), tzinfo=candidate.tzinfo)
 
     return candidate
 
