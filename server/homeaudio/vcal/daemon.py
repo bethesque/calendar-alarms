@@ -73,11 +73,14 @@ def check_for_notifications(base_time: datetime) -> NotificationFiles | None:
         return None
 
     try:
-        logger.info("Checking for alarms at %s", base_time)
+        logger.info("Checking for notifications due at %s", base_time)
         calendar_source = CalendarSource()
-        logger.info(f"Loading calendar data from {calendar_source.cache_file_path}")
-        calendar_data = calendar_source.load_data_from_file()
-        return prepare_notification_files(base_time, CHECK_WINDOW_MINUTES, calendar_data)
+        if calendar_source.file_exists():
+            logger.info(f"Loading calendar data from {calendar_source.cache_file_path}")
+            calendar_data = calendar_source.load_data_from_file()
+            return prepare_notification_files(base_time, CHECK_WINDOW_MINUTES, calendar_data)
+        else:
+            logger.info(f"No calendar file found at {calendar_source.cache_file_path}, no notifications this tick")
 
     except Exception:
         # A single bad tick must never kill the loop - log and try again next boundary.
