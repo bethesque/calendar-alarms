@@ -84,7 +84,7 @@ class SnapclientConfig(BaseModel):
     volumes: VolumeConfig = Field(default_factory=VolumeConfig)
 
 class SnapcastSettings(YAMLSettings):
-    snapserver: str
+    snapserver: str = Field(default="http://localhost:1780")
     snapclients: list[SnapclientConfig] = Field(default_factory=list)
     default_volumes: VolumeConfig = Field(default_factory=VolumeConfig)
 
