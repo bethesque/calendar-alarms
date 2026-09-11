@@ -180,12 +180,14 @@ Top level entry point. Generate a summary of today's events, convert them to voi
 """
 def play_morning_announcements(
         calendar_file = DATA_FILE,
-        base_time = datetime.now().astimezone(),
-        settings: MorningAnnouncementsSettings = MorningAnnouncementsSettings(),
+        base_time: datetime | None = None,
+        settings: MorningAnnouncementsSettings | None = None,
         before_announcement_hook: Callable | None = None,
         after_announcement_hook: Callable | None = None
     ):
     logger.info(f"Loading calendar data from {calendar_file}")
+    _base_time = base_time or datetime.now().astimezone()
+    _settings = settings or MorningAnnouncementsSettings()
     calendar_days = CalendarSource(cache_file_path=calendar_file).load_data_from_file()
-    output_file = _create_audio_file_for_calendar_days(base_time, calendar_days, settings)
+    output_file = _create_audio_file_for_calendar_days(_base_time, calendar_days, _settings)
     play_tts_audio_file(output_file, SnapcastSettings(), MpdSettings(), before_announcement_hook, after_announcement_hook)
