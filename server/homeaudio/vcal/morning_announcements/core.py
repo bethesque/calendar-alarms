@@ -76,7 +76,7 @@ class TextBuilder:
             self.settings.save()  # Save the updated last_used timestamps for the selected facts
             return [f"Your fun fact for today is:", fact_text]
         else:
-            logger.info("All facts have been used.")
+            logger.debug("All facts have been used.")
             return []
 
     def _get_non_weather_forecast_events(self, events):

@@ -127,8 +127,6 @@ class MpdClient:
         else:
             full_path = f"file://{shutil.copy(file_path, "/tmp")}"
 
-        logger.info(f"Adding file: {full_path}")
-
         try:
             self.client.clear()
             self.client.add(full_path)
@@ -156,6 +154,7 @@ class MpdClient:
         try:
             self.client.clear()
             self.add_files_to_playlist(file_paths)
+            logger.info("Playing files")
             self.client.play()
         except musicpd.CommandError as e:
             logger.error(f"Failed to play files {file_paths}: {e}")
@@ -168,7 +167,7 @@ class MpdClient:
             if not file_path.startswith("/tmp/"):
                 full_path = f"file://{shutil.copy(file_path, "/tmp")}"
 
-            logger.info(f"Adding file: {full_path}")
+            logger.info(f"Adding file to playlist: {full_path}")
             self.client.add(full_path)
 
     def play_next(self, file_paths: list[str]):
@@ -179,6 +178,7 @@ class MpdClient:
         if self.is_playing():
             self.add_files_to_playlist(file_paths)
             # Add an extra play in case playback is stopped while adding the files.
+            logger.info("Playing file")
             self.client.play()
         else:
             self.play_files(file_paths)
@@ -203,14 +203,14 @@ class MpdClient:
     def next(self):
         try:
             self.client.next()
-            logger.info("MPD next called")
+            logger.debug("MPD next called")
         except musicpd.CommandError as e:
             logger.error(f"Failed to stop MPD: {e}")
 
     def stop(self):
         try:
             self.client.stop()
-            logger.info("Stopped MPD playback")
+            logger.debug("Stopped MPD playback")
         except musicpd.CommandError as e:
             logger.error(f"Failed to stop MPD: {e}")
 
