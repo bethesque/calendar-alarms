@@ -12,7 +12,7 @@
   register: mpd_user_update
 
 - name: Reset connection if group membership changed
-  ansible.builtin.include_tasks: reset_connection.yaml
+  ansible.builtin.include_tasks: reset_connection.yml
   when: mpd_user_update.changed | bool
 
 - name: Ensure mpd runtime directory exists
@@ -58,8 +58,10 @@
       [Unit]
       Requires=snapserver.service
       After=snapserver.service
-
   become: true
+  tags:
+    - snapserver
+  when: snapcast_enabled == true
 
 # Needs both mpd and snapserver installed
 # Must restart mpd after this change
@@ -68,6 +70,9 @@
     name: mpd
     groups: _snapserver
     append: true
+  tags:
+    - snapserver
+  when: snapcast_enabled == true
 
 - name: Ensure MPD is enabled and running
   systemd:

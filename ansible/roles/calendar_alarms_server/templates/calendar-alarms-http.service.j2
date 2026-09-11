@@ -5,7 +5,7 @@ Wants=network-online.target
 
 [Service]
 WorkingDirectory={{ server_root }}
-ExecStart=/usr/bin/python3.13 index.py --conf {{ calendar_alarms_server_conf }}
+ExecStart={{ server_root }}/.venv/bin/python index.py --conf {{ calendar_alarms_server_conf }}
 SyslogIdentifier=calendar-alarms-http
 Restart=always
 

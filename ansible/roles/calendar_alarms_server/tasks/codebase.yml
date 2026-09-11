@@ -22,12 +22,18 @@
   notify:
     - restart calendar-alarms-http.service
 
+- name: Set up virtual env
+  ansible.builtin.shell: |
+    {{ ansible_python_interpreter }} -m venv .venv
+  args:
+    chdir: "{{ server_root }}"
+
 - name: Install package in editable mode
   ansible.builtin.pip:
     name: .
     editable: true
     chdir: "{{ server_root }}"
-  tags: slow
+    virtualenv: "{{ server_root }}/.venv"
 
 - name: Add env.py file
   ansible.builtin.template:
@@ -40,3 +46,4 @@
     - env
   notify:
     - restart calendar-alarms-http.service
+    - restart calendar-alarms.service

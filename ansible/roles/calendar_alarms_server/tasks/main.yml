@@ -1,17 +1,8 @@
-- name: Install project code
-  ansible.builtin.import_tasks: codebase.yml
-  tags:
-    - http
-    - codebase
-    - sample_rate
-
-# - name: End play
-#   ansible.builtin.meta: end_play
-
 - name: Install packages
   apt:
     name:
       - mpd
+      - mpc
       - ffmpeg
       - alsa-utils
       - git
@@ -21,14 +12,30 @@
     update_cache: yes
   become: yes
 
+- name: Install project code
+  ansible.builtin.import_tasks: codebase.yml
+  tags:
+    - http
+    - codebase
+    - sample_rate
+
 - name: Install Snapserver
   ansible.builtin.import_tasks: snapserver_install.yml
+  tags:
+    - snapserver
+  when: snapcast_enabled == true
 
 - name: Configure Snapserver
   ansible.builtin.import_tasks: snapserver_configure.yml
+  tags:
+    - snapserver
+  when: snapcast_enabled == true
 
 - name: Configure Snapserver service
   ansible.builtin.import_tasks: snapserver_service.yml
+  tags:
+    - snapserver
+  when: snapcast_enabled == true
 
 - name: Configure mpd
   ansible.builtin.import_tasks: mpd_configure.yml
@@ -46,7 +53,7 @@
   tags:
     - bash_functions
 
-- name: Test snapcast
+- name: Test sound
   ansible.builtin.shell: |
     mpc clear
     mpc add /usr/share/sounds/alsa/Front_Center.wav
@@ -59,3 +66,6 @@
   tags:
     - audio
     - pvt
+
+# - name: End play
+#   ansible.builtin.meta: end_play

@@ -26,3 +26,8 @@ resources_dir: /home/{{ ansible_user }}/calendar-alarms-resources
 server_root: "{{ project_root }}/server"
 calendar_alarms_server_conf: "{{ server_root }}/config/uvicorn.yaml"
 app_name: "Tortice Home Audio"
+
+home_assistant_supported: true
+housie_talkie_enabled: true
+wake_up_alarm_enabled: true
+snapcast_enabled: true

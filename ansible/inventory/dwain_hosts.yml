@@ -1,0 +1,17 @@
+all:
+  children:
+    audio_host:
+      hosts:
+        dwainpi.local:
+          ansible_user: pi
+          ansible_ssh_private_key_file: ~/.ssh/id_ed25519
+          ansible_python_interpreter: /usr/bin/python
+          ansible_become_pass: "{{ pi_pass }}"
+          is_pi: true
+          snapclient_user: pi
+          project_root: /home/{{ ansible_user }}/calendar-alarms
+          app_name: "Ferny Home Audio"
+          home_assistant_supported: false
+          housie_talkie_enabled: true
+          wake_up_alarm_enabled: false
+          snapcast_enabled: false
