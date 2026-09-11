@@ -139,14 +139,16 @@ UI entrypoint
 """
 def play_school_announcements(
         calendar_file=os.path.join(CALENDAR_DATA_DIRECTORY, "calendar.json"),
-        base_time=datetime.now().astimezone(),
-        settings: SchoolAnnouncementsSettings = SchoolAnnouncementsSettings(),
+        base_time: datetime | None = None,
+        settings: SchoolAnnouncementsSettings | None = None,
         before_announcement_hook: Callable | None = None,
         after_announcement_hook: Callable | None = None
     ):
 
     calendar_days = CalendarSource(cache_file_path=calendar_file).load_data_from_file()
+    _base_time = base_time or datetime.now().astimezone()
+    _settings = settings or SchoolAnnouncementsSettings()
 
-    file = _create_audio_file_for_calendar_days(base_time, calendar_days, settings)
+    file = _create_audio_file_for_calendar_days(_base_time, calendar_days, _settings)
     play_tts_audio_file(file, SnapcastSettings(), MpdSettings(), before_announcement_hook, after_announcement_hook)
 
