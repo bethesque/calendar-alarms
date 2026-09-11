@@ -147,7 +147,7 @@ def _create_audio_file_for_calendar_days(base_time: datetime, calendar_days: lis
     try:
         events = get_events_for_date(calendar_days, base_time)
     except MissingCalendarDataException:
-        logger.info("No calendar data found for today's date, proceeding with no events.")
+        logger.info(f"No calendar data found for today's date ({base_time}), proceeding with no events.")
         events = []
 
     text_builder = TextBuilder(events, settings)
