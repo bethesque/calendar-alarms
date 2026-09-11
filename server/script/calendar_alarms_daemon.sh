@@ -8,7 +8,9 @@ set -Eeuo pipefail
 echo "Starting alarm check daemon at $(date)"
 
 # Make this work on mac and on the raspberry pi.
-if [ -x "/usr/bin/python3.13" ]; then
+if [ -x .venv/bin/python3 ]; then
+  PYTH=".venv/bin/python3"
+elif [ -x "/usr/bin/python3.13" ]; then
   PYTH="/usr/bin/python3.13"
 else
   echo "/usr/bin/python3.13 is not executable or does not exist. Using python on path."
