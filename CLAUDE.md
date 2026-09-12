@@ -106,3 +106,10 @@ Do not rename any functions unless instructed to.
 Use pytest, not unittest.
 
 The tests for any file should be under the module path with "tests/" prepended to the module path and "test_" at the start of the base name of the file. eg. foo/bar.py should have a test at tests/foo/test_bar.py. The exception to this is where there is a pytest conflict due to test file names being the same (eg. core_test.py ) in which case an appropriate differentiator may be included in the file name.
+
+
+## Deployments
+
+In the original deployment ("Tortice Home Audio"), the Ansible role calendar_alarms_server runs on a Linux NAS (travnas) and the Ansible roles calendar_alarms_client and music_assistant_client run on single core Raspberry Pi Zero W (kaypi, patpi, officepi and travcal) as well as the NAS.
+
+In a second deployment for Dwain, called Ferny Home Audio, the calendar_alarms_server role is deployed to a single Raspberry Pi Zero W. It plays the audio over MPD which plays directly to a speaker - there is no Snapcast integration. The calendar_alarms_client and music_assistant_client roles are not used in this deployment.

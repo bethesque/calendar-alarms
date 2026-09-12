@@ -17,12 +17,17 @@ from homeaudio.audio.settings import (
     MorningAnnouncementsSettings,
     SchoolAnnouncementsSchedule,
     SchoolAnnouncementsSettings,
-    TimeRange,
 )
 from homeaudio.env import LOG_LEVEL
 from homeaudio.vcal.cal.google_calendar import CalendarSource
+from homeaudio.vcal.calendar_refresh import CalendarRefreshLoop
 from homeaudio.vcal.core import prepare_notification_files, NotificationFiles
 from homeaudio.vcal.core import play_notifications as _play_notifications
+from homeaudio.vcal.notification_schedule import (
+    announcement_times_for_day,
+    event_notification_time_range_for_day,
+    within_event_notification_operating_hours,
+)
 
 setup_logging_for_alarms(str(LOG_LEVEL))
 
@@ -40,34 +45,12 @@ EARLY_WAKE_SECONDS = 15
 MAX_SLEEP_SECONDS = 60 * 60
 
 
-def _time_range_for_day(schedule: EventNotificationSchedule, day: date) -> TimeRange:
-    return schedule.weekdays if day.weekday() < 5 else schedule.weekends  # Monday=0 ... Sunday=6
-
-
-def _within_event_notification_operating_hours(dt: datetime, schedule: EventNotificationSchedule) -> bool:
-    time_range = _time_range_for_day(schedule, dt.date())
-    return time_range.start <= dt.time() < time_range.end
-
-
-def _announcement_times_for_day(
-    day: date,
-    morning_schedule: MorningAnnouncementsSchedule,
-    school_schedule: SchoolAnnouncementsSchedule,
-) -> list[time]:
-    """Times on `day` a morning/school announcement is due outside of - and so not otherwise
-    covered by - EventNotificationSettings.schedule's operating hours."""
-    is_weekday = day.weekday() < 5  # Monday=0 ... Sunday=6
-    morning_time = morning_schedule.weekdays if is_weekday else morning_schedule.weekends
-    school_time = school_schedule.weekdays if is_weekday else None  # school announcements never run on weekends
-    return [scheduled_time for scheduled_time in (morning_time, school_time) if scheduled_time is not None]
-
-
 def _is_scheduled_announcement(
     dt: datetime,
     morning_schedule: MorningAnnouncementsSchedule,
     school_schedule: SchoolAnnouncementsSchedule,
 ) -> bool:
-    return dt.time() in _announcement_times_for_day(dt.date(), morning_schedule, school_schedule)
+    return dt.time() in announcement_times_for_day(dt.date(), morning_schedule, school_schedule)
 
 
 def _wake_times_for_day(
@@ -80,8 +63,8 @@ def _wake_times_for_day(
     The announcement times and the start of the event notification time range.
     """
     return [
-        _time_range_for_day(schedule, day).start,
-        *_announcement_times_for_day(day, morning_schedule, school_schedule),
+        event_notification_time_range_for_day(schedule, day).start,
+        *announcement_times_for_day(day, morning_schedule, school_schedule),
     ]
 
 
@@ -113,7 +96,7 @@ def next_boundary(
     # Wind back to the previous whole minute and add the CHECK_WINDOW_MINUTES to it
     candidate = now.replace(minute=0, second=0, microsecond=0) + timedelta(minutes=minute)
 
-    while not _within_event_notification_operating_hours(candidate, schedule) and not _is_scheduled_announcement(
+    while not within_event_notification_operating_hours(candidate, schedule) and not _is_scheduled_announcement(
         candidate, morning_schedule, school_schedule
     ):
         # The next regular CHECK_WINDOW_MINUTES is outside the normal event notification operating hours.
@@ -211,26 +194,37 @@ class AlarmCheckDaemon:
         signal.signal(signal.SIGTERM, self.request_stop)
         signal.signal(signal.SIGINT, self.request_stop)
 
-        logger.info("Alarm check daemon starting")
+        refresh_thread = CalendarRefreshLoop(self._stop_event).start()
+
+        logger.info("Started alarm check daemon")
         # startup catch-up, don't wait for the first boundary
         check_for_and_play_notifications(_round_down_to_check_window(datetime.now().astimezone()))
 
-        while not self._stop_event.is_set():
-            play_at = next_boundary(datetime.now().astimezone())
-            prepare_at = play_at - timedelta(seconds=EARLY_WAKE_SECONDS)
+        try:
+            while not self._stop_event.is_set():
+                play_at = next_boundary(datetime.now().astimezone())
+                prepare_at = play_at - timedelta(seconds=EARLY_WAKE_SECONDS)
 
-            if self._interruptible_wait_until(prepare_at):
-                break
+                if self._interruptible_wait_until(prepare_at):
+                    break
 
-            notification_files = check_for_notifications(play_at)
+                notification_files = check_for_notifications(play_at)
 
-            if self._interruptible_wait_until(play_at):
-                break
+                if self._interruptible_wait_until(play_at):
+                    break
 
-            if notification_files is not None:
-                play_notification_files(notification_files)
+                if notification_files is not None:
+                    play_notification_files(notification_files)
+        finally:
+            # Ensures the refresh thread (which shares this event) is told to stop even when the
+            # notification loop above exits via break rather than the top-of-loop stop check.
+            self._stop_event.set()
+            # Without this, run() can return - and the process exit - before the refresh thread
+            # (a daemon thread) gets scheduled to run its own post-loop shutdown code, cutting it
+            # off mid-flight.
+            refresh_thread.join()
 
-        logger.info("Alarm check daemon stopped")
+        logger.info("Stopped alarm check daemon")
 
 
 def run_daemon() -> None:

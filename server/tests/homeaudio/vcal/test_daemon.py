@@ -2,7 +2,10 @@ import signal
 import threading
 import time as time_module
 from datetime import datetime, time, timedelta
+from unittest.mock import Mock
 from zoneinfo import ZoneInfo
+
+import pytest
 
 from homeaudio.audio.settings import (
     EventNotificationSchedule,
@@ -10,6 +13,7 @@ from homeaudio.audio.settings import (
     SchoolAnnouncementsSchedule,
     TimeRange,
 )
+from homeaudio.vcal.calendar_refresh import CalendarRefreshLoop
 from homeaudio.vcal.core import NotificationFiles
 from homeaudio.vcal.daemon import (
     AlarmCheckDaemon,
@@ -35,6 +39,17 @@ NO_SCHOOL_SCHEDULE = SchoolAnnouncementsSchedule(weekdays=None)
 # A MAX_SLEEP_SECONDS large enough that tests exercising multi-hour/overnight gaps aren't
 # affected by the cap - it's tested on its own terms separately.
 UNCAPPED_MAX_SLEEP_SECONDS = 60 * 60 * 24 * 7
+
+
+@pytest.fixture(autouse=True)
+def _no_refresh_thread(monkeypatch):
+    """AlarmCheckDaemon.run() also starts a CalendarRefreshLoop on a background thread and joins
+    it on shutdown. Tests exercising the notification loop via run() don't need a real thread, and
+    stubbing it out here keeps them from incidentally reading real settings or reaching the
+    network from a thread they don't control - a Mock() stands in so run()'s unconditional
+    refresh_thread.join() still has something to call. CalendarRefreshLoop has its own tests in
+    test_calendar_refresh.py."""
+    monkeypatch.setattr(CalendarRefreshLoop, "start", lambda self: Mock())
 
 
 def test_round_down_to_check_window_rounds_back_to_previous_five_minutes(monkeypatch):
@@ -193,6 +208,33 @@ def test_next_boundary_does_not_cap_a_gap_within_max_sleep_seconds(monkeypatch):
     now = datetime(2026, 4, 27, 6, 30, tzinfo=TIMEZONE)  # Monday, 30 minutes before the 7am start
 
     assert next_boundary(now, SCHEDULE, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE) == datetime(2026, 4, 27, 7, 0, tzinfo=TIMEZONE)
+
+
+def test_alarm_check_daemon_starts_a_calendar_refresh_loop_sharing_its_stop_event(monkeypatch):
+    # The autouse _no_refresh_thread fixture stubs CalendarRefreshLoop.start for every other
+    # test; here it's un-stubbed to check run() actually wires one up against its own stop_event.
+    monkeypatch.undo()
+    monkeypatch.setattr(signal, "signal", lambda *a, **k: None)
+    monkeypatch.setattr("homeaudio.vcal.daemon.check_for_and_play_notifications", lambda base_time: None)
+    monkeypatch.setattr("homeaudio.vcal.daemon.next_boundary", lambda now, schedule=None: now + timedelta(seconds=30))
+
+    started_with = []
+
+    def fake_start(self):
+        started_with.append(self._stop_event)
+        return Mock()
+
+    monkeypatch.setattr(CalendarRefreshLoop, "start", fake_start)
+
+    daemon = AlarmCheckDaemon()
+    thread = threading.Thread(target=daemon.run, daemon=True)
+    thread.start()
+
+    time_module.sleep(0.05)
+    daemon.request_stop()
+    thread.join(timeout=1)
+
+    assert started_with == [daemon._stop_event]
 
 
 def _patch_enabled(monkeypatch, *, main_settings_enabled=True, event_notification_settings_enabled=True):

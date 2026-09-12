@@ -24,10 +24,8 @@
 
 IS_CRON=true
 
-# ====== FETCH CALENDAR DATA ======
-
-# Every 5 minutes between 7am (inclusive) and 9pm (exclusive), but offset from the alarms by 2 minutes
-2-59/5 7-20 * * * cd /home/beth/calendar-alarms && ./script/refresh_calendar_data.sh >> /home/beth/calendar-alarms/logs/cron.log  2>&1
+# Calendar data is refreshed by the calendar-refresh loop inside the calendar-alarms daemon
+# (see homeaudio/vcal/daemon.py) rather than by cron.
 
 # ====== LOGS ======
 
