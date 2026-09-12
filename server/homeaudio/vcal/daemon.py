@@ -1,4 +1,5 @@
-"""Long-running alternative to the cron/systemd-timer-triggered check_for_alarms.sh.
+"""
+The main calendar alarms process that checks for and plays notifications and announcements.
 
 """
 

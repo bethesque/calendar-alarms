@@ -131,7 +131,7 @@ class CalendarRefreshLoop:
         while not self._stop_event.is_set():
             refresh_at = next_refresh_boundary(datetime.now().astimezone())
             remaining = (refresh_at - datetime.now().astimezone()).total_seconds()
-            logger.info(f"Sleeping for {remaining:.2f} seconds until {refresh_at}")
+            logger.debug(f"Sleeping for {remaining:.2f} seconds until {refresh_at}")
             if remaining > 0 and self._stop_event.wait(timeout=remaining):
                 break
             if self._stop_event.is_set():
