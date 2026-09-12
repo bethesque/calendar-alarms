@@ -11,7 +11,14 @@ from homeaudio.audio.settings import (
     TimeRange,
 )
 from homeaudio.vcal.core import NotificationFiles
-from homeaudio.vcal.daemon import AlarmCheckDaemon, next_boundary, check_for_and_play_notifications, check_for_notifications, play_notification_files
+from homeaudio.vcal.daemon import (
+    AlarmCheckDaemon,
+    next_boundary,
+    check_for_and_play_notifications,
+    check_for_notifications,
+    play_notification_files,
+    _round_down_to_check_window,
+)
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
 
@@ -28,6 +35,20 @@ NO_SCHOOL_SCHEDULE = SchoolAnnouncementsSchedule(weekdays=None)
 # A MAX_SLEEP_SECONDS large enough that tests exercising multi-hour/overnight gaps aren't
 # affected by the cap - it's tested on its own terms separately.
 UNCAPPED_MAX_SLEEP_SECONDS = 60 * 60 * 24 * 7
+
+
+def test_round_down_to_check_window_rounds_back_to_previous_five_minutes(monkeypatch):
+    monkeypatch.setattr("homeaudio.vcal.daemon.CHECK_WINDOW_MINUTES", 5)
+    now = datetime(2026, 4, 27, 7, 3, tzinfo=TIMEZONE)  # Monday
+
+    assert _round_down_to_check_window(now) == datetime(2026, 4, 27, 7, 0, tzinfo=TIMEZONE)
+
+
+def test_round_down_to_check_window_leaves_a_time_exactly_on_a_five_minute_mark_unchanged(monkeypatch):
+    monkeypatch.setattr("homeaudio.vcal.daemon.CHECK_WINDOW_MINUTES", 5)
+    now = datetime(2026, 4, 27, 7, 5, tzinfo=TIMEZONE)  # Monday, exactly on a mark
+
+    assert _round_down_to_check_window(now) == datetime(2026, 4, 27, 7, 5, tzinfo=TIMEZONE)
 
 
 def test_next_boundary_rounds_up_to_next_five_minutes(monkeypatch):
@@ -257,6 +278,38 @@ def test_alarm_check_daemon_stops_promptly_instead_of_waiting_out_the_full_bound
 
     assert not thread.is_alive(), "request_stop() should interrupt the wait immediately, not after 30s"
     assert len(check_calls) == 1  # only the startup catch-up ran before the stop was requested
+
+
+def test_alarm_check_daemon_rounds_the_startup_catch_up_check_back_to_the_check_window(monkeypatch):
+    # signal.signal() only works from the main thread; the daemon runs in a background
+    # thread here so its own request_stop can be called concurrently, so stub it out.
+    monkeypatch.setattr(signal, "signal", lambda *a, **k: None)
+    monkeypatch.setattr("homeaudio.vcal.daemon.CHECK_WINDOW_MINUTES", 5)
+
+    check_calls = []
+    monkeypatch.setattr(
+        "homeaudio.vcal.daemon.check_for_and_play_notifications",
+        lambda base_time: check_calls.append(base_time),
+    )
+    # Far enough in the future that a real wait would still be blocked when the test checks.
+    monkeypatch.setattr(
+        "homeaudio.vcal.daemon.next_boundary",
+        lambda now, schedule=None: now + timedelta(seconds=30),
+    )
+
+    daemon = AlarmCheckDaemon()
+    thread = threading.Thread(target=daemon.run, daemon=True)
+    thread.start()
+
+    time_module.sleep(0.05)  # let it do the startup catch-up check and enter the wait
+    daemon.request_stop()
+    thread.join(timeout=1)
+
+    assert len(check_calls) == 1
+    base_time = check_calls[0]
+    # Rounded back to the current CHECK_WINDOW_MINUTES window, not left mid-window at "now".
+    assert (base_time.second, base_time.microsecond) == (0, 0)
+    assert base_time.minute % 5 == 0
 
 
 def test_check_for_notifications_returns_none_when_main_settings_disabled(monkeypatch):

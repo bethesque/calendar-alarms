@@ -173,6 +173,15 @@ def play_notification_files(notification_files: NotificationFiles) -> None:
         logger.exception("Error playing prepared notifications")
 
 
+def _round_down_to_check_window(now: datetime) -> datetime:
+    """Rounds `now` back to the most recent CHECK_WINDOW_MINUTES-aligned time at or before it -
+    the mirror image of next_boundary()'s forward rounding. Used for the daemon's startup
+    catch-up so it checks the window that was current when the process started, rather than a
+    base_time that's still mid-window and would miss anything already due in it."""
+    minute = (now.minute // CHECK_WINDOW_MINUTES) * CHECK_WINDOW_MINUTES
+    return now.replace(minute=0, second=0, microsecond=0) + timedelta(minutes=minute)
+
+
 def check_for_and_play_notifications(base_time: datetime) -> None:
     """Prepares and immediately plays a tick's notifications, with no early wake-up - used for
     the daemon's startup catch-up, where there's no upcoming boundary to build ahead of."""
@@ -203,18 +212,19 @@ class AlarmCheckDaemon:
         signal.signal(signal.SIGINT, self.request_stop)
 
         logger.info("Alarm check daemon starting")
-        check_for_and_play_notifications(datetime.now().astimezone())  # startup catch-up, don't wait for the first boundary
+        # startup catch-up, don't wait for the first boundary
+        check_for_and_play_notifications(_round_down_to_check_window(datetime.now().astimezone()))
 
         while not self._stop_event.is_set():
-            target_datetime = next_boundary(datetime.now().astimezone())
-            prepare_at = target_datetime - timedelta(seconds=EARLY_WAKE_SECONDS)
+            play_at = next_boundary(datetime.now().astimezone())
+            prepare_at = play_at - timedelta(seconds=EARLY_WAKE_SECONDS)
 
             if self._interruptible_wait_until(prepare_at):
                 break
 
-            notification_files = check_for_notifications(target_datetime)
+            notification_files = check_for_notifications(play_at)
 
-            if self._interruptible_wait_until(target_datetime):
+            if self._interruptible_wait_until(play_at):
                 break
 
             if notification_files is not None:
