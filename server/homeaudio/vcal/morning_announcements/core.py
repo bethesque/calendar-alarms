@@ -17,9 +17,9 @@ logger = logging.getLogger(__name__)
 ERROR_MESSAGE_AUDIO = "audio_resources/morning_announcements_error_message.mp3"
 
 class TextBuilder:
-    def __init__(self, events: list[Event], settings: MorningAnnouncementsSettings = MorningAnnouncementsSettings()) -> None:
+    def __init__(self, events: list[Event], settings: MorningAnnouncementsSettings | None = None) -> None:
         self.events = events
-        self.settings = settings
+        self.settings = settings or MorningAnnouncementsSettings()
 
     def get_morning_announcements_text(self) -> list[str]:
         try:
@@ -143,7 +143,8 @@ def _announcement_due(base_time: datetime, window: int, schedule: MorningAnnounc
     scheduled_time = datetime.combine(base_time.date(), scheduled_time_of_day, tzinfo=base_time.tzinfo)
     return base_time <= scheduled_time < base_time + timedelta(minutes=window)
 
-def _create_audio_file_for_calendar_days(base_time: datetime, calendar_days: list[CalendarDay], settings: MorningAnnouncementsSettings = MorningAnnouncementsSettings()) -> str:
+def _create_audio_file_for_calendar_days(base_time: datetime, calendar_days: list[CalendarDay], settings: MorningAnnouncementsSettings | None = None) -> str:
+    settings = settings or MorningAnnouncementsSettings()
     try:
         events = get_events_for_date(calendar_days, base_time)
     except MissingCalendarDataException:
@@ -162,8 +163,9 @@ def check_for_announcement(
         base_time: datetime,
         window: int,
         calendar_days: list[CalendarDay],
-        settings: MorningAnnouncementsSettings = MorningAnnouncementsSettings()
+        settings: MorningAnnouncementsSettings | None = None
     ) -> str | None:
+    settings = settings or MorningAnnouncementsSettings()
 
     if not settings.enabled:
         logger.debug(f"Morning announcements disabled")

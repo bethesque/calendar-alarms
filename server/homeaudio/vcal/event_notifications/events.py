@@ -60,7 +60,8 @@ def get_event_notifications(base_time, window, calendar_data: list[CalendarDay],
     event_notifications = alarm_finder.find_notification_events()
     return event_notifications
 
-def get_all_event_notifications(event_notification_settings: EventNotificationSettings = EventNotificationSettings(), calendar_source: CalendarSource = CalendarSource()):
+def get_all_event_notifications(event_notification_settings: EventNotificationSettings | None = None, calendar_source: CalendarSource = CalendarSource()):
+    event_notification_settings = event_notification_settings or EventNotificationSettings()
     calendar_days = calendar_source.load_data_from_file()
 
     notification_rules = event_notification_settings.enabled_notification_rules()

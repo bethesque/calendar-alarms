@@ -97,7 +97,8 @@ def _announcement_due(base_time: datetime, window: int, schedule: SchoolAnnounce
     scheduled_time = datetime.combine(base_time.date(), schedule.weekdays, tzinfo=base_time.tzinfo)
     return base_time <= scheduled_time < base_time + timedelta(minutes=window)
 
-def _create_audio_file_for_calendar_days(base_time: datetime, calendar_days: list[CalendarDay], settings: SchoolAnnouncementsSettings = SchoolAnnouncementsSettings()) -> str | None:
+def _create_audio_file_for_calendar_days(base_time: datetime, calendar_days: list[CalendarDay], settings: SchoolAnnouncementsSettings | None = None) -> str | None:
+    settings = settings or SchoolAnnouncementsSettings()
     try:
         events = get_events_for_date(calendar_days, base_time)
 
@@ -121,8 +122,9 @@ def check_for_announcement(
         base_time: datetime,
         window: int,
         calendar_days: list[CalendarDay],
-        settings: SchoolAnnouncementsSettings = SchoolAnnouncementsSettings()
+        settings: SchoolAnnouncementsSettings | None = None
     ) -> str | None:
+    settings = settings or SchoolAnnouncementsSettings()
 
     if not settings.enabled:
         logger.debug(f"School announcements disabled")

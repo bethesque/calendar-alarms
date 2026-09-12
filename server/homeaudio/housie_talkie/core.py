@@ -43,7 +43,8 @@ def _play_audio_files(request: PlayableRequest):
 def list_sound_effects()-> list[str]:
         return ["none", "random"] + sorted([os.path.basename(path) for path in SoundEffectSelector(1).get_options_source().get_options()])
 
-def list_clients(snapcast_settings: SnapcastSettings = SnapcastSettings()) -> list[Client]:
+def list_clients(snapcast_settings: SnapcastSettings | None = None) -> list[Client]:
+    snapcast_settings = snapcast_settings or SnapcastSettings()
     snapserver = Snapserver(snapcast_settings.snapserver_rpc_url)
     return snapserver.connected_clients()
 

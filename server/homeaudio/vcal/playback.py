@@ -67,7 +67,8 @@ def _play_event_alarm(alarms_file, mpd_settings: MpdSettings):
         mpd.play_file(alarms_file)
         fade_up([(mpd, mpd_settings.volumes.alarm_end)], fade_up_duration, 10)
 
-def play_file(file: str, mpd_settings: MpdSettings = MpdSettings()):
+def play_file(file: str, mpd_settings: MpdSettings | None = None):
+    mpd_settings = mpd_settings or MpdSettings()
     with mpd_connection(mpd_settings) as mpd:
         logger.info(f"Playing {file}")
         mpd.play_file(file)

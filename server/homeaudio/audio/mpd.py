@@ -16,7 +16,8 @@ It uses the python-musicpd library to communicate with the MPD daemon.
 """
 
 @contextmanager
-def mpd_connection(settings: MpdSettings = MpdSettings()):
+def mpd_connection(settings: MpdSettings | None = None):
+    settings = settings or MpdSettings()
 
     client = MpdClient(settings.host, settings.port)
     try:
