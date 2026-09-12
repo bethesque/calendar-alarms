@@ -25,6 +25,10 @@ SCHEDULE = EventNotificationSchedule(
 NO_MORNING_SCHEDULE = MorningAnnouncementsSchedule(weekdays=None, weekends=None)
 NO_SCHOOL_SCHEDULE = SchoolAnnouncementsSchedule(weekdays=None)
 
+# A MAX_SLEEP_SECONDS large enough that tests exercising multi-hour/overnight gaps aren't
+# affected by the cap - it's tested on its own terms separately.
+UNCAPPED_MAX_SLEEP_SECONDS = 60 * 60 * 24 * 7
+
 
 def test_next_boundary_rounds_up_to_next_five_minutes(monkeypatch):
     monkeypatch.setattr("homeaudio.vcal.daemon.CHECK_WINDOW_MINUTES", 5)
@@ -42,6 +46,7 @@ def test_next_boundary_lands_exactly_on_a_five_minute_mark(monkeypatch):
 
 def test_next_boundary_skips_to_next_days_start_hour_after_operating_window(monkeypatch):
     monkeypatch.setattr("homeaudio.vcal.daemon.CHECK_WINDOW_MINUTES", 5)
+    monkeypatch.setattr("homeaudio.vcal.daemon.MAX_SLEEP_SECONDS", UNCAPPED_MAX_SLEEP_SECONDS)
     now = datetime(2026, 4, 27, 20, 57, tzinfo=TIMEZONE)  # Monday, after last weekday tick
 
     assert next_boundary(now, SCHEDULE, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE) == datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE)  # Tuesday 7am
@@ -53,7 +58,8 @@ def test_next_boundary_rounds_up_to_the_next_minute():
     assert next_boundary(now, SCHEDULE, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE) == datetime(2026, 4, 27, 7, 4, tzinfo=TIMEZONE)
 
 
-def test_next_boundary_skips_to_next_days_start_hour_after_the_last_minute_tick():
+def test_next_boundary_skips_to_next_days_start_hour_after_the_last_minute_tick(monkeypatch):
+    monkeypatch.setattr("homeaudio.vcal.daemon.MAX_SLEEP_SECONDS", UNCAPPED_MAX_SLEEP_SECONDS)
     now = datetime(2026, 4, 27, 20, 59, 30, tzinfo=TIMEZONE)  # Monday, after the last weekday tick
 
     assert next_boundary(now, SCHEDULE, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE) == datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE)  # Tuesday 7am
@@ -65,13 +71,15 @@ def test_next_boundary_skips_forward_to_weekday_start_hour():
     assert next_boundary(now, SCHEDULE, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE) == datetime(2026, 4, 24, 7, 0, tzinfo=TIMEZONE)
 
 
-def test_next_boundary_uses_later_start_hour_on_weekends():
+def test_next_boundary_uses_later_start_hour_on_weekends(monkeypatch):
+    monkeypatch.setattr("homeaudio.vcal.daemon.MAX_SLEEP_SECONDS", UNCAPPED_MAX_SLEEP_SECONDS)
     now = datetime(2026, 4, 25, 6, 0, tzinfo=TIMEZONE)  # Saturday, before 8am start
 
     assert next_boundary(now, SCHEDULE, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE) == datetime(2026, 4, 25, 8, 0, tzinfo=TIMEZONE)
 
 
-def test_next_boundary_from_saturday_night_lands_on_sunday_8am():
+def test_next_boundary_from_saturday_night_lands_on_sunday_8am(monkeypatch):
+    monkeypatch.setattr("homeaudio.vcal.daemon.MAX_SLEEP_SECONDS", UNCAPPED_MAX_SLEEP_SECONDS)
     now = datetime(2026, 4, 25, 21, 0, tzinfo=TIMEZONE)  # Saturday, after last weekend tick
 
     assert next_boundary(now, SCHEDULE, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE) == datetime(2026, 4, 26, 8, 0, tzinfo=TIMEZONE)  # Sunday
@@ -133,7 +141,8 @@ def test_next_boundary_picks_the_earliest_of_several_out_of_hours_wake_times():
     assert next_boundary(now, SCHEDULE, morning_schedule, school_schedule) == datetime(2026, 4, 27, 6, 30, tzinfo=TIMEZONE)
 
 
-def test_next_boundary_ignores_school_announcement_schedule_on_weekends():
+def test_next_boundary_ignores_school_announcement_schedule_on_weekends(monkeypatch):
+    monkeypatch.setattr("homeaudio.vcal.daemon.MAX_SLEEP_SECONDS", UNCAPPED_MAX_SLEEP_SECONDS)
     school_schedule = SchoolAnnouncementsSchedule(weekdays=time(6, 30))
     now = datetime(2026, 4, 25, 6, 0, tzinfo=TIMEZONE)  # Saturday, before the weekday-only 6:30 school time and 8am start
 
@@ -145,6 +154,24 @@ def test_next_boundary_wakes_for_a_morning_announcement_after_the_operating_wind
     now = datetime(2026, 4, 27, 21, 30, tzinfo=TIMEZONE)  # Monday, after the 9pm operating window closes
 
     assert next_boundary(now, SCHEDULE, morning_schedule, NO_SCHOOL_SCHEDULE) == datetime(2026, 4, 27, 22, 0, tzinfo=TIMEZONE)
+
+
+def test_next_boundary_caps_a_long_gap_at_max_sleep_seconds(monkeypatch):
+    # Regression test: a boundary hours away must not be returned as-is, since a schedule
+    # change saved through the admin UI in the meantime would then go unnoticed until that
+    # stale boundary finally arrived - it must be capped so the daemon re-derives it sooner.
+    monkeypatch.setattr("homeaudio.vcal.daemon.CHECK_WINDOW_MINUTES", 5)
+    monkeypatch.setattr("homeaudio.vcal.daemon.MAX_SLEEP_SECONDS", 3600)
+    now = datetime(2026, 4, 27, 20, 57, tzinfo=TIMEZONE)  # Monday, ~10 hours before Tuesday 7am
+
+    assert next_boundary(now, SCHEDULE, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE) == now + timedelta(seconds=3600)
+
+
+def test_next_boundary_does_not_cap_a_gap_within_max_sleep_seconds(monkeypatch):
+    monkeypatch.setattr("homeaudio.vcal.daemon.MAX_SLEEP_SECONDS", 3600)
+    now = datetime(2026, 4, 27, 6, 30, tzinfo=TIMEZONE)  # Monday, 30 minutes before the 7am start
+
+    assert next_boundary(now, SCHEDULE, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE) == datetime(2026, 4, 27, 7, 0, tzinfo=TIMEZONE)
 
 
 def _patch_enabled(monkeypatch, *, main_settings_enabled=True, event_notification_settings_enabled=True):

@@ -34,6 +34,11 @@ CHECK_WINDOW_MINUTES = 1
 # so playback can start exactly on the tick instead of after however long that build takes.
 EARLY_WAKE_SECONDS = 15
 
+# The longest next_boundary() will ever ask the daemon to sleep in one go, so a schedule
+# change saved through the admin UI mid-sleep is noticed within the hour instead of only once
+# a long, already-stale overnight wait finally ends.
+MAX_SLEEP_SECONDS = 60 * 60
+
 
 def _time_range_for_day(schedule: EventNotificationSchedule, day: date) -> TimeRange:
     return schedule.weekdays if day.weekday() < 5 else schedule.weekends  # Monday=0 ... Sunday=6
@@ -94,6 +99,11 @@ def next_boundary(
     Each schedule is read fresh from its settings by default (rather than as a mutable default
     argument) so a change saved through the admin UI takes effect on the daemon's very next
     wake-up, not just at process start.
+
+    The result is also capped to at most MAX_SLEEP_SECONDS after `now`, so a long gap outside
+    operating hours (overnight, or a weekend) doesn't leave the daemon asleep on a boundary
+    computed from settings that go on to change before it wakes - it re-derives the boundary
+    from whatever the settings currently are at least that often.
     """
     schedule = schedule or EventNotificationSettings().schedule
     morning_schedule = morning_schedule or MorningAnnouncementsSettings().schedule
@@ -123,7 +133,7 @@ def next_boundary(
             next_wake_times = _wake_times_for_day(next_day, schedule, morning_schedule, school_schedule)
             candidate = datetime.combine(next_day, min(next_wake_times), tzinfo=candidate.tzinfo)
 
-    return candidate
+    return min(candidate, now + timedelta(seconds=MAX_SLEEP_SECONDS))
 
 
 def check_for_notifications(base_time: datetime) -> NotificationFiles | None:
@@ -183,7 +193,7 @@ class AlarmCheckDaemon:
         """Sleeps (interruptibly) until `target`. Returns True if a stop was requested during
         or before the sleep, so the caller should exit."""
         remaining = (target - datetime.now().astimezone()).total_seconds()
-        logger.debug(f"Sleeping for {remaining:.2f} seconds")
+        logger.debug(f"Sleeping for {remaining:.2f} seconds until {target}")
         if remaining > 0 and self._stop_event.wait(timeout=remaining):
             return True
         return self._stop_event.is_set()
