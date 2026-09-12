@@ -2,6 +2,10 @@ function music-assistant-sendspin-logs {
     journalctl SYSLOG_IDENTIFIER=sendspin-armv6 "$@"
 }
 
+function music-assistant-sendspin-logs-tail {
+    journalctl SYSLOG_IDENTIFIER=sendspin-armv6 -f -n 50 "$@"
+}
+
 function music-assistant-sendspin-status {
     systemctl --user status sendspin-armv6 "$@"
 }

@@ -2,6 +2,10 @@ function calendar-alarms-snapclient-logs {
     journalctl SYSLOG_IDENTIFIER=calendar-alarms-snapclient "$@"
 }
 
+function calendar-alarms-snapclient-logs-tail {
+    journalctl SYSLOG_IDENTIFIER=calendar-alarms-snapclient -f -n 50 "$@"
+}
+
 function calendar-alarms-snapclient-status {
     systemctl --user status calendar-alarms-snapclient "$@"
 }
@@ -24,6 +28,10 @@ function audio-client-speaker-test {
 
 function audio-client-http-logs {
     journalctl SYSLOG_IDENTIFIER=audio-client-http "$@"
+}
+
+function audio-client-http-logs-tail {
+    journalctl SYSLOG_IDENTIFIER=audio-client-http -f -n 50 "$@"
 }
 
 function audio-client-http-status {

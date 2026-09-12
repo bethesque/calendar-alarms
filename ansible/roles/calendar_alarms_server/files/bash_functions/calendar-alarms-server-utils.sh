@@ -2,6 +2,10 @@ function calendar-alarms-snapserver-logs {
     sudo journalctl -u snapserver "$@"
 }
 
+function calendar-alarms-snapserver-logs-tail {
+    sudo journalctl -u snapserver -f -n 50 "$@"
+}
+
 function calendar-alarms-snapserver-status {
     sudo systemctl status snapserver "$@"
 }
@@ -53,6 +57,10 @@ function calendar-alarms-http-logs {
     journalctl SYSLOG_IDENTIFIER=calendar-alarms-http "$@"
 }
 
+function calendar-alarms-http-logs-tail {
+    journalctl SYSLOG_IDENTIFIER=calendar-alarms-http -f -n 50 "$@"
+}
+
 function calendar-alarms-status {
     systemctl --user status calendar-alarms
 }
@@ -71,5 +79,9 @@ function calendar-alarms-stop {
 
 function calendar-alarms-logs {
     journalctl SYSLOG_IDENTIFIER=calendar-alarms "$@"
+}
+
+function calendar-alarms-logs-tail {
+    journalctl SYSLOG_IDENTIFIER=calendar-alarms -f -n 50 "$@"
 }
 
