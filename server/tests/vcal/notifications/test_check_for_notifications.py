@@ -34,6 +34,7 @@ def _stub_playback(monkeypatch) -> StubMpdPlayer:
     # Avoid hitting gTTS/ffmpeg to build real audio - the content of the
     # generated files isn't what these tests are checking.
     monkeypatch.setattr("homeaudio.vcal.event_notifications.audio.text_to_voice_file", lambda text: "fake_speech.mp3")
+    monkeypatch.setattr("homeaudio.vcal.event_notifications.audio.as_wav", lambda file_path: file_path)
     monkeypatch.setattr("homeaudio.vcal.event_notifications.audio.join_mp3s_to_wav", lambda files, output: None)
     monkeypatch.setattr("homeaudio.vcal.playback.track_length", lambda path: 0)
 

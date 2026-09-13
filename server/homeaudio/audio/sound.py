@@ -170,6 +170,32 @@ def mix_announcement_audio(
                 text=True)
     logger.debug(f"FFmpeg output: {result.stderr}")
 
+def convert_mp3_to_wav(mp3_file: str, wav_file: str):
+    """
+    Convert a single mp3 file to a wav file using ffmpeg.
+    """
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-loglevel", "warning",
+        "-i", mp3_file,
+        "-ar", f"{SAMPLE_RATE}",
+        "-ac", "1",
+        "-f", "wav",
+        wav_file,
+    ]
+
+    result = subprocess.run(
+        cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        text=True
+    )
+
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"ffmpeg failed to convert {mp3_file} to wav (exit code {result.returncode}):\n{result.stderr}"
+        )
 
 def num_loops(max_length: float, *file_paths: str) -> int:
     """Calculate the number of loops needed to play files for max_length seconds, rounding DOWN so that it is less than the max."""

@@ -1,12 +1,18 @@
 import glob
+import logging
+import os
 import random
+from pathlib import Path
+from homeaudio.env import CACHE_DIRECTORY
 from homeaudio.audio.sound import build_alarm_audio, join_mp3s_to_wav, build_aggressive_alarm_audio, join_mixed_files_to_wav
 from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file
 from homeaudio.audio.select_item import select_item_by_date
 from homeaudio.vcal.event_notifications import GENTLE_ALARMS_DIRECTORY, AGGRESSIVE_ALARMS_DIRECTORY, PRE_ANNOUNCEMENT_BELL, OUTPUT_AUDIO_DIRECTORY, SILENCE_HALF_SEC
 from homeaudio.audio.settings import AlarmSettings
 from homeaudio.housie_talkie.models import SoundEffectSelector
+from homeaudio.audio.wav import as_wav
 
+logger = logging.getLogger(__name__)
 
 """
 Builds the alarm audio by using TTS to read out the event descriptions, and
@@ -28,8 +34,8 @@ class AlarmAudio:
         alarm_file = self._get_alarm_file()
 
         build_alarm_audio(
-            speech_file=joined_announcement_file,
-            alarm_file=alarm_file,
+            speech_file=as_wav(joined_announcement_file),
+            alarm_file=as_wav(alarm_file),
             output_file=gentle_audio_file,
             duration=self.alarm_settings.gentle_alarm_duration
         )
@@ -43,13 +49,13 @@ class AlarmAudio:
 
             build_aggressive_alarm_audio(
                 announcement_file=joined_announcement_file,
-                alarm_file=self.get_aggressive_alarm_file(),
+                alarm_file=as_wav(self.get_aggressive_alarm_file()),
                 output_file=aggressive_audio_file,
                 loops=self.alarm_settings.aggressive_alarm_loops
             )
 
-            files_to_loop.append(loud_noise_warning_file)
-            files_to_loop.append(SILENCE_HALF_SEC)
+            files_to_loop.append(as_wav(loud_noise_warning_file))
+            files_to_loop.append(as_wav(SILENCE_HALF_SEC))
             files_to_loop.append(aggressive_audio_file)
 
         all_files = files_to_loop * self.alarm_settings.full_loops
@@ -99,17 +105,17 @@ class AnnouncementAudio:
 
     def build_announcement_file(self):
         joined_announcement_file = f"{OUTPUT_AUDIO_DIRECTORY}/announcement.wav"
-        files = self.preannouncement_files() + self._announcement_files_for_events() + [SILENCE_HALF_SEC]
+        files = self.preannouncement_files() + self._announcement_files_for_events() + [as_wav(SILENCE_HALF_SEC)]
         join_mp3s_to_wav(files, joined_announcement_file)
 
         return joined_announcement_file
 
     def _announcement_files_for_events(self):
-        return [text_to_voice_file(text) for text in self.notification_texts]
+        return [as_wav(text_to_voice_file(text)) for text in self.notification_texts]
 
     def preannouncement_files(self) -> list[str]:
         file = self.sound_effect_selector.get_random_sound_effect_file()
         if file:
-            return [PRE_ANNOUNCEMENT_BELL, file]
+            return [as_wav(PRE_ANNOUNCEMENT_BELL), as_wav(file)]
         else:
-            return [PRE_ANNOUNCEMENT_BELL]
+            return [as_wav(PRE_ANNOUNCEMENT_BELL)]
