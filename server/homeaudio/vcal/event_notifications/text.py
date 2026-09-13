@@ -16,7 +16,7 @@ class VerbIdentifier:
         return word.lower() in self.verbs
 
 class NotificationTextBuilder:
-    COMPLIMENTS_FOR_1 = ListOptionsSource("compliments_for_1", ["What a beautiful name.", "Everyone loves working with you.", "You are fabulous.", "What beautiful eyes you have.", "You're the best!", "You are one of the most talented people we know.", "Lots of people love you.", "You are thoughful, intelligent and beautiful."])
+    COMPLIMENTS_FOR_1 = ListOptionsSource("compliments_for_1", ["What a beautiful name.", "Everyone loves working with you.", "You are fabulous.", "What beautiful eyes you have.", "You're the best!", "You are one of the most talented people we know.", "Lots of people love you.", "You are thoughtful, intelligent and beautiful."])
     COMPLIEMENTS_FOR_2 = ListOptionsSource("compliments_for_2", ["What a great looking pair you are.", "You're both awesome.", "It's a great day because you're here."])
     COMPLIEMENTS_FOR_MANY = ListOptionsSource("compliments_for_many", ["What a good looking bunch you are.", "You are all awesome."])
 
