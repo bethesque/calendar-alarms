@@ -29,7 +29,7 @@ def play_notifications(notification_files: NotificationFiles, scene: SceneProtoc
     scheduled_announcements_files = notification_files.scheduled_announcements_files
     alarms_file = notification_files.event_alarms_file
 
-    if announcements_file:
+    if announcements_file or scheduled_announcements_files:
         snapserver_manager.set_volumes("tts")
 
     # Only announcement

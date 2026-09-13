@@ -261,7 +261,7 @@ def test_refresh_calendar_does_not_raise_when_fetching_fails(monkeypatch):
 
 def test_calendar_refresh_loop_start_returns_a_named_daemon_thread():
     stop_event = threading.Event()
-    stop_event.set()  # so _run exits immediately if it gets scheduled before join()
+    stop_event.set()  # so _run exits immediately if it gets scheduled before join(), skipping the startup refresh
 
     thread = CalendarRefreshLoop(stop_event).start()
 
@@ -271,11 +271,11 @@ def test_calendar_refresh_loop_start_returns_a_named_daemon_thread():
     assert not thread.is_alive()
 
 
-def test_calendar_refresh_loop_stops_promptly_instead_of_waiting_out_the_full_boundary(monkeypatch):
-    # Far enough in the future that a real wait would still be blocked when the test checks.
+def test_calendar_refresh_loop_refreshes_immediately_on_start(monkeypatch):
+    # So calendar.json isn't left stale for however long until the first regular boundary.
     monkeypatch.setattr(
         "homeaudio.vcal.calendar_refresh.next_refresh_boundary",
-        lambda now, schedule=None, morning_schedule=None, school_schedule=None: now + timedelta(seconds=30),
+        lambda now, schedule=None, morning_schedule=None, school_schedule=None: now + timedelta(hours=1),
     )
     refresh_calls = []
     monkeypatch.setattr(
@@ -290,4 +290,30 @@ def test_calendar_refresh_loop_stops_promptly_instead_of_waiting_out_the_full_bo
     thread.join(timeout=1)
 
     assert not thread.is_alive()
-    assert refresh_calls == []  # stopped before its first boundary ever arrived
+    assert len(refresh_calls) == 1  # the startup refresh, not the (far-off) first boundary
+
+
+def test_calendar_refresh_loop_stops_promptly_instead_of_waiting_out_the_full_boundary(monkeypatch):
+    # Far enough in the future that a real wait would still be blocked when the test checks.
+    monkeypatch.setattr(
+        "homeaudio.vcal.calendar_refresh.next_refresh_boundary",
+        lambda now, schedule=None, morning_schedule=None, school_schedule=None: now + timedelta(seconds=30),
+    )
+    started = threading.Event()  # signals the startup refresh landed, so stopping below is deterministic
+    refresh_calls = []
+
+    def fake_refresh_calendar(base_time):
+        refresh_calls.append(base_time)
+        started.set()
+
+    monkeypatch.setattr("homeaudio.vcal.calendar_refresh.refresh_calendar", fake_refresh_calendar)
+
+    stop_event = threading.Event()
+    thread = CalendarRefreshLoop(stop_event).start()
+
+    assert started.wait(timeout=1)
+    stop_event.set()
+    thread.join(timeout=1)
+
+    assert not thread.is_alive()
+    assert len(refresh_calls) == 1  # only the startup refresh - the 30s boundary never arrived

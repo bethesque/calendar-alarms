@@ -114,9 +114,11 @@ def refresh_calendar(base_time: datetime) -> None:
 
 
 class CalendarRefreshLoop:
-    """Runs refresh_calendar() on REFRESH_INTERVAL_MINUTES, on its own daemon thread. Takes the
-    stop_event of whatever owns it (rather than creating its own) so both loops start and stop
-    together."""
+    """Runs refresh_calendar() on REFRESH_INTERVAL_MINUTES, on its own daemon thread - plus once
+    immediately on start, so calendar.json isn't left stale for however long until the day's
+    first regular boundary (unlike the notification loop's own tick, a refresh has no
+    window-sensitive side effect, so there's no reason to wait for one). Takes the stop_event of
+    whatever owns it (rather than creating its own) so both loops start and stop together."""
 
     def __init__(self, stop_event: threading.Event):
         self._stop_event = stop_event
@@ -128,6 +130,9 @@ class CalendarRefreshLoop:
 
     def _run(self) -> None:
         logger.info("Starting calendar data refresh thread")
+        if not self._stop_event.is_set():
+            refresh_calendar(datetime.now().astimezone())  # startup catch-up, don't wait for the first boundary
+
         while not self._stop_event.is_set():
             refresh_at = next_refresh_boundary(datetime.now().astimezone())
             remaining = (refresh_at - datetime.now().astimezone()).total_seconds()
