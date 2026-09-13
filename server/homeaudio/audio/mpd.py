@@ -296,6 +296,9 @@ class FadeUp:
     def step(self) -> bool:
         """Execute one step of the fade up. Returns True when complete."""
         if self.current_step < len(self.volumes):
+            if not self.mpd_process.is_playing():
+                logger.info(f"MPD is not longer playing, stopping fade up")
+                return True  # done
             # if the current volume has changed since the last step, return True to indicate we're done,
             # as something else has changed the volume
             current_volume = self.mpd_process.get_volume()
