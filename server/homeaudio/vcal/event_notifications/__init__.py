@@ -7,7 +7,7 @@ BACKGROUND_MUSIC_DIRECTORY = Path(f"{AUDIO_DIRECTORY}/background_music").absolut
 OUTPUT_AUDIO_DIRECTORY = Path("/tmp") # Do not resolve this one or Mac gets confused
 SAMPLE_RATE = 44100
 
-# ffmpeg -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 -t 0.25 -q:a 9 -acodec libmp3lame silence.mp3
+# ffmpeg -f lavfi -i anullsrc=channel_layout=mono:sample_rate=44100 -t 0.25 -q:a 9 -acodec libmp3lame silence.mp3
 
 SILENCE_HALF_SEC = f"{AUDIO_DIRECTORY}/silence_500ms.mp3"
 SILENCE_QUARTER_SEC = f"{AUDIO_DIRECTORY}/silence_250ms.mp3"

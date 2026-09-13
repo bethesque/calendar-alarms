@@ -28,7 +28,7 @@ class AlarmAudio:
         alarm_file = self._get_alarm_file()
 
         build_alarm_audio(
-            announcement_file=joined_announcement_file,
+            speech_file=joined_announcement_file,
             alarm_file=alarm_file,
             output_file=gentle_audio_file,
             duration=self.alarm_settings.gentle_alarm_duration

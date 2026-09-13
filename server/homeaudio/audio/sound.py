@@ -8,7 +8,7 @@ from homeaudio.vcal.event_notifications import SAMPLE_RATE
 logger = logging.getLogger(__name__)
 
 def build_alarm_audio(
-    announcement_file: str,
+    speech_file: str,
     alarm_file: str,
     output_file: str,
     duration: int = 300
@@ -16,14 +16,14 @@ def build_alarm_audio(
 
     # Not quite right because we add silence at the beginning and between loops, but it's good enough
     # The overall file will be concatenated at <duration> seconds
-    announcement_loops = num_loops(duration, announcement_file)
+    announcement_loops = num_loops(duration, speech_file)
     alarm_loops = num_loops(duration, alarm_file)
 
-    logger.debug(f"Building alarm audio with announcement_file={announcement_file}, alarm_file={alarm_file}, output_file={output_file}, duration={duration}")
+    logger.debug(f"Building alarm audio with announcement_file={speech_file}, alarm_file={alarm_file}, output_file={output_file}, duration={duration}")
     filter_complex = (
         # 1) Force format INCLUDING sample format
-        f"[0:a]aformat=sample_fmts=s16:sample_rates={SAMPLE_RATE}:channel_layouts=stereo[s0];"
-        f"[1:a]aformat=sample_fmts=s16:sample_rates={SAMPLE_RATE}:channel_layouts=stereo,volume=1.8[s1];"
+        f"[0:a]aformat=sample_fmts=s16:sample_rates={SAMPLE_RATE}:channel_layouts=mono[s0];"
+        f"[1:a]aformat=sample_fmts=s16:sample_rates={SAMPLE_RATE}:channel_layouts=mono,volume=1.8[s1];"
 
         # 2) Build ONE cycle: silence → announcement
         "[s0][s1]concat=n=2:v=0:a=1[ann_once];"
@@ -32,7 +32,7 @@ def build_alarm_audio(
         f"[ann_once]aloop=loop={announcement_loops}:size=2e+09[ann];"
 
         # 4) Prepare alarm
-        f"[2:a]aformat=sample_fmts=s16:sample_rates={SAMPLE_RATE}:channel_layouts=stereo,"
+        f"[2:a]aformat=sample_fmts=s16:sample_rates={SAMPLE_RATE}:channel_layouts=mono,"
         f"volume=0.5,aloop=loop={alarm_loops}:size=2e+09[alarm];"
 
         # 5) Mix
@@ -51,8 +51,8 @@ def build_alarm_audio(
         "-loglevel", "warning",
         "-f", "lavfi",
         "-t", "5", # 5 seconds of silence before and between announcements
-        "-i", f"anullsrc=r={SAMPLE_RATE}:cl=stereo",
-        "-i", announcement_file,
+        "-i", f"anullsrc=r={SAMPLE_RATE}:cl=mono",
+        "-i", speech_file,
         "-stream_loop", "-1",
         "-i", alarm_file,
         "-filter_complex", filter_complex,
@@ -85,9 +85,10 @@ def build_aggressive_alarm_audio(
         and save the file into output_file
     """
 
-
-    concat_inputs = "[0:a][1:a]" * loops
-    filter_complex = f"{concat_inputs}concat=n={loops * 2}:v=0:a=1[out]"
+    # Normalize both inputs to mono once, then reference the normalized labels
+    normalize = "[0:a]aformat=channel_layouts=mono[a0];[1:a]aformat=channel_layouts=mono[a1];"
+    concat_inputs = "[a0][a1]" * loops
+    filter_complex = f"{normalize}{concat_inputs}concat=n={loops * 2}:v=0:a=1[out]"
 
     cmd = [
         "ffmpeg",
@@ -97,6 +98,7 @@ def build_aggressive_alarm_audio(
         "-i", announcement_file,
         "-filter_complex", filter_complex,
         "-map", "[out]",
+        "-ac", "1",
         output_file,
     ]
 
@@ -128,11 +130,11 @@ def mix_announcement_audio(
 
     filter_complex = (
         # Announcement (delay + smooth start)
-        f"[0:a]aformat=sample_fmts=s16:sample_rates={SAMPLE_RATE}:channel_layouts=stereo,"
+        f"[0:a]aformat=sample_fmts=s16:sample_rates={SAMPLE_RATE}:channel_layouts=mono,"
         f"volume=1.5,adelay={delay * 1000}|{delay * 1000}[ann];"
 
         # Music
-        f"[1:a]aformat=sample_fmts=s16:sample_rates={SAMPLE_RATE}:channel_layouts=stereo,volume=0.5,"
+        f"[1:a]aformat=sample_fmts=s16:sample_rates={SAMPLE_RATE}:channel_layouts=mono,volume=0.5,"
         f"aloop=loop={music_loops}:size={size},"
         "asetpts=N/SR/TB,"
         f"atrim=start=0:end={full_duration_seconds:.2f},"
@@ -236,9 +238,15 @@ def join_mixed_files_to_wav(files: list, output_wav: str):
     for f in files:
         input_args.extend(["-i", f])
 
-    # Build the concat filter, e.g. "[0:a][1:a][2:a]concat=n=3:v=0:a=1[out]"
-    stream_labels = "".join(f"[{i}:a]" for i in range(len(files)))
-    filter_complex = f"{stream_labels}concat=n={len(files)}:v=0:a=1[out]"
+    # Normalize each input to mono first: [0:a]aformat=...[a0];[1:a]aformat=...[a1];...
+    normalize_parts = [
+        f"[{i}:a]aformat=channel_layouts=mono[a{i}]" for i in range(len(files))
+    ]
+    normalize = ";".join(normalize_parts) + ";"
+
+    # Concat using the normalized labels instead of raw [i:a]
+    stream_labels = "".join(f"[a{i}]" for i in range(len(files)))
+    filter_complex = f"{normalize}{stream_labels}concat=n={len(files)}:v=0:a=1[out]"
 
     cmd = [
         "ffmpeg",
@@ -247,7 +255,7 @@ def join_mixed_files_to_wav(files: list, output_wav: str):
         "-filter_complex", filter_complex,
         "-map", "[out]",
         "-ar", f"{SAMPLE_RATE}",
-        "-ac", "2",
+        "-ac", "1",
         output_wav,
     ]
 
@@ -264,5 +272,3 @@ def join_mixed_files_to_wav(files: list, output_wav: str):
         )
 
     return output_wav
-
-
