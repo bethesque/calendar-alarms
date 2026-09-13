@@ -130,7 +130,7 @@ class CalendarRefreshLoop:
         return thread
 
     def _run(self) -> None:
-        logger.info("Starting calendar data refresh thread")
+        logger.info(f"Starting calendar data refresh thread. Refreshing every {REFRESH_INTERVAL_MINUTES} minutes, offset by {REFRESH_OFFSET_SECONDS} seconds.")
         if not self._stop_event.is_set():
             refresh_calendar(datetime.now().astimezone())  # startup catch-up, don't wait for the first boundary
 

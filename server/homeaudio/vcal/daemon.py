@@ -181,7 +181,7 @@ class AlarmCheckDaemon:
 
         refresh_thread = CalendarRefreshLoop(self._stop_event).start()
 
-        logger.info("Started alarm check daemon")
+        logger.info(f"Started notification check daemon. Checking for notifications every {CHECK_INTERVAL_MINUTES} minutes, preparing sound files {EARLY_WAKE_SECONDS} seconds beforehand.")
 
         try:
             while not self._stop_event.is_set():
