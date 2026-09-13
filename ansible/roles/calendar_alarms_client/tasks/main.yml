@@ -1,6 +1,11 @@
 # - name: Stop
 #   ansible.builtin.meta: end_play
 
+- name: Hosts
+  ansible.builtin.import_tasks: hosts.yml
+  tags:
+    - hosts
+
 - name: Checkout code
   ansible.builtin.import_tasks: codebase.yml
   tags:

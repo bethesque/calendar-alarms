@@ -3,3 +3,8 @@
   tags:
     - sendspin
   when: host_distro == "trixie"
+
+- name: Install bash functions
+  ansible.builtin.import_tasks: bash_functions.yml
+  tags:
+    - bash_functions
