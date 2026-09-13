@@ -15,3 +15,11 @@ all:
           housie_talkie_enabled: true
           wake_up_alarm_enabled: false
           snapcast_enabled: false
+
+          NOTIFICATIONS_CHECK_INTERVAL_MINUTES: 5
+          # 2 minutes before play time
+          notifications_preparation_lead_time_seconds: 120
+
+          calendar_data_refresh_interval_minutes: 5
+          # 2 minutes 15 seconds after the 5 minute block
+          calendar_data_refresh_offset_seconds: "{{ 2 * 60 + 15 }}"

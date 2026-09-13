@@ -47,3 +47,19 @@
   notify:
     - restart calendar-alarms-http.service
     - restart calendar-alarms.service
+
+- name: Ensure resource directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+  loop:
+    - "{{ resources_dir }}"
+    - "{{ wake_up_alarms_directory }}"
+    - "{{ sound_effects_directory }}"
+    - "{{ calendar_data_directory }}"
+    - "{{ cache_directory }}"
+  tags:
+    - resources_dirs

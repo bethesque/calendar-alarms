@@ -19,7 +19,7 @@ from homeaudio.audio.settings import (
     SchoolAnnouncementsSchedule,
     SchoolAnnouncementsSettings,
 )
-from homeaudio.env import LOG_LEVEL
+from homeaudio.env import LOG_LEVEL, NOTIFICATIONS_CHECK_INTERVAL_MINUTES, NOTIFICATIONS_PREPARATION_LEAD_TIME_SECONDS
 from homeaudio.vcal.cal.google_calendar import CalendarSource
 from homeaudio.vcal.calendar_refresh import CalendarRefreshLoop
 from homeaudio.vcal.core import prepare_notification_files, NotificationFiles
@@ -34,11 +34,12 @@ setup_logging_for_alarms(str(LOG_LEVEL))
 
 logger = logging.getLogger(__name__)
 
-CHECK_WINDOW_MINUTES = 1
+# How often to check for and play notifications
+CHECK_INTERVAL_MINUTES = NOTIFICATIONS_CHECK_INTERVAL_MINUTES
 
 # How many seconds before each check tick the daemon wakes up to build notification audio,
 # so playback can start exactly on the tick instead of after however long that build takes.
-EARLY_WAKE_SECONDS = 15
+EARLY_WAKE_SECONDS = NOTIFICATIONS_PREPARATION_LEAD_TIME_SECONDS
 
 # The longest next_boundary() will ever ask the daemon to sleep in one go, so a schedule
 # change saved through the admin UI mid-sleep is noticed within the hour instead of only once
@@ -75,7 +76,7 @@ def next_boundary(
     morning_schedule: MorningAnnouncementsSchedule | None = None,
     school_schedule: SchoolAnnouncementsSchedule | None = None,
 ) -> datetime:
-    """The next CHECK_WINDOW_MINUTES-aligned time at or after `now`, skipping forward over hours
+    """The next CHECK_INTERVAL_MINUTES-aligned time at or after `now`, skipping forward over hours
     outside EventNotificationSettings.schedule's weekdays/weekends window - except for any
     MorningAnnouncementsSettings/SchoolAnnouncementsSettings scheduled time that falls in one of
     those skipped hours, since those announcements are due regardless of that window.
@@ -93,14 +94,14 @@ def next_boundary(
     morning_schedule = morning_schedule or MorningAnnouncementsSettings().schedule
     school_schedule = school_schedule or SchoolAnnouncementsSettings().schedule
 
-    minute = (now.minute // CHECK_WINDOW_MINUTES + 1) * CHECK_WINDOW_MINUTES
-    # Wind back to the previous whole minute and add the CHECK_WINDOW_MINUTES to it
+    minute = (now.minute // CHECK_INTERVAL_MINUTES + 1) * CHECK_INTERVAL_MINUTES
+    # Wind back to the previous whole minute and add the CHECK_INTERVAL_MINUTES to it
     candidate = now.replace(minute=0, second=0, microsecond=0) + timedelta(minutes=minute)
 
     while not within_event_notification_operating_hours(candidate, schedule) and not _is_scheduled_announcement(
         candidate, morning_schedule, school_schedule
     ):
-        # The next regular CHECK_WINDOW_MINUTES is outside the normal event notification operating hours.
+        # The next regular CHECK_INTERVAL_MINUTES is outside the normal event notification operating hours.
         # Collect the future wake up times for today (the start of event notifications and the announcement times)
         wake_times_today = [
             wake_time
@@ -138,7 +139,7 @@ def check_for_notifications(base_time: datetime) -> NotificationFiles | None:
         if calendar_source.file_exists():
             logger.debug(f"Loading calendar data from {calendar_source.cache_file_path}")
             calendar_data = calendar_source.load_data_from_file()
-            return prepare_notification_files(base_time, CHECK_WINDOW_MINUTES, calendar_data)
+            return prepare_notification_files(base_time, CHECK_INTERVAL_MINUTES, calendar_data)
         else:
             logger.info(f"No calendar file found at {calendar_source.cache_file_path}, no notifications this tick")
 

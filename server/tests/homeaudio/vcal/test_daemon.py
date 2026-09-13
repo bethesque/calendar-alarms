@@ -51,28 +51,29 @@ def _no_refresh_thread(monkeypatch):
 
 
 def test_next_boundary_rounds_up_to_next_five_minutes(monkeypatch):
-    monkeypatch.setattr("homeaudio.vcal.daemon.CHECK_WINDOW_MINUTES", 5)
+    monkeypatch.setattr("homeaudio.vcal.daemon.CHECK_INTERVAL_MINUTES", 5)
     now = datetime(2026, 4, 27, 7, 3, tzinfo=TIMEZONE)  # Monday
 
     assert next_boundary(now, SCHEDULE, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE) == datetime(2026, 4, 27, 7, 5, tzinfo=TIMEZONE)
 
 
 def test_next_boundary_lands_exactly_on_a_five_minute_mark(monkeypatch):
-    monkeypatch.setattr("homeaudio.vcal.daemon.CHECK_WINDOW_MINUTES", 5)
+    monkeypatch.setattr("homeaudio.vcal.daemon.CHECK_INTERVAL_MINUTES", 5)
     now = datetime(2026, 4, 27, 7, 5, tzinfo=TIMEZONE)  # Monday, exactly on a mark
 
     assert next_boundary(now, SCHEDULE, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE) == datetime(2026, 4, 27, 7, 10, tzinfo=TIMEZONE)
 
 
 def test_next_boundary_skips_to_next_days_start_hour_after_operating_window(monkeypatch):
-    monkeypatch.setattr("homeaudio.vcal.daemon.CHECK_WINDOW_MINUTES", 5)
+    monkeypatch.setattr("homeaudio.vcal.daemon.CHECK_INTERVAL_MINUTES", 5)
     monkeypatch.setattr("homeaudio.vcal.daemon.MAX_SLEEP_SECONDS", UNCAPPED_MAX_SLEEP_SECONDS)
     now = datetime(2026, 4, 27, 20, 57, tzinfo=TIMEZONE)  # Monday, after last weekday tick
 
     assert next_boundary(now, SCHEDULE, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE) == datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE)  # Tuesday 7am
 
 
-def test_next_boundary_rounds_up_to_the_next_minute():
+def test_next_boundary_rounds_up_to_the_next_minute(monkeypatch):
+    monkeypatch.setattr("homeaudio.vcal.daemon.CHECK_INTERVAL_MINUTES", 1)
     now = datetime(2026, 4, 27, 7, 3, 20, tzinfo=TIMEZONE)  # Monday
 
     assert next_boundary(now, SCHEDULE, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE) == datetime(2026, 4, 27, 7, 4, tzinfo=TIMEZONE)
@@ -180,7 +181,7 @@ def test_next_boundary_caps_a_long_gap_at_max_sleep_seconds(monkeypatch):
     # Regression test: a boundary hours away must not be returned as-is, since a schedule
     # change saved through the admin UI in the meantime would then go unnoticed until that
     # stale boundary finally arrived - it must be capped so the daemon re-derives it sooner.
-    monkeypatch.setattr("homeaudio.vcal.daemon.CHECK_WINDOW_MINUTES", 5)
+    monkeypatch.setattr("homeaudio.vcal.daemon.CHECK_INTERVAL_MINUTES", 5)
     monkeypatch.setattr("homeaudio.vcal.daemon.MAX_SLEEP_SECONDS", 3600)
     now = datetime(2026, 4, 27, 20, 57, tzinfo=TIMEZONE)  # Monday, ~10 hours before Tuesday 7am
 
@@ -236,6 +237,9 @@ def test_alarm_check_daemon_stops_promptly_instead_of_waiting_out_the_full_bound
     # signal.signal() only works from the main thread; the daemon runs in a background
     # thread here so its own request_stop can be called concurrently, so stub it out.
     monkeypatch.setattr(signal, "signal", lambda *a, **k: None)
+    # Smaller than the 30s gap to next_boundary() below, so the prepare wait is still in the
+    # future when request_stop() is called and hasn't already fired.
+    monkeypatch.setattr("homeaudio.vcal.daemon.EARLY_WAKE_SECONDS", 15)
 
     check_calls = []
     monkeypatch.setattr(

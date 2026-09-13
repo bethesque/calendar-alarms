@@ -18,6 +18,7 @@ from homeaudio.audio.settings import (
 )
 from homeaudio.vcal.cli import refresh_calendar_data as fetch_and_save_calendar_data
 from homeaudio.vcal.notification_schedule import announcement_times_for_day, event_notification_time_range_for_day
+from homeaudio.env import CALENDAR_DATA_REFRESH_INTERVAL_MINUTES, CALENDAR_DATA_REFRESH_OFFSET_SECONDS
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +31,8 @@ logger = logging.getLogger(__name__)
 # _wake_window_for_day) - one refresh interval's worth of buffer is exactly enough to guarantee
 # the day's first refresh has landed before whichever notification-loop tick reads calendar.json
 # first.
-REFRESH_INTERVAL_MINUTES = 5
-REFRESH_OFFSET_SECONDS = 3 * 60 + 15  # 3 minutes and 15 seconds
+REFRESH_INTERVAL_MINUTES = CALENDAR_DATA_REFRESH_INTERVAL_MINUTES
+REFRESH_OFFSET_SECONDS = CALENDAR_DATA_REFRESH_OFFSET_SECONDS
 
 # The longest next_refresh_boundary() will ever ask this loop to sleep in one go, so a schedule
 # change saved through the admin UI mid-sleep is noticed within the hour instead of only once a

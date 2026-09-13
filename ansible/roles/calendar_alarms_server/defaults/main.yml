@@ -21,13 +21,25 @@ snapcast_src_dir: /opt/snapcast
 
 snapweb_doc_root: /usr/share/snapserver/snapweb
 
-project_root: /home/{{ ansible_user }}/calendar-alarms-2
-resources_dir: /home/{{ ansible_user }}/calendar-alarms-resources
+
+project_root: "/home/{{ ansible_user }}/calendar-alarms-2"
 server_root: "{{ project_root }}/server"
 calendar_alarms_server_conf: "{{ server_root }}/config/uvicorn.yaml"
 app_name: "Tortice Home Audio"
+
+resources_dir: "/home/{{ ansible_user }}/calendar-alarms-resources"
+wake_up_alarms_directory: "{{ resources_dir}}/wake_up_alarms"
+sound_effects_directory: "{{ resources_dir}}/sound_effects"
+calendar_data_directory: "{{ resources_dir}}/calendar_data"
+cache_directory: "{{ resources_dir}}/cache"
 
 home_assistant_supported: true
 housie_talkie_enabled: true
 wake_up_alarm_enabled: true
 snapcast_enabled: true
+
+NOTIFICATIONS_CHECK_INTERVAL_MINUTES: 1
+notifications_preparation_lead_time_seconds: 15
+
+calendar_data_refresh_interval_minutes: 5
+calendar_data_refresh_offset_seconds: "{{ 3 * 60 + 15 }}"  # 3 minutes and 15 seconds
