@@ -16,7 +16,7 @@ from homeaudio.audio.settings import (
 from homeaudio.vcal.calendar_refresh import CalendarRefreshLoop
 from homeaudio.vcal.core import NotificationFiles
 from homeaudio.vcal.daemon import (
-    AlarmCheckDaemon,
+    NotificationCheckDaemon,
     next_boundary,
     check_for_notifications,
     play_notification_files,
@@ -41,7 +41,7 @@ UNCAPPED_MAX_SLEEP_SECONDS = 60 * 60 * 24 * 7
 
 @pytest.fixture(autouse=True)
 def _no_refresh_thread(monkeypatch):
-    """AlarmCheckDaemon.run() also starts a CalendarRefreshLoop on a background thread and joins
+    """NotificationCheckDaemon.run() also starts a CalendarRefreshLoop on a background thread and joins
     it on shutdown. Tests exercising the notification loop via run() don't need a real thread, and
     stubbing it out here keeps them from incidentally reading real settings or reaching the
     network from a thread they don't control - a Mock() stands in so run()'s unconditional
@@ -211,7 +211,7 @@ def test_alarm_check_daemon_starts_a_calendar_refresh_loop_sharing_its_stop_even
 
     monkeypatch.setattr(CalendarRefreshLoop, "start", fake_start)
 
-    daemon = AlarmCheckDaemon()
+    daemon = NotificationCheckDaemon()
     thread = threading.Thread(target=daemon.run, daemon=True)
     thread.start()
 
@@ -252,7 +252,7 @@ def test_alarm_check_daemon_stops_promptly_instead_of_waiting_out_the_full_bound
         lambda now, schedule=None: now + timedelta(seconds=30),
     )
 
-    daemon = AlarmCheckDaemon()
+    daemon = NotificationCheckDaemon()
     thread = threading.Thread(target=daemon.run, daemon=True)
     thread.start()
 
@@ -357,7 +357,7 @@ def _daemon_with_fake_wait(monkeypatch, boundary, early_wake_seconds, wait_retur
     monkeypatch.setattr("homeaudio.vcal.daemon.next_boundary", lambda now, schedule=None: boundary)
     monkeypatch.setattr("homeaudio.vcal.daemon.EARLY_WAKE_SECONDS", early_wake_seconds)
 
-    daemon = AlarmCheckDaemon()
+    daemon = NotificationCheckDaemon()
     wait_calls = []
     remaining = list(wait_returns)
 

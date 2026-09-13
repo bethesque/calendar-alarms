@@ -158,7 +158,7 @@ def play_notification_files(notification_files: NotificationFiles) -> None:
         logger.exception("Error playing prepared notifications")
 
 
-class AlarmCheckDaemon:
+class NotificationCheckDaemon:
     def __init__(self):
         self._stop_event = threading.Event()
 
@@ -211,4 +211,4 @@ class AlarmCheckDaemon:
 
 
 def run_daemon() -> None:
-    AlarmCheckDaemon().run()
+    NotificationCheckDaemon().run()
