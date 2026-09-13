@@ -5,7 +5,7 @@ from homeaudio.audio.mpd import fade_up, mpd_connection
 from homeaudio.audio.sound import track_length
 from homeaudio.audio.scene import SceneProtocol
 from homeaudio.audio.settings import SnapcastSettings, MpdSettings
-from homeaudio.audio.snapcast import SnapserverManager
+from homeaudio.audio.snapcast import snapserver_manager_for_env
 from homeaudio.env import CALENDAR_DATA_DIRECTORY
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ Takes a list of CalenderDays and finds any alarms due within the given time wind
 def play_notifications(notification_files: NotificationFiles, scene: SceneProtocol):
     mpd_settings = MpdSettings()
     snapcast_settings = SnapcastSettings()
-    snapserver_manager = SnapserverManager(snapcast_settings)
+    snapserver_manager = snapserver_manager_for_env(snapcast_settings)
     areas = snapserver_manager.connected_player_areas()
     announcements_file = notification_files.event_announcements_file
     scheduled_announcements_files = notification_files.scheduled_announcements_files

@@ -38,7 +38,7 @@ def _stub_playback(monkeypatch) -> StubMpdPlayer:
     monkeypatch.setattr("homeaudio.vcal.playback.track_length", lambda path: 0)
 
     # Stub Snapcast so no real network calls are made to the Snapserver.
-    monkeypatch.setattr("homeaudio.vcal.playback.SnapserverManager", StubSnapserverManager)
+    monkeypatch.setattr("homeaudio.vcal.playback.snapserver_manager_for_env", lambda *args, **kwargs: StubSnapserverManager())
 
     # Stub MPD - mpd_connection is a contextmanager, so replace it with a fake
     # one that yields a stub player we can make assertions on.

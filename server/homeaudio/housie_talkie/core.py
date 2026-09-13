@@ -5,7 +5,7 @@ import time
 from homeaudio.audio.sound import track_length
 from homeaudio.audio.mpd import mpd_connection
 from homeaudio.audio.settings import HousieTalkieSettings, SnapcastSettings, MpdSettings
-from homeaudio.audio.snapcast import SnapserverManager
+from homeaudio.audio.snapcast import snapserver_manager_for_env
 from homeaudio.audio.sound_effects import SoundEffectSelector
 from homeaudio.housie_talkie.models import *
 from homeaudio.audio.snapserver import Client, Snapserver
@@ -23,7 +23,7 @@ def play_voice_announcement(request: VoiceAnnouncementRequest):
     _play_audio_files(playable_request)
 
 def _play_audio_files(request: PlayableRequest):
-    snapserver_manager = SnapserverManager(SnapcastSettings(), request.player_names)
+    snapserver_manager = snapserver_manager_for_env(SnapcastSettings(), request.player_names)
     snapserver_manager.set_volumes(request.usecase.name.lower())
 
     def play():
@@ -43,8 +43,7 @@ def _play_audio_files(request: PlayableRequest):
 def list_sound_effects()-> list[str]:
         return ["none", "random"] + sorted([os.path.basename(path) for path in SoundEffectSelector(1).get_options_source().get_options()])
 
-def list_clients(snapcast_settings: SnapcastSettings | None = None) -> list[Client]:
-    snapcast_settings = snapcast_settings or SnapcastSettings()
+def list_clients(snapcast_settings: SnapcastSettings = SnapcastSettings()) -> list[Client]:
     snapserver = Snapserver(snapcast_settings.snapserver_rpc_url)
     return snapserver.connected_clients()
 

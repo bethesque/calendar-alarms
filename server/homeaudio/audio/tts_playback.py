@@ -1,7 +1,7 @@
 import time
 import logging
 from homeaudio.audio.mpd import fade_up, mpd_connection
-from homeaudio.audio.snapcast import SnapserverManager
+from homeaudio.audio.snapcast import snapserver_manager_for_env
 from homeaudio.audio.settings import MpdSettings, SnapcastSettings
 from homeaudio.audio.sound import track_length
 
@@ -15,7 +15,7 @@ through MPD/Snapcast (morning announcements, school announcements, ...).
 def play_tts_audio_file(audio_file, snapcast_settings: SnapcastSettings, mpd_settings: MpdSettings, before_announcement_hook=None, after_announcement_hook=None):
 
     try:
-        SnapserverManager(snapcast_settings).set_volumes("tts")
+        snapserver_manager_for_env(snapcast_settings).set_volumes("tts")
     except Exception:
         logger.exception("Could not set Snapcast volumes. Audio may not be heard.")
 

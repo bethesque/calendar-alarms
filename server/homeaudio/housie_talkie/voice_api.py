@@ -8,6 +8,7 @@ from homeaudio.audio.snapserver import Client
 from homeaudio.housie_talkie.voice import play_audio_file_as_announcement
 from homeaudio.housie_talkie.core import VoiceAnnouncementRequest, list_clients, list_sound_effects
 from homeaudio.audio.settings import SnapcastSettings, SnapclientConfig
+from homeaudio.env import SNAPCAST_ENABLED
 
 logger = logging.getLogger(__name__)
 
@@ -97,10 +98,13 @@ class VoiceRoutes:
         return "OK"
 
     async def clients(self):
-        snapcast_settings = SnapcastSettings()
-        snapclient_configs = snapcast_settings.snapclients_by_name
+        clients = []
+        if SNAPCAST_ENABLED:
+            snapcast_settings = SnapcastSettings()
+            snapclient_configs = snapcast_settings.snapclients_by_name
+            clients = [ClientJson(client, snapclient_configs.get(client.name, None)).to_dict() for client in list_clients(snapcast_settings)]
         return {
-            "clients": [ClientJson(client, snapclient_configs.get(client.name, None)).to_dict() for client in list_clients(snapcast_settings)]
+            "clients": clients
         }
 
     async def sound_effects(self):

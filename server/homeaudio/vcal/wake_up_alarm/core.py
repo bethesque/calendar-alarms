@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 import threading
 
-from homeaudio.audio.snapcast import SnapserverManager
+from homeaudio.audio.snapcast import snapserver_manager_for_env
 from homeaudio.audio.mpd import fade_up, mpd_connection
 from homeaudio.audio.random_text import FileListOptionsSource, select_option_pseudorandomly
 from homeaudio.audio.settings import MpdSettings, SnapcastSettings
@@ -16,7 +16,7 @@ def _play_wake_up_alarm_via_mpd(alarm_file, mpd_settings: MpdSettings):
     alarm_end_volume = mpd_settings.volumes.wake_up_alarm_end
     steps = 10
 
-    snapserver_manager = SnapserverManager(SnapcastSettings()) # pyright: ignore[reportCallIssue]
+    snapserver_manager = snapserver_manager_for_env(SnapcastSettings())
     snapserver_manager.set_volumes("alarm")
 
     with mpd_connection(mpd_settings) as mpd:

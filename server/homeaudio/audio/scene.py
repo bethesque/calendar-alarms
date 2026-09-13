@@ -40,7 +40,6 @@ class NullScene:
     def around_announcement(self, announcement_func, areas: set[str] | None = None):
         announcement_func()
 
-
 class HomeAssistantScene:
 
     def __init__(self) -> None:

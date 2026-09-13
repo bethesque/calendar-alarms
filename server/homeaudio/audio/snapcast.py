@@ -1,9 +1,33 @@
 import logging
+from typing import Protocol
 from homeaudio.audio.snapserver import Snapserver
 from homeaudio.audio.settings import SnapcastSettings
+from homeaudio.env import SNAPCAST_ENABLED
 
 logger = logging.getLogger(__name__)
 
+class SnapserverManagerProtocol(Protocol):
+    def connected_player_names(self) -> list[str]:
+        ...
+
+    def connected_player_areas(self) -> set[str]:
+        ...
+
+    def set_volumes(self, usecase: str) -> set[str]:
+        ...
+
+
+class NullSnapserverManager:
+    def connected_player_names(self) -> list[str]:
+        return []
+
+    def connected_player_areas(self) -> set[str]:
+        return set()
+
+    def set_volumes(self, usecase: str) -> set[str]:
+        ...
+
+# TODO move requested_player_names into methods?
 class SnapserverManager:
     def __init__(self, snapcast_settings: SnapcastSettings, requested_player_names: list[str] | None = None):
         self.snapcast_settings = snapcast_settings
@@ -32,3 +56,6 @@ class SnapserverManager:
             logger.exception(f"Error setting snapclients to {usecase} volume - audio may not be heard")
 
         return self.connected_player_areas()
+
+def snapserver_manager_for_env(snapcast_settings: SnapcastSettings, requested_player_names: list[str] | None = None) -> SnapserverManagerProtocol:
+    return SnapserverManager(snapcast_settings, requested_player_names) if SNAPCAST_ENABLED else NullSnapserverManager()
