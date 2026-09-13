@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 """
 Plays a TTS audio file at the configured "tts" volume, running optional hooks before playback
 starts and after it finishes. Shared by any feature that plays a one-off TTS announcement
-through MPD/Snapcast (morning announcements, school announcements, ...).
+through MPD/Snapcast (morning announcements, school announcements, ...) when triggered by the UI.
 """
 def play_tts_audio_file(audio_file, snapcast_settings: SnapcastSettings, mpd_settings: MpdSettings, before_announcement_hook=None, after_announcement_hook=None):
 

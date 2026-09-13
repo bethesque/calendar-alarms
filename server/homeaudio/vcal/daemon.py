@@ -136,7 +136,7 @@ def check_for_notifications(base_time: datetime) -> NotificationFiles | None:
         logger.info("Checking for notifications due at %s", base_time)
         calendar_source = CalendarSource()
         if calendar_source.file_exists():
-            logger.info(f"Loading calendar data from {calendar_source.cache_file_path}")
+            logger.debug(f"Loading calendar data from {calendar_source.cache_file_path}")
             calendar_data = calendar_source.load_data_from_file()
             return prepare_notification_files(base_time, CHECK_WINDOW_MINUTES, calendar_data)
         else:

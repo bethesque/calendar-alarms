@@ -178,7 +178,7 @@ def check_for_announcement(
     return _create_audio_file_for_calendar_days(base_time, calendar_days, settings)
 
 """
-Top level entry point. Generate a summary of today's events, convert them to voice, and play them.
+Entry point for UI. Generate a summary of today's events, convert them to voice, and play them.
 """
 def play_morning_announcements(
         calendar_file = DATA_FILE,
@@ -187,7 +187,7 @@ def play_morning_announcements(
         before_announcement_hook: Callable | None = None,
         after_announcement_hook: Callable | None = None
     ):
-    logger.info(f"Loading calendar data from {calendar_file}")
+    logger.debug(f"Loading calendar data from {calendar_file}")
     _base_time = base_time or datetime.now().astimezone()
     _settings = settings or MorningAnnouncementsSettings()
     calendar_days = CalendarSource(cache_file_path=calendar_file).load_data_from_file()
