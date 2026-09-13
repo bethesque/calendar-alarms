@@ -29,7 +29,7 @@ def index(request: Request):
     snapclient_settings = SnapcastSettings()
     housie_talkie_link = """<li><a href="/housie-talkie" class="button"><span class="emoji">🎤</span><span>Housie Talkie</span></a></li>""" if HOUSIE_TALKIE_ENABLED else ""
     wake_up_alarm_link = """<li><a href="/wake-up-alarm" class="button"><span class="emoji">⏰</span><span>Wake up alarm</a></span></li>""" if WAKE_UP_ALARM_ENABLED else ""
-    snapweb_link = """<li><a href="{snapclient_settings.snapserver}" class="button"><span class="emoji">🔊</span><span>Snapweb</span></a>""" if SNAPCAST_ENABLED else ""
+    snapweb_link = f"""<li><a href="{snapclient_settings.snapserver}" class="button"><span class="emoji">🔊</span><span>Snapweb</span></a>""" if SNAPCAST_ENABLED else ""
     return f"""
     <html>
         <head>
