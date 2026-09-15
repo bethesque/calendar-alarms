@@ -85,9 +85,18 @@ def build_aggressive_alarm_audio(
         and save the file into output_file
     """
 
-    # Normalize both inputs to mono once, then reference the normalized labels
-    normalize = "[0:a]aformat=channel_layouts=mono[a0];[1:a]aformat=channel_layouts=mono[a1];"
-    concat_inputs = "[a0][a1]" * loops
+    # Normalize both inputs to mono once, then split each into `loops` copies
+    # so each copy can be fed into the concat filter separately (a filtergraph
+    # label can only be consumed once, so [a0]/[a1] can't be reused directly).
+    a0_labels = [f"a0_{i}" for i in range(loops)]
+    a1_labels = [f"a1_{i}" for i in range(loops)]
+    normalize = (
+        f"[0:a]aformat=channel_layouts=mono,asplit={loops}"
+        + "".join(f"[{label}]" for label in a0_labels) + ";"
+        f"[1:a]aformat=channel_layouts=mono,asplit={loops}"
+        + "".join(f"[{label}]" for label in a1_labels) + ";"
+    )
+    concat_inputs = "".join(f"[{a0}][{a1}]" for a0, a1 in zip(a0_labels, a1_labels))
     filter_complex = f"{normalize}{concat_inputs}concat=n={loops * 2}:v=0:a=1[out]"
 
     cmd = [
@@ -110,6 +119,11 @@ def build_aggressive_alarm_audio(
                 stderr=subprocess.PIPE,
                 text=True)
     logger.debug(f"FFmpeg output: {result.stderr}")
+
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"ffmpeg failed (exit code {result.returncode}):\n{result.stderr}"
+        )
 
 
 
