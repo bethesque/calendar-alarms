@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 from homeaudio.vcal.cal.google_calendar import CalendarDay, EventNotification, NotificationType
 from homeaudio.housie_talkie.models import SoundEffectSelector
 from homeaudio.vcal.event_notifications.audio import AlarmAudio, AnnouncementAudio
@@ -9,6 +10,12 @@ from homeaudio.vcal.event_notifications.events import get_event_notifications
 from homeaudio.audio.settings import EventNotificationSettings
 from homeaudio.audio.scene import SceneProtocol
 from homeaudio.vcal.playback import NotificationFiles, play_notifications
+
+# "It's time for an event to begin, however there was a problem creating the announcement. Please check the calendar."
+# The full notification file with bell and post-announcement silence.
+ERROR_MESSAGE_AUDIO = str(Path("audio_resources/notification_error_notification.wav").absolute())
+
+logger = logging.getLogger(__name__)
 
 # Only used for testing
 # Builds and immediately plays whatever calendar-driven notifications (plus any due snoozes) are
@@ -30,7 +37,11 @@ def check_for_event_notifications(base_time, window, calendar_days: list[Calenda
     if not event_notifications:
         return (None, None)
 
-    return _build_notification_files(event_notifications, base_time, event_notification_settings)
+    try:
+        return _build_notification_files(event_notifications, base_time, event_notification_settings)
+    except Exception:
+        logger.exception("Error generating notification audio. Returning pre-generated notification file.")
+        return (ERROR_MESSAGE_AUDIO, None)
 
 def _build_notification_files(event_notifications: list[EventNotification], base_time, event_notification_settings: EventNotificationSettings | None = None) -> tuple[str | None, str | None]:
     event_notification_settings = event_notification_settings or EventNotificationSettings()
