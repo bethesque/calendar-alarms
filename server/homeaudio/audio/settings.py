@@ -82,6 +82,7 @@ class SnapclientConfig(BaseModel):
     display_name: str = Field(description="The display name of the Snapclient")
     area: str | None = Field(default=None, description="The area of the house where the Snapclient's host is located")
     volumes: VolumeConfig = Field(default_factory=VolumeConfig)
+    enabled: bool = Field(default=True, description="Set to false to exclude this Snapclient from playback and keep it muted")
 
 class SnapcastSettings(YAMLSettings):
     snapserver: str = Field(default="http://localhost:1780")
@@ -113,6 +114,10 @@ class SnapcastSettings(YAMLSettings):
             client.name: client
             for client in self.snapclients
         }
+
+    @property
+    def disabled_snapclient_names(self) -> set[str]:
+        return {client.name for client in self.snapclients if not client.enabled}
 
     def snapclients_for_area(self, area: str) -> list[SnapclientConfig]:
         return [snapclient for snapclient in self.snapclients if snapclient.area == area]

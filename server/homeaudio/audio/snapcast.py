@@ -36,9 +36,11 @@ class SnapserverManager:
 
     def connected_player_names(self) -> list[str]:
         if self.requested_player_names:
-            return list(set(self.snapserver.connected_client_names()) & set(self.requested_player_names))
+            names = set(self.snapserver.connected_client_names()) & set(self.requested_player_names)
         else:
-            return self.snapserver.connected_client_names()
+            names = set(self.snapserver.connected_client_names())
+
+        return list(names - self.snapcast_settings.disabled_snapclient_names)
 
     def connected_player_areas(self) -> set[str]:
         return set([sc.area for sc in self.snapcast_settings.snapclients if sc.name in self.connected_player_names() and sc.area and sc.area.strip()])

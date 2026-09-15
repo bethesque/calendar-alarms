@@ -1,6 +1,6 @@
 import yaml
 
-from homeaudio.audio.settings import EventNotificationSettings, NotificationRule
+from homeaudio.audio.settings import EventNotificationSettings, NotificationRule, SnapcastSettings, SnapclientConfig
 
 
 def test_label_uses_summary_pattern_only():
@@ -75,3 +75,17 @@ def test_enabled_notification_rules_excludes_disabled_rules():
     settings = EventNotificationSettings(notification_rules=[enabled_rule, disabled_rule])
 
     assert settings.enabled_notification_rules() == [enabled_rule]
+
+
+def test_snapclient_config_is_enabled_by_default():
+    snapclient = SnapclientConfig(name="kaypi", display_name="KayPi")
+
+    assert snapclient.enabled is True
+
+
+def test_disabled_snapclient_names_returns_only_disabled_clients():
+    enabled_client = SnapclientConfig(name="kaypi", display_name="KayPi", enabled=True)
+    disabled_client = SnapclientConfig(name="patpi", display_name="PatPi", enabled=False)
+    settings = SnapcastSettings(snapclients=[enabled_client, disabled_client])
+
+    assert settings.disabled_snapclient_names == {"patpi"}
