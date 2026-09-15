@@ -106,3 +106,39 @@ def test_snooze_alarm_saves_snooze_state_and_confirms_via_tts(monkeypatch, tmp_p
     assert due[0].event.summary == "Gym session"
 
     assert hook_calls == [1]
+
+
+def test_test_notification_builds_a_calendar_day_for_today_and_checks_and_plays_notifications(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        core_module,
+        "check_for_and_play_notifications",
+        lambda base_time, window, calendar_days, scene: calls.append((base_time, window, calendar_days, scene)),
+    )
+    monkeypatch.setattr(core_module, "scene_for_env", lambda: "the-scene")
+
+    notification_time = datetime(2026, 4, 28, 9, 0, tzinfo=TIMEZONE)
+    event = {
+        "owner": "Beth",
+        "calendar_id": "id",
+        "summary": "Gym session",
+        "description": "#alarm",
+        "start_time": notification_time.isoformat(),
+        "end_time": None,
+        "recurring": False,
+        "owner_count": 0,
+        "location": None,
+    }
+
+    core_module.test_notification(event, notification_time)
+
+    assert len(calls) == 1
+    base_time, window, calendar_days, scene = calls[0]
+    assert base_time == notification_time
+    assert window == 5
+    assert scene == "the-scene"
+    assert len(calendar_days) == 1
+    assert calendar_days[0].date == notification_time.date()
+    assert [e.summary for e in calendar_days[0].timed_events] == ["Gym session"]
+    assert calendar_days[0].timed_events[0].start_time == notification_time
+    assert calendar_days[0].whole_day_events == []

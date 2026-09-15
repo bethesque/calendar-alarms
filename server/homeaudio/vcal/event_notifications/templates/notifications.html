@@ -13,6 +13,8 @@
   span.type { padding: 2px 8px; border-radius: 999px; font-size: 0.85rem; }
   span.type.alarm { background: #fde2e2; color: #b42318; }
   span.type.announce { background: #e0e7ff; color: #4338ca; }
+  button.test-notification { cursor: pointer; }
+  #result { margin-top: 14px; white-space: pre-wrap; }
 </style>
 </head>
 <body>
@@ -31,10 +33,11 @@
         <th>Calendar</th>
         <th>Notification Source</th>
         <th>Reminder</th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
-      {% for notification in notifications %}
+      {% for notification, event_json in notifications %}
       <tr>
         <td>{{ notification.notification_time.strftime("%a, %d %b %y") }}<br>{{ notification.notification_time.strftime("%I:%M %p") }}</td>
         <td><span class="type {{ notification.type.name.lower() }}">{{ notification.type.name }}</span></td>
@@ -43,12 +46,51 @@
         <td>{{ notification.event.owner }}</td>
         <td>{{ "Rule" if notification.notification_rule else "Event" }}</td>
         <td>{{ notification.notification_rule.reminder if notification.notification_rule and notification.notification_rule.reminder else "" }}</td>
+        <td>
+          <button
+            type="button"
+            class="test-notification"
+            data-event="{{ event_json }}"
+            data-notification-time="{{ notification.notification_time.isoformat() }}"
+          >▶ Test</button>
+        </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
+  <div id="result"></div>
   {% else %}
   <p>No upcoming notifications.</p>
   {% endif %}
+
+<script>
+  document.querySelectorAll('.test-notification').forEach(function (button) {
+    button.addEventListener('click', function () {
+      const resultEl = document.getElementById('result');
+      const event = JSON.parse(button.dataset.event);
+      const notificationTime = button.dataset.notificationTime;
+
+      button.disabled = true;
+      resultEl.textContent = 'Sending request to /alarm/test-notification...';
+
+      fetch('/alarm/test-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event: event, notification_time: notificationTime }),
+      })
+        .then(function (response) {
+          return response.text().then(function (text) {
+            resultEl.textContent = 'Status: ' + response.status + ' ' + response.statusText + '\n\n' + text;
+          });
+        })
+        .catch(function () {
+          resultEl.textContent = 'Request failed (network error).';
+        })
+        .finally(function () {
+          button.disabled = false;
+        });
+    });
+  });
+</script>
 </body>
 </html>

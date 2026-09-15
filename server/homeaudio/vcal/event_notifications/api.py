@@ -1,21 +1,29 @@
+import json
 import logging
+from datetime import datetime
 from pathlib import Path
 import threading
 from queue import Queue
 from fastapi import APIRouter, Request, Response
-from fastapi.responses import FileResponse
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 from homeaudio.vcal.morning_announcements import play_morning_announcements
 from homeaudio.vcal.school_announcements import play_school_announcements
 from homeaudio.audio.scene import scene_for_env
-from homeaudio.vcal.core import stop_alarm, test_alarm, mute_alarm_for_area_of_player, replay_last_notification, snooze_alarm
+from homeaudio.vcal.core import stop_alarm, test_alarm, test_notification, mute_alarm_for_area_of_player, replay_last_notification, snooze_alarm
 from homeaudio.vcal.event_notifications.events import get_all_event_notifications, get_all_events, get_calendar_refreshed_at
 from homeaudio.vcal.cli import refresh_calendar_data
 from homeaudio.audio.settings import SnapcastSettings
+from homeaudio.audio.string_utils import json_default_encoder
+from homeaudio.env import APP_NAME
 
 logger = logging.getLogger(__name__)
 
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
+
+class TestNotificationRequest(BaseModel):
+    event: dict
+    notification_time: datetime
 
 class AlarmHandler:
     def __init__(self):
@@ -62,6 +70,10 @@ class AlarmHandler:
     def test_alarm(self) -> str:
         threading.Thread(target=test_alarm, daemon=True).start()
         return "Testing alarm..."
+
+    def test_notification(self, event: dict, notification_time: datetime) -> str:
+        threading.Thread(target=test_notification, args=(event, notification_time), daemon=True).start()
+        return "Testing notification..."
 
     def play_morning_announcements(self) -> str:
         threading.Thread(target=play_morning_announcements, daemon=True).start()
@@ -163,8 +175,18 @@ class AlarmRoutes:
             name="alarm_snooze",
         )
 
-    async def index(self):
-        return FileResponse(Path(__file__).resolve().parent / "index.html")
+        self.router.add_api_route(
+            "/test-notification",
+            self.test_notification_endpoint,
+            methods=["POST"],
+            name="test_notification",
+        )
+
+    async def index(self, request: Request):
+        return templates.TemplateResponse(
+            request=request,
+            name="index.html",
+        )
 
     async def stop_alarm_endpoint(self):
         message = self.alarm_handler.stop_alarm()
@@ -196,10 +218,14 @@ class AlarmRoutes:
 
     async def notifications(self, request: Request):
         event_notifications = sorted(get_all_event_notifications(), key=lambda notification: notification.notification_time)
+        notifications = [
+            (notification, json.dumps(notification.event, default=json_default_encoder))
+            for notification in event_notifications
+        ]
         return templates.TemplateResponse(
             request=request,
             name="notifications.html",
-            context={"notifications": event_notifications},
+            context={"notifications": notifications},
         )
 
     async def events(self, request: Request):
@@ -217,3 +243,11 @@ class AlarmRoutes:
     async def snooze_endpoint(self):
         message = self.alarm_handler.stop_alarm(snooze=True)
         return Response(content=message, status_code=202, media_type="text/plain")
+
+    async def test_notification_endpoint(self, payload: TestNotificationRequest):
+        message = self.alarm_handler.test_notification(payload.event, payload.notification_time)
+        return Response(content=message, status_code=202, media_type="text/plain")
+
+    def _with_page_context(self, context: dict)-> dict:
+        context["title_prefix"] = APP_NAME
+        return context

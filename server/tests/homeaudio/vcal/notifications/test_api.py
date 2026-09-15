@@ -1,3 +1,4 @@
+import threading
 from datetime import datetime, timezone
 
 from fastapi import FastAPI
@@ -96,3 +97,64 @@ def test_calendar_refreshed_at_endpoint_returns_empty_string_when_never_refreshe
 
     assert response.status_code == 200
     assert response.text == ""
+
+
+def test_notifications_page_includes_event_json_for_the_test_button(monkeypatch):
+    event = Event(
+        owner="Beth",
+        calendar_id="id",
+        summary="Gym session",
+        description="#alarm",
+        start_time=datetime(2026, 4, 28, 9, 0, tzinfo=timezone.utc),
+    )
+    notification = EventNotification(event=event, type=NotificationType.ALARM, offset=0)
+    monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [notification])
+
+    response = _client().get("/alarm/notifications")
+
+    assert response.status_code == 200
+    assert 'data-event="' in response.text
+    assert "test-notification" in response.text
+    assert notification.notification_time.isoformat() in response.text
+
+
+def test_test_notification_endpoint_starts_the_notification_test_and_returns_immediately(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        api_module.AlarmHandler,
+        "test_notification",
+        lambda self, event, notification_time: calls.append((event, notification_time)) or "Testing notification...",
+    )
+
+    event = {"owner": "Beth", "calendar_id": "id", "summary": "Gym session", "description": "#alarm"}
+    notification_time = datetime(2026, 4, 28, 9, 0, tzinfo=timezone.utc)
+
+    response = _client().post(
+        "/alarm/test-notification",
+        json={"event": event, "notification_time": notification_time.isoformat()},
+    )
+
+    assert response.status_code == 202
+    assert response.text == "Testing notification..."
+    assert calls == [(event, notification_time)]
+
+
+def test_alarm_handler_test_notification_runs_test_notification_on_a_background_thread(monkeypatch):
+    calls = []
+    started = threading.Event()
+
+    def fake_test_notification(event, notification_time):
+        calls.append((event, notification_time))
+        started.set()
+
+    monkeypatch.setattr(api_module, "test_notification", fake_test_notification)
+
+    handler = api_module.AlarmHandler()
+    event = {"summary": "Gym session"}
+    notification_time = datetime(2026, 4, 28, 9, 0, tzinfo=timezone.utc)
+
+    message = handler.test_notification(event, notification_time)
+
+    assert message == "Testing notification..."
+    assert started.wait(timeout=1)
+    assert calls == [(event, notification_time)]

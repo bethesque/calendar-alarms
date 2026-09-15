@@ -13,7 +13,7 @@ from homeaudio.audio.snapserver import Snapserver
 from homeaudio.vcal.event_notifications.snooze import LastPlayedState, SnoozeState
 from homeaudio.vcal.school_announcements.core import check_for_announcement as check_for_school_announcements
 from homeaudio.vcal.morning_announcements.core import check_for_announcement as check_for_morning_announcements
-from homeaudio.vcal.event_notifications.core import check_for_event_notifications as check_for_event_notifications
+from homeaudio.vcal.event_notifications.core import check_for_event_notifications as check_for_event_notifications, check_for_and_play_notifications
 from homeaudio.vcal.playback import NotificationFiles, play_notifications, play_file
 
 logger = logging.getLogger(__name__)
@@ -129,6 +129,22 @@ def test_alarm():
     announcements_file, alarm_audio_file = check_for_event_notifications(now, 5, calendar_data, EventNotificationSettings())
     notification_files = NotificationFiles(event_alarms_file=alarm_audio_file, event_announcements_file=announcements_file)
     play_notifications(notification_files, scene_for_env())
+
+# Used by the "Test" button next to a notification on the notifications page (event_notifications/api.py) to
+# play a specific notification on demand, using notification_time as base_time so it's found within the window.
+def test_notification(event: dict, notification_time: datetime):
+    days = [
+        {
+            "date": notification_time.strftime("%Y-%m-%d"),
+            "date_time": notification_time.isoformat(),
+            "timed_events": [event],
+            "whole_day_events": []
+        }
+    ]
+
+    calendar_data = CalendarSource(cache_file_path="").load_data_from_any(days)
+
+    check_for_and_play_notifications(notification_time, 5, calendar_data, scene_for_env())
 
 # Gathers what's due at base_time (calendar-driven notifications plus any due snoozes) and builds
 # their announcement/alarm audio files, without playing them. Used by the daemon's early wake-up
