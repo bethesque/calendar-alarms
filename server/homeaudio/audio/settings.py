@@ -283,6 +283,26 @@ class HomeAssistantSettings(YAMLSettings):
         yaml_file="config/home_assistant.yaml"
     )
 
+class DepartureNotificationSettings(YAMLSettings):
+    enabled: bool = Field(default=False, description="Whether to calculate and announce departure times for events with locations.")
+    api_key: str = Field(default="", description="Google Maps Platform API key")
+    origin_address: str = Field(default="", description="The address to calculate travel time from")
+    parking_minutes: int = Field(default=5, ge=0, description="Time to park and walk to the event location")
+    house_to_car_minutes: int = Field(default=5, ge=0, description="Time to collect belongings, walk out of the house and get into the car")
+    safety_factor: int = Field(default=10, ge=0, le=100, description="Percentage to pad the travel duration by because sometimes Google Maps is a bit optimistic")
+    heads_up_reminder_lead_time: int = Field(default=10, ge=0, description="Minutes before the walk-out time announcement that the heads-up reminder plays")
+    recompute_interval_minutes: int = Field(default=20, ge=1, description="How often to re-calculate the travel time to ensure the most accurate results.")
+
+    model_config = SettingsConfigDict(
+        yaml_file="config/departure_notifications.yaml"
+    )
+
+    @model_validator(mode="after")
+    def _require_api_key_and_origin_when_enabled(self) -> "DepartureNotificationSettings":
+        if self.enabled and not (self.api_key and self.origin_address):
+            raise ValueError("api_key and origin_address must be set when enabled is true")
+        return self
+
 class HousieTalkieSettings(YAMLSettings):
     target_integrated_loudness: float = Field(default=-19.0, description="Target integrated loudness in LUFS", le=0)
     target_true_peak: float = Field(default=-1.5, description="Target true peak ceiling in dBTP", le=0)
@@ -295,13 +315,14 @@ class HousieTalkieSettings(YAMLSettings):
 
 class AppSettings(BaseSettings):
     main_settings: MainSettings = Field(default_factory=MainSettings, description="Main settings")
+    departure_notification_settings: DepartureNotificationSettings = Field(default_factory=DepartureNotificationSettings, description="Travel time settings")
     event_notification_settings: EventNotificationSettings = Field(default_factory=EventNotificationSettings, description="Notification settings")
     google_calendar_settings: GoogleCalendarSettings = Field(default_factory=GoogleCalendarSettings, description="Google Calendar settings") # type: ignore
     home_assistant_settings: HomeAssistantSettings = Field(default_factory=HomeAssistantSettings, description="Home Assistant settings")
     housie_talkie_settings: HousieTalkieSettings = Field(default_factory=HousieTalkieSettings, description="Housie Talkie settings")
     morning_announcements_settings: MorningAnnouncementsSettings = Field(default_factory=MorningAnnouncementsSettings, description="Morning announcements settings")
-    school_announcements_settings: SchoolAnnouncementsSettings = Field(default_factory=SchoolAnnouncementsSettings, description="School announcements settings")
     mpd_settings: MpdSettings = Field(default_factory=MpdSettings, description="MPD settings")
+    school_announcements_settings: SchoolAnnouncementsSettings = Field(default_factory=SchoolAnnouncementsSettings, description="School announcements settings")
     snapcast_settings: SnapcastSettings = Field(default_factory=SnapcastSettings, description="Snapcast settings") # pyright: ignore[reportArgumentType]
 
     def save(self) -> None:
@@ -315,3 +336,4 @@ class AppSettings(BaseSettings):
         self.school_announcements_settings.save()
         self.mpd_settings.save()
         self.snapcast_settings.save()
+        self.departure_notification_settings.save()

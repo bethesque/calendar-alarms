@@ -15,7 +15,7 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from homeaudio.audio.settings import NotificationRule
+from homeaudio.audio.settings import NotificationRule, DepartureNotificationSettings
 from homeaudio.env import CALENDAR_DATA_DIRECTORY
 
 
@@ -110,8 +110,10 @@ class Event:
     recurring: bool = False
     owner_count: int = 0
     location: str | None = None
+    google_event_id: str | None = None
+    car_departure_time: datetime.datetime | None = None
 
-    def notifications(self, rules: list[NotificationRule] | None = None) -> list[EventNotification]:
+    def notifications(self, rules: list[NotificationRule] | None = None, departure_notification_settings: DepartureNotificationSettings | None = None) -> list[EventNotification]:
         notifications = []
 
         # Add the notifications from rules first because they have reminders, and will be used in preference
@@ -120,6 +122,9 @@ class Event:
             notifications.extend(notifications_from_rules(self, rules))
 
         self._add_notifications_from_description(notifications)
+
+        if self.location and self.start_time:
+            self._add_computed_travel_notifications(notifications, departure_notification_settings or DepartureNotificationSettings())
 
         return self._deduplicate_notifications(notifications)
 
@@ -138,9 +143,9 @@ class Event:
                         type_enum = NotificationType[tag.upper()]
                         notifications.append(EventNotification(type=type_enum, offset=offset_int, event=self))
 
-    def notifications_within_window(self, start_time, end_time, rules: list[NotificationRule] | None = None):
+    def notifications_within_window(self, start_time, end_time, rules: list[NotificationRule] | None = None, departure_notification_settings: DepartureNotificationSettings | None = None):
         notifications_in_window = []
-        for event_notification in self.notifications(rules):
+        for event_notification in self.notifications(rules, departure_notification_settings):
             if start_time <= event_notification.notification_time < end_time:
                 notifications_in_window.append(event_notification)
         return notifications_in_window
@@ -161,6 +166,28 @@ class Event:
                             location=self.location
                         )
         notifications.append(EventNotification(type=NotificationType.ANNOUNCE, offset=5, event=event))
+        notifications.append(EventNotification(type=NotificationType.ANNOUNCE, offset=0, event=event))
+
+    def _add_computed_travel_notifications(self, notifications, departure_notification_settings: DepartureNotificationSettings):
+        """
+            Add notification for leaving time, and for the configured lead time before leaving time
+        """
+        if self.car_departure_time is None:
+            logger.warning("No car_departure_time computed yet for event '%s'; skipping its travel notification", self.summary)
+            return
+
+        walk_out_time = self.car_departure_time - datetime.timedelta(minutes=departure_notification_settings.house_to_car_minutes)
+        event = LeaveForEvent(
+                            owner=self.owner,
+                            calendar_id=self.calendar_id,
+                            owner_count=self.owner_count,
+                            summary=f"Leave for {self.summary}",
+                            description=self.description,
+                            start_time=walk_out_time,
+                            end_time=self.start_time,
+                            location=self.location
+                        )
+        notifications.append(EventNotification(type=NotificationType.ANNOUNCE, offset=departure_notification_settings.heads_up_reminder_lead_time, event=event))
         notifications.append(EventNotification(type=NotificationType.ANNOUNCE, offset=0, event=event))
 
     def _deduplicate_notifications(self, notifications):
@@ -281,7 +308,8 @@ def event_from_google_dict(event_dict, calendar_id, calendar_name, owner_count):
             summary=event_dict["summary"],
             description=event_dict.get("description"),
             recurring=bool(event_dict.get("recurringEventId")),
-            location=event_dict.get("location", None)
+            location=event_dict.get("location", None),
+            google_event_id=event_dict.get("id"),
         )
 
 
@@ -359,6 +387,9 @@ def load_event(event_dict):
 
     if event_args.get("end_time"):
         event_args["end_time"] = datetime.datetime.fromisoformat(event_args.get("end_time"))
+
+    if event_args.get("car_departure_time"):
+        event_args["car_departure_time"] = datetime.datetime.fromisoformat(event_args.get("car_departure_time"))
 
     if is_weather_forecast(event_dict):
         return WeatherForecast(**event_args)

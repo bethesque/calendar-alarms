@@ -7,7 +7,7 @@ from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file
 from homeaudio.audio.mpd import mpd_connection
 from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, POST_ANNOUNCEMENT_SILENCE
 from homeaudio.audio.scene import scene_for_env
-from homeaudio.audio.settings import MorningAnnouncementsSettings, SchoolAnnouncementsSettings, SnapcastSettings, MpdSettings, EventNotificationSettings
+from homeaudio.audio.settings import MorningAnnouncementsSettings, SchoolAnnouncementsSettings, SnapcastSettings, MpdSettings, EventNotificationSettings, DepartureNotificationSettings
 
 from homeaudio.audio.snapserver import Snapserver
 from homeaudio.vcal.event_notifications.snooze import LastPlayedState, SnoozeState
@@ -150,10 +150,10 @@ def test_notification(event: dict, notification_time: datetime):
 # their announcement/alarm audio files, without playing them. Used by the daemon's early wake-up
 # (homeaudio/vcal/notifications/daemon.py) so it can build audio ahead of a scheduled tick and play
 # right on time; check_for_notifications above uses it too, just followed immediately by playing.
-def prepare_notification_files(base_time, window, calendar_days: list[CalendarDay], event_notification_settings: EventNotificationSettings | None = None) -> NotificationFiles | None:
+def prepare_notification_files(base_time, window, calendar_days: list[CalendarDay], event_notification_settings: EventNotificationSettings | None = None, departure_notification_settings: DepartureNotificationSettings | None = None) -> NotificationFiles | None:
     event_notification_settings = event_notification_settings or EventNotificationSettings()
 
-    announcements_file, alarm_audio_file = check_for_event_notifications(base_time, window, calendar_days, event_notification_settings)
+    announcements_file, alarm_audio_file = check_for_event_notifications(base_time, window, calendar_days, event_notification_settings, departure_notification_settings)
 
     scheduled_announcements_files = []
     if file := check_for_morning_announcements(base_time, window, calendar_days, MorningAnnouncementsSettings()):

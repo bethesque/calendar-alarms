@@ -1,16 +1,18 @@
 import logging
 from datetime import datetime, timedelta
 from homeaudio.vcal.cal.google_calendar import CalendarDay, EventNotification, NotificationType, CalendarSource
-from homeaudio.audio.settings import EventNotificationSettings
+from homeaudio.audio.settings import EventNotificationSettings, DepartureNotificationSettings
+from homeaudio.vcal.departure_time import TravelTimeCache, car_departure_time_for_event
 
 logger = logging.getLogger(__name__)
 
 class NotificationFinder:
-    def __init__(self, calendar_days: list[CalendarDay], base_time, window, notification_rules=None):
+    def __init__(self, calendar_days: list[CalendarDay], base_time, window, notification_rules=None, departure_notification_settings: DepartureNotificationSettings | None = None):
         self.calendar_days = calendar_days
         self.base_time = base_time
         self.window = window
         self.notification_rules = notification_rules or []
+        self.departure_notification_settings = departure_notification_settings
 
 
     def find_notification_events(self):
@@ -20,7 +22,7 @@ class NotificationFinder:
 
         for day in self.calendar_days:
             for event in day.timed_events:
-                event_notifications = event.notifications_within_window(start, end, self.notification_rules)
+                event_notifications = event.notifications_within_window(start, end, self.notification_rules, self.departure_notification_settings)
                 matching_events.extend(event_notifications)
 
         self._log_results(start, end, matching_events)
@@ -54,13 +56,13 @@ class NotificationFinder:
         logger.info("Total matched events: %d", len(results))
         return results
 
-def get_event_notifications(base_time, window, calendar_data: list[CalendarDay], event_notification_settings: EventNotificationSettings):
+def get_event_notifications(base_time, window, calendar_data: list[CalendarDay], event_notification_settings: EventNotificationSettings, departure_notification_settings: DepartureNotificationSettings | None = None):
     notification_rules = event_notification_settings.enabled_notification_rules()
-    alarm_finder = NotificationFinder(calendar_data, base_time, window, notification_rules)
+    alarm_finder = NotificationFinder(calendar_data, base_time, window, notification_rules, departure_notification_settings)
     event_notifications = alarm_finder.find_notification_events()
     return event_notifications
 
-def get_all_event_notifications(event_notification_settings: EventNotificationSettings | None = None, calendar_source: CalendarSource = CalendarSource()):
+def get_all_event_notifications(event_notification_settings: EventNotificationSettings | None = None, calendar_source: CalendarSource = CalendarSource(), departure_notification_settings: DepartureNotificationSettings | None = None):
     event_notification_settings = event_notification_settings or EventNotificationSettings()
     calendar_days = calendar_source.load_data_from_file()
 
@@ -68,7 +70,7 @@ def get_all_event_notifications(event_notification_settings: EventNotificationSe
     notifications = []
     for day in calendar_days:
         for event in day.timed_events:
-            notifications.extend(event.notifications(notification_rules))
+            notifications.extend(event.notifications(notification_rules, departure_notification_settings))
 
     return notifications
 
@@ -85,4 +87,26 @@ def get_all_events(calendar_source: CalendarSource = CalendarSource()):
 def get_calendar_refreshed_at(calendar_source: CalendarSource = CalendarSource()) -> datetime | None:
     calendar_source.load_data_from_file()
     return calendar_source.refreshed_at
+
+def update_calendar_travel_times() -> None:
+    departure_notification_settings = DepartureNotificationSettings()
+    calendar_source = CalendarSource()
+    calendar_days = calendar_source.load_data_from_file()
+
+    now = datetime.now().astimezone()
+    cache = TravelTimeCache.load()
+
+    today = next((day for day in calendar_days if day.date == now.date()), None)
+    try:
+        if today:
+            for event in today.timed_events:
+                try:
+                    event.car_departure_time = car_departure_time_for_event(event, departure_notification_settings, cache, now)
+                except Exception:
+                    logger.exception("Error computing car_departure_time for event '%s'", event.summary)
+
+        cache.prune(now)
+    finally:
+        cache.save()
+        calendar_source.save_data_to_file()
 

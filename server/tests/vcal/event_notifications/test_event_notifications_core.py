@@ -28,7 +28,7 @@ def test_check_for_event_notifications_returns_error_message_audio_on_exception(
     due_notification = EventNotification(event=due_event, type=NotificationType.ANNOUNCE, offset=0)
     monkeypatch.setattr(
         "homeaudio.vcal.event_notifications.core.get_event_notifications",
-        lambda base_time, window, calendar_days, event_notification_settings: [due_notification],
+        lambda base_time, window, calendar_days, event_notification_settings, departure_notification_settings=None: [due_notification],
     )
 
     def raise_error(*args, **kwargs):

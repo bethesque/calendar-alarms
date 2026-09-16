@@ -1,6 +1,8 @@
+import pytest
 import yaml
+from pydantic import ValidationError
 
-from homeaudio.audio.settings import EventNotificationSettings, NotificationRule, SnapcastSettings, SnapclientConfig
+from homeaudio.audio.settings import EventNotificationSettings, NotificationRule, SnapcastSettings, SnapclientConfig, DepartureNotificationSettings
 
 
 def test_label_uses_summary_pattern_only():
@@ -89,3 +91,57 @@ def test_disabled_snapclient_names_returns_only_disabled_clients():
     settings = SnapcastSettings(snapclients=[enabled_client, disabled_client])
 
     assert settings.disabled_snapclient_names == {"patpi"}
+
+
+def test_departure_notification_settings_defaults(tmp_path, monkeypatch):
+    monkeypatch.setitem(DepartureNotificationSettings.model_config, "yaml_file", str(tmp_path / "departure_notifications.yaml"))
+
+    settings = DepartureNotificationSettings()
+
+    assert settings.enabled is False
+    assert settings.api_key == ""
+    assert settings.origin_address == ""
+    assert settings.parking_minutes == 5
+    assert settings.house_to_car_minutes == 5
+    assert settings.safety_factor == 10
+    assert settings.heads_up_reminder_lead_time == 10
+    assert settings.recompute_interval_minutes == 20
+
+
+def test_departure_notification_settings_saves_and_reloads_from_yaml(tmp_path, monkeypatch):
+    yaml_file = tmp_path / "departure_notifications.yaml"
+    monkeypatch.setitem(DepartureNotificationSettings.model_config, "yaml_file", str(yaml_file))
+
+    settings = DepartureNotificationSettings(api_key="secret-key", origin_address="1 Home St", safety_factor=25)
+    settings.save()
+
+    saved = yaml.safe_load(yaml_file.read_text())
+    assert saved["api_key"] == "secret-key"
+    assert saved["origin_address"] == "1 Home St"
+    assert saved["safety_factor"] == 25
+
+    reloaded = DepartureNotificationSettings()
+    assert reloaded.api_key == "secret-key"
+    assert reloaded.safety_factor == 25
+
+
+def test_departure_notification_settings_allows_disabled_with_no_api_key_or_origin_address():
+    settings = DepartureNotificationSettings(enabled=False)
+
+    assert settings.enabled is False
+
+
+def test_departure_notification_settings_rejects_enabled_with_no_api_key():
+    with pytest.raises(ValidationError):
+        DepartureNotificationSettings(enabled=True, api_key="", origin_address="1 Home St")
+
+
+def test_departure_notification_settings_rejects_enabled_with_no_origin_address():
+    with pytest.raises(ValidationError):
+        DepartureNotificationSettings(enabled=True, api_key="secret-key", origin_address="")
+
+
+def test_departure_notification_settings_allows_enabled_with_api_key_and_origin_address():
+    settings = DepartureNotificationSettings(enabled=True, api_key="secret-key", origin_address="1 Home St")
+
+    assert settings.enabled is True

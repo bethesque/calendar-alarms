@@ -4,8 +4,8 @@ from zoneinfo import ZoneInfo
 import pytest
 from pydantic import ValidationError
 
-from homeaudio.vcal.cal.google_calendar import Event, NotificationType
-from homeaudio.audio.settings import NotificationRule
+from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarSource, Event, event_from_google_dict, NotificationType
+from homeaudio.audio.settings import NotificationRule, DepartureNotificationSettings
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
 
@@ -573,4 +573,139 @@ def test_notifications_calendar_id_matches_any_event_when_rule_calendar_id_not_s
     )
 
     assert len(event.notifications([rule])) == 1
+
+
+def _departure_notification_settings(**overrides) -> DepartureNotificationSettings:
+    defaults = dict(house_to_car_minutes=5, heads_up_reminder_lead_time=10)
+    defaults.update(overrides)
+    return DepartureNotificationSettings(**defaults)
+
+
+def test_located_event_with_no_travel_tag_still_builds_computed_travel_notifications():
+    # No #travel tag anywhere in the description - having a location is enough on its own.
+    start_time = datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE)
+    car_departure_time = datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
+    event = Event(
+        calendar_id="id",
+        owner="Beth",
+        summary="Morning meeting",
+        description="Some regular description",
+        location="123 Fake St",
+        start_time=start_time,
+        car_departure_time=car_departure_time,
+    )
+
+    notifications = event.notifications(departure_notification_settings=_departure_notification_settings(house_to_car_minutes=5, heads_up_reminder_lead_time=10))
+
+    # walk_out_time = car_departure_time - house_to_car_minutes = 11:55
+    walk_out_time = datetime.datetime(2026, 4, 28, 11, 55, tzinfo=TIMEZONE)
+    assert len(notifications) == 2
+    assert notifications[0].event.summary == "Leave for Morning meeting"
+    assert notifications[0].type.name == "ANNOUNCE"
+    assert notifications[0].offset == 10
+    assert notifications[0].event.start_time == walk_out_time
+    assert notifications[0].notification_time == walk_out_time - datetime.timedelta(minutes=10)
+
+    assert notifications[1].offset == 0
+    assert notifications[1].event.start_time == walk_out_time
+    assert notifications[1].notification_time == walk_out_time
+
+
+def test_located_event_skips_computed_travel_notification_when_car_departure_time_not_yet_computed():
+    start_time = datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE)
+    event = Event(
+        calendar_id="id",
+        owner="Beth",
+        summary="Morning meeting",
+        description="",
+        location="123 Fake St",
+        start_time=start_time,
+        car_departure_time=None,
+    )
+
+    notifications = event.notifications(departure_notification_settings=_departure_notification_settings())
+
+    assert notifications == []
+
+
+def test_event_with_no_location_gets_no_travel_notification_even_with_car_departure_time():
+    # car_departure_time would only ever be set by the calendar refresh pipeline for a located
+    # event, but guard the dispatch logic itself against relying on location alone.
+    start_time = datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE)
+    event = Event(
+        calendar_id="id",
+        owner="Beth",
+        summary="Morning meeting",
+        description="",
+        location=None,
+        start_time=start_time,
+        car_departure_time=datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE),
+    )
+
+    notifications = event.notifications(departure_notification_settings=_departure_notification_settings())
+
+    assert notifications == []
+
+
+def test_computed_travel_notification_does_not_check_the_description_for_a_travel_tag():
+    # notifications() itself doesn't look at the description at all when deciding whether to add
+    # a computed travel notification - it's driven entirely by location/car_departure_time. In
+    # practice departure_time.py never populates car_departure_time for a #travel<N> event, so this
+    # only matters if something else set it - which is exactly why this method must not rely on
+    # the tag being absent.
+    start_time = datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE)
+    event = Event(
+        calendar_id="id",
+        owner="Beth",
+        summary="Morning meeting",
+        description="#travel20",
+        location="123 Fake St",
+        start_time=start_time,
+        car_departure_time=datetime.datetime(2026, 4, 28, 11, 0, tzinfo=TIMEZONE),
+    )
+
+    notifications = event.notifications(departure_notification_settings=_departure_notification_settings())
+
+    assert len(notifications) == 4
+    fixed_offset_notification = notifications[0]
+    assert fixed_offset_notification.event.start_time == datetime.datetime(2026, 4, 28, 12, 10, tzinfo=TIMEZONE)
+    computed_notifications = notifications[2:]
+    assert all(n.event.start_time == datetime.datetime(2026, 4, 28, 10, 55, tzinfo=TIMEZONE) for n in computed_notifications)
+    assert notifications[0].offset == 5  # the existing method's hardcoded heads-up, not the configurable lead time
+
+
+def test_event_from_google_dict_captures_google_event_id():
+    event_dict = {
+        "id": "abc123",
+        "summary": "Dentist",
+        "description": "",
+        "location": "123 Fake St",
+    }
+
+    event = event_from_google_dict(event_dict, calendar_id="id", calendar_name="Beth", owner_count=1)
+
+    assert event.google_event_id == "abc123"
+
+
+def test_google_event_id_and_car_departure_time_round_trip_through_save_and_load(tmp_path):
+    calendar_source = CalendarSource(cache_file_path=str(tmp_path / "calendar.json"))
+    start_time = datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE)
+    car_departure_time = datetime.datetime(2026, 4, 28, 11, 30, tzinfo=TIMEZONE)
+    event = Event(
+        calendar_id="id",
+        owner="Beth",
+        summary="Dentist",
+        description="#travel",
+        location="123 Fake St",
+        start_time=start_time,
+        google_event_id="abc123",
+        car_departure_time=car_departure_time,
+    )
+    calendar_source.calendar_days = [CalendarDay(date=start_time.date(), timed_events=[event])]
+
+    calendar_source.save_data_to_file()
+    reloaded_event = calendar_source.load_data_from_file()[0].timed_events[0]
+
+    assert reloaded_event.google_event_id == "abc123"
+    assert reloaded_event.car_departure_time == car_departure_time
 

@@ -8,6 +8,7 @@ import threading
 from datetime import date, datetime, timedelta
 
 from homeaudio.audio.settings import (
+    DepartureNotificationSettings,
     EventNotificationSchedule,
     EventNotificationSettings,
     MorningAnnouncementsSchedule,
@@ -17,6 +18,7 @@ from homeaudio.audio.settings import (
     TimeRange,
 )
 from homeaudio.vcal.cli import refresh_calendar_data as fetch_and_save_calendar_data
+from homeaudio.vcal.event_notifications.events import update_calendar_travel_times
 from homeaudio.vcal.notification_schedule import announcement_times_for_day, event_notification_time_range_for_day
 from homeaudio.env import CALENDAR_DATA_REFRESH_INTERVAL_MINUTES, CALENDAR_DATA_REFRESH_OFFSET_SECONDS
 
@@ -104,14 +106,23 @@ def next_refresh_boundary(
 
 
 def refresh_calendar(base_time: datetime) -> None:
-    """Fetches fresh calendar data from Google and writes it to the cache file the notification
-    loop reads from."""
+    """Fetches calendar data from Google and writes it to the cache file the notification
+    loop reads from, then updates car_departure_time for today's located events"""
     try:
         logger.info("Refreshing calendar data at %s", base_time)
         fetch_and_save_calendar_data()
     except Exception:
         # A single bad refresh must never kill the loop - log and try again next boundary.
         logger.exception("Error refreshing calendar data at %s", base_time)
+        return
+
+    if not DepartureNotificationSettings().enabled:
+        return
+
+    try:
+        update_calendar_travel_times()
+    except Exception:
+        logger.exception("Error updating travel times at %s", base_time)
 
 
 class CalendarRefreshLoop:

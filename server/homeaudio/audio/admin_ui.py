@@ -115,6 +115,9 @@ class AdminRoutes:
                     "mpd_settings.volumes.voice": FieldConfig(
                         visible_when=f"{str(HOUSIE_TALKIE_ENABLED).lower()} == true"
                     ),
+                    "departure_notification_settings.api_key": FieldConfig(
+                        renderer=Renderer.PASSWORD
+                    ),
                 }
 
     def _save_settings(self, data: dict):
