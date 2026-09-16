@@ -108,6 +108,8 @@ Each settings group is a `pydantic_settings.BaseSettings` (`YAMLSettings` subcla
 # Guidelines
 
 Do not rename any functions unless instructed to.
+Keep code comments to 1 sentence.
+Do not add mulitple sentence comments explaining why a piece of code does something a certain way. You do not need to explain exception handling logic in the comments. Developers understand exception handling.
 
 # Testing
 
@@ -120,4 +122,8 @@ The tests for any file should be under the module path with "tests/" prepended t
 
 In the original deployment ("Tortice Home Audio"), the Ansible role calendar_alarms_server runs on a Linux NAS (travnas) and the Ansible roles calendar_alarms_client and music_assistant_client run on single core Raspberry Pi Zero W (kaypi, patpi, officepi and travcal) as well as the NAS.
 
+In the Tortice deployment, the notifications are checked and played every 1 minute, as the NAS is well resourced and can generate the notification audio in under 15 seconds.
+
 In a second deployment for Dwain, called Ferny Home Audio, the calendar_alarms_server role is deployed to a single Raspberry Pi Zero W. It plays the audio over MPD which plays directly to a speaker - there is no Snapcast integration. The calendar_alarms_client and music_assistant_client roles are not used in this deployment.
+
+In the Ferny deployment, the notifications are checked every 5 minutes, as the ffmpeg code takes about a minute to run to prepare the notification audio on the low-resourced Raspberry Pi.
