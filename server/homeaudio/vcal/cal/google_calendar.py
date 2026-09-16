@@ -185,7 +185,8 @@ class Event:
                             description=self.description,
                             start_time=walk_out_time,
                             end_time=self.start_time,
-                            location=self.location
+                            location=self.location,
+                            target_event=self
                         )
         notifications.append(EventNotification(type=NotificationType.ANNOUNCE, offset=departure_notification_settings.heads_up_reminder_lead_time, event=event))
         notifications.append(EventNotification(type=NotificationType.ANNOUNCE, offset=0, event=event))
@@ -201,7 +202,7 @@ class Event:
 
 @dataclass
 class LeaveForEvent(Event):
-    pass
+    target_event: Event | None = None
 
 @dataclass
 class WeatherForecast(Event):
