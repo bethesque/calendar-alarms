@@ -5,4 +5,14 @@
 
 # Dwain
 
-Move calendar refresh to a service
+[x] Move calendar refresh to a service
+[ ] Leaving time feature
+
+
+# Feature ideas
+
+[ ] Passive voice reminders.
+    * Have you considered...
+    * It might be nice to...
+    * Past you thought that current you might want to...
+    * You may wish to...
