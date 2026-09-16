@@ -295,10 +295,10 @@ def test_travel_time_cache_load_returns_empty_when_file_missing(tmp_path):
     assert cache.entries == {}
 
 
-def test_travel_time_cache_prune_drops_entries_for_events_that_already_started():
+def test_travel_time_cache_prune_keeps_entries_for_events_earlier_today():
     now = datetime(2026, 4, 28, 9, 0, tzinfo=TIMEZONE)
     cache = TravelTimeCache(cache_file_path="")
-    past_entry = TravelTimeCacheEntry(
+    earlier_today_entry = TravelTimeCacheEntry(
         car_departure_time=now - timedelta(hours=2),
         duration_seconds=600,
         computed_at=now - timedelta(hours=1),
@@ -316,13 +316,32 @@ def test_travel_time_cache_prune_drops_entries_for_events_that_already_started()
         parking_minutes=5,
         safety_factor=10,
     )
-    cache.set("past", past_entry)
+    cache.set("earlier_today", earlier_today_entry)
     cache.set("future", future_entry)
 
     cache.prune(now)
 
-    assert cache.get("past") is None
+    assert cache.get("earlier_today") == earlier_today_entry
     assert cache.get("future") == future_entry
+
+
+def test_travel_time_cache_prune_drops_entries_for_events_from_yesterday():
+    now = datetime(2026, 4, 28, 9, 0, tzinfo=TIMEZONE)
+    cache = TravelTimeCache(cache_file_path="")
+    yesterday_entry = TravelTimeCacheEntry(
+        car_departure_time=now - timedelta(days=1, hours=2),
+        duration_seconds=600,
+        computed_at=now - timedelta(days=1, hours=1),
+        event_start_time=now - timedelta(days=1),
+        location="Somewhere",
+        parking_minutes=5,
+        safety_factor=10,
+    )
+    cache.set("yesterday", yesterday_entry)
+
+    cache.prune(now)
+
+    assert cache.get("yesterday") is None
 
 
 # --- car_departure_time_for_event ---------------------------------------------------------
@@ -363,15 +382,97 @@ def test_car_departure_time_for_event_skips_events_not_starting_today():
     assert cache.get("evt-1") is None
 
 
-def test_car_departure_time_for_event_skips_events_whose_start_time_has_already_passed():
+def test_car_departure_time_for_event_still_solves_when_start_time_has_passed_with_no_cache(monkeypatch):
     now = datetime(2026, 4, 28, 10, 0, tzinfo=TIMEZONE)
     event = _located_event_today(now, start_time=now - timedelta(hours=1))
     cache = TravelTimeCache(cache_file_path="")
+    new_departure_time = now - timedelta(minutes=90)
+    monkeypatch.setattr(
+        "homeaudio.vcal.departure_time.solve_car_departure_time",
+        lambda **kwargs: (new_departure_time, timedelta(minutes=10)),
+    )
 
     result = car_departure_time_for_event(event, _settings(), cache, now)
 
-    assert result is None
-    assert cache.get("evt-1") is None
+    assert result == new_departure_time
+    assert cache.get("evt-1").car_departure_time == new_departure_time
+
+
+def test_car_departure_time_for_event_uses_stale_cache_entry_once_car_departure_time_has_passed(monkeypatch):
+    now = datetime(2026, 4, 28, 10, 0, tzinfo=TIMEZONE)
+    event = _located_event_today(now, start_time=now - timedelta(hours=1))
+    cache = TravelTimeCache(cache_file_path="")
+    cached_departure_time = now - timedelta(hours=2)
+    cache.set("evt-1", TravelTimeCacheEntry(
+        car_departure_time=cached_departure_time,
+        duration_seconds=600,
+        computed_at=now - timedelta(hours=3),  # well outside recompute_interval_minutes, but should still be used
+        event_start_time=event.start_time,
+        location=event.location,
+        parking_minutes=5,
+        safety_factor=10,
+    ))
+    monkeypatch.setattr(
+        "homeaudio.vcal.departure_time.solve_car_departure_time",
+        lambda **kwargs: pytest.fail("must not solve once the cached car_departure_time has already passed"),
+    )
+
+    result = car_departure_time_for_event(event, _settings(recompute_interval_minutes=20), cache, now)
+
+    assert result == cached_departure_time
+
+
+def test_car_departure_time_for_event_uses_stale_cache_entry_once_car_departure_time_has_passed_even_if_event_has_not_started(monkeypatch):
+    now = datetime(2026, 4, 28, 10, 0, tzinfo=TIMEZONE)
+    # The event itself hasn't started yet, but the computed car_departure_time already has -
+    # the "time to leave" notification has already played, so there's no need to recompute.
+    event = _located_event_today(now, start_time=now + timedelta(minutes=30))
+    cache = TravelTimeCache(cache_file_path="")
+    cached_departure_time = now - timedelta(minutes=5)
+    cache.set("evt-1", TravelTimeCacheEntry(
+        car_departure_time=cached_departure_time,
+        duration_seconds=600,
+        computed_at=now - timedelta(hours=3),
+        event_start_time=event.start_time,
+        location=event.location,
+        parking_minutes=5,
+        safety_factor=10,
+    ))
+    monkeypatch.setattr(
+        "homeaudio.vcal.departure_time.solve_car_departure_time",
+        lambda **kwargs: pytest.fail("must not solve once the cached car_departure_time has already passed"),
+    )
+
+    result = car_departure_time_for_event(event, _settings(recompute_interval_minutes=20), cache, now)
+
+    assert result == cached_departure_time
+
+
+def test_car_departure_time_for_event_recomputes_when_start_time_changes_after_cached_departure_time_passed(monkeypatch):
+    now = datetime(2026, 4, 28, 10, 0, tzinfo=TIMEZONE)
+    # The cached car_departure_time (for the event's old start_time) has already passed, but the
+    # event's start_time has since been edited to later today - it must be treated as stale, not
+    # short-circuited as "already played".
+    event = _located_event_today(now, start_time=now + timedelta(hours=3))
+    cache = TravelTimeCache(cache_file_path="")
+    cache.set("evt-1", TravelTimeCacheEntry(
+        car_departure_time=now - timedelta(minutes=5),
+        duration_seconds=600,
+        computed_at=now - timedelta(hours=3),
+        event_start_time=now - timedelta(minutes=30),  # the old, no-longer-current start_time
+        location=event.location,
+        parking_minutes=5,
+        safety_factor=10,
+    ))
+    new_departure_time = now + timedelta(hours=2)
+    monkeypatch.setattr(
+        "homeaudio.vcal.departure_time.solve_car_departure_time",
+        lambda **kwargs: (new_departure_time, timedelta(minutes=10)),
+    )
+
+    result = car_departure_time_for_event(event, _settings(recompute_interval_minutes=20), cache, now)
+
+    assert result == new_departure_time
 
 
 @pytest.mark.parametrize("description", ["#travel", "#travel20"])
@@ -419,7 +520,7 @@ def test_car_departure_time_for_event_recomputes_after_the_interval_elapses(monk
     event = _located_event_today(now)
     cache = TravelTimeCache(cache_file_path="")
     cache.set("evt-1", TravelTimeCacheEntry(
-        car_departure_time=now,
+        car_departure_time=now + timedelta(hours=1),
         duration_seconds=600,
         computed_at=now - timedelta(minutes=21),
         event_start_time=event.start_time,
@@ -451,7 +552,7 @@ def test_car_departure_time_for_event_forces_recompute_when_event_details_change
 
     cache = TravelTimeCache(cache_file_path="")
     cache.set("evt-1", TravelTimeCacheEntry(
-        car_departure_time=now,
+        car_departure_time=now + timedelta(hours=1),
         duration_seconds=600,
         computed_at=now,  # otherwise fresh - only the changed field should force a recompute
         event_start_time=cached_start_time,
@@ -475,7 +576,7 @@ def test_car_departure_time_for_event_forces_recompute_when_settings_change(monk
     event = _located_event_today(now)
     cache = TravelTimeCache(cache_file_path="")
     cache.set("evt-1", TravelTimeCacheEntry(
-        car_departure_time=now,
+        car_departure_time=now + timedelta(hours=1),
         duration_seconds=600,
         computed_at=now,
         event_start_time=event.start_time,

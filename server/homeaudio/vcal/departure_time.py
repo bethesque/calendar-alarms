@@ -172,7 +172,7 @@ class TravelTimeCache:
         self.entries = {
             google_event_id: entry
             for google_event_id, entry in self.entries.items()
-            if entry.event_start_time >= now
+            if entry.event_start_time.date() >= now.date()
         }
 
 
@@ -183,7 +183,7 @@ def _has_travel_tag(description: str | None) -> bool:
 def _is_in_scope(event: Event, now: datetime) -> bool:
     if not event.location:
         return False
-    if event.start_time is None or event.start_time < now:
+    if event.start_time is None:
         return False
     if event.start_time.date() != now.date():
         return False
@@ -192,16 +192,22 @@ def _is_in_scope(event: Event, now: datetime) -> bool:
     return True
 
 
+def _entry_matches_event(entry: TravelTimeCacheEntry, event: Event, departure_notification_settings: DepartureNotificationSettings) -> bool:
+    if entry.event_start_time != event.start_time:
+        return False
+    if entry.location != event.location:
+        return False
+    if entry.parking_minutes != departure_notification_settings.parking_minutes:
+        return False
+    if entry.safety_factor != departure_notification_settings.safety_factor:
+        return False
+    return True
+
+
 def _is_stale(entry: TravelTimeCacheEntry | None, event: Event, departure_notification_settings: DepartureNotificationSettings, now: datetime) -> bool:
     if entry is None:
         return True
-    if entry.event_start_time != event.start_time:
-        return True
-    if entry.location != event.location:
-        return True
-    if entry.parking_minutes != departure_notification_settings.parking_minutes:
-        return True
-    if entry.safety_factor != departure_notification_settings.safety_factor:
+    if not _entry_matches_event(entry, event, departure_notification_settings):
         return True
     return now - entry.computed_at >= timedelta(minutes=departure_notification_settings.recompute_interval_minutes)
 
@@ -215,6 +221,9 @@ def car_departure_time_for_event(event: Event, departure_notification_settings: 
         return event.car_departure_time
 
     cached_entry = cache.get(event.google_event_id)
+
+    if cached_entry and _entry_matches_event(cached_entry, event, departure_notification_settings) and cached_entry.car_departure_time <= now:
+        return cached_entry.car_departure_time
 
     if not _is_stale(cached_entry, event, departure_notification_settings, now):
         return cached_entry.car_departure_time
