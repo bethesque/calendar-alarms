@@ -173,7 +173,7 @@ class Event:
             Add notification for leaving time, and for the configured lead time before leaving time
         """
         if self.car_departure_time is None:
-            logger.warning("No car_departure_time computed yet for event '%s'; skipping its travel notification", self.summary)
+            logger.warning("No car_departure_time computed for event '%s'; skipping its travel notification", self.summary)
             return
 
         walk_out_time = self.car_departure_time - datetime.timedelta(minutes=departure_notification_settings.house_to_car_minutes)

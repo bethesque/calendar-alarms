@@ -371,22 +371,11 @@ def test_car_departure_time_for_event_skips_events_with_no_location():
     assert cache.get("evt-1") is None
 
 
-def test_car_departure_time_for_event_skips_events_not_starting_today():
+def test_car_departure_time_for_event_computes_for_events_starting_tomorrow(monkeypatch):
     now = datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE)
     event = _located_event_today(now, start_time=now + timedelta(days=1))
     cache = TravelTimeCache(cache_file_path="")
-
-    result = car_departure_time_for_event(event, _settings(), cache, now)
-
-    assert result is None
-    assert cache.get("evt-1") is None
-
-
-def test_car_departure_time_for_event_still_solves_when_start_time_has_passed_with_no_cache(monkeypatch):
-    now = datetime(2026, 4, 28, 10, 0, tzinfo=TIMEZONE)
-    event = _located_event_today(now, start_time=now - timedelta(hours=1))
-    cache = TravelTimeCache(cache_file_path="")
-    new_departure_time = now - timedelta(minutes=90)
+    new_departure_time = now + timedelta(hours=23)
     monkeypatch.setattr(
         "homeaudio.vcal.departure_time.solve_car_departure_time",
         lambda **kwargs: (new_departure_time, timedelta(minutes=10)),
@@ -396,6 +385,32 @@ def test_car_departure_time_for_event_still_solves_when_start_time_has_passed_wi
 
     assert result == new_departure_time
     assert cache.get("evt-1").car_departure_time == new_departure_time
+
+
+def test_car_departure_time_for_event_skips_events_not_starting_today_or_tomorrow():
+    now = datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE)
+    event = _located_event_today(now, start_time=now + timedelta(days=2))
+    cache = TravelTimeCache(cache_file_path="")
+
+    result = car_departure_time_for_event(event, _settings(), cache, now)
+
+    assert result is None
+    assert cache.get("evt-1") is None
+
+
+def test_car_departure_time_for_event_skips_solve_when_start_time_has_passed_with_no_cache(monkeypatch):
+    now = datetime(2026, 4, 28, 10, 0, tzinfo=TIMEZONE)
+    event = _located_event_today(now, start_time=now - timedelta(hours=1))
+    cache = TravelTimeCache(cache_file_path="")
+    monkeypatch.setattr(
+        "homeaudio.vcal.departure_time.solve_car_departure_time",
+        lambda **kwargs: pytest.fail("must not call the Routes API for a past event with no cached estimate"),
+    )
+
+    result = car_departure_time_for_event(event, _settings(), cache, now)
+
+    assert result is None
+    assert cache.get("evt-1") is None
 
 
 def test_car_departure_time_for_event_uses_stale_cache_entry_once_car_departure_time_has_passed(monkeypatch):

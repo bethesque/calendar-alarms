@@ -62,7 +62,7 @@ def test_get_calendar_refreshed_at_returns_none_when_never_refreshed(tmp_path):
     assert result is None
 
 
-def test_update_calendar_travel_times_saves_computed_departure_time_for_todays_located_events(monkeypatch, tmp_path):
+def test_update_calendar_travel_times_saves_computed_departure_time_for_today_and_tomorrows_located_events(monkeypatch, tmp_path):
     now = datetime.now(TIMEZONE).replace(microsecond=0)
     today_event = Event(
         owner="Beth",
@@ -73,7 +73,7 @@ def test_update_calendar_travel_times_saves_computed_departure_time_for_todays_l
         start_time=now + timedelta(hours=2),
         google_event_id="evt-1",
     )
-    other_day_event = Event(
+    tomorrow_event = Event(
         owner="Beth",
         calendar_id="id",
         summary="Tomorrow's thing",
@@ -82,9 +82,19 @@ def test_update_calendar_travel_times_saves_computed_departure_time_for_todays_l
         start_time=now + timedelta(days=1),
         google_event_id="evt-2",
     )
+    day_after_tomorrow_event = Event(
+        owner="Beth",
+        calendar_id="id",
+        summary="Day after tomorrow's thing",
+        description="#travel",
+        location="789 Fake St",
+        start_time=now + timedelta(days=2),
+        google_event_id="evt-3",
+    )
     calendar_days = [
         CalendarDay(date=now.date(), timed_events=[today_event]),
-        CalendarDay(date=(now + timedelta(days=1)).date(), timed_events=[other_day_event]),
+        CalendarDay(date=(now + timedelta(days=1)).date(), timed_events=[tomorrow_event]),
+        CalendarDay(date=(now + timedelta(days=2)).date(), timed_events=[day_after_tomorrow_event]),
     ]
 
     calendar_source = CalendarSource(cache_file_path="")
@@ -102,13 +112,14 @@ def test_update_calendar_travel_times_saves_computed_departure_time_for_todays_l
 
     def fake_car_departure_time_for_event(event, departure_notification_settings, cache, call_now):
         calls.append(event.google_event_id)
-        return computed_departure_time if event is today_event else event.car_departure_time
+        return computed_departure_time if event is not day_after_tomorrow_event else event.car_departure_time
 
     monkeypatch.setattr("homeaudio.vcal.event_notifications.events.car_departure_time_for_event", fake_car_departure_time_for_event)
 
     update_calendar_travel_times()
 
-    assert calls == ["evt-1"]  # only today's event is considered
+    assert calls == ["evt-1", "evt-2"]  # today's and tomorrow's events are considered, but not the day after
     assert today_event.car_departure_time == computed_departure_time
-    assert other_day_event.car_departure_time is None
+    assert tomorrow_event.car_departure_time == computed_departure_time
+    assert day_after_tomorrow_event.car_departure_time is None
     assert saved == [True]

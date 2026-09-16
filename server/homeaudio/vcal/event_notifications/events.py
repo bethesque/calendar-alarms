@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timedelta
 from homeaudio.vcal.cal.google_calendar import CalendarDay, EventNotification, NotificationType, CalendarSource
 from homeaudio.audio.settings import EventNotificationSettings, DepartureNotificationSettings
-from homeaudio.vcal.departure_time import TravelTimeCache, car_departure_time_for_event
+from homeaudio.vcal.departure_time import TravelTimeCache, car_departure_time_for_event, relevant_dates
 
 logger = logging.getLogger(__name__)
 
@@ -96,10 +96,13 @@ def update_calendar_travel_times() -> None:
     now = datetime.now().astimezone()
     cache = TravelTimeCache.load()
 
-    today = next((day for day in calendar_days if day.date == now.date()), None)
+    # Because of the way multi-day events get allocated to multiple CalendarDays, there is a filter
+    # here to find the CalendarDays worth checking to see if we should add a car_departure_time
+    # but there is also another check on the start time of each event with the departure logic.
+    relevant_days = [day for day in calendar_days if day.date in relevant_dates(now)]
     try:
-        if today:
-            for event in today.timed_events:
+        for day in relevant_days:
+            for event in day.timed_events:
                 try:
                     event.car_departure_time = car_departure_time_for_event(event, departure_notification_settings, cache, now)
                     if event.car_departure_time:

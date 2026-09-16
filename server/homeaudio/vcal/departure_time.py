@@ -7,7 +7,7 @@ import logging
 import os
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Callable
 
 import requests
@@ -180,12 +180,19 @@ def _has_travel_tag(description: str | None) -> bool:
     return bool(description and _TRAVEL_TAG_RE.search(description))
 
 
+def relevant_dates(now: datetime) -> set[date]:
+    """
+    Dates for which to calculate the travel times.
+    """
+    return {now.date(), now.date() + timedelta(days=1)}
+
+
 def _is_in_scope(event: Event, now: datetime) -> bool:
     if not event.location:
         return False
     if event.start_time is None:
         return False
-    if event.start_time.date() != now.date():
+    if event.start_time.date() not in relevant_dates(now):
         return False
     if _has_travel_tag(event.description):
         return False
@@ -227,6 +234,10 @@ def car_departure_time_for_event(event: Event, departure_notification_settings: 
 
     if not _is_stale(cached_entry, event, departure_notification_settings, now):
         return cached_entry.car_departure_time
+
+    if cached_entry is None and event.start_time <= now:
+        logger.info("Event '%s' has already started with no cached travel time; skipping the Routes API call", event.summary)
+        return event.car_departure_time
 
     target_arrival = event.start_time - timedelta(minutes=departure_notification_settings.parking_minutes)
     cached_duration = cached_entry.duration if cached_entry else None
