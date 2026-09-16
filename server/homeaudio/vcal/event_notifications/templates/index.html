@@ -26,6 +26,7 @@
   </ul>
   <ul class="buttons">
     <li><a class="button" id="refresh-calendar-data"><span class="emoji">🔄</span><span>Refresh calendar data<span id="refreshed-at"></span></span></a></li>
+    <li><a class="button" id="recompute-departure-times"><span class="emoji">🚗</span><span>Recompute departure times</span></a></li>
     <li><a class="button" href="/alarm/notifications"><span class="emoji">🔔</span><span>Show all notifications</span></a></li>
     <li><a class="button" href="/alarm/events"><span class="emoji">📅</span><span>Show calendar events</span></a></li>
     <li><a class="button" href="/token/upload"><span class="emoji">📤</span><span>Upload Google API token.json</span></a></li>
@@ -93,6 +94,10 @@
         button.classList.remove('refreshing');
         updateRefreshedAt();
       });
+  });
+
+  document.getElementById('recompute-departure-times').addEventListener('click', function () {
+    callEndpoint("/alarm/recompute-departure-times", "POST");
   });
 
   document.getElementById('mute-area').addEventListener('click', function () {

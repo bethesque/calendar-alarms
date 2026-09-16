@@ -44,7 +44,7 @@
         <td>{{ notification.event.summary }}</td>
         <td>{{ notification.offset }}</td>
         <td>{{ notification.event.owner }}</td>
-        <td>{{ "Rule" if notification.notification_rule else "Event" }}</td>
+        <td>{{ "Departure" if notification.event.__class__.__name__ == "LeaveForEvent" else ("Rule" if notification.notification_rule else "Event tags") }}</td>
         <td>{{ notification.notification_rule.reminder if notification.notification_rule and notification.notification_rule.reminder else "" }}</td>
         <td>
           <button

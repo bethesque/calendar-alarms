@@ -11,9 +11,9 @@ from homeaudio.vcal.morning_announcements import play_morning_announcements
 from homeaudio.vcal.school_announcements import play_school_announcements
 from homeaudio.audio.scene import scene_for_env
 from homeaudio.vcal.core import stop_alarm, test_alarm, test_notification, mute_alarm_for_area_of_player, replay_last_notification, snooze_alarm
-from homeaudio.vcal.event_notifications.events import get_all_event_notifications, get_all_events, get_calendar_refreshed_at
+from homeaudio.vcal.event_notifications.events import get_all_event_notifications, get_all_events, get_calendar_refreshed_at, update_calendar_travel_times
 from homeaudio.vcal.cli import refresh_calendar_data
-from homeaudio.audio.settings import SnapcastSettings
+from homeaudio.audio.settings import SnapcastSettings, DepartureNotificationSettings
 from homeaudio.audio.string_utils import json_default_encoder
 from homeaudio.env import APP_NAME
 
@@ -87,6 +87,12 @@ class AlarmHandler:
         refresh_calendar_data()
         return "Calendar data refreshed"
 
+    def recompute_departure_times(self) -> str:
+        if not DepartureNotificationSettings().enabled:
+            return "Departure notifications are disabled"
+        threading.Thread(target=update_calendar_travel_times, daemon=True).start()
+        return "Recomputing departure times..."
+
     def replay_last_notification(self) -> str:
         threading.Thread(target=replay_last_notification, daemon=True).start()
         return "Replaying last notification"
@@ -138,6 +144,13 @@ class AlarmRoutes:
             self.refresh_calendar_data_endpoint,
             methods=["POST"],
             name="refresh_calendar_data",
+        )
+
+        self.router.add_api_route(
+            "/recompute-departure-times",
+            self.recompute_departure_times_endpoint,
+            methods=["POST"],
+            name="recompute_departure_times",
         )
 
         self.router.add_api_route(
@@ -211,6 +224,10 @@ class AlarmRoutes:
     async def refresh_calendar_data_endpoint(self):
         message = self.alarm_handler.refresh_calendar_data()
         return Response(content=message, status_code=200, media_type="text/plain")
+
+    async def recompute_departure_times_endpoint(self):
+        message = self.alarm_handler.recompute_departure_times()
+        return Response(content=message, status_code=202, media_type="text/plain")
 
     async def calendar_refreshed_at_endpoint(self):
         refreshed_at = get_calendar_refreshed_at()

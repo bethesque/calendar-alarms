@@ -102,6 +102,8 @@ def update_calendar_travel_times() -> None:
             for event in today.timed_events:
                 try:
                     event.car_departure_time = car_departure_time_for_event(event, departure_notification_settings, cache, now)
+                    if event.car_departure_time:
+                        logger.info(f"Set departure time for {event.summary} to {event.car_departure_time}")
                 except Exception:
                     logger.exception("Error computing car_departure_time for event '%s'", event.summary)
 
