@@ -236,7 +236,7 @@ def test_travel_notifications():
         start_time=start_time,
     )
 
-    notifications = event.notifications()
+    notifications = event.notifications(departure_notification_settings=_departure_notification_settings(heads_up_reminder_lead_time=5))
 
     assert len(notifications) == 2
     assert notifications[0].event.summary == "Leave for Morning meeting"
@@ -581,7 +581,7 @@ def _departure_notification_settings(**overrides) -> DepartureNotificationSettin
     return DepartureNotificationSettings(**defaults)
 
 
-def test_located_event_with_no_travel_tag_still_builds_computed_travel_notifications():
+def test_event_with_car_departure_time_builds_computed_travel_notifications():
     # No #travel tag anywhere in the description - having a location is enough on its own.
     start_time = datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE)
     car_departure_time = datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
@@ -590,7 +590,7 @@ def test_located_event_with_no_travel_tag_still_builds_computed_travel_notificat
         owner="Beth",
         summary="Morning meeting",
         description="Some regular description",
-        location="123 Fake St",
+        location="Not necessary for the actual notifications",
         start_time=start_time,
         car_departure_time=car_departure_time,
     )
@@ -611,48 +611,9 @@ def test_located_event_with_no_travel_tag_still_builds_computed_travel_notificat
     assert notifications[1].notification_time == walk_out_time
 
 
-def test_located_event_skips_computed_travel_notification_when_car_departure_time_not_yet_computed():
-    start_time = datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE)
-    event = Event(
-        calendar_id="id",
-        owner="Beth",
-        summary="Morning meeting",
-        description="",
-        location="123 Fake St",
-        start_time=start_time,
-        car_departure_time=None,
-    )
-
-    notifications = event.notifications(departure_notification_settings=_departure_notification_settings())
-
-    assert notifications == []
-
-
-def test_event_with_no_location_gets_no_travel_notification_even_with_car_departure_time():
-    # car_departure_time would only ever be set by the calendar refresh pipeline for a located
-    # event, but guard the dispatch logic itself against relying on location alone.
-    start_time = datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE)
-    event = Event(
-        calendar_id="id",
-        owner="Beth",
-        summary="Morning meeting",
-        description="",
-        location=None,
-        start_time=start_time,
-        car_departure_time=datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE),
-    )
-
-    notifications = event.notifications(departure_notification_settings=_departure_notification_settings())
-
-    assert notifications == []
-
-
-def test_computed_travel_notification_does_not_check_the_description_for_a_travel_tag():
-    # notifications() itself doesn't look at the description at all when deciding whether to add
-    # a computed travel notification - it's driven entirely by location/car_departure_time. In
-    # practice departure_time.py never populates car_departure_time for a #travel<N> event, so this
-    # only matters if something else set it - which is exactly why this method must not rely on
-    # the tag being absent.
+def test_explicit_numbered_travel_tag_takes_precedence_over_computed_car_departure_time():
+    # An explicit #travel<N> tag is a manual override - it wins over any computed
+    # car_departure_time, so only the tag-based notifications are added.
     start_time = datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE)
     event = Event(
         calendar_id="id",
@@ -666,12 +627,199 @@ def test_computed_travel_notification_does_not_check_the_description_for_a_trave
 
     notifications = event.notifications(departure_notification_settings=_departure_notification_settings())
 
-    assert len(notifications) == 4
-    fixed_offset_notification = notifications[0]
-    assert fixed_offset_notification.event.start_time == datetime.datetime(2026, 4, 28, 12, 10, tzinfo=TIMEZONE)
-    computed_notifications = notifications[2:]
-    assert all(n.event.start_time == datetime.datetime(2026, 4, 28, 10, 55, tzinfo=TIMEZONE) for n in computed_notifications)
-    assert notifications[0].offset == 5  # the existing method's hardcoded heads-up, not the configurable lead time
+    assert len(notifications) == 2
+    assert all(n.event.start_time == datetime.datetime(2026, 4, 28, 12, 10, tzinfo=TIMEZONE) for n in notifications)
+
+
+def test_bare_travel_tag_does_nothing():
+    # A bare #travel tag (no number) is a no-op - it neither adds its own notifications nor
+    # suppresses the computed car_departure_time ones.
+    start_time = datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE)
+    event = Event(
+        calendar_id="id",
+        owner="Beth",
+        summary="Morning meeting",
+        description="#travel",
+        location="123 Fake St",
+        start_time=start_time,
+        car_departure_time=datetime.datetime(2026, 4, 28, 11, 0, tzinfo=TIMEZONE),
+    )
+
+    notifications = event.notifications(departure_notification_settings=_departure_notification_settings())
+
+    assert len(notifications) == 2
+    walk_out_time = datetime.datetime(2026, 4, 28, 10, 55, tzinfo=TIMEZONE)
+    assert all(n.event.start_time == walk_out_time for n in notifications)
+
+
+def test_bare_travel_tag_produces_no_notifications_without_car_departure_time():
+    start_time = datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE)
+    event = Event(
+        calendar_id="id",
+        owner="Beth",
+        summary="Morning meeting",
+        description="#travel",
+        start_time=start_time,
+    )
+
+    assert event.notifications() == []
+
+
+def test_computed_departure_notification_handles_missing_description():
+    # description can be None (e.g. event_from_google_dict when Google omits it); checking it for
+    # a #travel<N> tag must not blow up.
+    start_time = datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE)
+    event = Event(
+        calendar_id="id",
+        owner="Beth",
+        summary="Morning meeting",
+        description=None,
+        location="123 Fake St",
+        start_time=start_time,
+        car_departure_time=datetime.datetime(2026, 4, 28, 11, 0, tzinfo=TIMEZONE),
+    )
+
+    notifications = event.notifications(departure_notification_settings=_departure_notification_settings())
+
+    assert len(notifications) == 2
+
+
+def test_tag_based_notification_and_departure_notification_at_the_same_time_are_both_kept():
+    # A tag-based notification fires against the target event itself, while a departure
+    # notification fires against a separate LeaveForEvent - even if they land on the same
+    # notification_time, they are different notifications and neither should be deduplicated away.
+    start_time = datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
+    car_departure_time = datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
+    event = Event(
+        calendar_id="id",
+        owner="Beth",
+        summary="Meeting",
+        description="#announce20",
+        location="123 Fake St",
+        start_time=start_time,
+        car_departure_time=car_departure_time,
+    )
+
+    # house_to_car_minutes=0 puts the walk_out_time at car_departure_time (12:00), and
+    # heads_up_reminder_lead_time=20 puts the computed heads-up notification at 11:40 - the same
+    # notification_time and offset as the #announce20 tag notification.
+    settings = _departure_notification_settings(house_to_car_minutes=0, heads_up_reminder_lead_time=20)
+
+    notifications = event.notifications(departure_notification_settings=settings)
+
+    matching_time = datetime.datetime(2026, 4, 28, 11, 40, tzinfo=TIMEZONE)
+    coincident_notifications = [n for n in notifications if n.notification_time == matching_time]
+
+    assert len(coincident_notifications) == 2
+    assert all(n.type.name == "ANNOUNCE" and n.offset == 20 for n in coincident_notifications)
+
+    tag_notification = next(n for n in coincident_notifications if n.event is event)
+    departure_notification = next(n for n in coincident_notifications if n.event is not event)
+    assert departure_notification.event.summary == "Leave for Meeting"
+
+
+def test_departure_notification_rule_matches_against_the_target_event_but_fires_on_the_leave_event():
+    start_time = datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE)
+    car_departure_time = datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
+    event = Event(
+        calendar_id="id",
+        owner="Beth",
+        summary="Morning meeting",
+        description="",
+        location="123 Fake St",
+        start_time=start_time,
+        car_departure_time=car_departure_time,
+    )
+
+    rule = NotificationRule(
+        summary_pattern="Morning meeting",
+        notification_type="announce",
+        offset_minutes=15,
+        reminder="Grab your coat.",
+    )
+
+    notifications = event.notifications(
+        departure_notification_settings=_departure_notification_settings(notification_rules=[rule])
+    )
+
+    rule_notifications = [n for n in notifications if n.notification_rule is not None]
+    assert len(rule_notifications) == 1
+    assert rule_notifications[0].notification_rule.reminder == "Grab your coat."
+    # The rule matches on the target event's summary, but the notification fires against the
+    # leave-for event, not the target event.
+    assert rule_notifications[0].event.summary == "Leave for Morning meeting"
+    walk_out_time = datetime.datetime(2026, 4, 28, 11, 55, tzinfo=TIMEZONE)
+    assert rule_notifications[0].event.start_time == walk_out_time
+    assert rule_notifications[0].notification_time == walk_out_time - datetime.timedelta(minutes=15)
+
+
+def test_departure_notification_keeps_multiple_matching_rules_at_the_same_time():
+    start_time = datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE)
+    car_departure_time = datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
+    event = Event(
+        calendar_id="id",
+        owner="Beth",
+        summary="Morning meeting",
+        description="",
+        location="123 Fake St",
+        start_time=start_time,
+        car_departure_time=car_departure_time,
+    )
+
+    rule_one = NotificationRule(
+        summary_pattern="Morning meeting",
+        notification_type="announce",
+        offset_minutes=15,
+        reminder="Grab your coat.",
+    )
+    rule_two = NotificationRule(
+        summary_pattern="Morning meeting",
+        notification_type="announce",
+        offset_minutes=15,
+        reminder="Take an umbrella.",
+    )
+
+    notifications = event.notifications(
+        departure_notification_settings=_departure_notification_settings(notification_rules=[rule_one, rule_two])
+    )
+
+    rule_notifications = [n for n in notifications if n.notification_rule is not None]
+
+    # Both rules match the same event at the same notification_time - neither is deduplicated away.
+    assert len(rule_notifications) == 2
+    assert {n.notification_rule.reminder for n in rule_notifications} == {"Grab your coat.", "Take an umbrella."}
+    assert rule_notifications[0].notification_time == rule_notifications[1].notification_time
+
+
+def test_departure_notification_rule_overrides_fixed_announcement_at_the_same_time():
+    start_time = datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE)
+    car_departure_time = datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
+    event = Event(
+        calendar_id="id",
+        owner="Beth",
+        summary="Morning meeting",
+        description="",
+        location="123 Fake St",
+        start_time=start_time,
+        car_departure_time=car_departure_time,
+    )
+
+    # offset_minutes matches heads_up_reminder_lead_time, so this rule's notification lands at the
+    # same notification_time as the fixed heads-up announcement.
+    rule = NotificationRule(
+        summary_pattern="Morning meeting",
+        notification_type="announce",
+        offset_minutes=10,
+        reminder="Grab your coat.",
+    )
+
+    notifications = event.notifications(
+        departure_notification_settings=_departure_notification_settings(heads_up_reminder_lead_time=10, notification_rules=[rule])
+    )
+
+    matching_offset_notifications = [n for n in notifications if n.offset == 10]
+    assert len(matching_offset_notifications) == 1
+    assert matching_offset_notifications[0].notification_rule is rule
 
 
 def test_event_from_google_dict_captures_google_event_id():

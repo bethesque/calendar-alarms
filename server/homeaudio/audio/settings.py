@@ -292,6 +292,7 @@ class DepartureNotificationSettings(YAMLSettings):
     safety_factor: int = Field(default=10, ge=0, le=100, description="Percentage to pad the travel duration by because sometimes Google Maps is a bit optimistic")
     heads_up_reminder_lead_time: int = Field(default=10, ge=0, description="Minutes before the walk-out time announcement that the heads-up reminder plays")
     recompute_interval_minutes: int = Field(default=20, ge=1, description="How often to re-calculate the travel time to ensure the most accurate results.")
+    notification_rules: list[NotificationRule] = Field(default_factory=list, description="Rules for creating notifications based on departure time")
 
     model_config = SettingsConfigDict(
         yaml_file="config/departure_notifications.yaml"
