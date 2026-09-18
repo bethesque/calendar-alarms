@@ -6,6 +6,10 @@ from homeaudio.vcal.departure_time import TravelTimeCache, car_departure_time_fo
 
 logger = logging.getLogger(__name__)
 
+def round_down_to_interval(dt: datetime, interval_minutes: int) -> datetime:
+    minute = (dt.minute // interval_minutes) * interval_minutes
+    return dt.replace(minute=minute, second=0, microsecond=0)
+
 class NotificationFinder:
     def __init__(self, calendar_days: list[CalendarDay], base_time, window, notification_rules=None, departure_notification_settings: DepartureNotificationSettings | None = None):
         self.calendar_days = calendar_days
@@ -31,9 +35,7 @@ class NotificationFinder:
 
 
     def _get_time_window(self):
-        # Round down to nearest multiple of WINDOW
-        minute = (self.base_time.minute // self.window) * self.window
-        start_time = self.base_time.replace(minute=minute, second=0, microsecond=0)
+        start_time = round_down_to_interval(self.base_time, self.window)
         end_time = start_time + timedelta(minutes=self.window)
         return start_time, end_time
 

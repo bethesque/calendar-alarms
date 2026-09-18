@@ -69,6 +69,91 @@ def test_notifications_page_handles_no_notifications(monkeypatch):
     assert "No upcoming notifications." in response.text
 
 
+def test_format_notification_for_api_maps_fields_and_rounds_play_datetime_down():
+    event = Event(
+        owner="Beth",
+        calendar_id="id",
+        summary="Gym session",
+        description="Leg day",
+        start_time=datetime(2026, 4, 28, 9, 7, 30, tzinfo=timezone.utc),
+    )
+    notification = EventNotification(event=event, type=NotificationType.ALARM, offset=0)
+
+    result = api_module.format_notification_for_api(notification, check_interval_minutes=5)
+
+    assert result.event.summary == "Gym session"
+    assert result.type == "alarm"
+    assert result.due_datetime == notification.notification_time
+    assert result.play_datetime == datetime(2026, 4, 28, 9, 5, tzinfo=timezone.utc)
+
+
+def test_format_notification_for_api_leaves_play_datetime_unchanged_when_already_on_a_boundary():
+    event = Event(
+        owner="Beth",
+        calendar_id="id",
+        summary="Gym session",
+        description="Leg day",
+        start_time=datetime(2026, 4, 28, 9, 10, tzinfo=timezone.utc),
+    )
+    notification = EventNotification(event=event, type=NotificationType.ANNOUNCE, offset=0)
+
+    result = api_module.format_notification_for_api(notification, check_interval_minutes=5)
+
+    assert result.type == "announce"
+    assert result.play_datetime == notification.notification_time
+
+
+def test_format_notification_for_api_shows_the_leave_for_event_summary():
+    target_event = Event(
+        owner="Beth",
+        calendar_id="id",
+        summary="Dentist",
+        description="#travel10",
+        start_time=datetime(2026, 4, 28, 9, 0, tzinfo=timezone.utc),
+    )
+    leave_event = target_event.leave_for_event(datetime(2026, 4, 28, 8, 40, tzinfo=timezone.utc))
+    notification = EventNotification(event=leave_event, type=NotificationType.ANNOUNCE, offset=0)
+
+    result = api_module.format_notification_for_api(notification, check_interval_minutes=5)
+
+    assert result.event.summary == "Leave for Dentist"
+
+
+def test_notifications_endpoint_returns_json_when_accept_header_requests_it(monkeypatch):
+    event = Event(
+        owner="Beth",
+        calendar_id="id",
+        summary="Gym session",
+        description="Leg day",
+        start_time=datetime(2026, 4, 28, 9, 7, 30, tzinfo=timezone.utc),
+    )
+    notification = EventNotification(event=event, type=NotificationType.ALARM, offset=0)
+    monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [notification])
+
+    response = _client().get("/alarm/notifications", headers={"Accept": "application/json"})
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "notifications": [
+            {
+                "event": {"summary": "Gym session"},
+                "type": "alarm",
+                "due_datetime": "2026-04-28T09:07:30Z",
+                "play_datetime": "2026-04-28T09:05:00Z",
+            }
+        ]
+    }
+
+
+def test_notifications_endpoint_returns_empty_json_list_when_no_notifications(monkeypatch):
+    monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [])
+
+    response = _client().get("/alarm/notifications", headers={"Accept": "application/json"})
+
+    assert response.status_code == 200
+    assert response.json() == {"notifications": []}
+
+
 def test_snooze_endpoint_stops_the_alarm_with_snooze_flag_set(monkeypatch):
     calls = []
     monkeypatch.setattr(api_module.AlarmHandler, "stop_alarm", lambda self, snooze=False: calls.append(snooze) or "Stopping alarm...")

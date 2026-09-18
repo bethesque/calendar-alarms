@@ -3,10 +3,22 @@ from zoneinfo import ZoneInfo
 
 from homeaudio.audio.settings import EventNotificationSettings, NotificationRule
 from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarSource, Event
-from homeaudio.vcal.event_notifications.events import get_calendar_refreshed_at, get_event_notifications, update_calendar_travel_times
+from homeaudio.vcal.event_notifications.events import get_calendar_refreshed_at, get_event_notifications, round_down_to_interval, update_calendar_travel_times
 from homeaudio.vcal.departure_time import TravelTimeCache
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
+
+
+def test_round_down_to_interval_rounds_down_to_the_nearest_boundary():
+    dt = datetime(2026, 4, 28, 9, 7, 30, tzinfo=TIMEZONE)
+
+    assert round_down_to_interval(dt, 5) == datetime(2026, 4, 28, 9, 5, tzinfo=TIMEZONE)
+
+
+def test_round_down_to_interval_leaves_a_time_already_on_a_boundary_unchanged():
+    dt = datetime(2026, 4, 28, 9, 10, tzinfo=TIMEZONE)
+
+    assert round_down_to_interval(dt, 5) == dt
 
 
 def test_get_event_notifications_ignores_disabled_rules():
