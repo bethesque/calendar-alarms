@@ -33,6 +33,7 @@
   </ul>
   <ul class="buttons">
     <li><a class="button" id="test-alarm"><span class="emoji">📋</span><span>Test alarm</span></a></li>
+    <li><a class="button" id="test-announcement"><span class="emoji">📋</span><span>Test announcement</span></a></li>
     <li><a class="button" id="mute-area"><span class="emoji">📋</span><span>Mute area</span></a></li>
   </ul>
   <div id="result">No request sent yet.</div>
@@ -62,6 +63,10 @@
 
   document.getElementById('test-alarm').addEventListener('click', function () {
     callEndpoint("/alarm/test");
+  });
+
+  document.getElementById('test-announcement').addEventListener('click', function () {
+    callEndpoint("/alarm/test-announcement");
   });
 
   document.getElementById('play-morning-announcements').addEventListener('click', function () {

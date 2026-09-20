@@ -130,6 +130,34 @@ def test_alarm():
     notification_files = NotificationFiles(event_alarms_file=alarm_audio_file, event_announcements_file=announcements_file)
     play_notifications(notification_files, scene_for_env())
 
+def test_announcement():
+    now = datetime.now().astimezone()
+
+    days = [
+        {
+            "date":  now.strftime("%Y-%m-%d"),
+            "date_time": now.isoformat(),
+            "timed_events": [
+                {
+                    "description": "#announce",
+                    "end_time": None,
+                    "owner": "Beth",
+                    "calendar_id": "id",
+                    "recurring": False,
+                    "start_time": now.isoformat(),
+                    "summary": "do an announcement"
+                },
+            ],
+            "whole_day_events": []
+        }
+    ]
+
+    calendar_data = CalendarSource(cache_file_path="").load_data_from_any(days)
+
+    announcements_file, alarm_audio_file = check_for_event_notifications(now, 5, calendar_data, EventNotificationSettings())
+    notification_files = NotificationFiles(event_alarms_file=alarm_audio_file, event_announcements_file=announcements_file)
+    play_notifications(notification_files, scene_for_env())
+
 # Used by the "Test" button next to a notification on the notifications page (event_notifications/api.py) to
 # play a specific notification on demand, using notification_time as base_time so it's found within the window.
 def test_notification(event: dict, notification_time: datetime):

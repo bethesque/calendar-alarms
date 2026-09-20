@@ -9,7 +9,7 @@ from fastapi.templating import Jinja2Templates
 from homeaudio.vcal.morning_announcements import play_morning_announcements
 from homeaudio.vcal.school_announcements import play_school_announcements
 from homeaudio.audio.scene import scene_for_env
-from homeaudio.vcal.core import stop_alarm, test_alarm, test_notification, mute_alarm_for_area_of_player, replay_last_notification, snooze_alarm
+from homeaudio.vcal.core import stop_alarm, test_alarm, test_announcement, test_notification, mute_alarm_for_area_of_player, replay_last_notification, snooze_alarm
 from homeaudio.vcal.event_notifications.events import get_all_event_notifications, get_all_events, get_calendar_refreshed_at, update_calendar_travel_times, round_down_to_interval
 from homeaudio.vcal.event_notifications.models import TestNotificationRequest, EventSummaryResponse, NotificationResponseItem, NotificationsResponse
 from homeaudio.vcal.cal.google_calendar import LeaveForEvent, EventNotification
@@ -82,6 +82,10 @@ class AlarmHandler:
         threading.Thread(target=test_alarm, daemon=True).start()
         return "Testing alarm..."
 
+    def test_announcement(self) -> str:
+        threading.Thread(target=test_announcement, daemon=True).start()
+        return "Testing announcement..."
+
     def test_notification(self, event: dict, notification_time: datetime) -> str:
         threading.Thread(target=test_notification, args=(event, notification_time), daemon=True).start()
         return "Testing notification..."
@@ -134,6 +138,13 @@ class AlarmRoutes:
             self.test_alarm_endpoint,
             methods=["POST"],
             name="alarm_test",
+        )
+
+        self.router.add_api_route(
+            "/test-announcement",
+            self.test_announcement_endpoint,
+            methods=["POST"],
+            name="announcement_test",
         )
 
         self.router.add_api_route(
@@ -222,6 +233,10 @@ class AlarmRoutes:
 
     async def test_alarm_endpoint(self):
         message = self.alarm_handler.test_alarm()
+        return Response(content=message, status_code=202, media_type="text/plain")
+
+    async def test_announcement_endpoint(self):
+        message = self.alarm_handler.test_announcement()
         return Response(content=message, status_code=202, media_type="text/plain")
 
     async def play_morning_announcements_endpoint(self):
