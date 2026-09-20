@@ -47,6 +47,9 @@
   become: true
   tags:
     - sample_rate
+    - snapserver_conf
+  notify:
+    - restart snapserver
 
 - name: Install Snapweb (use the custom build from https://github.com/bethesque/snapweb)
   copy:

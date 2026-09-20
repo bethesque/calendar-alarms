@@ -11,10 +11,14 @@
   register: snapclient_which
   changed_when: false
   failed_when: false
+  tags:
+    - snapclient_conf
 
 - name: Store snapclient path
   ansible.builtin.set_fact:
     snapclient_path: "{{ snapclient_which.stdout }}"
+  tags:
+    - snapclient_conf  
 
 # Configure snapclient systemd service for user
 # Best to do it as a user service rather than a system service to avoid permissions
@@ -34,6 +38,8 @@
   notify:
     - reload user systemd daemon
     - restart calendar-alarms-snapclient.service
+  tags:
+    - snapclient_conf
 
 - name: Setup start/stop timers for officepi
   ansible.builtin.import_tasks: snapclient_officepi.yml
