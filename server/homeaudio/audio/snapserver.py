@@ -194,6 +194,7 @@ class Snapserver:
         ]
 
         if calls:
+            logger.debug(calls)
             self._batch_rpc(calls)
 
     def set_all_connected_full_volume(self) -> None:
