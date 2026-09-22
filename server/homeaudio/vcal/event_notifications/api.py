@@ -11,6 +11,7 @@ from homeaudio.vcal.school_announcements import play_school_announcements
 from homeaudio.audio.scene import scene_for_env
 from homeaudio.vcal.core import stop_alarm, test_alarm, test_announcement, test_notification, mute_alarm_for_area_of_player, replay_last_notification, snooze_alarm
 from homeaudio.vcal.event_notifications.events import get_all_event_notifications, get_all_events, get_calendar_refreshed_at, update_calendar_travel_times, round_down_to_interval
+from homeaudio.vcal.event_notifications.scheduled_announcements import scheduled_announcement_notifications, ScheduledAnnouncementNotification
 from homeaudio.vcal.event_notifications.models import TestNotificationRequest, EventSummaryResponse, NotificationResponseItem, NotificationsResponse
 from homeaudio.vcal.cal.google_calendar import LeaveForEvent, EventNotification
 from homeaudio.vcal.cli import refresh_calendar_data
@@ -26,11 +27,25 @@ def format_notification_for_api(
     notification: EventNotification,
     check_interval_minutes: int = NOTIFICATIONS_CHECK_INTERVAL_MINUTES,
 ) -> NotificationResponseItem:
+    notification_type = notification.type.name.lower()
     return NotificationResponseItem(
         event=EventSummaryResponse(summary=notification.event.summary),
-        type=notification.type.name.lower(),
+        type=notification_type,
         due_datetime=notification.notification_time,
         play_datetime=round_down_to_interval(notification.notification_time, check_interval_minutes),
+        duration_seconds=60 if notification_type == "announce" else 300,
+    )
+
+def format_scheduled_announcement_for_api(
+    announcement: ScheduledAnnouncementNotification,
+    check_interval_minutes: int = NOTIFICATIONS_CHECK_INTERVAL_MINUTES,
+) -> NotificationResponseItem:
+    return NotificationResponseItem(
+        event=EventSummaryResponse(summary=announcement.summary),
+        type="announce",
+        due_datetime=announcement.due_datetime,
+        play_datetime=round_down_to_interval(announcement.due_datetime, check_interval_minutes),
+        duration_seconds=300,
     )
 
 def _wants_json(request: Request) -> bool:
@@ -263,9 +278,12 @@ class AlarmRoutes:
         event_notifications = sorted(get_all_event_notifications(), key=lambda notification: notification.notification_time)
 
         if _wants_json(request):
-            return NotificationsResponse(
-                notifications=[format_notification_for_api(n) for n in event_notifications]
+            notifications = sorted(
+                [format_notification_for_api(n) for n in event_notifications]
+                + [format_scheduled_announcement_for_api(n) for n in scheduled_announcement_notifications()],
+                key=lambda notification: notification.due_datetime,
             )
+            return NotificationsResponse(notifications=notifications)
 
         notifications = [
             (

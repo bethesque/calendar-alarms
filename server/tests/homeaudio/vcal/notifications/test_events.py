@@ -3,7 +3,12 @@ from zoneinfo import ZoneInfo
 
 from homeaudio.audio.settings import EventNotificationSettings, NotificationRule
 from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarSource, Event
-from homeaudio.vcal.event_notifications.events import get_calendar_refreshed_at, get_event_notifications, round_down_to_interval, update_calendar_travel_times
+from homeaudio.vcal.event_notifications.events import (
+    get_calendar_refreshed_at,
+    get_event_notifications,
+    round_down_to_interval,
+    update_calendar_travel_times,
+)
 from homeaudio.vcal.departure_time import TravelTimeCache
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")

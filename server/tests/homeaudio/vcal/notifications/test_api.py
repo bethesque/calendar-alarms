@@ -129,6 +129,7 @@ def test_notifications_endpoint_returns_json_when_accept_header_requests_it(monk
     )
     notification = EventNotification(event=event, type=NotificationType.ALARM, offset=0)
     monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [notification])
+    monkeypatch.setattr(api_module, "scheduled_announcement_notifications", lambda: [])
 
     response = _client().get("/alarm/notifications", headers={"Accept": "application/json"})
 
@@ -140,13 +141,55 @@ def test_notifications_endpoint_returns_json_when_accept_header_requests_it(monk
                 "type": "alarm",
                 "due_datetime": "2026-04-28T09:07:30Z",
                 "play_datetime": "2026-04-28T09:05:00Z",
+                "duration_seconds": 300,
             }
+        ]
+    }
+
+
+def test_notifications_endpoint_includes_morning_and_school_announcements(monkeypatch):
+    monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [])
+    monkeypatch.setattr(
+        api_module,
+        "scheduled_announcement_notifications",
+        lambda: [
+            api_module.ScheduledAnnouncementNotification(
+                summary="Morning announcements",
+                due_datetime=datetime(2026, 4, 28, 7, 17, 0, tzinfo=timezone.utc),
+            ),
+            api_module.ScheduledAnnouncementNotification(
+                summary="School announcements",
+                due_datetime=datetime(2026, 4, 28, 8, 30, 0, tzinfo=timezone.utc),
+            ),
+        ],
+    )
+
+    response = _client().get("/alarm/notifications", headers={"Accept": "application/json"})
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "notifications": [
+            {
+                "event": {"summary": "Morning announcements"},
+                "type": "announce",
+                "due_datetime": "2026-04-28T07:17:00Z",
+                "play_datetime": "2026-04-28T07:16:00Z",
+                "duration_seconds": 300,
+            },
+            {
+                "event": {"summary": "School announcements"},
+                "type": "announce",
+                "due_datetime": "2026-04-28T08:30:00Z",
+                "play_datetime": "2026-04-28T08:30:00Z",
+                "duration_seconds": 300,
+            },
         ]
     }
 
 
 def test_notifications_endpoint_returns_empty_json_list_when_no_notifications(monkeypatch):
     monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [])
+    monkeypatch.setattr(api_module, "scheduled_announcement_notifications", lambda: [])
 
     response = _client().get("/alarm/notifications", headers={"Accept": "application/json"})
 
