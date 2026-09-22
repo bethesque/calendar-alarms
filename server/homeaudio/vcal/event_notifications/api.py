@@ -279,8 +279,8 @@ class AlarmRoutes:
 
         if _wants_json(request):
             notifications = sorted(
-                [format_notification_for_api(n) for n in event_notifications]
-                + [format_scheduled_announcement_for_api(n) for n in scheduled_announcement_notifications()],
+                [format_notification_for_api(n, NOTIFICATIONS_CHECK_INTERVAL_MINUTES) for n in event_notifications]
+                + [format_scheduled_announcement_for_api(n, NOTIFICATIONS_CHECK_INTERVAL_MINUTES) for n in scheduled_announcement_notifications()],
                 key=lambda notification: notification.due_datetime,
             )
             return NotificationsResponse(notifications=notifications)
