@@ -130,6 +130,7 @@ def test_notifications_endpoint_returns_json_when_accept_header_requests_it(monk
     notification = EventNotification(event=event, type=NotificationType.ALARM, offset=0)
     monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [notification])
     monkeypatch.setattr(api_module, "scheduled_announcement_notifications", lambda: [])
+    monkeypatch.setattr(api_module, "NOTIFICATIONS_CHECK_INTERVAL_MINUTES", 5)
 
     response = _client().get("/alarm/notifications", headers={"Accept": "application/json"})
 
