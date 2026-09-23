@@ -33,17 +33,28 @@ class SnapserverManager:
         self.snapcast_settings = snapcast_settings
         self.snapserver = Snapserver(snapcast_settings.snapserver_rpc_url)
         self.requested_player_names = requested_player_names
+        self._connected_player_names: list[str] | None = None
 
     def connected_player_names(self) -> list[str]:
-        if self.requested_player_names:
-            names = set(self.snapserver.connected_client_names()) & set(self.requested_player_names)
-        else:
-            names = set(self.snapserver.connected_client_names())
+        if self._connected_player_names is None:
 
-        return list(names - self.snapcast_settings.disabled_snapclient_names)
+            if self.requested_player_names:
+                names = set(self.snapserver.connected_client_names()) & set(self.requested_player_names)
+                # If the requested players don't match any clients, return them all rather than not play
+                # over any players
+                if not names:
+                    logger.info(f"The requested players {self.requested_player_names} are not available. Using all players.")
+                    names = set(self.snapserver.connected_client_names())
+            else:
+                names = set(self.snapserver.connected_client_names())
+
+            self._connected_player_names = list(names - self.snapcast_settings.disabled_snapclient_names)
+
+        return self._connected_player_names
 
     def connected_player_areas(self) -> set[str]:
-        return set([sc.area for sc in self.snapcast_settings.snapclients if sc.name in self.connected_player_names() and sc.area and sc.area.strip()])
+        conn_player_names = self.connected_player_names()
+        return set([sc.area for sc in self.snapcast_settings.snapclients if sc.name in conn_player_names and sc.area and sc.area.strip()])
 
     def set_volumes(self, usecase: str) -> set[str]:
         try:

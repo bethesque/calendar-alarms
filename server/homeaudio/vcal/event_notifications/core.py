@@ -46,11 +46,16 @@ def check_for_event_notifications(base_time, window, calendar_days: list[Calenda
         return _build_notification_files(event_notifications, base_time, event_notification_settings)
     except Exception:
         logger.exception("Error generating notification audio. Returning pre-generated notification file.")
-        return (NotificationFile(path=ERROR_MESSAGE_AUDIO), None)
+        return (NotificationFile(path=ERROR_MESSAGE_AUDIO, targets=None), None)
 
 def _build_notification_files(event_notifications: list[EventNotification], base_time, event_notification_settings: EventNotificationSettings | None = None) -> tuple[NotificationFile | None, NotificationFile | None]:
     event_notification_settings = event_notification_settings or EventNotificationSettings()
     LastPlayedState().save(event_notifications, base_time)
+
+    # If all notifications have the same target, keep it, otherwise, play all notifications for everyone
+    # It's too complicated to work out the logic otherwise
+    unique_targets = { n.targets for n in event_notifications }
+    targets = list(unique_targets)[0] if len(unique_targets) == 1 else None
 
     # Separate alarm and announcement notifications
     announcement_event_notifications = [event for event in event_notifications if event.type == NotificationType.ANNOUNCE]
@@ -59,13 +64,19 @@ def _build_notification_files(event_notifications: list[EventNotification], base
     announcement_texts = NotificationTextBuilder(announcement_event_notifications, base_time).build()
     alarm_texts = NotificationTextBuilder(alarm_event_notifications, base_time).build()
 
-    announcements_file = (
-        NotificationFile(path=AnnouncementAudio(announcement_texts, base_time, SoundEffectSelector(event_notification_settings.announcements.sound_effect_probability)).build_announcement_file())
-        if announcement_event_notifications else None
-    )
-    alarm_audio_file = (
-        NotificationFile(path=AlarmAudio(alarm_texts, event_notification_settings.alarms, base_time).build_alarm_file())
-        if alarm_event_notifications else None
-    )
+    announcements_file = None
+    alarm_audio_file = None
+
+    if announcement_event_notifications:
+        announcements_file = NotificationFile(
+            path=AnnouncementAudio(announcement_texts, base_time, SoundEffectSelector(event_notification_settings.announcements.sound_effect_probability)).build_announcement_file(),
+            targets=targets
+        )
+
+    if alarm_event_notifications:
+        alarm_audio_file = NotificationFile(
+            path=AlarmAudio(alarm_texts, event_notification_settings.alarms, base_time).build_alarm_file(),
+            targets=targets
+        )
 
     return announcements_file, alarm_audio_file

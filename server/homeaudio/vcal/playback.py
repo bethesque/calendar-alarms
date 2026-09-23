@@ -6,19 +6,34 @@ from homeaudio.audio.sound import track_length
 from homeaudio.audio.scene import SceneProtocol
 from homeaudio.audio.settings import SnapcastSettings, MpdSettings
 from homeaudio.audio.snapcast import snapserver_manager_for_env
-from homeaudio.env import CALENDAR_DATA_DIRECTORY
 
 logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class NotificationFile:
     path: str
+    targets: frozenset[str] | None = None
 
 @dataclass
 class NotificationFiles:
     event_alarms_file: NotificationFile | None = None
     event_announcements_file: NotificationFile | None = None
     scheduled_announcements_files: list[NotificationFile] = field(default_factory=list)
+
+
+    # SnapserverManager takes a list[str] | None
+    def targets(self) -> list[str] | None:
+        """
+            If all notifications have the same targets, use those targets,
+            else return None (play notifications for everyone)
+        """
+        unique_targets = { n.targets for n in self.files_list() }
+        target = list(unique_targets)[0] if len(unique_targets) == 1 else None
+        return list(target) if target else None
+
+    def files_list(self) -> list[NotificationFile]:
+        return [f for f in [self.event_alarms_file, self.event_announcements_file] + self.scheduled_announcements_files if f]
+
 
 """
 Takes a list of CalenderDays and finds any alarms due within the given time window.
@@ -27,7 +42,7 @@ Takes a list of CalenderDays and finds any alarms due within the given time wind
 def play_notifications(notification_files: NotificationFiles, scene: SceneProtocol):
     mpd_settings = MpdSettings()
     snapcast_settings = SnapcastSettings()
-    snapserver_manager = snapserver_manager_for_env(snapcast_settings)
+    snapserver_manager = snapserver_manager_for_env(snapcast_settings, notification_files.targets())
     areas = snapserver_manager.connected_player_areas()
     announcements_file = notification_files.event_announcements_file
     scheduled_announcements_files = notification_files.scheduled_announcements_files

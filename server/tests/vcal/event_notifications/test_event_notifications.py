@@ -2,7 +2,7 @@ import datetime
 from zoneinfo import ZoneInfo
 
 from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarSource, Event, event_from_google_dict
-from homeaudio.vcal.event_notifications.events import EventNotifications, NotificationType
+from homeaudio.vcal.event_notifications.events import EventNotifications, LeaveForEvent, NotificationType
 from homeaudio.audio.settings import DepartureNotificationSettings
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
@@ -118,6 +118,30 @@ def test_notification_offset_returns_zero_when_no_number():
     )
 
     assert EventNotifications(event).notifications()[0].offset == 0
+
+
+def test_targets_returns_words_starting_with_at_sign():
+    event = Event(
+        calendar_id="id",
+        owner="Beth",
+        summary="Meeting",
+        description="#alarm20 @beth @kitchen",
+        start_time=datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE),
+    )
+
+    assert EventNotifications(event).notifications()[0].targets == {"beth", "kitchen"}
+
+
+def test_targets_is_none_when_no_at_sign_present():
+    event = Event(
+        calendar_id="id",
+        owner="Beth",
+        summary="Meeting",
+        description="#alarm20",
+        start_time=datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE),
+    )
+
+    assert EventNotifications(event).notifications()[0].targets is None
 
 
 def test_notification_offset_returns_zero_when_no_alarm_tag():
@@ -290,6 +314,27 @@ def test_event_with_car_departure_time_builds_computed_travel_notifications():
     assert notifications[1].offset == 0
     assert notifications[1].event.start_time == walk_out_time
     assert notifications[1].notification_time == walk_out_time
+
+
+def test_leave_for_event_notifications_inherit_targets_from_original_event():
+    start_time = datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE)
+    car_departure_time = datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
+    event = Event(
+        calendar_id="id",
+        owner="Beth",
+        summary="Morning meeting",
+        description="Some regular description @beth @kitchen",
+        location="Not necessary for the actual notifications",
+        start_time=start_time,
+        car_departure_time=car_departure_time,
+    )
+
+    notifications = EventNotifications(event).notifications(departure_notification_settings=_departure_notification_settings(house_to_car_minutes=5, heads_up_reminder_lead_time=10))
+
+    assert len(notifications) == 2
+    assert all(isinstance(notification.event, LeaveForEvent) for notification in notifications)
+    assert notifications[0].targets == {"beth", "kitchen"}
+    assert notifications[1].targets == {"beth", "kitchen"}
 
 
 def test_explicit_numbered_travel_tag_takes_precedence_over_computed_car_departure_time():

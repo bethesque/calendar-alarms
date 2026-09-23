@@ -26,6 +26,7 @@ class EventNotification:
     offset: int
     notification_time: datetime = field(init=False)
     notification_rule: NotificationRule | None = None
+    targets: frozenset[str] | None = None
 
     def __post_init__(self):
         self.notification_time = self.event.start_time - timedelta(minutes=self.offset)
@@ -47,6 +48,12 @@ def _pattern_matches(pattern: str | None, value: str | None) -> bool:
     if not value:
         return False
     return pattern.lower() in value.lower()
+
+def _targets_from_description(description: str | None) -> frozenset[str] | None:
+    if not description:
+        return None
+    targets = set(re.findall(r"@(\w+)", description))
+    return frozenset(targets) or None
 
 def _calendar_id_matches(rule_calendar_id: str | None, event_calendar_id: str | None) -> bool:
     """An unset rule calendar_id matches any calendar. An unset event calendar_id
@@ -72,7 +79,8 @@ def notifications_from_rules(event_to_match: "Event", rules: list[NotificationRu
             event=event_for_notification,
             type=NotificationType[rule.notification_type.upper()],
             offset=rule.offset_minutes,
-            notification_rule = rule
+            notification_rule = rule,
+            targets=_targets_from_description(event_for_notification.description)
         ))
     return notifications
 
@@ -123,7 +131,12 @@ class EventNotifications:
                             self.add_departure_notifications_from_tag(notifications, offset_int, departure_notification_settings)
                     else:
                         type_enum = NotificationType[tag.upper()]
-                        notifications.append(EventNotification(type=type_enum, offset=offset_int, event=self.event))
+                        notifications.append(EventNotification(
+                            type=type_enum,
+                            offset=offset_int,
+                            event=self.event,
+                            targets=_targets_from_description(self.event.description)
+                        ))
 
     def notifications_within_window(self, start_time, end_time, rules: list[NotificationRule] | None = None, departure_notification_settings: DepartureNotificationSettings | None = None):
         notifications_in_window = []
@@ -156,8 +169,9 @@ class EventNotifications:
         # Do the rules ones first because they'll override the non-rules ones if there are notifications at the same time
         notifications.extend(notifications_from_rules(self.event, departure_notification_settings.notification_rules, leave_event))
 
-        notifications.append(EventNotification(type=NotificationType.ANNOUNCE, offset=departure_notification_settings.heads_up_reminder_lead_time, event=leave_event))
-        notifications.append(EventNotification(type=NotificationType.ANNOUNCE, offset=0, event=leave_event))
+        leave_event_targets = _targets_from_description(leave_event.description)
+        notifications.append(EventNotification(type=NotificationType.ANNOUNCE, offset=departure_notification_settings.heads_up_reminder_lead_time, event=leave_event, targets=leave_event_targets))
+        notifications.append(EventNotification(type=NotificationType.ANNOUNCE, offset=0, event=leave_event, targets=leave_event_targets))
 
 
     def leave_for_event(self, walk_out_time) -> "LeaveForEvent":

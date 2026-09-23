@@ -21,6 +21,7 @@ from homeaudio.vcal.daemon import (
     check_for_notifications,
     play_notification_files,
 )
+from homeaudio.vcal.playback import NotificationFile
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
 
@@ -318,7 +319,7 @@ def test_check_for_notifications_returns_the_prepared_files_when_something_is_du
             "_C", (), {"file_exists": lambda self: True, "cache_file_path": "calendar.json", "load_data_from_file": lambda self: None}
         )(),
     )
-    prepared = NotificationFiles(event_announcements_file="announce.wav")
+    prepared = NotificationFiles(event_announcements_file=NotificationFile(path="announce.wav"))
     monkeypatch.setattr(
         "homeaudio.vcal.daemon.prepare_notification_files",
         lambda base_time, window, calendar_data: prepared,
@@ -334,7 +335,7 @@ def test_play_notification_files_plays_the_prepared_files(monkeypatch):
         lambda notification_files, scene: calls.append(notification_files),
     )
 
-    prepared = NotificationFiles(event_announcements_file="announce.wav", event_alarms_file="alarm.wav")
+    prepared = NotificationFiles(event_announcements_file=NotificationFile(path="announce.wav") , event_alarms_file=NotificationFile(path="alarm.wav"))
     play_notification_files(prepared)
 
     assert calls == [prepared]
@@ -346,7 +347,7 @@ def test_play_notification_files_does_not_raise_when_playing_fails(monkeypatch):
 
     monkeypatch.setattr("homeaudio.vcal.daemon._play_notifications", raise_error)
 
-    play_notification_files(NotificationFiles(event_announcements_file="announce.wav"))  # must not raise
+    play_notification_files(NotificationFiles(event_announcements_file=NotificationFile(path="announce.wav")))  # must not raise
 
 
 def _daemon_with_fake_wait(monkeypatch, boundary, early_wake_seconds, wait_returns):
