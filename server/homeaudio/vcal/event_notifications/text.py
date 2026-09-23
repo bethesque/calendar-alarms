@@ -2,7 +2,7 @@ import logging
 import re
 import random
 from homeaudio.audio.random_text import ListOptionsSource, select_option_pseudorandomly
-from homeaudio.vcal.cal.google_calendar import EventNotification
+from homeaudio.vcal.event_notifications.events import EventNotification
 from pathlib import Path
 
 logger = logging.getLogger(__name__)

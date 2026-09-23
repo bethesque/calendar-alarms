@@ -13,7 +13,7 @@ from homeaudio.vcal.core import stop_alarm, test_alarm, test_announcement, test_
 from homeaudio.vcal.event_notifications.events import get_all_event_notifications, get_all_events, get_calendar_refreshed_at, update_calendar_travel_times, round_down_to_interval
 from homeaudio.vcal.event_notifications.scheduled_announcements import scheduled_announcement_notifications, ScheduledAnnouncementNotification
 from homeaudio.vcal.event_notifications.models import TestNotificationRequest, EventSummaryResponse, NotificationResponseItem, NotificationsResponse
-from homeaudio.vcal.cal.google_calendar import LeaveForEvent, EventNotification
+from homeaudio.vcal.event_notifications.events import EventNotification, LeaveForEvent
 from homeaudio.vcal.cli import refresh_calendar_data
 from homeaudio.audio.settings import SnapcastSettings, DepartureNotificationSettings
 from homeaudio.audio.string_utils import json_default_encoder

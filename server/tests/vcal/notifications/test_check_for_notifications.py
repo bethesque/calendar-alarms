@@ -2,7 +2,8 @@ from contextlib import contextmanager
 from datetime import datetime
 
 from homeaudio.vcal.event_notifications.core import check_for_and_play_notifications
-from homeaudio.vcal.cal.google_calendar import CalendarSource, Event, EventNotification, NotificationType
+from homeaudio.vcal.cal.google_calendar import CalendarSource, Event
+from homeaudio.vcal.event_notifications.events import EventNotification, NotificationType
 from homeaudio.audio.scene import NullScene
 from homeaudio.audio.settings import EventNotificationSettings
 from homeaudio.vcal.event_notifications.snooze import LastPlayedState

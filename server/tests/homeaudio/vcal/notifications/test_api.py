@@ -5,7 +5,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from homeaudio.audio.settings import NotificationRule
-from homeaudio.vcal.cal.google_calendar import Event, EventNotification, NotificationType
+from homeaudio.vcal.cal.google_calendar import Event
+from homeaudio.vcal.event_notifications.events import EventNotification, EventNotifications, NotificationType
 import homeaudio.vcal.event_notifications.api as api_module
 
 
@@ -111,7 +112,7 @@ def test_format_notification_for_api_shows_the_leave_for_event_summary():
         description="#travel10",
         start_time=datetime(2026, 4, 28, 9, 0, tzinfo=timezone.utc),
     )
-    leave_event = target_event.leave_for_event(datetime(2026, 4, 28, 8, 40, tzinfo=timezone.utc))
+    leave_event = EventNotifications(target_event).leave_for_event(datetime(2026, 4, 28, 8, 40, tzinfo=timezone.utc))
     notification = EventNotification(event=leave_event, type=NotificationType.ANNOUNCE, offset=0)
 
     result = api_module.format_notification_for_api(notification, check_interval_minutes=5)

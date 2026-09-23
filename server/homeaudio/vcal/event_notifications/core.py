@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 import logging
 from pathlib import Path
-from homeaudio.vcal.cal.google_calendar import CalendarDay, EventNotification, NotificationType
+from homeaudio.vcal.cal.google_calendar import CalendarDay
+from homeaudio.vcal.event_notifications.events import EventNotification, NotificationType
 from homeaudio.housie_talkie.models import SoundEffectSelector
 from homeaudio.vcal.event_notifications.audio import AlarmAudio, AnnouncementAudio
 from homeaudio.vcal.event_notifications.text import NotificationTextBuilder

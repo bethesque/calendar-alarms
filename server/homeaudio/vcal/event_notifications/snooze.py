@@ -8,7 +8,8 @@ from pathlib import Path
 from homeaudio.audio.settings import NotificationRule
 from homeaudio.audio.string_utils import json_default_encoder
 from homeaudio.env import CACHE_DIRECTORY
-from homeaudio.vcal.cal.google_calendar import Event, EventNotification, NotificationType, load_event
+from homeaudio.vcal.cal.google_calendar import Event, load_event
+from homeaudio.vcal.event_notifications.events import EventNotification, EventNotifications, NotificationType
 
 logger = logging.getLogger(__name__)
 

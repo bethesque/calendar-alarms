@@ -1,7 +1,8 @@
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from homeaudio.vcal.cal.google_calendar import Event, EventNotification, NotificationType
+from homeaudio.vcal.cal.google_calendar import Event
+from homeaudio.vcal.event_notifications.events import EventNotification, NotificationType
 import homeaudio.vcal.core as core_module
 from homeaudio.vcal.core import snooze_alarm
 from homeaudio.vcal.event_notifications.snooze import LastPlayedState, SnoozeState

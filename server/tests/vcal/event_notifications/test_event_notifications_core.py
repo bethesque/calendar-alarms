@@ -2,7 +2,8 @@ from datetime import datetime
 from pathlib import Path
 
 from homeaudio.audio.settings import EventNotificationSettings
-from homeaudio.vcal.cal.google_calendar import CalendarSource, Event, EventNotification, NotificationType
+from homeaudio.vcal.cal.google_calendar import CalendarSource, Event
+from homeaudio.vcal.event_notifications.events import EventNotification, NotificationType
 from homeaudio.vcal.event_notifications.core import ERROR_MESSAGE_AUDIO, check_for_event_notifications
 from homeaudio.vcal.playback import NotificationFile
 

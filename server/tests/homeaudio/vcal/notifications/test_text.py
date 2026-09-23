@@ -4,7 +4,8 @@ from zoneinfo import ZoneInfo
 
 from pydantic import ValidationError
 
-from homeaudio.vcal.cal.google_calendar import Event, EventNotification, LeaveForEvent, NotificationType
+from homeaudio.vcal.cal.google_calendar import Event
+from homeaudio.vcal.event_notifications.events import EventNotification, LeaveForEvent, NotificationType
 from homeaudio.audio.settings import NotificationRule
 from homeaudio.vcal.event_notifications.text import NotificationTextBuilder
 

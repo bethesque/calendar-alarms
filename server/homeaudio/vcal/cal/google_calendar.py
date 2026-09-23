@@ -1,12 +1,12 @@
 from __future__ import print_function
 
 import datetime
-import re
+
 from typing import Any
 from zoneinfo import ZoneInfo
 import os.path
 from dataclasses import dataclass, field
-from enum import Enum
+
 from operator import attrgetter
 import logging
 import json
@@ -15,7 +15,7 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from homeaudio.audio.settings import NotificationRule, DepartureNotificationSettings
+
 from homeaudio.env import CALENDAR_DATA_DIRECTORY
 
 
@@ -36,78 +36,6 @@ class GoogleCalendar:
     id: str
     name: str
 
-class NotificationType(Enum):
-    ALARM = 1
-    ANNOUNCE = 2
-
-@dataclass
-class EventNotification:
-    event: "Event"
-    type: NotificationType
-    offset: int
-    notification_time: datetime.datetime = field(init=False)
-    notification_rule: NotificationRule | None = None
-
-    def __post_init__(self):
-        self.notification_time = self.event.start_time - datetime.timedelta(minutes=self.offset)
-
-    def same_excluding_notification_rule(self, other: "EventNotification") -> bool:
-        return (
-            self.event == other.event
-            and self.event.__class__ == other.event.__class__
-            and self.type == other.type
-            and self.offset == other.offset
-            and self.notification_time == other.notification_time
-        )
-
-def _pattern_matches(pattern: str | None, value: str | None) -> bool:
-    """A pattern that is empty/unset always matches; otherwise it must be a
-    case-insensitive substring of value."""
-    if not pattern:
-        return True
-    if not value:
-        return False
-    return pattern.lower() in value.lower()
-
-def _calendar_id_matches(rule_calendar_id: str | None, event_calendar_id: str | None) -> bool:
-    """An unset rule calendar_id matches any calendar. An unset event calendar_id
-    matches any rule. Otherwise the two IDs must match exactly."""
-    if not rule_calendar_id or not event_calendar_id:
-        return True
-    return rule_calendar_id == event_calendar_id
-
-def notifications_from_rules(event_to_match: "Event", rules: list[NotificationRule], event_for_notification: "Event | None" = None) -> list[EventNotification]:
-    notifications: list[EventNotification] = []
-    # When checking for departure notifications, the matching logic is done on the target event, but the notification is
-    # added for the LeaveForEvent
-
-    event_for_notification = event_for_notification or event_to_match
-    if not event_to_match.start_time:
-        return notifications
-
-    for rule in rules:
-        if not notification_rule_matches_event(event_to_match, rule):
-            continue
-
-        notifications.append(EventNotification(
-            event=event_for_notification,
-            type=NotificationType[rule.notification_type.upper()],
-            offset=rule.offset_minutes,
-            notification_rule = rule
-        ))
-    return notifications
-
-def notification_rule_matches_event(event: "Event", rule: NotificationRule) -> bool:
-    if not _calendar_id_matches(rule.calendar_id, event.calendar_id):
-        return False
-    if not _pattern_matches(rule.summary_pattern, event.summary):
-        return False
-    if not _pattern_matches(rule.description_pattern, event.description):
-        return False
-    if not _pattern_matches(rule.location_pattern, event.location):
-        return False
-    return True
-
 @dataclass
 class Event:
     owner: str
@@ -121,103 +49,6 @@ class Event:
     location: str | None = None
     google_event_id: str | None = None
     car_departure_time: datetime.datetime | None = None
-
-    def notifications(self, rules: list[NotificationRule] | None = None, departure_notification_settings: DepartureNotificationSettings | None = None) -> list[EventNotification]:
-        notifications = []
-
-        departure_notification_settings = departure_notification_settings or DepartureNotificationSettings()
-
-        # Add the notifications from rules first because they have reminders, and will be used in preference
-        # to notifications sourced from the description if there is a duplicate.
-        if rules:
-            notifications.extend(notifications_from_rules(self, rules))
-
-
-        self._add_computed_departure_notifications(notifications, departure_notification_settings)
-
-        self._add_notifications_from_description(notifications, departure_notification_settings)
-
-        return self._deduplicate_notifications(notifications)
-
-    def _add_notifications_from_description(self, notifications, departure_notification_settings: DepartureNotificationSettings):
-        if self.description and self.start_time:
-            matches = re.findall(r"#(alarm|announce|travel)(\d+)?", self.description)
-            if matches:
-                for match in matches:
-                    tag, offset = match
-
-                    offset_int = int(offset) if offset else 0
-
-                    if tag == "travel":
-                        if offset:
-                            self.add_departure_notifications_from_tag(notifications, offset_int, departure_notification_settings)
-                    else:
-                        type_enum = NotificationType[tag.upper()]
-                        notifications.append(EventNotification(type=type_enum, offset=offset_int, event=self))
-
-    def notifications_within_window(self, start_time, end_time, rules: list[NotificationRule] | None = None, departure_notification_settings: DepartureNotificationSettings | None = None):
-        notifications_in_window = []
-        for event_notification in self.notifications(rules, departure_notification_settings):
-            if start_time <= event_notification.notification_time < end_time:
-                notifications_in_window.append(event_notification)
-        return notifications_in_window
-
-    def add_departure_notifications_from_tag(self, notifications, offset_int, departure_notification_settings: DepartureNotificationSettings):
-        """
-            Add notification for leaving time, and for 5 minutes before leaving time
-        """
-        walk_out_time = self.start_time - datetime.timedelta(minutes=offset_int)
-        self._add_departure_notifications(notifications, walk_out_time, departure_notification_settings)
-
-    def _add_computed_departure_notifications(self, notifications, departure_notification_settings: DepartureNotificationSettings):
-        """
-            Add notification for leaving time, and for the configured lead time before leaving time
-        """
-        if self.car_departure_time and not self._has_travel_tag_with_number():
-            walk_out_time = self.car_departure_time - datetime.timedelta(minutes=departure_notification_settings.house_to_car_minutes)
-            self._add_departure_notifications(notifications, walk_out_time, departure_notification_settings)
-
-    def _has_travel_tag_with_number(self):
-        return (self.description and re.findall(r"#travel(\d+)", self.description))
-
-    def _add_departure_notifications(self, notifications, walk_out_time: datetime.datetime, departure_notification_settings: DepartureNotificationSettings):
-        leave_event = self.leave_for_event(walk_out_time)
-
-        # Do the rules ones first because they'll override the non-rules ones if there are notifications at the same time
-        notifications.extend(notifications_from_rules(self, departure_notification_settings.notification_rules, leave_event))
-
-        notifications.append(EventNotification(type=NotificationType.ANNOUNCE, offset=departure_notification_settings.heads_up_reminder_lead_time, event=leave_event))
-        notifications.append(EventNotification(type=NotificationType.ANNOUNCE, offset=0, event=leave_event))
-
-
-    def leave_for_event(self, walk_out_time) -> "LeaveForEvent":
-        """
-        Returns an event that represents leaving for another event.
-        """
-        return LeaveForEvent(
-                            owner=self.owner,
-                            calendar_id=self.calendar_id,
-                            owner_count=self.owner_count,
-                            summary=f"Leave for {self.summary}",
-                            description=self.description,
-                            start_time=walk_out_time,
-                            end_time=self.start_time,
-                            location=self.location,
-                            target_event=self
-                        )
-
-    def _deduplicate_notifications(self, notifications):
-        deduplicated_notifications = []
-        for notification in notifications:
-            if any(existing.same_excluding_notification_rule(notification) and not notification.notification_rule for existing in deduplicated_notifications):
-                continue
-            deduplicated_notifications.append(notification)
-
-        return deduplicated_notifications
-
-@dataclass
-class LeaveForEvent(Event):
-    target_event: Event | None = None
 
 @dataclass
 class WeatherForecast(Event):
