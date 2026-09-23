@@ -61,6 +61,40 @@ def test_notifications_page_lists_notifications(monkeypatch):
     assert "Remember to eat." in response.text
 
 
+def test_notifications_page_shows_targets_when_set(monkeypatch):
+    event = Event(
+        owner="Beth",
+        calendar_id="id",
+        summary="Gym session",
+        description="Leg day @kitchen @bedroom",
+        start_time=datetime(2026, 4, 28, 9, 0, tzinfo=timezone.utc),
+    )
+    notification = EventNotification(event=event, type=NotificationType.ALARM, offset=75, targets=frozenset({"kitchen", "bedroom"}))
+    monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [notification])
+
+    response = _client().get("/alarm/notifications")
+
+    assert response.status_code == 200
+    assert "bedroom, kitchen" in response.text
+
+
+def test_notifications_page_shows_all_when_no_targets_set(monkeypatch):
+    event = Event(
+        owner="Beth",
+        calendar_id="id",
+        summary="Gym session",
+        description="Leg day",
+        start_time=datetime(2026, 4, 28, 9, 0, tzinfo=timezone.utc),
+    )
+    notification = EventNotification(event=event, type=NotificationType.ALARM, offset=75, targets=None)
+    monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [notification])
+
+    response = _client().get("/alarm/notifications")
+
+    assert response.status_code == 200
+    assert "All" in response.text
+
+
 def test_notifications_page_handles_no_notifications(monkeypatch):
     monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [])
 

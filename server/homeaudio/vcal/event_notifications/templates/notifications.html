@@ -33,6 +33,7 @@
         <th>Calendar</th>
         <th>Notification Source</th>
         <th>Reminder</th>
+        <th>Targets</th>
         <th></th>
       </tr>
     </thead>
@@ -46,6 +47,7 @@
         <td>{{ notification.event.owner }}</td>
         <td>{{ "Departure" if notification.event.__class__.__name__ == "LeaveForEvent" else ("Rule" if notification.notification_rule else "Event tags") }}</td>
         <td>{{ notification.notification_rule.reminder if notification.notification_rule and notification.notification_rule.reminder else "" }}</td>
+        <td>{{ notification.targets | sort | join(", ") if notification.targets else "All" }}</td>
         <td>
           <button
             type="button"
