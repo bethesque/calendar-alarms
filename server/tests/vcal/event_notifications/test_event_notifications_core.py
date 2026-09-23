@@ -4,6 +4,7 @@ from pathlib import Path
 from homeaudio.audio.settings import EventNotificationSettings
 from homeaudio.vcal.cal.google_calendar import CalendarSource, Event, EventNotification, NotificationType
 from homeaudio.vcal.event_notifications.core import ERROR_MESSAGE_AUDIO, check_for_event_notifications
+from homeaudio.vcal.playback import NotificationFile
 
 
 def test_error_message_audio_file_exists():
@@ -43,4 +44,4 @@ def test_check_for_event_notifications_returns_error_message_audio_on_exception(
         EventNotificationSettings(notification_rules=[]),
     )
 
-    assert result == (ERROR_MESSAGE_AUDIO, None)
+    assert result == (NotificationFile(path=ERROR_MESSAGE_AUDIO), None)

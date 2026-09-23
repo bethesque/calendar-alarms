@@ -4,6 +4,8 @@ from datetime import datetime, time as time_of_day
 from pathlib import Path
 from unittest.mock import Mock
 
+from homeaudio.vcal.playback import NotificationFile
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import homeaudio.vcal.morning_announcements.core as morning_announcements_core
@@ -134,7 +136,7 @@ def test_check_for_announcement_builds_the_audio_file_when_due(monkeypatch):
 
     result = check_for_announcement(MONDAY_7_17, 1, "calendar-days", settings)
 
-    assert result == "morning_announcement.wav"
+    assert result == NotificationFile(path="morning_announcement.wav")
     assert seen["args"] == (MONDAY_7_17, "calendar-days", settings)
 
 

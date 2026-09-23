@@ -10,6 +10,7 @@ from homeaudio.audio.sound import join_mp3s_to_wav, mix_announcement_audio
 from homeaudio.audio.select_item import select_item_by_date, select_option
 
 from homeaudio.vcal.event_notifications import BACKGROUND_MUSIC_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, POST_ANNOUNCEMENT_SILENCE
+from homeaudio.vcal.playback import NotificationFile
 
 logger = logging.getLogger(__name__)
 
@@ -164,7 +165,7 @@ def check_for_announcement(
         window: int,
         calendar_days: list[CalendarDay],
         settings: MorningAnnouncementsSettings | None = None
-    ) -> str | None:
+    ) -> NotificationFile | None:
     settings = settings or MorningAnnouncementsSettings()
 
     if not settings.enabled:
@@ -175,7 +176,7 @@ def check_for_announcement(
         logger.debug(f"Morning announcements not due")
         return None
 
-    return _create_audio_file_for_calendar_days(base_time, calendar_days, settings)
+    return NotificationFile(path=_create_audio_file_for_calendar_days(base_time, calendar_days, settings))
 
 """
 Entry point for UI. Generate a summary of today's events, convert them to voice, and play them.

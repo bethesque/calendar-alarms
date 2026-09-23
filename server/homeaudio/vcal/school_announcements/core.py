@@ -11,6 +11,7 @@ from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast, MissingCa
 from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file, gtts_tld, TextToSpeechError
 from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, POST_ANNOUNCEMENT_SILENCE
 from homeaudio.env import CALENDAR_DATA_DIRECTORY
+from homeaudio.vcal.playback import NotificationFile
 
 CHANCE_OF_I_AM_NOT_THE_BOSS = 1/5
 # gtts-cli  "An error occurred generating the school announcements. Some of the notifications may have been missing. Please check the calendar for today's events." > audio_resources/school_announcements_error_message.mp3
@@ -123,7 +124,7 @@ def check_for_announcement(
         window: int,
         calendar_days: list[CalendarDay],
         settings: SchoolAnnouncementsSettings | None = None
-    ) -> str | None:
+    ) -> NotificationFile | None:
     settings = settings or SchoolAnnouncementsSettings()
 
     if not settings.enabled:
@@ -133,8 +134,8 @@ def check_for_announcement(
     if not _announcement_due(base_time, window, settings.schedule):
         logger.debug(f"School announcements not due")
         return None
-
-    return _create_audio_file_for_calendar_days(base_time, calendar_days, settings)
+    path = _create_audio_file_for_calendar_days(base_time, calendar_days, settings)
+    return NotificationFile(path=path) if path else None
 
 """
 UI entrypoint
@@ -152,5 +153,6 @@ def play_school_announcements(
     _settings = settings or SchoolAnnouncementsSettings()
 
     file = _create_audio_file_for_calendar_days(_base_time, calendar_days, _settings)
-    play_tts_audio_file(file, SnapcastSettings(), MpdSettings(), before_announcement_hook, after_announcement_hook)
+    if file:
+        play_tts_audio_file(file, SnapcastSettings(), MpdSettings(), before_announcement_hook, after_announcement_hook)
 

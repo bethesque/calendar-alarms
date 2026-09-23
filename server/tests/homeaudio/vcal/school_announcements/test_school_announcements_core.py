@@ -19,6 +19,7 @@ from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast, MissingCa
 from homeaudio.vcal.event_notifications.text_to_voice import TextToSpeechError
 from homeaudio.audio.settings import SchoolAnnouncementsSchedule, SchoolAnnouncementsSettings
 from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, POST_ANNOUNCEMENT_SILENCE
+from homeaudio.vcal.playback import NotificationFile
 
 DEFAULT_HOLIDAY_KEYWORDS = ["no school", "school holidays"]
 DEFAULT_SCHOOL_EVENT_KEYWORDS = ["school"]
@@ -318,7 +319,7 @@ def test_check_for_announcement_builds_the_audio_file_when_due(monkeypatch):
 
     result = check_for_announcement(MONDAY_8_30, 1, "calendar-days", settings)
 
-    assert result == "school_announcement.wav"
+    assert result == NotificationFile(path="school_announcement.wav")
     assert seen["args"] == (MONDAY_8_30, "calendar-days", settings)
 
 

@@ -10,11 +10,15 @@ from homeaudio.env import CALENDAR_DATA_DIRECTORY
 
 logger = logging.getLogger(__name__)
 
+@dataclass(frozen=True)
+class NotificationFile:
+    path: str
+
 @dataclass
 class NotificationFiles:
-    event_alarms_file: str | None = None
-    event_announcements_file: str | None = None
-    scheduled_announcements_files: list[str] = field(default_factory=list)
+    event_alarms_file: NotificationFile | None = None
+    event_announcements_file: NotificationFile | None = None
+    scheduled_announcements_files: list[NotificationFile] = field(default_factory=list)
 
 """
 Takes a list of CalenderDays and finds any alarms due within the given time window.
@@ -34,23 +38,23 @@ def play_notifications(notification_files: NotificationFiles, scene: SceneProtoc
 
     # Only announcement
     if announcements_file and not alarms_file and not scheduled_announcements_files:
-        scene.around_announcement(lambda: _play_event_announcement(announcements_file, mpd_settings), areas)
+        scene.around_announcement(lambda: _play_event_announcement(announcements_file.path, mpd_settings), areas)
         return
     # Announcement and/or alarm
     scene.prepare_for_alarm(areas)
 
     if announcements_file:
-        _play_event_announcement(announcements_file, mpd_settings)
+        _play_event_announcement(announcements_file.path, mpd_settings)
 
     if scheduled_announcements_files:
         for file in scheduled_announcements_files:
-            _play_event_announcement(file, mpd_settings)
+            _play_event_announcement(file.path, mpd_settings)
 
     if alarms_file:
         if announcements_file or scheduled_announcements_files:
             time.sleep(2)
         snapserver_manager.set_volumes("alarm")
-        _play_event_alarm(alarms_file, mpd_settings)
+        _play_event_alarm(alarms_file.path, mpd_settings)
 
 def _play_event_announcement(announcements_file, mpd_settings):
     with mpd_connection(mpd_settings) as mpd:

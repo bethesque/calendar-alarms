@@ -14,7 +14,7 @@ from homeaudio.vcal.event_notifications.snooze import LastPlayedState, SnoozeSta
 from homeaudio.vcal.school_announcements.core import check_for_announcement as check_for_school_announcements
 from homeaudio.vcal.morning_announcements.core import check_for_announcement as check_for_morning_announcements
 from homeaudio.vcal.event_notifications.core import check_for_event_notifications as check_for_event_notifications, check_for_and_play_notifications
-from homeaudio.vcal.playback import NotificationFiles, play_notifications, play_file
+from homeaudio.vcal.playback import NotificationFile, NotificationFiles, play_notifications, play_file
 
 logger = logging.getLogger(__name__)
 
@@ -190,6 +190,10 @@ def prepare_notification_files(base_time, window, calendar_days: list[CalendarDa
         scheduled_announcements_files.append(file)
 
     if alarm_audio_file or announcements_file or scheduled_announcements_files:
-        return NotificationFiles(event_alarms_file=alarm_audio_file, event_announcements_file=announcements_file, scheduled_announcements_files=scheduled_announcements_files)
+        return NotificationFiles(
+            event_alarms_file=alarm_audio_file,
+            event_announcements_file=announcements_file,
+            scheduled_announcements_files=scheduled_announcements_files
+        )
     else:
         return None
