@@ -3,12 +3,18 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>$app_name - Admin</title>
         <link rel="stylesheet" href="/static/styles.css">
+        <style>
+            #stop-alarm { background: #e24a4a; color: white; }
+        </style>
     </head>
     <body>
         <div class="header">
             <a href="/" class="back">⬅️</a>
             <h1>Admin</h1>
         </div>
+        <ul class="buttons">
+            <li><a class="button" id="stop-alarm"><span class="emoji">🔕</span><span>Stop notification</span></a></li>
+        </ul>
         $snapweb_link
         <ul class="buttons">
             <li><a href="/status/calendar-alarms-service" class="button">Calendar Alarms HTTP Service Status</a></li>
@@ -17,5 +23,42 @@
             <li><a href="/logs/calendar-alarms" class="button">Calendar alarms service logs</a></li>
             <li><a href="/logs/http" class="button">Calendar alarms HTTP logs</a></li>
         </ul>
+        <ul class="buttons">
+            <li><a class="button" id="test-alarm"><span class="emoji">📋</span><span>Test alarm</span></a></li>
+            <li><a class="button" id="test-announcement"><span class="emoji">📋</span><span>Test announcement</span></a></li>
+            <li><a class="button" id="mute-area"><span class="emoji">📋</span><span>Mute area</span></a></li>
+        </ul>
+        <div id="result">No request sent yet.</div>
+        <script>
+            function callEndpoint(path) {
+                const resultEl = document.getElementById('result');
+                resultEl.textContent = 'Sending request to ' + path + '...';
+                fetch(path, { method: 'POST' })
+                    .then(function (response) {
+                        return response.text().then(function (text) {
+                            resultEl.textContent = 'Status: ' + response.status + ' ' + response.statusText + '\n\n' + text;
+                        });
+                    })
+                    .catch(function () {
+                        resultEl.textContent = 'Request failed (network error).';
+                    });
+            }
+
+            document.getElementById('stop-alarm').addEventListener('click', function () {
+                callEndpoint("/alarm/stop");
+            });
+
+            document.getElementById('test-alarm').addEventListener('click', function () {
+                callEndpoint("/alarm/test");
+            });
+
+            document.getElementById('test-announcement').addEventListener('click', function () {
+                callEndpoint("/alarm/test-announcement");
+            });
+
+            document.getElementById('mute-area').addEventListener('click', function () {
+                callEndpoint("/alarm/mute/area-of/travcal");
+            });
+        </script>
     </body>
 </html>

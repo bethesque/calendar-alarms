@@ -30,11 +30,6 @@
     <li><a class="button" href="/alarm/notifications"><span class="emoji">🔔</span><span>Show all notifications</span></a></li>
     <li><a class="button" href="/alarm/events"><span class="emoji">📅</span><span>Show calendar events</span></a></li>
   </ul>
-  <ul class="buttons">
-    <li><a class="button" id="test-alarm"><span class="emoji">📋</span><span>Test alarm</span></a></li>
-    <li><a class="button" id="test-announcement"><span class="emoji">📋</span><span>Test announcement</span></a></li>
-    <li><a class="button" id="mute-area"><span class="emoji">📋</span><span>Mute area</span></a></li>
-  </ul>
   <div id="result">No request sent yet.</div>
 
 <script>
@@ -58,14 +53,6 @@
 
   document.getElementById('stop-alarm').addEventListener('click', function () {
     callEndpoint("/alarm/stop");
-  });
-
-  document.getElementById('test-alarm').addEventListener('click', function () {
-    callEndpoint("/alarm/test");
-  });
-
-  document.getElementById('test-announcement').addEventListener('click', function () {
-    callEndpoint("/alarm/test-announcement");
   });
 
   document.getElementById('play-morning-announcements').addEventListener('click', function () {
@@ -102,10 +89,6 @@
 
   document.getElementById('recompute-departure-times').addEventListener('click', function () {
     callEndpoint("/alarm/recompute-departure-times", "POST");
-  });
-
-  document.getElementById('mute-area').addEventListener('click', function () {
-    callEndpoint("/alarm/mute/area-of/travcal", "POST");
   });
 
   document.getElementById('replay-last-notification').addEventListener('click', function () {
