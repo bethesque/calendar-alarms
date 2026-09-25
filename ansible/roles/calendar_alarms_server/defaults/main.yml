@@ -28,6 +28,7 @@ calendar_alarms_server_conf: "{{ server_root }}/config/uvicorn.yaml"
 app_name: "Tortice Home Audio"
 
 resources_dir: "/home/{{ ansible_user }}/calendar-alarms-resources"
+app_config_dir: "{{ resources_dir }}/config"
 wake_up_alarms_directory: "{{ resources_dir}}/wake_up_alarms"
 sound_effects_directory: "{{ resources_dir}}/sound_effects"
 calendar_data_directory: "{{ resources_dir}}/calendar_data"

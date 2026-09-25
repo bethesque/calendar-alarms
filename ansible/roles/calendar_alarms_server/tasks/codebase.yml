@@ -57,6 +57,7 @@
     mode: "0755"
   loop:
     - "{{ resources_dir }}"
+    - "{{ app_config_dir }}"
     - "{{ wake_up_alarms_directory }}"
     - "{{ sound_effects_directory }}"
     - "{{ calendar_data_directory }}"

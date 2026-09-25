@@ -7,7 +7,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 import yaml
-from enum import Enum
+from homeaudio.env import CONFIG_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ class MainSettings(YAMLSettings):
     enabled: bool = Field(default=True)
 
     model_config = SettingsConfigDict(
-        yaml_file="config/main.yaml"
+        yaml_file=f"{CONFIG_DIR}/main.yaml"
     )
 
 class MpdVolumeConfig(BaseModel):
@@ -68,7 +68,7 @@ class MpdSettings(YAMLSettings):
     volumes: MpdVolumeConfig = Field(default_factory=MpdVolumeConfig)
 
     model_config = SettingsConfigDict(
-        yaml_file="config/mpd.yaml"
+        yaml_file=f"{CONFIG_DIR}/mpd.yaml"
     )
 
 class VolumeConfig(BaseModel):
@@ -92,7 +92,7 @@ class SnapcastSettings(YAMLSettings):
     default_volumes: VolumeConfig = Field(default_factory=VolumeConfig)
 
     model_config = SettingsConfigDict(
-        yaml_file="config/snapcast.yaml"
+        yaml_file=f"{CONFIG_DIR}/snapcast.yaml"
     )
 
     @property
@@ -183,7 +183,7 @@ class EventNotificationSettings(YAMLSettings):
     snooze_minutes: int = Field(default=10, ge=1, multiple_of=5, description="Minutes to wait before replaying a snoozed alarm or announcement")
 
     model_config = SettingsConfigDict(
-        yaml_file="config/notifications.yaml"
+        yaml_file=f"{CONFIG_DIR}/notifications.yaml"
     )
 
     def _dump_for_save(self) -> dict:
@@ -213,7 +213,7 @@ class GoogleCalendarSettings(YAMLSettings):
         return [(cal.id, cal.name, cal.owner_count) for cal in self.calendars]
 
     model_config = SettingsConfigDict(
-        yaml_file="config/google_calendar.yaml"
+        yaml_file=f"{CONFIG_DIR}/google_calendar.yaml"
     )
 
 class Option(BaseModel):
@@ -245,7 +245,7 @@ class MorningAnnouncementsSettings(YAMLSettings):
     facts: list[Option] = Field(default_factory=list, description="List of facts to read after the day's events")
 
     model_config = SettingsConfigDict(
-        yaml_file="config/morning_announcements.yaml"
+        yaml_file=f"{CONFIG_DIR}/morning_announcements.yaml"
     )
 
     @property
@@ -272,7 +272,7 @@ class SchoolAnnouncementsSettings(YAMLSettings):
     )
 
     model_config = SettingsConfigDict(
-        yaml_file="config/school_announcements.yaml"
+        yaml_file=f"{CONFIG_DIR}/school_announcements.yaml"
     )
 
 class MusicAssistantPlayer(BaseModel):
@@ -295,7 +295,7 @@ class HomeAssistantSettings(YAMLSettings):
         return [player.name for player in self.players]
 
     model_config = SettingsConfigDict(
-        yaml_file="config/home_assistant.yaml"
+        yaml_file=f"{CONFIG_DIR}/home_assistant.yaml"
     )
 
 class DepartureNotificationSettings(YAMLSettings):
@@ -310,7 +310,7 @@ class DepartureNotificationSettings(YAMLSettings):
     notification_rules: list[NotificationRule] = Field(default_factory=list, description="Rules for creating notifications based on departure time")
 
     model_config = SettingsConfigDict(
-        yaml_file="config/departure_notifications.yaml"
+        yaml_file=f"{CONFIG_DIR}/departure_notifications.yaml"
     )
 
     @model_validator(mode="after")
@@ -326,7 +326,7 @@ class HousieTalkieSettings(YAMLSettings):
     sound_effect_probability: float = Field(default=0.25, description="Probability of a sound effect being played when a 'random' sound effect is specified (0=never, 1=always)")
 
     model_config = SettingsConfigDict(
-        yaml_file="config/housie_talkie.yaml"
+        yaml_file=f"{CONFIG_DIR}/housie_talkie.yaml"
     )
 
 class AppSettings(BaseSettings):
