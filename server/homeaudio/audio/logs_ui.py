@@ -100,7 +100,7 @@ class JournalctlRoutes:
             </head>
             <body>
                 <div class="header">
-                    <a href="/" class="back">⬅️</a>
+                    <a href="/admin" class="back">⬅️</a>
                     <h1>{escape(self.service_name)}</h1>
                 </div>
 
@@ -241,7 +241,10 @@ class CalendarAlarmsStatusRoutes:
                 <link rel="stylesheet" href="/static/styles.css">
             </head>
             <body>
-                <h1>{self.SERVICE_NAME}</h1>
+                <div class="header">
+                    <a href="/admin" class="back">⬅️</a>
+                    <h1>{self.SERVICE_NAME}</h1>
+                </div>
                 <pre>{output}</pre>
             </body>
             </html>

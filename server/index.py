@@ -1,4 +1,6 @@
 import argparse
+from pathlib import Path
+from string import Template
 import logging
 import yaml
 import uvicorn
@@ -25,10 +27,8 @@ app = FastAPI()
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
-    snapclient_settings = SnapcastSettings()
     housie_talkie_link = """<li><a href="/housie-talkie" class="button"><span class="emoji">🎤</span><span>Housie Talkie</span></a></li>""" if HOUSIE_TALKIE_ENABLED else ""
     wake_up_alarm_link = """<li><a href="/wake-up-alarm" class="button"><span class="emoji">⏰</span><span>Wake up alarm</a></span></li>""" if WAKE_UP_ALARM_ENABLED else ""
-    snapweb_link = f"""<li><a href="{snapclient_settings.snapserver}" class="button"><span class="emoji">🔊</span><span>Snapweb</span></a>""" if SNAPCAST_ENABLED else ""
     return f"""
     <html>
         <head>
@@ -37,6 +37,7 @@ def index(request: Request):
             <link rel="stylesheet" href="/static/styles.css">
         </head>
         <body>
+            <a href="/admin" class="admin-link">ADMIN</a>
             <h1>{APP_NAME}</h1>
             <ul class="buttons">
                 <li><a href="/alarm" class="button"><span class="emoji">📅</span><span>Calendar notifications<span></a></li>
@@ -45,21 +46,18 @@ def index(request: Request):
             </ul>
             <ul class="buttons">
                 <li><a href="/settings" class="button"><span class="emoji">⚙️</span><span>Settings</span></a></li>
-                {snapweb_link}
-      </li>
-            </ul>
-            <ul class="buttons">
-                <li><a href="/status/calendar-alarms-service"class="button" >Calendar Alarms HTTP Service Status</a></li>
-                <li><a href="/logs/data-refresh" class="button">Data Refresh logs</a></li>
-            </ul>
-            <ul class="buttons">
-                <li><a href="/logs/http" class="button">HTTP service journal</a></li>
-                <li><a href="/logs/morning-announcements" class="button">Morning announcements journal</a></li>
-                <li><a href="/logs/calendar-alarms" class="button">Calendar alarms journal</a></li>
             </ul>
         </body>
     </html>
     """
+
+@app.get("/admin", response_class=HTMLResponse)
+def admin(request: Request):
+    snapclient_settings = SnapcastSettings()
+    snapweb_link = f"""<ul class="buttons"><li><a href="{snapclient_settings.snapserver}" class="button"><span class="emoji">🔊</span><span>Snapweb</span></a></li></ul>""" if SNAPCAST_ENABLED else ""
+    return Template((Path(__file__).resolve().parent / "admin.html").read_text()).substitute(
+        app_name=APP_NAME, snapweb_link=snapweb_link
+    )
 
 app.include_router(TtsRoutes().router, prefix="/announce")
 app.include_router(VoiceRoutes().router, prefix="/talkie")
@@ -68,9 +66,7 @@ app.include_router(AlarmRoutes().router, prefix="/alarm")
 app.include_router(WakeUpAlarmRoutes().router, prefix="/wake-up-alarm")
 app.include_router(AdminRoutes().router, prefix="/settings")
 app.include_router(CalendarAlarmsStatusRoutes().router, prefix="/status/calendar-alarms-service")
-app.include_router(LogRoutes(file_path="logs/data_refresh.log", route="/data-refresh").router, prefix="/logs")
 app.include_router(JournalctlRoutes(service_name="calendar-alarms-http", route="/http").router, prefix="/logs")
-app.include_router(JournalctlRoutes(service_name="calendar-alarms-morning-announcements", route="/morning-announcements").router, prefix="/logs")
 app.include_router(JournalctlRoutes(service_name="calendar-alarms", route="/calendar-alarms").router, prefix="/logs")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
