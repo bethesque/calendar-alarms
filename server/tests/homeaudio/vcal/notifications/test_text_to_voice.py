@@ -33,6 +33,7 @@ def _install_fake_gtts(monkeypatch, behaviours):
     FakeGTTS.behaviours = list(behaviours)
     monkeypatch.setattr(text_to_voice_module, "gTTS", FakeGTTS)
     monkeypatch.setattr(text_to_voice_module, "TTS_RETRY_DELAY_SECONDS", 0)
+    monkeypatch.setattr(text_to_voice_module, "gtts_tld", lambda settings=None: "com")
     return FakeGTTS
 
 
@@ -40,7 +41,7 @@ def test_returns_existing_cached_file_without_calling_gtts(monkeypatch, tmp_path
     _install_fake_gtts(monkeypatch, behaviours=[])
     cache_dir = tmp_path / "audio"
     cache_dir.mkdir()
-    expected_path = text_to_voice_module.get_file_path_for_text(
+    expected_path = text_to_voice_module._get_file_path_for_text(
         "Hello there", text_to_voice_module.gtts_tld(), str(cache_dir)
     )
     os.makedirs(os.path.dirname(expected_path), exist_ok=True)
@@ -57,7 +58,7 @@ def test_regenerates_when_cached_file_is_empty(monkeypatch, tmp_path):
     _install_fake_gtts(monkeypatch, behaviours=[b"real audio bytes"])
     cache_dir = tmp_path / "audio"
     cache_dir.mkdir()
-    expected_path = text_to_voice_module.get_file_path_for_text(
+    expected_path = text_to_voice_module._get_file_path_for_text(
         "Hello there", text_to_voice_module.gtts_tld(), str(cache_dir)
     )
     open(expected_path, "wb").close()  # simulate a corrupted, zero-length cache entry
@@ -114,7 +115,7 @@ def test_raises_text_to_speech_error_after_exhausting_all_attempts(monkeypatch, 
         ],
     )
     cache_dir = tmp_path / "audio"
-    expected_path = text_to_voice_module.get_file_path_for_text(
+    expected_path = text_to_voice_module._get_file_path_for_text(
         "Hello there", text_to_voice_module.gtts_tld(), str(cache_dir)
     )
 

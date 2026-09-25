@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from homeaudio.vcal.cal.google_calendar import CalendarSource
 from homeaudio.audio.settings import MorningAnnouncementsSettings, SchoolAnnouncementsSettings
-from homeaudio.vcal.school_announcements.core import is_school_holiday
+from homeaudio.vcal.school_announcements import is_school_holiday
 
 MORNING_ANNOUNCEMENTS_SUMMARY = "Morning announcements"
 SCHOOL_ANNOUNCEMENTS_SUMMARY = "School announcements"

@@ -1,8 +1,8 @@
 from datetime import datetime, time
 import os
 
-import homeaudio.vcal.school_announcements.core as school_announcements_core
-from homeaudio.vcal.school_announcements.core import (
+import homeaudio.vcal.school_announcements as school_announcements_core
+from homeaudio.vcal.school_announcements import (
     build_text,
     build_audio_file,
     is_school_holiday,
@@ -229,7 +229,7 @@ def test_build_audio_file_joins_bell_and_speech_files(monkeypatch):
         "Sentence two.": "speech2.mp3",
     }
     monkeypatch.setattr(
-        "homeaudio.vcal.school_announcements.core.text_to_voice_file",
+        "homeaudio.vcal.school_announcements.text_to_voice_file",
         lambda sentence, tld: speech_files_by_sentence[sentence],
     )
 
@@ -239,7 +239,7 @@ def test_build_audio_file_joins_bell_and_speech_files(monkeypatch):
         joined["mp3_files"] = mp3_files
         joined["output_file"] = output_file
 
-    monkeypatch.setattr("homeaudio.vcal.school_announcements.core.join_mp3s_to_wav", fake_join)
+    monkeypatch.setattr("homeaudio.vcal.school_announcements.join_mp3s_to_wav", fake_join)
 
     output_file = build_audio_file(["Sentence one.", "Sentence two."])
 
@@ -250,7 +250,7 @@ def test_build_audio_file_joins_bell_and_speech_files(monkeypatch):
 
 
 def test_collect_speech_files_uses_error_message_audio_in_place_of_first_failed_sentence(monkeypatch):
-    monkeypatch.setattr("homeaudio.vcal.school_announcements.core.gtts_tld", lambda: "com")
+    monkeypatch.setattr("homeaudio.vcal.school_announcements.gtts_tld", lambda: "com")
 
     def fake_text_to_voice_file(sentence, tld):
         if sentence in ("Sentence one.", "Sentence three."):
@@ -258,7 +258,7 @@ def test_collect_speech_files_uses_error_message_audio_in_place_of_first_failed_
         return "speech2.mp3"
 
     monkeypatch.setattr(
-        "homeaudio.vcal.school_announcements.core.text_to_voice_file",
+        "homeaudio.vcal.school_announcements.text_to_voice_file",
         fake_text_to_voice_file,
     )
 

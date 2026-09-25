@@ -56,9 +56,9 @@ cal-alarm-stop = "vcal.alarms.cli:stop_alarm"
 cal-alarm-test = "vcal.alarms.cli:test_alarm"
 cal-alarm-check = "vcal.alarms.cli:check_alarms"
 
-cal-announce = "vcal.morning_announcements.cli:play_morning_announcements" # Morning summary announcement
+cal-announce = "homeaudio.vcal.morning_announcements:play_morning_announcements" # Morning summary announcement
 
-cal-school-announce = "vcal.school_announcements.cli:play_school_announcements" # School events announcement
+cal-school-announce = "homeaudio.vcal.school_announcements:play_school_announcements" # School events announcement
 
 cal-data-refresh = "homeaudio.vcal.cli:refresh_calendar_data"
 cal-data-insert-test = "homeaudio.vcal.cli:insert_test_event"

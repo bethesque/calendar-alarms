@@ -8,8 +8,8 @@ from homeaudio.vcal.playback import NotificationFile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import homeaudio.vcal.morning_announcements.core as morning_announcements_core
-from homeaudio.vcal.morning_announcements.core import (
+import homeaudio.vcal.morning_announcements as morning_announcements_core
+from homeaudio.vcal.morning_announcements import (
     TextBuilder,
     _announcement_due,
     _collect_speech_files,
@@ -43,7 +43,7 @@ def test_get_morning_announcements_text_includes_weather_and_facts(monkeypatch):
     events = [weather, e1, e2]
 
     monkeypatch.setattr(
-        "homeaudio.vcal.morning_announcements.core.select_option",
+        "homeaudio.vcal.morning_announcements.select_option",
         fake_select_option,
     )
 

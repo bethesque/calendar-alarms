@@ -11,8 +11,8 @@ from homeaudio.audio.settings import MorningAnnouncementsSettings, SchoolAnnounc
 
 from homeaudio.audio.snapserver import Snapserver
 from homeaudio.vcal.event_notifications.snooze import LastPlayedState, SnoozeState
-from homeaudio.vcal.school_announcements.core import check_for_announcement as check_for_school_announcements
-from homeaudio.vcal.morning_announcements.core import check_for_announcement as check_for_morning_announcements
+from homeaudio.vcal.school_announcements import check_for_announcement as check_for_school_announcements
+from homeaudio.vcal.morning_announcements import check_for_announcement as check_for_morning_announcements
 from homeaudio.vcal.event_notifications.core import check_for_event_notifications as check_for_event_notifications, check_for_and_play_notifications
 from homeaudio.vcal.playback import NotificationFile, NotificationFiles, play_notifications, play_file
 
