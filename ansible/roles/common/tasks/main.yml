@@ -57,7 +57,7 @@
     - sendspin
 
 # ssh keys to allow Home Assistant to get the sevice status
-- name: Add local public SSH key to remote authorized_keys
+- name: Add travnas public SSH key to remote authorized_keys
   ansible.posix.authorized_key:
     user: "{{ ansible_user }}"
     state: present

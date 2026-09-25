@@ -18,7 +18,7 @@
   ansible.builtin.set_fact:
     snapclient_path: "{{ snapclient_which.stdout }}"
   tags:
-    - snapclient_conf  
+    - snapclient_conf
 
 # Configure snapclient systemd service for user
 # Best to do it as a user service rather than a system service to avoid permissions

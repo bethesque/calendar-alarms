@@ -38,7 +38,7 @@ housie_talkie_enabled: true
 wake_up_alarm_enabled: true
 snapcast_enabled: true
 
-NOTIFICATIONS_CHECK_INTERVAL_MINUTES: 1
+notifications_check_interval_minutes: 1
 notifications_preparation_lead_time_seconds: 15
 
 calendar_data_refresh_interval_minutes: 5
