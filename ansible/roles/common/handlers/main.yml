@@ -9,3 +9,7 @@
     scope: user
     name: sendspin-armv6
     state: restarted
+
+- name: reload sysctl
+  command: sysctl --system
+  become: true

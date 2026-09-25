@@ -87,3 +87,14 @@
 #    minute: "0"
 #    job: "/sbin/reboot"
 #  when: is_pi == true
+
+- name: Allow unprivileged processes to bind ports >= 80
+  lineinfile:
+    path: /etc/sysctl.d/99-unprivileged-ports.conf
+    line: "net.ipv4.ip_unprivileged_port_start=80"
+    create: yes
+  notify: reload sysctl
+  when: is_pi == true
+  become: true
+  tags:
+    - port80
