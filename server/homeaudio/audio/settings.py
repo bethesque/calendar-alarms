@@ -1,4 +1,6 @@
+import base64
 from datetime import datetime, time
+import json
 import logging
 from pathlib import Path
 from typing import Literal
@@ -191,8 +193,21 @@ class EventNotificationSettings(YAMLSettings):
     def enabled_notification_rules(self) -> list[NotificationRule]:
         return [rule for rule in self.notification_rules if rule.enabled]
 
+class UploadedFile(BaseModel):
+    name: str
+    size: int
+    type: str
+    data: str = Field(description="The file contents as a base64 data URL")
+
+    def content(self) -> bytes:
+        return base64.b64decode(self.data.split(",", 1)[1])
+
 class GoogleCalendarSettings(YAMLSettings):
     calendars: list[CalendarSetting] = Field(default_factory=list)
+    token_file: UploadedFile | None = Field(default=None, title="Token file", description="The Google API token.json file")
+
+    def token_info(self) -> dict | None:
+        return json.loads(self.token_file.content()) if self.token_file else None
 
     def calendar_filter(self)-> list[tuple]:
         return [(cal.id, cal.name, cal.owner_count) for cal in self.calendars]

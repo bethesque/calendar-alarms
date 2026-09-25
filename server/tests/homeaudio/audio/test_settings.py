@@ -2,7 +2,7 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from homeaudio.audio.settings import EventNotificationSettings, NotificationRule, SnapcastSettings, SnapclientConfig, DepartureNotificationSettings
+from homeaudio.audio.settings import EventNotificationSettings, NotificationRule, SnapcastSettings, SnapclientConfig, DepartureNotificationSettings, UploadedFile, GoogleCalendarSettings
 
 
 def test_label_uses_summary_pattern_only():
@@ -145,3 +145,22 @@ def test_departure_notification_settings_allows_enabled_with_api_key_and_origin_
     settings = DepartureNotificationSettings(enabled=True, api_key="secret-key", origin_address="1 Home St")
 
     assert settings.enabled is True
+
+
+def test_uploaded_file_content_decodes_base64_data_url():
+    uploaded = UploadedFile(name="token.json", size=13, type="application/json", data="data:application/json;base64,eyJhIjogImIifQ==")
+
+    assert uploaded.content() == b'{"a": "b"}'
+
+
+def test_google_calendar_token_info_is_none_without_token_file(tmp_path, monkeypatch):
+    monkeypatch.setitem(GoogleCalendarSettings.model_config, "yaml_file", str(tmp_path / "google_calendar.yaml"))
+
+    assert GoogleCalendarSettings().token_info() is None
+
+
+def test_google_calendar_token_info_parses_token_file_json(tmp_path, monkeypatch):
+    monkeypatch.setitem(GoogleCalendarSettings.model_config, "yaml_file", str(tmp_path / "google_calendar.yaml"))
+    token_file = UploadedFile(name="token.json", size=13, type="application/json", data="data:application/json;base64,eyJhIjogImIifQ==")
+
+    assert GoogleCalendarSettings(token_file=token_file).token_info() == {"a": "b"}

@@ -11,13 +11,21 @@ This script refreshes the calendar data and saves it to a local file.
 
 setup_logging_for_data_refresh(str(LOG_LEVEL))
 
+class GoogleApiTokenNotFound(Exception):
+    pass
+
 def refresh_calendar_data():
 
     calendar_source = CalendarSource()
     print(f"Refreshing calendar data in {calendar_source.cache_file_path}...")
-    calendar_source.load_creds()
-    calendar_source.fetch_data(GoogleCalendarSettings().calendar_filter())
-    calendar_source.save_data_to_file()
+    settings = GoogleCalendarSettings()
+    token_info = settings.token_info()
+    if token_info:
+        calendar_source.load_creds(token_info)
+        calendar_source.fetch_data(settings.calendar_filter())
+        calendar_source.save_data_to_file()
+    else:
+        raise GoogleApiTokenNotFound("Please set token.json in Google Calendar settings.")
 
 
 def insert_test_event():

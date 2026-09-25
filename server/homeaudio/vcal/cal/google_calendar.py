@@ -20,7 +20,6 @@ from homeaudio.env import CALENDAR_DATA_DIRECTORY
 
 
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
-TOKEN_PATH = f"{CALENDAR_DATA_DIRECTORY}/token.json"
 DATA_FILE = CALENDAR_DATA_DIRECTORY + "/calendar.json"
 DAYS_TO_FETCH = 7
 
@@ -69,14 +68,11 @@ class CalendarDay:
     def all_events(self):
         return self.whole_day_events + self.timed_events
 
-def load_google_creds():
+def load_google_creds(token_info: dict | None):
     creds = None
-    # The file token.json stores the user's access and refresh tokens, and is
-    # created automatically when the authorization flow completes for the first
-    # time.
 
-    if os.path.exists(TOKEN_PATH):
-        creds = Credentials.from_authorized_user_file(TOKEN_PATH, SCOPES)
+    if token_info:
+        creds = Credentials.from_authorized_user_info(token_info, SCOPES)
 
     if creds and creds.expired and creds.refresh_token:
         try:
@@ -259,8 +255,8 @@ class CalendarSource:
     creds: any = None
     refreshed_at: datetime.datetime | None = None
 
-    def load_creds(self):
-        self.creds = load_google_creds()
+    def load_creds(self, token_info: dict | None):
+        self.creds = load_google_creds(token_info)
         return self.creds
 
     def creds_valid(self):

@@ -40,6 +40,10 @@ class AdminRoutes:
                             subtitle="{id}"
                         )
                     ),
+                    "google_calendar_settings.token_file": FieldConfig(
+                        renderer=Renderer.FILE_UPLOAD,
+                        props={"accept": ".json,application/json"},
+                    ),
                     "event_notification_settings.notification_rules.[]": FieldConfig(
                         display=DisplayConfig(
                             title="{label}",
