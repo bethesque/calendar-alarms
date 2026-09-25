@@ -46,3 +46,44 @@
   tags:
     - officepi
   when: inventory_hostname == 'officepi'
+
+# Cron to restart once a day
+# - name: Create bin directory for snapclient user
+#   ansible.builtin.file:
+#     path: "/home/{{ snapclient_user }}/bin"
+#     state: directory
+#     owner: "{{ snapclient_user }}"
+#     group: "{{ snapclient_user }}"
+#     mode: "0755"
+#   tags:
+#     - cron
+
+# - name: Create restart script for calendar-alarms-snapclient
+#   ansible.builtin.copy:
+#     dest: "/home/{{ snapclient_user }}/bin/calendar-alarms-snapclient-restart-if-active.sh"
+#     owner: "{{ snapclient_user }}"
+#     group: "{{ snapclient_user }}"
+#     mode: "0755"
+#     content: |
+#       #!/bin/bash
+#       export XDG_RUNTIME_DIR=/run/user/$(id -u {{ snapclient_user }})
+
+#       if systemctl --user is-active --quiet calendar-alarms-snapclient; then
+#         systemctl --user stop calendar-alarms-snapclient
+#         sleep 30
+#         systemctl --user start calendar-alarms-snapclient
+#       fi
+#   tags:
+#     - cron
+
+# - name: Schedule daily restart of calendar-alarms-snapclient
+#   ansible.builtin.cron:
+#     name: "daily restart of calendar-alarms-snapclient"
+#     cron_file: calendar-alarms-snapclient
+#     user: "{{ snapclient_user }}"
+#     hour: "5"
+#     minute: "55"
+#     job: "/home/{{ snapclient_user }}/bin/calendar-alarms-snapclient-restart-if-active.sh"
+#   become: true
+#   tags:
+#     - cron

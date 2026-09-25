@@ -112,3 +112,43 @@
   become_user: "{{ sendspin_user }}"
   changed_when: false
 
+# Cron to restart once a day
+- name: Create bin directory for sendspin user
+  ansible.builtin.file:
+    path: "/home/{{ sendspin_user }}/bin"
+    state: directory
+    owner: "{{ sendspin_user }}"
+    group: "{{ sendspin_user }}"
+    mode: "0755"
+  tags:
+    - cron
+
+- name: Create restart script for sendspin-armv6
+  ansible.builtin.copy:
+    dest: "/home/{{ sendspin_user }}/bin/sendspin-armv6-restart-if-active.sh"
+    owner: "{{ sendspin_user }}"
+    group: "{{ sendspin_user }}"
+    mode: "0755"
+    content: |
+      #!/bin/bash
+      export XDG_RUNTIME_DIR=/run/user/$(id -u {{ sendspin_user }})
+
+      if systemctl --user is-active --quiet sendspin-armv6; then
+        systemctl --user stop sendspin-armv6
+        sleep 30
+        systemctl --user start sendspin-armv6
+      fi
+  tags:
+    - cron
+
+- name: Schedule daily restart of sendspin-armv6
+  ansible.builtin.cron:
+    name: "daily restart of sendspin-armv6"
+    cron_file: sendspin-armv6
+    user: "{{ sendspin_user }}"
+    hour: "5"
+    minute: "56"
+    job: "/home/{{ sendspin_user }}/bin/sendspin-armv6-restart-if-active.sh"
+  become: true
+  tags:
+    - cron

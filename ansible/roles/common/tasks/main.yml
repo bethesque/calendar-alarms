@@ -76,3 +76,14 @@
   become: true
   tags:
     - rmate
+
+#- name: Create /etc/cron.d/reboot-daily
+#  ansible.builtin.cron:
+#    name: "daily reboot at 6am"
+#    cron_file: reboot-daily
+#    user: root
+#    day: "6"
+#    hour: "6"
+#    minute: "0"
+#    job: "/sbin/reboot"
+#  when: is_pi == true
