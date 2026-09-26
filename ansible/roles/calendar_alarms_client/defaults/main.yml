@@ -13,6 +13,7 @@ snapclient_arch: >-
     else 'x86_64' if ansible_facts['architecture'] in ['x86_64', 'amd64']
     else ansible_facts['architecture']
   }}
+snapclient_soundcard: "usb"
 
 project_root: "/home/{{ snapclient_user }}/calendar-alarms"
 client_root: "{{ project_root }}/client"
