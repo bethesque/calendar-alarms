@@ -3,10 +3,10 @@ host_distro: "{{ ansible_facts['distribution_release'] | lower }}"
 ca_snapserver_stream_port: 1704
 ca_snapserver_tcp_port: 1705
 ca_snapserver_http_port: 1780
-ca_snapserver_host:  nas.dixon.net.au
+ca_snapserver_host:  192.168.20.3
 ca_snapserver_rpc_url: "http://{{ ca_snapserver_host }}:{{ ca_snapserver_http_port }}/jsonrpc"
 
-home_assistant_url: http://nas.dixon.net.au:8123
+home_assistant_url: http://192.168.20.3:8123
 
 audio_client_http_port: 8082
 
@@ -14,7 +14,7 @@ bash_functions_dir: "/home/{{ ansible_user }}/.bash_functions"
 
 calendar_alarms_http_port: 8442
 calendar_alarms_https_port: 8443 # Only used for Google login
-calendar_alarms_server_url: "http://nas.dixon.net.au:{{ calendar_alarms_http_port }}"
+calendar_alarms_server_url: "http://192.168.20.3:{{ calendar_alarms_http_port }}"
 
 sample_rate: 44100
 alsa_period_time_us: 100000
