@@ -4,7 +4,8 @@ import logging
 import time
 from gtts import gTTS, gTTSError
 from homeaudio.env import CACHE_DIRECTORY, GOOGLE_TRANSLATE_LANG, DEFAULT_GOOGLE_TRANSLATE_TLD
-from homeaudio.audio.sound import join_mp3s_to_wav
+from homeaudio.audio.random_text import select_option_pseudorandomly, ListOptionsSource
+from homeaudio.audio.settings import GoogleTextToSpeechSettings
 
 DEFAULT_ANNOUCEMENT_FILE = "audio_resources/default_announcement.mp3"
 AUDIO_CACHE_DIR = os.path.join(CACHE_DIRECTORY, "audio")
@@ -32,7 +33,7 @@ def text_to_voice_file(text, tld: str| None = None, word_limit=1000, audio_cache
         text_to_say = text
     tld = tld or gtts_tld()
     logger.debug(f"Using tld '{tld}' for gTTS")
-    audio_file_path = get_file_path_for_text(text_to_say, tld, audio_cache_directory)
+    audio_file_path = _get_file_path_for_text(text_to_say, tld, audio_cache_directory)
     # if the file already exists and isn't a leftover empty/corrupt write, return it
     if os.path.exists(audio_file_path) and os.path.getsize(audio_file_path) > 0:
         logger.debug("Audio file already exists for text: %s, returning existing file: %s", text_to_say, audio_file_path)
@@ -63,28 +64,15 @@ def text_to_voice_file(text, tld: str| None = None, word_limit=1000, audio_cache
 
     raise TextToSpeechError(f"Failed to generate TTS after {max_attempts} attempts for text: {text_to_say!r}") from last_error
 
-def text_to_voice_file_daily_summary(text: list[str], cache_directory=AUDIO_CACHE_DIR):
-
-    try:
-        logger.debug("Generating TTS for text: %s, saving to: %s", text, MORNING_ANNOUNCEMENT_FILE)
-        tld = gtts_tld()
-        files = [text_to_voice_file(sentence, tld) for sentence in text]
-        join_mp3s_to_wav(files, MORNING_ANNOUNCEMENT_FILE)
-
-    except Exception as e:
-        logger.error(f"Error generating TTS for text: {text}. Error: {e}")
-        # TODO new announcement file for errors
-        return DEFAULT_ANNOUCEMENT_FILE
-
-    return MORNING_ANNOUNCEMENT_FILE
-
-def get_file_path_for_text(text, tld, cache_directory=AUDIO_CACHE_DIR):
+def _get_file_path_for_text(text, tld, cache_directory=AUDIO_CACHE_DIR):
     file_hash = hashlib.sha256(f"{text}_{tld}".encode("utf-8")).hexdigest()
     audio_file_path = os.path.join(cache_directory, file_hash + ".mp3")
     return audio_file_path
 
-def gtts_tld():
-    return DEFAULT_GOOGLE_TRANSLATE_TLD
+def gtts_tld(settings: GoogleTextToSpeechSettings | None = None) -> str:
+    settings = settings or GoogleTextToSpeechSettings()
+    options = ListOptionsSource("alternative_tlds", settings.alternative_tlds)
+    return select_option_pseudorandomly(settings.default_tld,  settings.alternative_tld_probability, options) or DEFAULT_GOOGLE_TRANSLATE_TLD
 
 if __name__ == "__main__":
     test_text = "This is a test event. Don't do anything."

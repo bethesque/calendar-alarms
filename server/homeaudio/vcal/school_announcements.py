@@ -12,6 +12,7 @@ from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file,
 from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, POST_ANNOUNCEMENT_SILENCE
 from homeaudio.env import CALENDAR_DATA_DIRECTORY
 from homeaudio.vcal.playback import NotificationFile
+from homeaudio.env import DEFAULT_GOOGLE_TRANSLATE_TLD
 
 CHANCE_OF_I_AM_NOT_THE_BOSS = 1/5
 # gtts-cli  "An error occurred generating the school announcements. Some of the notifications may have been missing. Please check the calendar for today's events." > audio_resources/school_announcements_error_message.mp3
@@ -67,16 +68,14 @@ def _datestamp() -> str:
     now = datetime.now()
     return f"{now.strftime('%y%m%d%H%M%S')}{now.microsecond // 1000:03d}"
 
-def build_audio_file(sentences: list[str]) -> str:
-    speech_files = _collect_speech_files(sentences)
+def build_audio_file(sentences: list[str], tld: str) -> str:
+    speech_files = _collect_speech_files(sentences, tld)
 
     output_file = f"{OUTPUT_AUDIO_DIRECTORY}/school_announcement_{_datestamp()}.wav"
     join_mp3s_to_wav([PRE_ANNOUNCEMENT_BELL] + speech_files + [POST_ANNOUNCEMENT_SILENCE], output_file)
     return output_file
 
-def _collect_speech_files(sentences: list[str]) -> list[str]:
-    tld = gtts_tld()
-
+def _collect_speech_files(sentences: list[str], tld: str) -> list[str]:
     speech_files = []
     error = False
     for sentence in sentences:
@@ -88,8 +87,9 @@ def _collect_speech_files(sentences: list[str]) -> list[str]:
                 error = True
     return speech_files
 
-def _missing_calendar_data_response():
-    return build_audio_file(["It's time to leave for school.","There was no calendar data found for today's date.", "You may need to fix the authentication."])
+# TODO prebuild this
+def _missing_calendar_data_response(tld: str):
+    return build_audio_file(["It's time to leave for school.","There was no calendar data found for today's date.", "You may need to fix the authentication."], tld)
 
 def _announcement_due(base_time: datetime, window: int, schedule: SchoolAnnouncementsSchedule) -> bool:
     if base_time.weekday() >= 5 or schedule.weekdays is None:
@@ -98,23 +98,12 @@ def _announcement_due(base_time: datetime, window: int, schedule: SchoolAnnounce
     scheduled_time = datetime.combine(base_time.date(), schedule.weekdays, tzinfo=base_time.tzinfo)
     return base_time <= scheduled_time < base_time + timedelta(minutes=window)
 
-def _create_audio_file_for_calendar_days(base_time: datetime, calendar_days: list[CalendarDay], settings: SchoolAnnouncementsSettings | None = None) -> str | None:
+def _create_audio_file_for_calendar_days(base_time: datetime, events: list[Event], tld: str, settings: SchoolAnnouncementsSettings | None = None) -> str | None:
     settings = settings or SchoolAnnouncementsSettings()
-    try:
-        events = get_events_for_date(calendar_days, base_time)
-
-        if is_school_holiday(events, settings.holiday_keywords):
-            logger.info("A holiday keyword matched an event today; skipping school announcement.")
-            return None
-
-        school_events = get_school_events(events, settings.school_event_keywords)
-        weather_forecast = get_weather_forecast(events)
-        sentences = build_text(school_events, weather_forecast)
-        return build_audio_file(sentences)
-
-    except MissingCalendarDataException:
-        logger.info(f"No calendar data found for today's date ({base_time}), proceeding with no events.")
-        return _missing_calendar_data_response()
+    school_events = get_school_events(events, settings.school_event_keywords)
+    weather_forecast = get_weather_forecast(events)
+    sentences = build_text(school_events, weather_forecast)
+    return build_audio_file(sentences, tld)
 
 """
 Top level entry point. Announce today's school events, or skip entirely if school is cancelled.
@@ -123,6 +112,7 @@ def check_for_announcement(
         base_time: datetime,
         window: int,
         calendar_days: list[CalendarDay],
+        tld: str,
         settings: SchoolAnnouncementsSettings | None = None
     ) -> NotificationFile | None:
     settings = settings or SchoolAnnouncementsSettings()
@@ -134,7 +124,18 @@ def check_for_announcement(
     if not _announcement_due(base_time, window, settings.schedule):
         logger.debug(f"School announcements not due")
         return None
-    path = _create_audio_file_for_calendar_days(base_time, calendar_days, settings)
+
+    try:
+        events = get_events_for_date(calendar_days, base_time)
+    except MissingCalendarDataException:
+        logger.info(f"No calendar data found for today's date ({base_time}), playing missing calendar data message.")
+        return NotificationFile(path=_missing_calendar_data_response(tld))
+
+    if is_school_holiday(events, settings.holiday_keywords):
+        logger.info("A holiday keyword matched an event today; skipping school announcement.")
+        return None
+
+    path = _create_audio_file_for_calendar_days(base_time, events, tld, settings)
     return NotificationFile(path=path) if path else None
 
 """
@@ -149,10 +150,17 @@ def play_school_announcements(
     ):
 
     calendar_days = CalendarSource(cache_file_path=calendar_file).load_data_from_file()
-    _base_time = base_time or datetime.now().astimezone()
-    _settings = settings or SchoolAnnouncementsSettings()
+    base_time = base_time or datetime.now().astimezone()
+    settings = settings or SchoolAnnouncementsSettings()
 
-    file = _create_audio_file_for_calendar_days(_base_time, calendar_days, _settings)
+    try:
+        events = get_events_for_date(calendar_days, base_time)
+    except MissingCalendarDataException:
+        logger.info(f"No calendar data found for today's date ({base_time}), playing missing calendar data message.")
+        return NotificationFile(path=_missing_calendar_data_response(DEFAULT_GOOGLE_TRANSLATE_TLD))
+
+    file = _create_audio_file_for_calendar_days(base_time, events, DEFAULT_GOOGLE_TRANSLATE_TLD, settings)
     if file:
         play_tts_audio_file(file, SnapcastSettings(), MpdSettings(), before_announcement_hook, after_announcement_hook)
+
 

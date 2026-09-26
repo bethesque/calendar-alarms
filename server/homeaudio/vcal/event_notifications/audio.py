@@ -13,9 +13,10 @@ Builds the alarm audio by using TTS to read out the event descriptions, and
 mixing in background alarm music.
 """
 class AlarmAudio:
-    def __init__(self, notification_texts: list[str], alarm_settings: AlarmSettings, base_time):
+    def __init__(self, notification_texts: list[str], tld: str, alarm_settings: AlarmSettings, base_time):
         self.notification_texts = notification_texts
         self.base_time = base_time
+        self.tld = tld
         self.alarm_settings = alarm_settings
 
 
@@ -37,7 +38,7 @@ class AlarmAudio:
         files_to_loop = [gentle_audio_file]
 
         if self.alarm_settings.aggressive_alarm_loops > 0:
-            loud_noise_warning_file = text_to_voice_file("Warning - an aggressively loud noise is about to be played to get your attention.")
+            loud_noise_warning_file = text_to_voice_file("Warning - an aggressively loud noise is about to be played to get your attention.", self.tld)
 
             aggressive_audio_file = f"{OUTPUT_AUDIO_DIRECTORY}/alarm_aggressive.wav"
 
@@ -60,7 +61,7 @@ class AlarmAudio:
         return alarm_file
 
     def _announcement_files_for_events(self):
-        return [text_to_voice_file(text) for text in self.notification_texts]
+        return [text_to_voice_file(text, self.tld) for text in self.notification_texts]
 
     def _get_alarm_file(self):
         alarm_files = self._get_alarm_background_files()
@@ -92,9 +93,10 @@ Builds the alarm audio by using TTS to read out the event descriptions, and
 mixing in background alarm music.
 """
 class AnnouncementAudio:
-    def __init__(self, notification_texts: list[str], base_time, sound_effect_selector: SoundEffectSelector):
+    def __init__(self, notification_texts: list[str], base_time, tld: str, sound_effect_selector: SoundEffectSelector):
         self.notification_texts = notification_texts
         self.base_time = base_time
+        self.tld = tld
         self.sound_effect_selector = sound_effect_selector
 
     def build_announcement_file(self):
@@ -105,7 +107,7 @@ class AnnouncementAudio:
         return joined_announcement_file
 
     def _announcement_files_for_events(self):
-        return [text_to_voice_file(text) for text in self.notification_texts]
+        return [text_to_voice_file(text, self.tld) for text in self.notification_texts]
 
     def preannouncement_files(self) -> list[str]:
         file = self.sound_effect_selector.get_random_sound_effect_file()

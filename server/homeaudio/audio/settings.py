@@ -7,7 +7,9 @@ from typing import Literal
 from pydantic import BaseModel, Field, computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 import yaml
-from homeaudio.env import CONFIG_DIR
+from homeaudio.env import CONFIG_DIR, DEFAULT_GOOGLE_TRANSLATE_TLD
+
+# TODO move to homeaudio module
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +48,7 @@ class YAMLSettings(BaseSettings):
             )
 
 class MainSettings(YAMLSettings):
-    enabled: bool = Field(default=True)
+    enabled: bool = Field(default=True, description="Enable/disable all notifications (alarms, announcements, morning announcements and school announcements)")
 
     model_config = SettingsConfigDict(
         yaml_file=f"{CONFIG_DIR}/main.yaml"
@@ -329,11 +331,21 @@ class HousieTalkieSettings(YAMLSettings):
         yaml_file=f"{CONFIG_DIR}/housie_talkie.yaml"
     )
 
+class GoogleTextToSpeechSettings(YAMLSettings):
+    default_tld: str = Field(default=DEFAULT_GOOGLE_TRANSLATE_TLD, title="Default TLD", description="The default TLD (accent) to use")
+    alternative_tlds: list[str] = Field(default_factory=list, title="Alternative TLDs", description="Alternative TLDs (accents) to use just to keep things interesting")
+    alternative_tld_probability: float = Field(default=0.3, title="Alternative TLD probability", description="The probability that an alternative TLD will be used ", ge=0, le=1)
+
+    model_config = SettingsConfigDict(
+        yaml_file=f"{CONFIG_DIR}/text_to_speech.yaml"
+    )
+
 class AppSettings(BaseSettings):
     main_settings: MainSettings = Field(default_factory=MainSettings, description="Main settings")
     departure_notification_settings: DepartureNotificationSettings = Field(default_factory=DepartureNotificationSettings, description="Travel time settings")
     event_notification_settings: EventNotificationSettings = Field(default_factory=EventNotificationSettings, description="Notification settings")
     google_calendar_settings: GoogleCalendarSettings = Field(default_factory=GoogleCalendarSettings, description="Google Calendar settings") # type: ignore
+    google_text_to_speech_settings: GoogleTextToSpeechSettings = Field(default_factory=GoogleTextToSpeechSettings, description="Google Text to Speech settings")
     home_assistant_settings: HomeAssistantSettings = Field(default_factory=HomeAssistantSettings, description="Home Assistant settings")
     housie_talkie_settings: HousieTalkieSettings = Field(default_factory=HousieTalkieSettings, description="Housie Talkie settings")
     morning_announcements_settings: MorningAnnouncementsSettings = Field(default_factory=MorningAnnouncementsSettings, description="Morning announcements settings")
@@ -345,6 +357,7 @@ class AppSettings(BaseSettings):
         logger.info("Saving settings")
         self.event_notification_settings.save()
         self.google_calendar_settings.save()
+        self.google_text_to_speech_settings.save()
         self.home_assistant_settings.save()
         self.housie_talkie_settings.save()
         self.main_settings.save()

@@ -28,7 +28,7 @@ def test_journalctl_routes_shows_journal_output(monkeypatch):
     assert response.status_code == 200
     assert "log line one" in response.text
     assert "log line two" in response.text
-    assert '<a href="/" class="back">' in response.text
+    assert '<a href="/admin" class="back">' in response.text
     assert "calendar-alarms" in response.text  # title
 
     args = captured_args[0]

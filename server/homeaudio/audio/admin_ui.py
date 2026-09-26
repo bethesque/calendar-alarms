@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from homeaudio.audio.settings import AppSettings
-from homeaudio.env import HOME_ASSISTANT_SUPPORTED, HOUSIE_TALKIE_ENABLED, SNAPCAST_ENABLED, WAKE_UP_ALARM_ENABLED
+from homeaudio.env import GOOGLE_TRANSLATE_TLD_OPTIONS, HOME_ASSISTANT_SUPPORTED, HOUSIE_TALKIE_ENABLED, SNAPCAST_ENABLED, WAKE_UP_ALARM_ENABLED
 from pydantic_ui import create_pydantic_ui, UIConfig, FieldConfig, DisplayConfig, Renderer
 
 from homeaudio.env import APP_NAME
@@ -32,6 +32,7 @@ class AdminRoutes:
     def attr_configs(self, settings: AppSettings):
 
         calendar_options = [ { "value": c.id, "label": c.name } for c in settings.google_calendar_settings.calendars ]
+        tld_options = [ { "value": tld, "label": tld } for tld in GOOGLE_TRANSLATE_TLD_OPTIONS ]
 
         return {
                     "google_calendar_settings.calendars.[]": FieldConfig(
@@ -118,6 +119,18 @@ class AdminRoutes:
                     ),
                     "mpd_settings.volumes.voice": FieldConfig(
                         visible_when=f"{str(HOUSIE_TALKIE_ENABLED).lower()} == true"
+                    ),
+                    "google_text_to_speech_settings.default_tld": FieldConfig(
+                        renderer=Renderer.SELECT,
+                        props={
+                            "options": tld_options
+                        }
+                    ),
+                    "google_text_to_speech_settings.alternative_tlds": FieldConfig(
+                        renderer=Renderer.MULTI_SELECT,
+                        props={
+                            "options": tld_options
+                        }
                     ),
                     "departure_notification_settings.api_key": FieldConfig(
                         renderer=Renderer.PASSWORD

@@ -8,7 +8,7 @@ from homeaudio.vcal.cal.google_calendar import CalendarDay, Event, WeatherForeca
 from homeaudio.vcal.event_notifications.text_to_voice import gtts_tld, text_to_voice_file, TextToSpeechError
 from homeaudio.audio.sound import join_mp3s_to_wav, mix_announcement_audio
 from homeaudio.audio.select_item import select_item_by_date, select_option
-
+from homeaudio.env import DEFAULT_GOOGLE_TRANSLATE_TLD
 from homeaudio.vcal.event_notifications import BACKGROUND_MUSIC_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, POST_ANNOUNCEMENT_SILENCE
 from homeaudio.vcal.playback import NotificationFile
 
@@ -103,9 +103,9 @@ class BackgroundMusicSelector:
         return background_music_files
 
 
-def build_audio_file(sentences: list[str], music_file: str) -> str:
+def build_audio_file(sentences: list[str], tld: str, music_file: str) -> str:
     datestr = _datestamp()
-    speech_files = _collect_speech_files(sentences)
+    speech_files = _collect_speech_files(sentences, tld)
     joined_speech_file = f"{OUTPUT_AUDIO_DIRECTORY}/morning_announcements_speech_{datestr}.wav"
     join_mp3s_to_wav(speech_files + [POST_ANNOUNCEMENT_SILENCE], joined_speech_file)
 
@@ -118,9 +118,7 @@ def build_audio_file(sentences: list[str], music_file: str) -> str:
     )
     return output_file
 
-def _collect_speech_files(sentences: list[str]) -> list[str]:
-    tld = gtts_tld()
-
+def _collect_speech_files(sentences: list[str], tld: str) -> list[str]:
     speech_files = []
     error = False
     for sentence in sentences:
@@ -144,7 +142,7 @@ def _announcement_due(base_time: datetime, window: int, schedule: MorningAnnounc
     scheduled_time = datetime.combine(base_time.date(), scheduled_time_of_day, tzinfo=base_time.tzinfo)
     return base_time <= scheduled_time < base_time + timedelta(minutes=window)
 
-def _create_audio_file_for_calendar_days(base_time: datetime, calendar_days: list[CalendarDay], settings: MorningAnnouncementsSettings | None = None) -> str:
+def _create_audio_file_for_calendar_days(base_time: datetime, calendar_days: list[CalendarDay], tld: str, settings: MorningAnnouncementsSettings | None = None) -> str:
     settings = settings or MorningAnnouncementsSettings()
     try:
         events = get_events_for_date(calendar_days, base_time)
@@ -154,7 +152,7 @@ def _create_audio_file_for_calendar_days(base_time: datetime, calendar_days: lis
 
     text_builder = TextBuilder(events, settings)
     bg_music_selector = BackgroundMusicSelector(base_time)
-    return build_audio_file(text_builder.get_morning_announcements_text(), bg_music_selector.get_background_music_file())
+    return build_audio_file(text_builder.get_morning_announcements_text(), tld, bg_music_selector.get_background_music_file())
 
 """
 Called by the notifications daemon on every tick (homeaudio/vcal/notifications/core.py). Returns
@@ -164,6 +162,7 @@ def check_for_announcement(
         base_time: datetime,
         window: int,
         calendar_days: list[CalendarDay],
+        tld: str,
         settings: MorningAnnouncementsSettings | None = None
     ) -> NotificationFile | None:
     settings = settings or MorningAnnouncementsSettings()
@@ -176,7 +175,7 @@ def check_for_announcement(
         logger.debug(f"Morning announcements not due")
         return None
 
-    return NotificationFile(path=_create_audio_file_for_calendar_days(base_time, calendar_days, settings))
+    return NotificationFile(path=_create_audio_file_for_calendar_days(base_time, calendar_days, tld, settings))
 
 """
 Entry point for UI. Generate a summary of today's events, convert them to voice, and play them.
@@ -192,5 +191,5 @@ def play_morning_announcements(
     _base_time = base_time or datetime.now().astimezone()
     _settings = settings or MorningAnnouncementsSettings()
     calendar_days = CalendarSource(cache_file_path=calendar_file).load_data_from_file()
-    output_file = _create_audio_file_for_calendar_days(_base_time, calendar_days, _settings)
+    output_file = _create_audio_file_for_calendar_days(_base_time, calendar_days, DEFAULT_GOOGLE_TRANSLATE_TLD, _settings)
     play_tts_audio_file(output_file, SnapcastSettings(), MpdSettings(), before_announcement_hook, after_announcement_hook)
