@@ -26,22 +26,20 @@
   <ul class="buttons">
     <li><a class="button" href="/alarm/notifications"><span class="emoji">🔔</span><span>Show notifications</span></a></li>
   </ul>
-  <div id="result">No request sent yet.</div>
 
 <script>
   function callEndpoint(path, method) {
-    const resultEl = document.getElementById('result');
-    resultEl.textContent = 'Sending request to ' + path + '...';
-
     const xhr = new XMLHttpRequest();
     xhr.open(method || 'POST', path, true);
 
     xhr.onload = function () {
-      resultEl.textContent = 'Status: ' + xhr.status + ' ' + xhr.statusText + '\n\n' + xhr.responseText;
+      if (xhr.status < 200 || xhr.status >= 300) {
+        alert('Request to ' + path + ' failed: ' + xhr.status + ' ' + xhr.statusText + '\n\n' + xhr.responseText);
+      }
     };
 
     xhr.onerror = function () {
-      resultEl.textContent = 'Request failed (network error).';
+      alert('Request to ' + path + ' failed (network error).');
     };
 
     xhr.send();
