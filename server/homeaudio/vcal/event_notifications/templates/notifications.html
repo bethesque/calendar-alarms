@@ -14,6 +14,7 @@
   span.type.alarm { background: #fde2e2; color: #b42318; }
   span.type.announce { background: #e0e7ff; color: #4338ca; }
   button.test-notification { cursor: pointer; }
+  span.outside-schedule { cursor: default; }
   #result { margin-top: 14px; white-space: pre-wrap; }
 </style>
 </head>
@@ -38,9 +39,9 @@
       </tr>
     </thead>
     <tbody>
-      {% for notification, event_json in notifications %}
+      {% for notification, event_json, within_schedule in notifications %}
       <tr>
-        <td>{{ notification.notification_time.strftime("%a, %d %b %y") }}<br>{{ notification.notification_time.strftime("%I:%M %p") }}</td>
+        <td>{{ notification.notification_time.strftime("%a, %d %b %y") }}<br>{{ notification.notification_time.strftime("%I:%M %p") }}{% if not within_schedule %} <span class="outside-schedule" title="This notification won't be played as it is outside the scheduled notification times">🔕</span>{% endif %}</td>
         <td><span class="type {{ notification.type.name.lower() }}">{{ notification.type.name }}</span></td>
         <td>{{ notification.event.summary }}</td>
         <td>{{ notification.offset }}</td>
