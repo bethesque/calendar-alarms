@@ -73,7 +73,7 @@ Server code lives under `server/homeaudio/` (`homeaudio.vcal.*`, `homeaudio.audi
 
 - **`vcal/cal/google_calendar.py`** — fetches/caches Calendar events (`calendar.json`, dataclasses not pydantic). `Event.notifications()`/`notifications_within_window()` scan descriptions for `#alarm`/`#alarm<N>`/`#announce`/`#announce<N>` tags plus rule-based notifications from settings.
 - **`vcal/event_notifications/`** (`core.py`, `events.py`, `audio.py`, `text.py`, `snooze.py`) — `NotificationFinder` (events.py) buckets due calendar-driven events. `AlarmAudio`/`AnnouncementAudio` (audio.py) build playable files: TTS (`text_to_voice.py`/gTTS) mixed with music (`homeaudio/audio/sound.py`, shells to ffmpeg), looped per `AlarmSettings`. `snooze.py` persists last-played/snooze state to file.
-- **`vcal/morning_announcements/core.py`** / **`vcal/school_announcements/core.py`** — scheduled daily summaries; each exposes `check_for_announcement()` and is checked by the daemon alongside event notifications.
+- **`vcal/morning_announcements.py`** / **`vcal/school_announcements.py`** — scheduled daily summaries; each exposes `check_for_announcement()` and is checked by the daemon alongside event notifications.
 - **`vcal/core.py`** — orchestration glue: `prepare_notification_files()`/`play_notification_files()` combine event notifications + morning + school announcements into one `NotificationFiles`; also `stop_alarm()`, `snooze_alarm()`, `test_alarm()`.
 - **`vcal/daemon.py`** — `NotificationCheckDaemon`, the long-running process (`calendar_alarms_daemon.py`, systemd `calendar-alarms.service`) that replaces the old 5-min cron: sleeps until the next check/announcement boundary (`notification_schedule.py`), prepares audio ahead of time, then plays it. Also starts `calendar_refresh.py`'s `CalendarRefreshLoop` (calendar data is no longer refreshed by cron).
 - **`vcal/wake_up_alarm/`** — standalone wake-up alarm (random file from `WAKE_UP_ALARMS_DIRECTORY`), independent of the calendar flow but shares MPD/Snapcast.
@@ -107,7 +107,7 @@ Each settings group is a `pydantic_settings.BaseSettings` (`YAMLSettings` subcla
 
 # Guidelines
 
-Do not rename any functions unless instructed to.
+Do not rename any non-test functions or classes unless instructed to.
 Keep code comments to 1 sentence.
 Do not add mulitple sentence comments explaining why a piece of code does something a certain way. You do not need to explain exception handling logic in the comments. Developers understand exception handling.
 
