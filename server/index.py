@@ -13,6 +13,7 @@ from homeaudio.housie_talkie.tts_api import TtsRoutes
 from homeaudio.housie_talkie.voice_api import VoiceRoutes
 from homeaudio.audio.admin_ui import AdminRoutes
 from homeaudio.vcal.event_notifications.api import AlarmRoutes
+from homeaudio.audio.snapclients_ui import SnapclientsRoutes
 from homeaudio.audio.logs_ui import CalendarAlarmsStatusRoutes, JournalctlRoutes, LogRoutes
 from homeaudio.vcal.wake_up_alarm.api import WakeUpAlarmRoutes
 from homeaudio.housie_talkie.ui import UserInterfaceRoutes
@@ -54,7 +55,7 @@ def index(request: Request):
 @app.get("/admin", response_class=HTMLResponse)
 def admin(request: Request):
     snapclient_settings = SnapcastSettings()
-    snapweb_link = f"""<ul class="buttons"><li><a href="{snapclient_settings.snapserver}" class="button"><span class="emoji">🔊</span><span>Snapweb</span></a></li></ul>""" if SNAPCAST_ENABLED else ""
+    snapweb_link = f"""<ul class="buttons"><li><a href="{snapclient_settings.snapserver}" class="button"><span class="emoji">🔊</span><span>Snapweb</span></a></li><li><a href="/admin/snapclients" class="button"><span class="emoji">📻</span><span>Snapclients</span></a></li></ul>""" if SNAPCAST_ENABLED else ""
     return Template((Path(__file__).resolve().parent / "admin.html").read_text()).substitute(
         app_name=APP_NAME, snapweb_link=snapweb_link
     )
@@ -65,6 +66,7 @@ app.include_router(UserInterfaceRoutes().router, prefix="/housie-talkie")
 app.include_router(AlarmRoutes().router, prefix="/alarm")
 app.include_router(WakeUpAlarmRoutes().router, prefix="/wake-up-alarm")
 app.include_router(AdminRoutes().router, prefix="/settings")
+app.include_router(SnapclientsRoutes().router, prefix="/admin")
 app.include_router(CalendarAlarmsStatusRoutes().router, prefix="/status/calendar-alarms-service")
 app.include_router(JournalctlRoutes(service_name="calendar-alarms-http", route="/http").router, prefix="/logs")
 app.include_router(JournalctlRoutes(service_name="calendar-alarms", route="/calendar-alarms").router, prefix="/logs")

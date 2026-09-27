@@ -14,6 +14,7 @@ class Client:
     config_name: str
     connected: bool
     last_seen: dict
+    latency: int | None = None
 
     def __str__(self) -> str:
         return f"{self.id}:{self.host_name}"
@@ -77,11 +78,11 @@ class Snapserver:
 
     def connected_clients(self) -> list[Client]:
         if self._connected_clients is None:
-            self._connected_clients = self._get_clients(only_connected=True)
+            self._connected_clients = self.get_clients(only_connected=True)
 
         return self._connected_clients
 
-    def _get_clients(self, only_connected: bool = False) -> list[Client]:
+    def get_clients(self, only_connected: bool = False) -> list[Client]:
         status = self._get_status()
 
         clients: list[Client] = []
@@ -97,7 +98,8 @@ class Snapserver:
                         host_name=c["host"]["name"],
                         config_name=c["config"]["name"],
                         connected=c["connected"],
-                        last_seen=c["lastSeen"]
+                        last_seen=c["lastSeen"],
+                        latency=c["config"].get("latency"),
                     )
                 )
 
@@ -198,7 +200,7 @@ class Snapserver:
             self._batch_rpc(calls)
 
     def set_all_connected_full_volume(self) -> None:
-        clients = self._get_clients(only_connected=True)
+        clients = self.get_clients(only_connected=True)
         logger.info(f"Setting clients {', '.join(c.host_name for c in clients)} to full volume")
 
         calls = [
@@ -218,7 +220,7 @@ class Snapserver:
 
         logger.info(f"Setting clients {", ".join(allowed_client_names)} to full volume, others are muted")
         allowed_hosts = set(allowed_client_names)
-        clients = self._get_clients(only_connected=True)
+        clients = self.get_clients(only_connected=True)
 
         calls = [
             self._set_client(
@@ -238,7 +240,7 @@ class Snapserver:
     @contextmanager
     def only_players(self, *allowed_client_hosts: str):
         allowed_hosts = set(allowed_client_hosts)
-        clients = self._get_clients(only_connected=True)
+        clients = self.get_clients(only_connected=True)
 
         # ENTER
         enter_calls = [

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snapclients</title>
+<link rel="stylesheet" href="/static/styles.css">
+<style>
+  table.snapclients { width: 100%; max-width: 900px; border-collapse: collapse; background: var(--card-bg); box-shadow: var(--shadow); border-radius: var(--radius); overflow: hidden; }
+  table.snapclients th, table.snapclients td { padding: 10px 14px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); }
+  table.snapclients th { background: var(--bg); color: var(--muted); font-weight: 600; }
+  table.snapclients tr:last-child td { border-bottom: none; }
+  span.status { padding: 2px 8px; border-radius: 999px; font-size: 0.85rem; }
+  span.status.connected { background: #dcfce7; color: #166534; }
+  span.status.disconnected { background: #fde2e2; color: #b42318; }
+  button.test-speaker { cursor: pointer; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <a href="/admin" class="back">⬅️</a>
+    <h1>Snapclients</h1>
+  </div>
+  {% if error %}
+  <p>Could not load snapclients: {{ error }}</p>
+  {% elif clients %}
+  <table class="snapclients">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>ID</th>
+        <th>Config name</th>
+        <th>Host name</th>
+        <th>Latency (ms)</th>
+        <th>Connected</th>
+        <th>Last seen</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for client, last_seen in clients %}
+      <tr>
+        <td>{{ client.name }}</td>
+        <td>{{ client.id }}</td>
+        <td>{{ client.config_name }}</td>
+        <td>{{ client.host_name }}</td>
+        <td>{{ client.latency if client.latency is not none else "" }}</td>
+        <td><span class="status {{ 'connected' if client.connected else 'disconnected' }}">{{ "Yes" if client.connected else "No" }}</span></td>
+        <td>{% if last_seen %}{{ last_seen.strftime("%a, %d %b %y") }}<br>{{ last_seen.strftime("%I:%M:%S %p") }}{% endif %}</td>
+        <td><button type="button" class="test-speaker" title="Test" data-name="{{ client.name }}">▶</button></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No snapclients found.</p>
+  {% endif %}
+<script>
+  document.querySelectorAll('.test-speaker').forEach(function (button) {
+    button.addEventListener('click', function () {
+      const name = button.dataset.name;
+
+      button.disabled = true;
+
+      fetch('/announce', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'Testing the ' + name + ' speakers', players: [name] }),
+      })
+        .then(function (response) {
+          if (response.ok) {
+            return;
+          }
+          return response.text().then(function (text) {
+            alert('Testing speakers failed: ' + response.status + ' ' + response.statusText + '\n\n' + text);
+          });
+        })
+        .catch(function () {
+          alert('Testing speakers failed (network error).');
+        })
+        .finally(function () {
+          button.disabled = false;
+        });
+    });
+  });
+</script>
+</body>
+</html>
