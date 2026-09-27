@@ -119,10 +119,8 @@ class AlarmHandler:
         return "Calendar data refreshed"
 
     def recompute_departure_times(self) -> str:
-        if not DepartureNotificationSettings().enabled:
-            return "Departure notifications are disabled"
-        threading.Thread(target=update_calendar_travel_times, daemon=True).start()
-        return "Recomputing departure times..."
+        update_calendar_travel_times()
+        return "Departure times recomputed"
 
     def replay_last_notification(self) -> str:
         threading.Thread(target=replay_last_notification, daemon=True).start()
@@ -206,13 +204,6 @@ class AlarmRoutes:
         )
 
         self.router.add_api_route(
-            "/events",
-            self.events,
-            methods=["GET"],
-            name="events",
-        )
-
-        self.router.add_api_route(
             "/replay",
             self.replay_last_notification,
             methods=["POST"],
@@ -268,8 +259,10 @@ class AlarmRoutes:
         return Response(content=message, status_code=200, media_type="text/plain")
 
     async def recompute_departure_times_endpoint(self):
+        if not DepartureNotificationSettings().enabled:
+            return Response(content="Departure notifications are disabled", status_code=409, media_type="text/plain")
         message = self.alarm_handler.recompute_departure_times()
-        return Response(content=message, status_code=202, media_type="text/plain")
+        return Response(content=message, status_code=200, media_type="text/plain")
 
     async def calendar_refreshed_at_endpoint(self):
         refreshed_at = get_calendar_refreshed_at()
@@ -301,15 +294,7 @@ class AlarmRoutes:
         return templates.TemplateResponse(
             request=request,
             name="notifications.html",
-            context={"notifications": notifications},
-        )
-
-    async def events(self, request: Request):
-        events = get_all_events()
-        return templates.TemplateResponse(
-            request=request,
-            name="events.html",
-            context={"events": events},
+            context={"notifications": notifications, "events": get_all_events()},
         )
 
     async def replay_last_notification(self):

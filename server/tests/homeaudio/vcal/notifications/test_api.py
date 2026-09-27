@@ -1,6 +1,8 @@
 import threading
 from datetime import datetime, timezone
+from types import SimpleNamespace
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -8,6 +10,11 @@ from homeaudio.audio.settings import NotificationRule
 from homeaudio.vcal.cal.google_calendar import Event
 from homeaudio.vcal.event_notifications.events import EventNotification, EventNotifications, NotificationType
 import homeaudio.vcal.event_notifications.api as api_module
+
+
+@pytest.fixture(autouse=True)
+def no_calendar_events(monkeypatch):
+    monkeypatch.setattr(api_module, "get_all_events", lambda: [])
 
 
 def _client():
@@ -25,8 +32,9 @@ def test_events_page_lists_events(monkeypatch):
         start_time=datetime(2026, 4, 28, 9, 0, tzinfo=timezone.utc),
     )
     monkeypatch.setattr(api_module, "get_all_events", lambda: [event])
+    monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [])
 
-    response = _client().get("/alarm/events")
+    response = _client().get("/alarm/notifications")
 
     assert response.status_code == 200
     assert "Gym session" in response.text
@@ -35,8 +43,9 @@ def test_events_page_lists_events(monkeypatch):
 
 def test_events_page_handles_no_events(monkeypatch):
     monkeypatch.setattr(api_module, "get_all_events", lambda: [])
+    monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [])
 
-    response = _client().get("/alarm/events")
+    response = _client().get("/alarm/notifications")
 
     assert response.status_code == 200
     assert "No calendar events found." in response.text
@@ -242,6 +251,28 @@ def test_snooze_endpoint_stops_the_alarm_with_snooze_flag_set(monkeypatch):
     assert response.status_code == 202
     assert response.text == "Stopping alarm..."
     assert calls == [True]
+
+
+def test_recompute_departure_times_endpoint_recomputes_synchronously(monkeypatch):
+    calls = []
+    monkeypatch.setattr(api_module, "DepartureNotificationSettings", lambda: SimpleNamespace(enabled=True))
+    monkeypatch.setattr(api_module, "update_calendar_travel_times", lambda: calls.append("recomputed"))
+
+    response = _client().post("/alarm/recompute-departure-times")
+
+    assert response.status_code == 200
+    assert response.text == "Departure times recomputed"
+    assert calls == ["recomputed"]
+
+
+def test_recompute_departure_times_endpoint_returns_conflict_when_departure_notifications_are_disabled(monkeypatch):
+    monkeypatch.setattr(api_module, "DepartureNotificationSettings", lambda: SimpleNamespace(enabled=False))
+    monkeypatch.setattr(api_module, "update_calendar_travel_times", lambda: pytest.fail("must not recompute when disabled"))
+
+    response = _client().post("/alarm/recompute-departure-times")
+
+    assert response.status_code == 409
+    assert response.text == "Departure notifications are disabled"
 
 
 def test_calendar_refreshed_at_endpoint_returns_the_refreshed_at_isoformat(monkeypatch):

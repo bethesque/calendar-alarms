@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Event notifications</title>
+<title>Notifications and events</title>
 <link rel="stylesheet" href="/static/styles.css">
 <style>
   table.notifications { width: 100%; max-width: 900px; border-collapse: collapse; background: var(--card-bg); box-shadow: var(--shadow); border-radius: var(--radius); overflow: hidden; }
@@ -15,14 +15,33 @@
   span.type.announce { background: #e0e7ff; color: #4338ca; }
   button.test-notification { cursor: pointer; }
   span.outside-schedule { cursor: default; }
-  #result { margin-top: 14px; white-space: pre-wrap; }
+  .tabs a.icon-button { padding: 4px 10px; font-size: 1.6rem; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  #recompute-departure-times { margin-left: auto; }
+  #stop-alarm { background: #e24a4a; color: white; }
+  .tabs a.icon-button.refreshing { background: #f0ad4e; color: white; }
+  table.events { width: 100%; max-width: 900px; border-collapse: collapse; background: var(--card-bg); box-shadow: var(--shadow); border-radius: var(--radius); overflow: hidden; }
+  table.events th, table.events td { padding: 10px 14px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); }
+  table.events th { background: var(--bg); color: var(--muted); font-weight: 600; }
+  table.events tr:last-child td { border-bottom: none; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+  .tabs button.tab { background: var(--card-bg); color: var(--text); border: 1px solid var(--border); }
+  .tabs button.tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .tab-panel[hidden] { display: none; }
 </style>
 </head>
 <body>
   <div class="header">
     <a href="/alarm" class="back">⬅️</a>
-    <h1>Event notifications</h1>
+    <h1>Notifications and events</h1>
   </div>
+  <div class="tabs">
+    <button type="button" class="tab active" data-tab="notifications">🔔 Notifications</button>
+    <button type="button" class="tab" data-tab="events">📅 Calendar events</button>
+    <a class="button icon-button" id="refresh-calendar-data" title="Refresh calendar data">🔄</a>
+    <a class="button icon-button" id="recompute-departure-times" title="Recompute departure times">🚗</a>
+    <a class="button icon-button" id="stop-alarm" title="Stop notification">🔕</a>
+  </div>
+  <div class="tab-panel" id="notifications">
   {% if notifications %}
   <table class="notifications">
     <thead>
@@ -61,20 +80,70 @@
       {% endfor %}
     </tbody>
   </table>
-  <div id="result"></div>
   {% else %}
   <p>No upcoming notifications.</p>
   {% endif %}
+  </div>
+  <div class="tab-panel" id="events" hidden>
+  {% if events %}
+  <table class="events">
+    <thead>
+      <tr>
+        <th>Start</th>
+        <th>Calendar</th>
+        <th>Summary</th>
+        <th>Description</th>
+        <th>Location</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for event in events %}
+      <tr>
+        <td>
+          {% if event.start_time %}
+            {{ event.start_time.strftime("%a, %d %b %Y") }}<br>{{ event.start_time.strftime("%I:%M %p") }}
+          {% else %}
+            &nbsp;
+          {% endif %}
+        </td>
+        <td>{{ event.owner }}</td>
+        <td>{{ event.summary }}</td>
+        <td>{{ event.description or "" }}</td>
+        <td>{{ event.location or "" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No calendar events found.</p>
+  {% endif %}
+  </div>
 
 <script>
+  function showTab(name) {
+    document.querySelectorAll('.tab').forEach(function (tab) {
+      tab.classList.toggle('active', tab.dataset.tab === name);
+    });
+    document.querySelectorAll('.tab-panel').forEach(function (panel) {
+      panel.hidden = panel.id !== name;
+    });
+  }
+
+  document.querySelectorAll('.tab').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      showTab(tab.dataset.tab);
+      history.replaceState(null, '', '#' + tab.dataset.tab);
+    });
+  });
+
+  if (location.hash === '#events') showTab('events');
+
   document.querySelectorAll('.test-notification').forEach(function (button) {
     button.addEventListener('click', function () {
-      const resultEl = document.getElementById('result');
       const event = JSON.parse(button.dataset.event);
       const notificationTime = button.dataset.notificationTime;
 
       button.disabled = true;
-      resultEl.textContent = 'Sending request to /alarm/test-notification...';
 
       fetch('/alarm/test-notification', {
         method: 'POST',
@@ -82,18 +151,115 @@
         body: JSON.stringify({ event: event, notification_time: notificationTime }),
       })
         .then(function (response) {
+          if (response.ok) {
+            return;
+          }
           return response.text().then(function (text) {
-            resultEl.textContent = 'Status: ' + response.status + ' ' + response.statusText + '\n\n' + text;
+            alert('Testing notification failed: ' + response.status + ' ' + response.statusText + '\n\n' + text);
           });
         })
         .catch(function () {
-          resultEl.textContent = 'Request failed (network error).';
+          alert('Testing notification failed (network error).');
         })
         .finally(function () {
           button.disabled = false;
         });
     });
   });
+
+  document.getElementById('refresh-calendar-data').addEventListener('click', function () {
+    const button = this;
+    const path = "/alarm/refresh-calendar-data";
+
+    button.classList.add('refreshing');
+    button.title = 'Refreshing calendar data...';
+
+    fetch(path, { method: 'POST' })
+      .then(function (response) {
+        if (response.ok) {
+          location.reload();
+          return;
+        }
+        return response.text().then(function (text) {
+          alert('Calendar refresh failed: ' + response.status + ' ' + response.statusText + '\n\n' + text);
+        });
+      })
+      .catch(function () {
+        alert('Calendar refresh failed (network error).');
+      })
+      .finally(function () {
+        button.classList.remove('refreshing');
+        updateRefreshedAt();
+      });
+  });
+
+  document.getElementById('recompute-departure-times').addEventListener('click', function () {
+    const button = this;
+
+    button.classList.add('refreshing');
+
+    fetch("/alarm/recompute-departure-times", { method: 'POST' })
+      .then(function (response) {
+        if (response.ok) {
+          location.reload();
+          return;
+        }
+        return response.text().then(function (text) {
+          alert('Recomputing departure times failed: ' + response.status + ' ' + response.statusText + '\n\n' + text);
+        });
+      })
+      .catch(function () {
+        alert('Recomputing departure times failed (network error).');
+      })
+      .finally(function () {
+        button.classList.remove('refreshing');
+      });
+  });
+
+  document.getElementById('stop-alarm').addEventListener('click', function () {
+    fetch("/alarm/stop", { method: 'POST' })
+      .then(function (response) {
+        if (response.ok) {
+          return;
+        }
+        return response.text().then(function (text) {
+          alert('Stopping notification failed: ' + response.status + ' ' + response.statusText + '\n\n' + text);
+        });
+      })
+      .catch(function () {
+        alert('Stopping notification failed (network error).');
+      });
+  });
+
+  function formatTimeAgo(refreshedAt) {
+    var totalMinutes = Math.max(0, Math.floor((Date.now() - new Date(refreshedAt).getTime()) / 60000));
+    var hours = Math.floor(totalMinutes / 60);
+    var minutes = totalMinutes % 60;
+
+    if (hours === 0 && minutes === 0) {
+      return "just now";
+    }
+
+    var parts = [];
+    if (hours > 0) {
+      parts.push(hours + (hours === 1 ? " hour" : " hours"));
+    }
+    if (minutes > 0) {
+      parts.push(minutes + (minutes === 1 ? " minute" : " minutes"));
+    }
+    return parts.join(" ") + " ago";
+  }
+
+  function updateRefreshedAt() {
+    fetch("/alarm/calendar-refreshed-at")
+      .then(function (response) { return response.text(); })
+      .then(function (refreshedAt) {
+        document.getElementById('refresh-calendar-data').title = 'Refresh calendar data' + (refreshedAt ? ' (last refreshed: ' + formatTimeAgo(refreshedAt) + ')' : '');
+      });
+  }
+
+  updateRefreshedAt();
+  setInterval(updateRefreshedAt, 60000);
 </script>
 </body>
 </html>
