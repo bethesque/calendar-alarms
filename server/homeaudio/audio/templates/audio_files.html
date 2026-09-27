@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audio files</title>
+<link rel="stylesheet" href="/static/styles.css">
+<style>
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tabs a { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); text-decoration: none; color: var(--text); background: var(--card-bg); }
+  .tabs a.active { background: var(--primary); color: white; border-color: var(--primary); }
+  form.upload { width: 100%; max-width: 900px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+  table.audio-files { width: 100%; max-width: 900px; border-collapse: collapse; background: var(--card-bg); box-shadow: var(--shadow); border-radius: var(--radius); overflow: hidden; }
+  table.audio-files th, table.audio-files td { padding: 10px 14px; text-align: left; vertical-align: middle; border-bottom: 1px solid var(--border); }
+  table.audio-files th { background: var(--bg); color: var(--muted); font-weight: 600; }
+  table.audio-files tr:last-child td { border-bottom: none; }
+  table.audio-files td.name { word-break: break-word; }
+  table.audio-files audio { width: 100%; min-width: 180px; }
+  button.delete-file, button.toggle-file { cursor: pointer; }
+  td.actions { white-space: nowrap; }
+  tr.disabled td.name, tr.disabled td.size { color: var(--muted); text-decoration: line-through; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <a href="/admin" class="back">⬅️</a>
+    <h1>Audio files</h1>
+  </div>
+  <nav class="tabs">
+    {% for other in libraries %}
+    <a href="{{ url_for('audio_files', slug=other.slug) }}" class="{{ 'active' if other.slug == library.slug else '' }}">{{ other.title }}</a>
+    {% endfor %}
+  </nav>
+  {% if error %}
+  <p>{{ error }}</p>
+  {% endif %}
+  <form class="upload" id="upload-form">
+    <input type="file" name="files" accept="{{ accept }}" multiple required>
+    <button type="submit">Upload</button>
+  </form>
+  {% if files %}
+  <table class="audio-files">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Size</th>
+        <th>Preview</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for file in files %}
+      <tr class="{{ '' if file.enabled else 'disabled' }}">
+        <td class="name">{{ file.name }}</td>
+        <td class="size">{{ "%.1f"|format(file.size / 1024) }} KB</td>
+        <td><audio controls preload="none" src="{{ request.url.path }}/{{ file.name|urlencode }}"></audio></td>
+        <td class="actions">
+          <button type="button" class="toggle-file" title="{{ 'Disable' if file.enabled else 'Enable' }}" data-name="{{ file.name }}">{{ "Disable" if file.enabled else "Enable" }}</button>
+          <button type="button" class="delete-file" title="Delete" data-name="{{ file.name }}">🗑️</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No audio files found.</p>
+  {% endif %}
+<script>
+  const baseUrl = window.location.pathname.replace(/\/$/, '');
+
+  function reportFailure(action, response) {
+    return response.text().then(function (text) {
+      alert(action + ' failed: ' + response.status + ' ' + response.statusText + '\n\n' + text);
+    });
+  }
+
+  document.getElementById('upload-form').addEventListener('submit', function (event) {
+    event.preventDefault();
+    const form = event.target;
+    const button = form.querySelector('button');
+    button.disabled = true;
+
+    fetch(baseUrl, { method: 'POST', body: new FormData(form) })
+      .then(function (response) {
+        if (response.ok) {
+          window.location.reload();
+          return;
+        }
+        return reportFailure('Upload', response);
+      })
+      .catch(function () {
+        alert('Upload failed (network error).');
+      })
+      .finally(function () {
+        button.disabled = false;
+      });
+  });
+
+  document.querySelectorAll('.toggle-file').forEach(function (button) {
+    button.addEventListener('click', function () {
+      button.disabled = true;
+
+      fetch(baseUrl + '/' + encodeURIComponent(button.dataset.name) + '/toggle', { method: 'POST' })
+        .then(function (response) {
+          if (response.ok) {
+            window.location.reload();
+            return;
+          }
+          return reportFailure('Toggle', response);
+        })
+        .catch(function () {
+          alert('Toggle failed (network error).');
+        })
+        .finally(function () {
+          button.disabled = false;
+        });
+    });
+  });
+
+  document.querySelectorAll('.delete-file').forEach(function (button) {
+    button.addEventListener('click', function () {
+      const name = button.dataset.name;
+      if (!confirm('Delete ' + name + '?')) {
+        return;
+      }
+      button.disabled = true;
+
+      fetch(baseUrl + '/' + encodeURIComponent(name), { method: 'DELETE' })
+        .then(function (response) {
+          if (response.ok) {
+            button.closest('tr').remove();
+            return;
+          }
+          return reportFailure('Delete', response);
+        })
+        .catch(function () {
+          alert('Delete failed (network error).');
+        })
+        .finally(function () {
+          button.disabled = false;
+        });
+    });
+  });
+</script>
+</body>
+</html>

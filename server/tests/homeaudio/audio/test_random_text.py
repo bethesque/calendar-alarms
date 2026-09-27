@@ -3,7 +3,7 @@ import random
 import os
 from pathlib import Path
 
-from homeaudio.audio.random_text import ListOptionsSource, select_option_pseudorandomly
+from homeaudio.audio.random_text import FileListOptionsSource, ListOptionsSource, select_option_pseudorandomly
 
 def write_file(path: Path, lines):
     os.makedirs(path.parent, exist_ok=True)
@@ -152,3 +152,11 @@ def test_missing_previously_chosen_file(tmp_path, monkeypatch):
 
     assert result == "X"
     assert read_file(previously_chosen) == ["X"]
+
+def test_file_list_options_matches_extensions_case_insensitively(tmp_path):
+    for name in ["a.mp3", "b.MP3", "c.Mp3", "d.mp3.disabled", "e.txt"]:
+        (tmp_path / name).write_bytes(b"")
+
+    options = FileListOptionsSource(str(tmp_path), [".mp3"]).get_options()
+
+    assert sorted(os.path.basename(f) for f in options) == ["a.mp3", "b.MP3", "c.Mp3"]

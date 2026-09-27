@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 import threading
 
+from homeaudio.audio import WAKE_UP_ALARMS_ALLOWED_EXTENSIONS
 from homeaudio.audio.snapcast import snapserver_manager_for_env
 from homeaudio.audio.mpd import fade_up, mpd_connection
 from homeaudio.audio.random_text import FileListOptionsSource, select_option_pseudorandomly
@@ -27,7 +28,7 @@ def _play_wake_up_alarm_via_mpd(alarm_file, mpd_settings: MpdSettings):
 
 
 def start_wake_up_alarm():
-    selected_alarm = select_option_pseudorandomly(None, 1, FileListOptionsSource(directory=WAKE_UP_ALARMS_DIRECTORY, extensions=["mp3"]))
+    selected_alarm = select_option_pseudorandomly(None, 1, FileListOptionsSource(directory=WAKE_UP_ALARMS_DIRECTORY, extensions=sorted(WAKE_UP_ALARMS_ALLOWED_EXTENSIONS)))
     if selected_alarm:
         threading.Thread(
                 target=_play_wake_up_alarm_via_mpd,

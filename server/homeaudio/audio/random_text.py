@@ -49,7 +49,7 @@ class FileListOptionsSource:
         files = [os.path.abspath(os.path.join(self.directory, f)) for f in os.listdir(self.directory)]
         files = [f for f in files if os.path.isfile(os.path.join(self.directory, f))]
         if self.extensions:
-            files = [f for f in files if any(f.endswith(ext) for ext in self.extensions)]
+            files = [f for f in files if any(f.lower().endswith(ext.lower()) for ext in self.extensions)]
         return files
 
     def get_name(self) -> str:

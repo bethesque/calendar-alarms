@@ -1,12 +1,13 @@
 import logging
 import os
+from homeaudio.audio import SOUND_EFFECTS_ALLOWED_EXTENSIONS
 from homeaudio.env import SOUND_EFFECTS_DIRECTORY
 from homeaudio.audio.random_text import FileListOptionsSource, select_option_pseudorandomly
 
 logger = logging.getLogger(__name__)
 
 class SoundEffectSelector:
-    def __init__(self, sound_effect_probability: float, directory: str = SOUND_EFFECTS_DIRECTORY, extensions: list[str] = [".mp3"]):
+    def __init__(self, sound_effect_probability: float, directory: str = SOUND_EFFECTS_DIRECTORY, extensions: list[str] = sorted(SOUND_EFFECTS_ALLOWED_EXTENSIONS)):
         self.sound_effect_probability = sound_effect_probability
         self.options_source = FileListOptionsSource(directory=directory, extensions=extensions)
 
