@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from homeaudio.audio.settings import AppSettings
 from homeaudio.env import GOOGLE_TRANSLATE_TLD_OPTIONS, HOME_ASSISTANT_SUPPORTED, HOUSIE_TALKIE_ENABLED, SNAPCAST_ENABLED, WAKE_UP_ALARM_ENABLED
-from pydantic_ui import create_pydantic_ui, UIConfig, FieldConfig, DisplayConfig, Renderer
+from pydantic_ui import create_pydantic_ui, UIConfig, FieldConfig, DisplayConfig, Renderer, ActionButton
 
 from homeaudio.env import APP_NAME
 
@@ -21,11 +21,18 @@ class AdminRoutes:
                 show_types=False,
                 footer_text="Home",
                 footer_url="/",
+                actions=[
+                    ActionButton(id="home", label="Home", variant="outline", icon="arrow-left"),
+                ],
                 attr_configs=self.attr_configs(settings),
             ),
             data_saver=self._save_settings,
             data_loader=lambda: AppSettings()
         )
+
+        @self.ui_router.action("home")
+        async def home_action(data: dict, controller):
+            await controller.navigate_to("/", new_tab=False)
 
         self.router.include_router(self.ui_router)
 
