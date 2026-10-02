@@ -175,6 +175,7 @@ class TimeRange(BaseModel):
 class EventNotificationSchedule(BaseModel):
     weekdays: TimeRange = Field(default=TimeRange(start=time(7, 0), end=time(21)))
     weekends: TimeRange = Field(default=TimeRange(start=time(9, 0), end=time(21)))
+    holidays: TimeRange = Field(default=TimeRange(start=time(9, 0), end=time(21)))
 
 class EventNotificationSettings(YAMLSettings):
     enabled: bool = True
@@ -238,6 +239,7 @@ class Option(BaseModel):
 class MorningAnnouncementsSchedule(BaseModel):
     weekdays: time | None = Field(default=time(7, 17, 0))
     weekends: time  | None = Field(default=time(9, 57, 0))
+    holidays: time  | None = Field(default=time(9, 57, 0))
 
 class MorningAnnouncementsSettings(YAMLSettings):
     enabled: bool = Field(default=True)
