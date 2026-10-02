@@ -280,17 +280,22 @@ class AlarmRoutes:
             return NotificationsResponse(notifications=notifications)
 
         schedule = EventNotificationSettings().schedule
-        notifications = [
-            (
-                notification,
-                json.dumps(
-                    notification.event.target_event if isinstance(notification.event, LeaveForEvent) else notification.event,
-                    default=json_default_encoder,
-                ),
-                within_event_notification_operating_hours(notification.notification_time, schedule),
-            )
-            for notification in event_notifications
-        ]
+        notifications = sorted(
+            [
+                (
+                    notification.notification_time,
+                    notification,
+                    json.dumps(
+                        notification.event.target_event if isinstance(notification.event, LeaveForEvent) else notification.event,
+                        default=json_default_encoder,
+                    ),
+                    within_event_notification_operating_hours(notification.notification_time, schedule),
+                )
+                for notification in event_notifications
+            ]
+            + [(n.due_datetime, n, None, True) for n in scheduled_announcement_notifications()],
+            key=lambda row: row[0],
+        )
         return templates.TemplateResponse(
             request=request,
             name="notifications.html",

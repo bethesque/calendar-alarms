@@ -13,6 +13,7 @@
   span.type { padding: 2px 8px; border-radius: 999px; font-size: 0.85rem; }
   span.type.alarm { background: #fde2e2; color: #b42318; }
   span.type.announce { background: #e0e7ff; color: #4338ca; }
+  span.type.scheduled { background: #dcfce7; color: #15803d; }
   button.test-notification { cursor: pointer; }
   span.outside-schedule { cursor: default; }
   .tabs a.icon-button { padding: 4px 10px; font-size: 1.6rem; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
@@ -58,10 +59,23 @@
       </tr>
     </thead>
     <tbody>
-      {% for notification, event_json, within_schedule in notifications %}
+      {% for notification_time, notification, event_json, within_schedule in notifications %}
+      {% if event_json is none %}
+      <tr>
+        <td>{{ notification_time.strftime("%a, %d %b %y") }}<br>{{ notification_time.strftime("%I:%M %p") }}</td>
+        <td><span class="type scheduled">{{ notification.summary.upper() }}</span></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>
+      {% else %}
       <tr>
         <td>{{ notification.notification_time.strftime("%a, %d %b %y") }}<br>{{ notification.notification_time.strftime("%I:%M %p") }}{% if not within_schedule %} <span class="outside-schedule" title="This notification won't be played as it is outside the scheduled notification times">🔕</span>{% endif %}</td>
-        <td><span class="type {{ notification.type.name.lower() }}">{{ notification.type.name }}</span></td>
+        <td><span class="type {{ notification.type.name.lower() }}">{{ "ANNOUNCEMENT" if notification.type.name == "ANNOUNCE" else notification.type.name }}</span></td>
         <td>{{ notification.event.summary }}</td>
         <td>{{ notification.offset }}</td>
         <td>{{ notification.event.owner }}</td>
@@ -77,6 +91,7 @@
           >▶ Test</button>
         </td>
       </tr>
+      {% endif %}
       {% endfor %}
     </tbody>
   </table>

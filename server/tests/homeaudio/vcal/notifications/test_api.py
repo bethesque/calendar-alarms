@@ -15,6 +15,7 @@ import homeaudio.vcal.event_notifications.api as api_module
 @pytest.fixture(autouse=True)
 def no_calendar_events(monkeypatch):
     monkeypatch.setattr(api_module, "get_all_events", lambda: [])
+    monkeypatch.setattr(api_module, "scheduled_announcement_notifications", lambda: [])
 
 
 def _client():
@@ -102,6 +103,41 @@ def test_notifications_page_shows_all_when_no_targets_set(monkeypatch):
 
     assert response.status_code == 200
     assert "All" in response.text
+
+
+def test_notifications_page_includes_morning_and_school_announcements_sorted_by_time(monkeypatch):
+    event = Event(
+        owner="Beth",
+        calendar_id="id",
+        summary="Gym session",
+        description="Leg day",
+        start_time=datetime(2026, 4, 28, 8, 0, tzinfo=timezone.utc),
+    )
+    notification = EventNotification(event=event, type=NotificationType.ALARM, offset=0)
+    monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [notification])
+    monkeypatch.setattr(
+        api_module,
+        "scheduled_announcement_notifications",
+        lambda: [
+            api_module.ScheduledAnnouncementNotification(
+                summary="Morning announcements",
+                due_datetime=datetime(2026, 4, 28, 7, 15, tzinfo=timezone.utc),
+            ),
+            api_module.ScheduledAnnouncementNotification(
+                summary="School announcements",
+                due_datetime=datetime(2026, 4, 28, 8, 30, tzinfo=timezone.utc),
+            ),
+        ],
+    )
+
+    response = _client().get("/alarm/notifications")
+
+    assert response.status_code == 200
+    morning = response.text.index("MORNING ANNOUNCEMENTS")
+    gym = response.text.index("Gym session")
+    school = response.text.index("SCHOOL ANNOUNCEMENTS")
+    assert morning < gym < school
+    assert "Tue, 28 Apr 26<br>07:15 AM" in response.text
 
 
 def test_notifications_page_handles_no_notifications(monkeypatch):
