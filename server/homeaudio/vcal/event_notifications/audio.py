@@ -2,6 +2,7 @@ import glob
 import random
 from homeaudio.audio.sound import build_alarm_audio, join_mp3s_to_wav, build_aggressive_alarm_audio, join_mixed_files_to_wav
 from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file
+from homeaudio.vcal import LOUD_NOISE_WARNING
 from homeaudio.audio.select_item import select_item_by_date
 from homeaudio.vcal.event_notifications import GENTLE_ALARMS_DIRECTORY, AGGRESSIVE_ALARMS_DIRECTORY, PRE_ANNOUNCEMENT_BELL, OUTPUT_AUDIO_DIRECTORY, SILENCE_HALF_SEC
 from homeaudio.audio.settings import AlarmSettings
@@ -38,7 +39,7 @@ class AlarmAudio:
         files_to_loop = [gentle_audio_file]
 
         if self.alarm_settings.aggressive_alarm_loops > 0:
-            loud_noise_warning_file = text_to_voice_file("Warning - an aggressively loud noise is about to be played to get your attention.", self.tld)
+            loud_noise_warning_file = text_to_voice_file(LOUD_NOISE_WARNING, self.tld)
 
             aggressive_audio_file = f"{OUTPUT_AUDIO_DIRECTORY}/alarm_aggressive.wav"
 

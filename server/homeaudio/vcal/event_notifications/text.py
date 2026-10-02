@@ -2,6 +2,7 @@ import logging
 import re
 import random
 from homeaudio.audio.random_text import ListOptionsSource, select_option_pseudorandomly
+from homeaudio.vcal import GREETINGS, COMPLIMENTS_FOR_1, COMPLIMENTS_FOR_2, COMPLIMENTS_FOR_MANY, ENCOURAGEMENTS
 from homeaudio.vcal.event_notifications.events import EventNotification
 from pathlib import Path
 
@@ -16,9 +17,9 @@ class VerbIdentifier:
         return word.lower() in self.verbs
 
 class NotificationTextBuilder:
-    COMPLIMENTS_FOR_1 = ListOptionsSource("compliments_for_1", ["What a beautiful name.", "Everyone loves working with you.", "You are fabulous.", "What beautiful eyes you have.", "You're the best!", "You are one of the most talented people we know.", "Lots of people love you.", "You are thoughtful, intelligent and beautiful."])
-    COMPLIEMENTS_FOR_2 = ListOptionsSource("compliments_for_2", ["What a great looking pair you are.", "You're both awesome.", "It's a great day because you're here."])
-    COMPLIEMENTS_FOR_MANY = ListOptionsSource("compliments_for_many", ["What a good looking bunch you are.", "You are all awesome."])
+    COMPLIMENTS_FOR_1 = ListOptionsSource("compliments_for_1", COMPLIMENTS_FOR_1)
+    COMPLIEMENTS_FOR_2 = ListOptionsSource("compliments_for_2", COMPLIMENTS_FOR_2)
+    COMPLIEMENTS_FOR_MANY = ListOptionsSource("compliments_for_many", COMPLIMENTS_FOR_MANY)
 
     CHANCE_OF_ANNOUNCEMENT_WITH_EXTRAS = 3/4
 
@@ -104,10 +105,7 @@ class NotificationTextBuilder:
 
         choices = [
             f"{good_greeting}.",
-            "Hi there.",
-            "Hey.",
-            "Hey there.",
-            "Hello.",
+            *GREETINGS,
         ]
 
         if event_notification.event.owner_count > 0:
@@ -131,7 +129,7 @@ class NotificationTextBuilder:
             return select_option_pseudorandomly(None, 1, self.COMPLIEMENTS_FOR_MANY)
 
     def _encouragement(self) -> str:
-        return random.choice(["You can do it!", "Tiny potato believes in you!", "You're the best!", "You're capable of great things!", "You've got this!", "Be proud of yourself."])
+        return random.choice(ENCOURAGEMENTS)
 
     def _to_or_for(self, event_summary):
         first_word = re.sub(r"[^\w]", "", event_summary.split()[0]).lower()

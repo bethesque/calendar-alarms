@@ -9,6 +9,7 @@ from homeaudio.audio.tts_playback import play_tts_audio_file
 from homeaudio.audio.sound import join_mp3s_to_wav
 from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException, CalendarSource, get_events_for_date, CalendarDay
 from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file, gtts_tld, TextToSpeechError
+from homeaudio.vcal import TIME_TO_LEAVE_FOR_SCHOOL, PACK_AN_UMBRELLA, TODAYS_SCHOOL_EVENTS_ARE, HAVE_A_NICE_DAY, IF_YOU_WANT, NOT_THE_BOSS, NO_CALENDAR_DATA, FIX_AUTHENTICATION
 from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, POST_ANNOUNCEMENT_SILENCE
 from homeaudio.env import CALENDAR_DATA_DIRECTORY
 from homeaudio.vcal.playback import NotificationFile
@@ -46,20 +47,20 @@ def get_weather_forecast(events: list[Event]) -> WeatherForecast | None:
 Build a list of sentences to speak aloud for the school announcement.
 """
 def build_text(school_events: list[Event], weather_forecast: WeatherForecast | None = None, rand = random.random) -> list[str]:
-    sentences = ["It's time to leave for school."]
+    sentences = [TIME_TO_LEAVE_FOR_SCHOOL]
 
     if weather_forecast and any(keyword in weather_forecast.summary.lower() for keyword in ("rain", "showers")):
-        sentences.append("You may wish to pack an umbrella as there is rain forecast.")
+        sentences.append(PACK_AN_UMBRELLA)
 
     if school_events:
-        sentences.append("Today's school events are:")
+        sentences.append(TODAYS_SCHOOL_EVENTS_ARE)
         sentences.extend(event.summary + "." for event in school_events if event.summary)
 
-    sentences.append("Have a nice day.")
+    sentences.append(HAVE_A_NICE_DAY)
 
     if rand() < CHANCE_OF_I_AM_NOT_THE_BOSS:
-        sentences.append("If you want.")
-        sentences.append("I'm not the boss of you.")
+        sentences.append(IF_YOU_WANT)
+        sentences.append(NOT_THE_BOSS)
 
     logger.info(f"Generated school announcement: {" ".join(sentences)}")
     return sentences
@@ -89,7 +90,7 @@ def _collect_speech_files(sentences: list[str], tld: str) -> list[str]:
 
 # TODO prebuild this
 def _missing_calendar_data_response(tld: str):
-    return build_audio_file(["It's time to leave for school.","There was no calendar data found for today's date.", "You may need to fix the authentication."], tld)
+    return build_audio_file([TIME_TO_LEAVE_FOR_SCHOOL, NO_CALENDAR_DATA, FIX_AUTHENTICATION], tld)
 
 def _announcement_due(base_time: datetime, window: int, schedule: SchoolAnnouncementsSchedule) -> bool:
     if base_time.weekday() >= 5 or schedule.weekdays is None:

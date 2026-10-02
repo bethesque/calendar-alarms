@@ -6,6 +6,7 @@ from homeaudio.audio.settings import MorningAnnouncementsSchedule, MorningAnnoun
 from homeaudio.audio.tts_playback import play_tts_audio_file
 from homeaudio.vcal.cal.google_calendar import CalendarDay, Event, WeatherForecast, MissingCalendarDataException, CalendarSource, get_events_for_date, DATA_FILE
 from homeaudio.vcal.event_notifications.text_to_voice import gtts_tld, text_to_voice_file, TextToSpeechError
+from homeaudio.vcal import NO_CALENDAR_DATA, MORNING_GREETING, TODAYS_EVENTS_ARE, FUN_FACT_FOR_TODAY, NO_EVENTS_TODAY, HAVE_A_LOVELY_DAY
 from homeaudio.audio.sound import join_mp3s_to_wav, mix_announcement_audio
 from homeaudio.audio.select_item import select_item_by_date, select_option
 from homeaudio.env import DEFAULT_GOOGLE_TRANSLATE_TLD
@@ -29,7 +30,7 @@ class TextBuilder:
             logger.info(f"Generated daily summary announcement: {" ".join(sentences)}")
             return sentences
         except MissingCalendarDataException:
-            return ["There was no calendar data found for today's date. "]
+            return [NO_CALENDAR_DATA]
 
     """
     Build a List of sentences to speak aloud from the given list of Events.
@@ -38,7 +39,7 @@ class TextBuilder:
         weather_forecast = self._get_weather_forecast(self.events)
         events = self._get_non_weather_forecast_events(self.events)
 
-        sentences = ["Good morning!"]
+        sentences = [MORNING_GREETING]
 
         prelude = self._get_prelude()
         if prelude:
@@ -50,14 +51,14 @@ class TextBuilder:
         if events:
             # Collect the summary from each event on the first day and join them together with a ". " separator
             event_summaries = [event.summary + "." for event in events if event.summary]
-            sentences.append("Todays events are:")
+            sentences.append(TODAYS_EVENTS_ARE)
             sentences.extend(event_summaries)
         else:
-            sentences.append("There are no events scheduled for today.")
+            sentences.append(NO_EVENTS_TODAY)
 
         sentences.extend(self._get_postlude())
 
-        sentences.append("Have a lovely day.")
+        sentences.append(HAVE_A_LOVELY_DAY)
 
         return sentences
 
@@ -75,7 +76,7 @@ class TextBuilder:
         if unused_facts:
             fact_text = select_option(unused_facts).text
             self.settings.save()  # Save the updated last_used timestamps for the selected facts
-            return [f"Your fun fact for today is:", fact_text]
+            return [FUN_FACT_FOR_TODAY, fact_text]
         else:
             logger.debug("All facts have been used.")
             return []

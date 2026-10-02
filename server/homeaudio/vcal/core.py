@@ -5,6 +5,7 @@ from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarSource
 from homeaudio.audio.sound import join_mp3s_to_wav
 from homeaudio.vcal.event_notifications.text_to_voice import gtts_tld
 from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file
+from homeaudio.vcal import NOTHING_TO_SNOOZE
 from homeaudio.audio.mpd import mpd_connection
 from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, POST_ANNOUNCEMENT_SILENCE
 from homeaudio.audio.scene import scene_for_env
@@ -48,14 +49,14 @@ def snooze_alarm(after_alarm_hook=None):
 
     last_played = LastPlayedState()
     if not last_played.fresh():
-        play_file(_build_one_off_announcement_file("Nothing to snooze"))
+        play_file(_build_one_off_announcement_file(NOTHING_TO_SNOOZE))
         return
 
     event_notifications = last_played.load()
     base_time = last_played.load_base_time()
 
     if not event_notifications or not base_time:
-        play_file(_build_one_off_announcement_file("Nothing to snooze"))
+        play_file(_build_one_off_announcement_file(NOTHING_TO_SNOOZE))
         return
 
     snooze_minutes = EventNotificationSettings().snooze_minutes
