@@ -11,8 +11,8 @@ from homeaudio.vcal.school_announcements import play_school_announcements
 from homeaudio.audio.scene import scene_for_env
 from homeaudio.vcal.core import stop_alarm, test_alarm, test_announcement, test_notification, mute_alarm_for_area_of_player, replay_last_notification, snooze_alarm
 from homeaudio.vcal.event_notifications.events import get_all_event_notifications, get_all_events, get_calendar_refreshed_at, update_calendar_travel_times, round_down_to_interval
-from homeaudio.vcal.event_notifications.scheduled_announcements import scheduled_announcement_notifications, ScheduledAnnouncementNotification
-from homeaudio.vcal.event_notifications.models import TestNotificationRequest, EventSummaryResponse, NotificationResponseItem, NotificationsResponse
+from homeaudio.vcal.event_notifications.scheduled_announcements import scheduled_announcement_notifications, ScheduledAnnouncementNotification, ScheduledAnnouncementType
+from homeaudio.vcal.event_notifications.models import TestNotificationRequest, PlayScheduledAnnouncementRequest, EventSummaryResponse, NotificationResponseItem, NotificationsResponse
 from homeaudio.vcal.event_notifications.events import EventNotification, LeaveForEvent
 from homeaudio.vcal.cli import refresh_calendar_data
 from homeaudio.audio.settings import SnapcastSettings, DepartureNotificationSettings, EventNotificationSettings
@@ -106,12 +106,12 @@ class AlarmHandler:
         threading.Thread(target=test_notification, args=(event, notification_time), daemon=True).start()
         return "Testing notification..."
 
-    def play_morning_announcements(self) -> str:
-        threading.Thread(target=play_morning_announcements, daemon=True).start()
+    def play_morning_announcements(self, base_time: datetime | None = None) -> str:
+        threading.Thread(target=play_morning_announcements, args=(base_time,), daemon=True).start()
         return "Playing morning announcements..."
 
-    def play_school_announcements(self) -> str:
-        threading.Thread(target=play_school_announcements, daemon=True).start()
+    def play_school_announcements(self, base_time: datetime | None = None) -> str:
+        threading.Thread(target=play_school_announcements, args=(base_time,), daemon=True).start()
         return "Playing school announcements..."
 
     def refresh_calendar_data(self) -> str:
@@ -246,12 +246,12 @@ class AlarmRoutes:
         message = self.alarm_handler.test_announcement()
         return Response(content=message, status_code=202, media_type="text/plain")
 
-    async def play_morning_announcements_endpoint(self):
-        message = self.alarm_handler.play_morning_announcements()
+    async def play_morning_announcements_endpoint(self, payload: PlayScheduledAnnouncementRequest | None = None):
+        message = self.alarm_handler.play_morning_announcements(payload.base_time if payload else None)
         return Response(content=message, status_code=202, media_type="text/plain")
 
-    async def play_school_announcements_endpoint(self):
-        message = self.alarm_handler.play_school_announcements()
+    async def play_school_announcements_endpoint(self, payload: PlayScheduledAnnouncementRequest | None = None):
+        message = self.alarm_handler.play_school_announcements(payload.base_time if payload else None)
         return Response(content=message, status_code=202, media_type="text/plain")
 
     async def refresh_calendar_data_endpoint(self):
@@ -299,7 +299,14 @@ class AlarmRoutes:
         return templates.TemplateResponse(
             request=request,
             name="notifications.html",
-            context={"notifications": notifications, "events": get_all_events()},
+            context={
+                "notifications": notifications,
+                "events": get_all_events(),
+                "scheduled_announcement_paths": {
+                    ScheduledAnnouncementType.MORNING_ANNOUNCEMENTS: "/alarm/morning-announcements",
+                    ScheduledAnnouncementType.SCHOOL_ANNOUNCEMENTS: "/alarm/school-announcements",
+                },
+            },
         )
 
     async def replay_last_notification(self):

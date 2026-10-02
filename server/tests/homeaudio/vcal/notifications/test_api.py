@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from homeaudio.audio.settings import NotificationRule
 from homeaudio.vcal.cal.google_calendar import Event
 from homeaudio.vcal.event_notifications.events import EventNotification, EventNotifications, NotificationType
+from homeaudio.vcal.event_notifications.scheduled_announcements import ScheduledAnnouncementType
 import homeaudio.vcal.event_notifications.api as api_module
 
 
@@ -121,10 +122,12 @@ def test_notifications_page_includes_morning_and_school_announcements_sorted_by_
         lambda: [
             api_module.ScheduledAnnouncementNotification(
                 summary="Morning announcements",
+                type=ScheduledAnnouncementType.MORNING_ANNOUNCEMENTS,
                 due_datetime=datetime(2026, 4, 28, 7, 15, tzinfo=timezone.utc),
             ),
             api_module.ScheduledAnnouncementNotification(
                 summary="School announcements",
+                type=ScheduledAnnouncementType.SCHOOL_ANNOUNCEMENTS,
                 due_datetime=datetime(2026, 4, 28, 8, 30, tzinfo=timezone.utc),
             ),
         ],
@@ -138,6 +141,9 @@ def test_notifications_page_includes_morning_and_school_announcements_sorted_by_
     school = response.text.index("SCHOOL ANNOUNCEMENTS")
     assert morning < gym < school
     assert "Tue, 28 Apr 26<br>07:15 AM" in response.text
+    assert 'data-path="/alarm/morning-announcements"' in response.text
+    assert 'data-base-time="2026-04-28T07:15:00+00:00"' in response.text
+    assert 'data-path="/alarm/school-announcements"' in response.text
 
 
 def test_notifications_page_handles_no_notifications(monkeypatch):
@@ -236,10 +242,12 @@ def test_notifications_endpoint_includes_morning_and_school_announcements(monkey
         lambda: [
             api_module.ScheduledAnnouncementNotification(
                 summary="Morning announcements",
+                type=ScheduledAnnouncementType.MORNING_ANNOUNCEMENTS,
                 due_datetime=datetime(2026, 4, 28, 7, 17, 0, tzinfo=timezone.utc),
             ),
             api_module.ScheduledAnnouncementNotification(
                 summary="School announcements",
+                type=ScheduledAnnouncementType.SCHOOL_ANNOUNCEMENTS,
                 due_datetime=datetime(2026, 4, 28, 8, 30, 0, tzinfo=timezone.utc),
             ),
         ],
@@ -276,6 +284,42 @@ def test_notifications_endpoint_returns_empty_json_list_when_no_notifications(mo
 
     assert response.status_code == 200
     assert response.json() == {"notifications": []}
+
+
+def test_morning_announcements_endpoint_passes_base_time(monkeypatch):
+    calls = []
+    monkeypatch.setattr(api_module, "play_morning_announcements", lambda base_time=None: calls.append(base_time))
+    client = _client()
+    monkeypatch.setattr(api_module.threading, "Thread", lambda target, args=(), daemon=False: SimpleNamespace(start=lambda: target(*args)))
+
+    response = client.post("/alarm/morning-announcements", json={"base_time": "2026-04-28T07:15:00+00:00"})
+
+    assert response.status_code == 202
+    assert calls == [datetime(2026, 4, 28, 7, 15, tzinfo=timezone.utc)]
+
+
+def test_school_announcements_endpoint_passes_base_time(monkeypatch):
+    calls = []
+    monkeypatch.setattr(api_module, "play_school_announcements", lambda base_time=None: calls.append(base_time))
+    client = _client()
+    monkeypatch.setattr(api_module.threading, "Thread", lambda target, args=(), daemon=False: SimpleNamespace(start=lambda: target(*args)))
+
+    response = client.post("/alarm/school-announcements", json={"base_time": "2026-04-28T08:30:00+00:00"})
+
+    assert response.status_code == 202
+    assert calls == [datetime(2026, 4, 28, 8, 30, tzinfo=timezone.utc)]
+
+
+def test_morning_announcements_endpoint_defaults_base_time_when_no_body_sent(monkeypatch):
+    calls = []
+    monkeypatch.setattr(api_module, "play_morning_announcements", lambda base_time=None: calls.append(base_time))
+    client = _client()
+    monkeypatch.setattr(api_module.threading, "Thread", lambda target, args=(), daemon=False: SimpleNamespace(start=lambda: target(*args)))
+
+    response = client.post("/alarm/morning-announcements")
+
+    assert response.status_code == 202
+    assert calls == [None]
 
 
 def test_snooze_endpoint_stops_the_alarm_with_snooze_flag_set(monkeypatch):

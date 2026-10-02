@@ -8,7 +8,7 @@ from homeaudio.audio.settings import (
     SchoolAnnouncementsSettings,
 )
 from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarSource, Event
-from homeaudio.vcal.event_notifications.scheduled_announcements import ScheduledAnnouncementNotification, scheduled_announcement_notifications
+from homeaudio.vcal.event_notifications.scheduled_announcements import ScheduledAnnouncementNotification, ScheduledAnnouncementType, scheduled_announcement_notifications
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
 
@@ -29,8 +29,8 @@ def test_scheduled_announcement_notifications_includes_morning_and_school_on_a_w
     )
 
     assert notifications == [
-        ScheduledAnnouncementNotification(summary="Morning announcements", due_datetime=datetime(2026, 4, 6, 7, 17, tzinfo=TIMEZONE)),
-        ScheduledAnnouncementNotification(summary="School announcements", due_datetime=datetime(2026, 4, 6, 8, 30, tzinfo=TIMEZONE)),
+        ScheduledAnnouncementNotification(summary="Morning announcements", type=ScheduledAnnouncementType.MORNING_ANNOUNCEMENTS, due_datetime=datetime(2026, 4, 6, 7, 17, tzinfo=TIMEZONE)),
+        ScheduledAnnouncementNotification(summary="School announcements", type=ScheduledAnnouncementType.SCHOOL_ANNOUNCEMENTS, due_datetime=datetime(2026, 4, 6, 8, 30, tzinfo=TIMEZONE)),
     ]
 
 
@@ -44,7 +44,7 @@ def test_scheduled_announcement_notifications_uses_weekend_morning_schedule_and_
     )
 
     assert notifications == [
-        ScheduledAnnouncementNotification(summary="Morning announcements", due_datetime=datetime(2026, 4, 11, 9, 57, tzinfo=TIMEZONE)),
+        ScheduledAnnouncementNotification(summary="Morning announcements", type=ScheduledAnnouncementType.MORNING_ANNOUNCEMENTS, due_datetime=datetime(2026, 4, 11, 9, 57, tzinfo=TIMEZONE)),
     ]
 
 
@@ -71,5 +71,5 @@ def test_scheduled_announcement_notifications_skips_school_announcement_on_a_hol
     )
 
     assert notifications == [
-        ScheduledAnnouncementNotification(summary="Morning announcements", due_datetime=datetime(2026, 4, 6, 7, 17, tzinfo=TIMEZONE)),
+        ScheduledAnnouncementNotification(summary="Morning announcements", type=ScheduledAnnouncementType.MORNING_ANNOUNCEMENTS, due_datetime=datetime(2026, 4, 6, 7, 17, tzinfo=TIMEZONE)),
     ]

@@ -143,8 +143,8 @@ def check_for_announcement(
 UI entrypoint
 """
 def play_school_announcements(
-        calendar_file=os.path.join(CALENDAR_DATA_DIRECTORY, "calendar.json"),
         base_time: datetime | None = None,
+        calendar_file=os.path.join(CALENDAR_DATA_DIRECTORY, "calendar.json"),
         settings: SchoolAnnouncementsSettings | None = None,
         before_announcement_hook: Callable | None = None,
         after_announcement_hook: Callable | None = None

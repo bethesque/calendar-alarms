@@ -14,7 +14,7 @@
   span.type.alarm { background: #fde2e2; color: #b42318; }
   span.type.announce { background: #e0e7ff; color: #4338ca; }
   span.type.scheduled { background: #dcfce7; color: #15803d; }
-  button.test-notification { cursor: pointer; }
+  button.test-notification, button.play-scheduled-announcement { cursor: pointer; }
   span.outside-schedule { cursor: default; }
   .tabs a.icon-button { padding: 4px 10px; font-size: 1.6rem; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
   #recompute-departure-times { margin-left: auto; }
@@ -63,14 +63,21 @@
       {% if event_json is none %}
       <tr>
         <td>{{ notification_time.strftime("%a, %d %b %y") }}<br>{{ notification_time.strftime("%I:%M %p") }}</td>
-        <td><span class="type scheduled">{{ notification.summary.upper() }}</span></td>
+        <td><span class="type scheduled">{{ notification.type.name.replace("_", " ") }}</span></td>
         <td></td>
         <td></td>
         <td></td>
         <td></td>
         <td></td>
         <td></td>
-        <td></td>
+        <td>
+          <button
+            type="button"
+            class="play-scheduled-announcement"
+            data-path="{{ scheduled_announcement_paths[notification.type] }}"
+            data-base-time="{{ notification_time.isoformat() }}"
+          >▶ Play</button>
+        </td>
       </tr>
       {% else %}
       <tr>
@@ -88,7 +95,7 @@
             class="test-notification"
             data-event="{{ event_json }}"
             data-notification-time="{{ notification.notification_time.isoformat() }}"
-          >▶ Test</button>
+          >▶ Play</button>
         </td>
       </tr>
       {% endif %}
@@ -175,6 +182,32 @@
         })
         .catch(function () {
           alert('Testing notification failed (network error).');
+        })
+        .finally(function () {
+          button.disabled = false;
+        });
+    });
+  });
+
+  document.querySelectorAll('.play-scheduled-announcement').forEach(function (button) {
+    button.addEventListener('click', function () {
+      button.disabled = true;
+
+      fetch(button.dataset.path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base_time: button.dataset.baseTime }),
+      })
+        .then(function (response) {
+          if (response.ok) {
+            return;
+          }
+          return response.text().then(function (text) {
+            alert('Playing announcement failed: ' + response.status + ' ' + response.statusText + '\n\n' + text);
+          });
+        })
+        .catch(function () {
+          alert('Playing announcement failed (network error).');
         })
         .finally(function () {
           button.disabled = false;

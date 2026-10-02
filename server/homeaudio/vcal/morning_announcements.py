@@ -182,8 +182,8 @@ def check_for_announcement(
 Entry point for UI. Generate a summary of today's events, convert them to voice, and play them.
 """
 def play_morning_announcements(
-        calendar_file = DATA_FILE,
         base_time: datetime | None = None,
+        calendar_file = DATA_FILE,
         settings: MorningAnnouncementsSettings | None = None,
         before_announcement_hook: Callable | None = None,
         after_announcement_hook: Callable | None = None

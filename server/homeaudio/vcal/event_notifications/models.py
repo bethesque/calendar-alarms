@@ -5,6 +5,9 @@ class TestNotificationRequest(BaseModel):
     event: dict
     notification_time: datetime
 
+class PlayScheduledAnnouncementRequest(BaseModel):
+    base_time: datetime | None = None
+
 class EventSummaryResponse(BaseModel):
     summary: str
 
