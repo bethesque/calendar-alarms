@@ -7,9 +7,11 @@
     mode: "0644"
   notify:
     - restart calendar-alarms-http.service
+  tags:
+    - calendar_alarms_http_conf
 
 # Logs can be viewed with `journalctl SYSLOG_IDENTIFIER=calendar-alarms-http`
-- name: Install Calendar Alarms http service (provides login and alarm stop endpoints)
+- name: Install Calendar Alarms http service
   ansible.builtin.template:
     src: calendar-alarms-http.service.j2
     dest: "/home/{{ ansible_user }}/.config/systemd/user/calendar-alarms-http.service"
@@ -19,7 +21,10 @@
   notify:
     - reload user systemd daemon
     - restart calendar-alarms-http.service
+  tags:
+    - calendar_alarms_http_conf
 
+# Not actually needed any more because we don't need https
 - name: Configure ngnix
   ansible.builtin.import_tasks: nginx.yml
   tags:
