@@ -2,7 +2,9 @@
   ansible.builtin.import_tasks: sendspin.yml
   tags:
     - sendspin
-  when: host_distro == "trixie"
+  when:
+    - host_distro == "trixie"
+    - is_pi == true
 
 - name: Install bash functions
   ansible.builtin.import_tasks: bash_functions.yml
