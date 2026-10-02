@@ -10,7 +10,7 @@ from homeaudio.audio.settings import NotificationRule
 from homeaudio.vcal.cal.google_calendar import Event
 from homeaudio.vcal.event_notifications.events import EventNotification, EventNotifications, NotificationType
 from homeaudio.vcal.event_notifications.scheduled_announcements import ScheduledAnnouncementType
-import homeaudio.vcal.event_notifications.api as api_module
+import homeaudio.vcal.api as api_module
 
 
 @pytest.fixture(autouse=True)

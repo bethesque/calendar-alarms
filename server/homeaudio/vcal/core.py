@@ -160,7 +160,7 @@ def test_announcement():
     notification_files = NotificationFiles(event_alarms_file=alarm_audio_file, event_announcements_file=announcements_file)
     play_notifications(notification_files, scene_for_env())
 
-# Used by the "Test" button next to a notification on the notifications page (event_notifications/api.py) to
+# Used by the "Test" button next to a notification on the notifications page (vcal/api.py) to
 # play a specific notification on demand, using notification_time as base_time so it's found within the window.
 def test_notification(event: dict, notification_time: datetime):
     days = [

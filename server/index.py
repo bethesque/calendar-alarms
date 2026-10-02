@@ -12,7 +12,7 @@ from homeaudio.audio.log_config import setup_logging_for_http_server
 from homeaudio.housie_talkie.tts_api import TtsRoutes
 from homeaudio.housie_talkie.voice_api import VoiceRoutes
 from homeaudio.audio.admin_ui import AdminRoutes
-from homeaudio.vcal.event_notifications.api import AlarmRoutes
+from homeaudio.vcal.api import AlarmRoutes
 from homeaudio.audio.snapclients_ui import SnapclientsRoutes
 from homeaudio.audio.audio_files_ui import AudioFilesRoutes
 from homeaudio.audio.logs_ui import CalendarAlarmsStatusRoutes, JournalctlRoutes, LogRoutes
