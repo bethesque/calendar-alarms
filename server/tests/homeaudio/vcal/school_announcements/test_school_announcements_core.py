@@ -20,7 +20,6 @@ from homeaudio.audio.settings import SchoolAnnouncementsSchedule, SchoolAnnounce
 from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, POST_ANNOUNCEMENT_SILENCE
 from homeaudio.vcal.playback import NotificationFile
 
-DEFAULT_HOLIDAY_KEYWORDS = ["no school", "school holidays"]
 DEFAULT_SCHOOL_EVENT_KEYWORDS = ["school"]
 
 MONDAY_8_30 = datetime(2026, 4, 27, 8, 30, 0)
@@ -304,7 +303,7 @@ def test_check_for_announcement_returns_none_when_the_day_is_a_holiday():
     events = [Event(owner="cal", summary="School excursion", description="", calendar_id="id")]
     calendar_days = [CalendarDay(date=MONDAY_8_30.date(), whole_day_events=events, holiday=True)]
 
-    settings = SchoolAnnouncementsSettings(enabled=True, schedule=SchoolAnnouncementsSchedule(weekdays=time(8, 30, 0)), holiday_keywords=DEFAULT_HOLIDAY_KEYWORDS, school_event_keywords=DEFAULT_SCHOOL_EVENT_KEYWORDS)
+    settings = SchoolAnnouncementsSettings(enabled=True, schedule=SchoolAnnouncementsSchedule(weekdays=time(8, 30, 0)), school_event_keywords=DEFAULT_SCHOOL_EVENT_KEYWORDS)
 
     assert check_for_announcement(MONDAY_8_30, 1, calendar_days, "com", settings) is None
 
@@ -325,7 +324,7 @@ def test_create_audio_file_for_calendar_days_builds_audio_when_not_a_holiday(mon
 
     monkeypatch.setattr(school_announcements_core, "build_audio_file", fake_build_audio_file)
 
-    settings = SchoolAnnouncementsSettings(holiday_keywords=DEFAULT_HOLIDAY_KEYWORDS, school_event_keywords=DEFAULT_SCHOOL_EVENT_KEYWORDS)
+    settings = SchoolAnnouncementsSettings(school_event_keywords=DEFAULT_SCHOOL_EVENT_KEYWORDS)
 
     assert _create_audio_file_for_calendar_days(MONDAY_8_30, events, "com", settings) == "built.wav"
     assert seen_sentences["sentences"] == build_text(events, rand=rand_false)
@@ -334,13 +333,13 @@ def test_create_audio_file_for_calendar_days_builds_audio_when_not_a_holiday(mon
 def test_create_audio_file_for_calendar_days_falls_back_when_calendar_data_missing(monkeypatch):
     monkeypatch.setattr(school_announcements_core, "build_audio_file", lambda sentences, tld: "fallback.wav")
 
-    settings = SchoolAnnouncementsSettings(enabled=True, schedule=SchoolAnnouncementsSchedule(weekdays=time(8, 30, 0)), holiday_keywords=DEFAULT_HOLIDAY_KEYWORDS, school_event_keywords=DEFAULT_SCHOOL_EVENT_KEYWORDS)
+    settings = SchoolAnnouncementsSettings(enabled=True, schedule=SchoolAnnouncementsSchedule(weekdays=time(8, 30, 0)), school_event_keywords=DEFAULT_SCHOOL_EVENT_KEYWORDS)
 
     assert check_for_announcement(MONDAY_8_30, 1, [], "com", settings) == NotificationFile(path="fallback.wav")
 
 
 def test_play_school_announcements_builds_and_plays_the_audio_file(monkeypatch):
-    settings = SchoolAnnouncementsSettings(holiday_keywords=[], school_event_keywords=DEFAULT_SCHOOL_EVENT_KEYWORDS)
+    settings = SchoolAnnouncementsSettings(school_event_keywords=DEFAULT_SCHOOL_EVENT_KEYWORDS)
 
     class FakeCalendarSource:
         def __init__(self, cache_file_path):

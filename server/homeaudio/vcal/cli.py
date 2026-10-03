@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from homeaudio.env import CALENDAR_DATA_DIRECTORY, LOG_LEVEL
 from homeaudio.vcal.cal.google_calendar import CalendarSource, Event
 from homeaudio.audio.log_config import setup_logging_for_data_refresh
-from homeaudio.audio.settings import GoogleCalendarSettings, SchoolAnnouncementsSettings
+from homeaudio.audio.settings import GoogleCalendarSettings
 
 """
 This script refreshes the calendar data and saves it to a local file.
@@ -22,7 +22,7 @@ def refresh_calendar_data():
     token_info = settings.token_info()
     if token_info:
         calendar_source.load_creds(token_info)
-        calendar_source.fetch_data(settings.calendar_filter(), SchoolAnnouncementsSettings().holiday_keywords)
+        calendar_source.fetch_data(settings.calendar_filter(), settings.holiday_keywords)
         calendar_source.save_data_to_file()
     else:
         raise GoogleApiTokenNotFound("Please set token.json in Google Calendar settings.")

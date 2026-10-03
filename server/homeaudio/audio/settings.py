@@ -208,6 +208,10 @@ class UploadedFile(BaseModel):
 class GoogleCalendarSettings(YAMLSettings):
     calendars: list[CalendarSetting] = Field(default_factory=list)
     token_file: UploadedFile | None = Field(default=None, title="Token file", description="The Google API token.json file")
+    holiday_keywords: list[str] = Field(
+        default_factory=lambda: ["no school", "school holidays", "public holiday"],
+        description="If an event's summary contains any of these (case-insensitive), the day is treated as a holiday"
+    )
 
     def token_info(self) -> dict | None:
         return json.loads(self.token_file.content()) if self.token_file else None
@@ -266,10 +270,6 @@ class SchoolAnnouncementsSchedule(BaseModel):
 class SchoolAnnouncementsSettings(YAMLSettings):
     enabled: bool = Field(default=True)
     schedule: SchoolAnnouncementsSchedule = Field(default_factory=SchoolAnnouncementsSchedule)
-    holiday_keywords: list[str] = Field(
-        default_factory=lambda: ["no school", "school holidays"],
-        description="If an event's summary contains any of these (case-insensitive), the school announcement is skipped entirely"
-    )
     school_event_keywords: list[str] = Field(
         default_factory=lambda: ["#school"],
         description="An event is read out in the school announcement if its summary or description contains any of these (case-insensitive)"
