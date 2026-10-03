@@ -20,7 +20,7 @@ from homeaudio.audio.settings import (
     SchoolAnnouncementsSettings,
 )
 from homeaudio.env import LOG_LEVEL, NOTIFICATIONS_CHECK_INTERVAL_MINUTES, NOTIFICATIONS_PREPARATION_LEAD_TIME_SECONDS
-from homeaudio.vcal.cal.google_calendar import CalendarSource
+from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarSource, load_calendar_days
 from homeaudio.vcal.calendar_refresh import CalendarRefreshLoop
 from homeaudio.vcal.core import prepare_notification_files, NotificationFiles
 from homeaudio.vcal.core import play_notifications as _play_notifications
@@ -51,8 +51,9 @@ def _is_scheduled_announcement(
     dt: datetime,
     morning_schedule: MorningAnnouncementsSchedule,
     school_schedule: SchoolAnnouncementsSchedule,
+    calendar_days: list[CalendarDay],
 ) -> bool:
-    return dt.time() in announcement_times_for_day(dt.date(), morning_schedule, school_schedule)
+    return dt.time() in announcement_times_for_day(dt.date(), morning_schedule, school_schedule, calendar_days)
 
 
 def _wake_times_for_day(
@@ -60,13 +61,14 @@ def _wake_times_for_day(
     schedule: EventNotificationSchedule,
     morning_schedule: MorningAnnouncementsSchedule,
     school_schedule: SchoolAnnouncementsSchedule,
+    calendar_days: list[CalendarDay],
 ) -> list[time]:
     """
     The announcement times and the start of the event notification time range.
     """
     return [
-        event_notification_time_range_for_day(schedule, day).start,
-        *announcement_times_for_day(day, morning_schedule, school_schedule),
+        event_notification_time_range_for_day(schedule, day, calendar_days).start,
+        *announcement_times_for_day(day, morning_schedule, school_schedule, calendar_days),
     ]
 
 
@@ -75,6 +77,7 @@ def next_boundary(
     schedule: EventNotificationSchedule | None = None,
     morning_schedule: MorningAnnouncementsSchedule | None = None,
     school_schedule: SchoolAnnouncementsSchedule | None = None,
+    calendar_days: list[CalendarDay] | None = None,
 ) -> datetime:
     """The next CHECK_INTERVAL_MINUTES-aligned time at or after `now`, skipping forward over hours
     outside EventNotificationSettings.schedule's weekdays/weekends window - except for any
@@ -93,19 +96,20 @@ def next_boundary(
     schedule = schedule or EventNotificationSettings().schedule
     morning_schedule = morning_schedule or MorningAnnouncementsSettings().schedule
     school_schedule = school_schedule or SchoolAnnouncementsSettings().schedule
+    calendar_days = load_calendar_days() if calendar_days is None else calendar_days
 
     minute = (now.minute // CHECK_INTERVAL_MINUTES + 1) * CHECK_INTERVAL_MINUTES
     # Wind back to the previous whole minute and add the CHECK_INTERVAL_MINUTES to it
     candidate = now.replace(minute=0, second=0, microsecond=0) + timedelta(minutes=minute)
 
-    while not within_event_notification_operating_hours(candidate, schedule) and not _is_scheduled_announcement(
-        candidate, morning_schedule, school_schedule
+    while not within_event_notification_operating_hours(candidate, schedule, calendar_days) and not _is_scheduled_announcement(
+        candidate, morning_schedule, school_schedule, calendar_days
     ):
         # The next regular CHECK_INTERVAL_MINUTES is outside the normal event notification operating hours.
         # Collect the future wake up times for today (the start of event notifications and the announcement times)
         wake_times_today = [
             wake_time
-            for wake_time in _wake_times_for_day(candidate.date(), schedule, morning_schedule, school_schedule)
+            for wake_time in _wake_times_for_day(candidate.date(), schedule, morning_schedule, school_schedule, calendar_days)
             if wake_time > candidate.time()
         ]
         # If there are future wake up times
@@ -115,7 +119,7 @@ def next_boundary(
         else:
             # ... else get the next wake up time for tomorrow
             next_day = candidate.date() + timedelta(days=1)
-            next_wake_times = _wake_times_for_day(next_day, schedule, morning_schedule, school_schedule)
+            next_wake_times = _wake_times_for_day(next_day, schedule, morning_schedule, school_schedule, calendar_days)
             candidate = datetime.combine(next_day, min(next_wake_times), tzinfo=candidate.tzinfo)
 
     return min(candidate, now + timedelta(seconds=MAX_SLEEP_SECONDS))

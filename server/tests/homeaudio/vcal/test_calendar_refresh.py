@@ -10,6 +10,7 @@ from homeaudio.audio.settings import (
     SchoolAnnouncementsSchedule,
     TimeRange,
 )
+from homeaudio.vcal.cal.google_calendar import CalendarDay
 from homeaudio.vcal.calendar_refresh import (
     REFRESH_INTERVAL_MINUTES,
     REFRESH_OFFSET_SECONDS,
@@ -28,7 +29,7 @@ SCHEDULE = EventNotificationSchedule(
 
 # Schedules with no configured times, so tests that aren't exercising morning/school
 # announcements aren't affected by them (and don't need to know their default schedule).
-NO_MORNING_SCHEDULE = MorningAnnouncementsSchedule(weekdays=None, weekends=None)
+NO_MORNING_SCHEDULE = MorningAnnouncementsSchedule(weekdays=None, weekends=None, holidays=None)
 NO_SCHOOL_SCHEDULE = SchoolAnnouncementsSchedule(weekdays=None)
 
 # A MAX_SLEEP_SECONDS large enough that tests exercising multi-hour/overnight gaps aren't
@@ -36,10 +37,15 @@ NO_SCHOOL_SCHEDULE = SchoolAnnouncementsSchedule(weekdays=None)
 UNCAPPED_MAX_SLEEP_SECONDS = 60 * 60 * 24 * 7
 
 
+@pytest.fixture(autouse=True)
+def _no_calendar_days(monkeypatch):
+    monkeypatch.setattr("homeaudio.vcal.calendar_refresh.load_calendar_days", lambda: [])
+
+
 def test_wake_window_for_day_opens_a_lead_buffer_before_the_base_schedule_with_no_announcements():
     monday = datetime(2026, 4, 27, tzinfo=TIMEZONE).date()
 
-    window = _wake_window_for_day(monday, SCHEDULE, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE)
+    window = _wake_window_for_day(monday, SCHEDULE, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE, [])
 
     assert window == TimeRange(start=time(6, 45), end=SCHEDULE.weekdays.end)
 
@@ -50,7 +56,7 @@ def test_wake_window_for_day_opens_a_lead_buffer_before_an_earlier_announcement(
     morning_schedule = MorningAnnouncementsSchedule(weekdays=time(6, 30), weekends=None)
     monday = datetime(2026, 4, 27, tzinfo=TIMEZONE).date()
 
-    window = _wake_window_for_day(monday, SCHEDULE, morning_schedule, NO_SCHOOL_SCHEDULE)
+    window = _wake_window_for_day(monday, SCHEDULE, morning_schedule, NO_SCHOOL_SCHEDULE, [])
 
     assert window == TimeRange(start=time(6, 30 - 3 * REFRESH_INTERVAL_MINUTES), end=SCHEDULE.weekdays.end)
 
@@ -62,7 +68,7 @@ def test_wake_window_for_day_widens_the_end_for_a_later_announcement():
     morning_schedule = MorningAnnouncementsSchedule(weekdays=time(22, 0), weekends=None)
     monday = datetime(2026, 4, 27, tzinfo=TIMEZONE).date()
 
-    window = _wake_window_for_day(monday, SCHEDULE, morning_schedule, NO_SCHOOL_SCHEDULE)
+    window = _wake_window_for_day(monday, SCHEDULE, morning_schedule, NO_SCHOOL_SCHEDULE, [])
 
     assert window == TimeRange(start=time(6, 45), end=time(22, 0))
 
@@ -370,3 +376,12 @@ def test_calendar_refresh_loop_stops_promptly_instead_of_waiting_out_the_full_bo
 
     assert not thread.is_alive()
     assert len(refresh_calls) == 1  # only the startup refresh - the 30s boundary never arrived
+
+
+def test_wake_window_for_day_opens_a_lead_buffer_before_the_holidays_start_on_a_holiday():
+    schedule = SCHEDULE.model_copy(update={"holidays": TimeRange(start=time(9, 30), end=time(20, 0))})
+    monday = datetime(2026, 4, 27, tzinfo=TIMEZONE).date()
+
+    window = _wake_window_for_day(monday, schedule, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE, [CalendarDay(date=monday, holiday=True)])
+
+    assert window == TimeRange(start=time(9, 30 - 3 * REFRESH_INTERVAL_MINUTES), end=time(20, 0))

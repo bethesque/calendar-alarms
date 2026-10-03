@@ -17,6 +17,7 @@ from homeaudio.audio.settings import (
     SchoolAnnouncementsSettings,
     TimeRange,
 )
+from homeaudio.vcal.cal.google_calendar import CalendarDay, load_calendar_days
 from homeaudio.vcal.cli import refresh_calendar_data as fetch_and_save_calendar_data
 from homeaudio.vcal.event_notifications.events import update_calendar_travel_times
 from homeaudio.vcal.notification_schedule import announcement_times_for_day, event_notification_time_range_for_day
@@ -47,13 +48,14 @@ def _wake_window_for_day(
     schedule: EventNotificationSchedule,
     morning_schedule: MorningAnnouncementsSchedule,
     school_schedule: SchoolAnnouncementsSchedule,
+    calendar_days: list[CalendarDay],
 ) -> TimeRange:
     """EventNotificationSettings.schedule's operating hours for `day`, widened at either end to
     cover any morning/school announcement scheduled outside it, and opened 3 * REFRESH_INTERVAL_MINUTES
     before the earliest of those - room for a couple of retries on top of the day's first refresh,
     in case one fails, while still landing well before whichever notification fires first."""
-    base = event_notification_time_range_for_day(schedule, day)
-    boundary_times = [base.start, base.end, *announcement_times_for_day(day, morning_schedule, school_schedule)]
+    base = event_notification_time_range_for_day(schedule, day, calendar_days)
+    boundary_times = [base.start, base.end, *announcement_times_for_day(day, morning_schedule, school_schedule, calendar_days)]
     start = (datetime.combine(day, min(boundary_times)) - timedelta(minutes=3 * REFRESH_INTERVAL_MINUTES)).time()
     return TimeRange(start=start, end=max(boundary_times))
 
@@ -63,6 +65,7 @@ def next_refresh_boundary(
     schedule: EventNotificationSchedule | None = None,
     morning_schedule: MorningAnnouncementsSchedule | None = None,
     school_schedule: SchoolAnnouncementsSchedule | None = None,
+    calendar_days: list[CalendarDay] | None = None,
 ) -> datetime:
     """The next REFRESH_INTERVAL_MINUTES-aligned time at or after `now`, offset by
     REFRESH_OFFSET_SECONDS so it stays clear of the 5-minute marks calendar events (and so
@@ -82,6 +85,7 @@ def next_refresh_boundary(
     schedule = schedule or EventNotificationSettings().schedule
     morning_schedule = morning_schedule or MorningAnnouncementsSettings().schedule
     school_schedule = school_schedule or SchoolAnnouncementsSettings().schedule
+    calendar_days = load_calendar_days() if calendar_days is None else calendar_days
 
     floor_minute = (now.minute // REFRESH_INTERVAL_MINUTES) * REFRESH_INTERVAL_MINUTES
     candidate = now.replace(minute=0, second=0, microsecond=0) + timedelta(
@@ -91,7 +95,7 @@ def next_refresh_boundary(
         candidate += timedelta(minutes=REFRESH_INTERVAL_MINUTES)
 
     while True:
-        window = _wake_window_for_day(candidate.date(), schedule, morning_schedule, school_schedule)
+        window = _wake_window_for_day(candidate.date(), schedule, morning_schedule, school_schedule, calendar_days)
         if window.start <= candidate.time() < window.end:
             break
         offset = timedelta(seconds=REFRESH_OFFSET_SECONDS)
@@ -99,7 +103,7 @@ def next_refresh_boundary(
             candidate = datetime.combine(candidate.date(), window.start, tzinfo=candidate.tzinfo) + offset
         else:
             next_day = candidate.date() + timedelta(days=1)
-            next_window = _wake_window_for_day(next_day, schedule, morning_schedule, school_schedule)
+            next_window = _wake_window_for_day(next_day, schedule, morning_schedule, school_schedule, calendar_days)
             candidate = datetime.combine(next_day, next_window.start, tzinfo=candidate.tzinfo) + offset
 
     return min(candidate, now + timedelta(seconds=MAX_SLEEP_SECONDS))

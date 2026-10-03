@@ -7,7 +7,7 @@ from typing import Callable
 from homeaudio.audio.settings import SchoolAnnouncementsSchedule, SchoolAnnouncementsSettings, MpdSettings, SnapcastSettings
 from homeaudio.audio.tts_playback import play_tts_audio_file
 from homeaudio.audio.sound import join_mp3s_to_wav
-from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException, CalendarSource, get_events_for_date, CalendarDay
+from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException, CalendarSource, get_events_for_date, get_calendar_day_for_date, CalendarDay
 from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file, gtts_tld, TextToSpeechError
 from homeaudio.vcal import TIME_TO_LEAVE_FOR_SCHOOL, PACK_AN_UMBRELLA, TODAYS_SCHOOL_EVENTS_ARE, HAVE_A_NICE_DAY, IF_YOU_WANT, NOT_THE_BOSS, NO_CALENDAR_DATA, FIX_AUTHENTICATION
 from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, POST_ANNOUNCEMENT_SILENCE
@@ -20,14 +20,6 @@ CHANCE_OF_I_AM_NOT_THE_BOSS = 1/5
 ERROR_MESSAGE_AUDIO = "audio_resources/school_announcements_error_message.mp3"
 
 logger = logging.getLogger(__name__)
-
-def is_school_holiday(events: list[Event], holiday_keywords: list[str]) -> bool:
-    keywords = [keyword.lower() for keyword in holiday_keywords]
-    return any(
-        keyword in (event.summary or "").lower()
-        for event in events
-        for keyword in keywords
-    )
 
 def is_school_event(event: Event, school_event_keywords: list[str]) -> bool:
     keywords = [keyword.lower() for keyword in school_event_keywords]
@@ -127,16 +119,16 @@ def check_for_announcement(
         return None
 
     try:
-        events = get_events_for_date(calendar_days, base_time)
+        calendar_day = get_calendar_day_for_date(calendar_days, base_time)
     except MissingCalendarDataException:
         logger.info(f"No calendar data found for today's date ({base_time}), playing missing calendar data message.")
         return NotificationFile(path=_missing_calendar_data_response(tld))
 
-    if is_school_holiday(events, settings.holiday_keywords):
-        logger.info("A holiday keyword matched an event today; skipping school announcement.")
+    if calendar_day.holiday:
+        logger.info("Today is a school holiday; skipping school announcement.")
         return None
 
-    path = _create_audio_file_for_calendar_days(base_time, events, tld, settings)
+    path = _create_audio_file_for_calendar_days(base_time, calendar_day.all_events(), tld, settings)
     return NotificationFile(path=path) if path else None
 
 """

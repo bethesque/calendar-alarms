@@ -3,7 +3,7 @@ from datetime import datetime
 from enum import Enum
 from homeaudio.vcal.cal.google_calendar import CalendarSource
 from homeaudio.audio.settings import MorningAnnouncementsSettings, SchoolAnnouncementsSettings
-from homeaudio.vcal.school_announcements import is_school_holiday
+from homeaudio.vcal.notification_schedule import morning_announcement_time_for_day
 
 MORNING_ANNOUNCEMENTS_SUMMARY = "Morning announcements"
 SCHOOL_ANNOUNCEMENTS_SUMMARY = "School announcements"
@@ -33,7 +33,7 @@ def scheduled_announcement_notifications(
         tzinfo = day.date_time.tzinfo
 
         if morning_settings.enabled:
-            scheduled_time = morning_settings.schedule.weekends if is_weekend else morning_settings.schedule.weekdays
+            scheduled_time = morning_announcement_time_for_day(morning_settings.schedule, day.date, [day])
             if scheduled_time is not None:
                 notifications.append(ScheduledAnnouncementNotification(
                     summary=MORNING_ANNOUNCEMENTS_SUMMARY,
@@ -42,7 +42,7 @@ def scheduled_announcement_notifications(
                 ))
 
         if school_settings.enabled and not is_weekend and school_settings.schedule.weekdays is not None:
-            if not is_school_holiday(day.all_events(), school_settings.holiday_keywords):
+            if not day.holiday:
                 notifications.append(ScheduledAnnouncementNotification(
                     summary=SCHOOL_ANNOUNCEMENTS_SUMMARY,
                     type=ScheduledAnnouncementType.SCHOOL_ANNOUNCEMENTS,

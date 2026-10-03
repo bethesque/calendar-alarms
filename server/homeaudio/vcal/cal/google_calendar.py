@@ -61,12 +61,21 @@ class CalendarDay:
     whole_day_events: list[Event] = field(default_factory=list)
     timed_events: list[Event] = field(default_factory=list)
     date_time: datetime.datetime = None
+    holiday: bool = False
 
     def __post_init__(self):
         self.date_time = datetime.datetime.combine(self.date, datetime.time.min, tzinfo=ZoneInfo(TIMEZONE))
 
     def all_events(self):
         return self.whole_day_events + self.timed_events
+
+def is_school_holiday(events: list[Event], holiday_keywords: list[str]) -> bool:
+    keywords = [keyword.lower() for keyword in holiday_keywords]
+    return any(
+        keyword in (event.summary or "").lower()
+        for event in events
+        for keyword in keywords
+    )
 
 def load_google_creds(token_info: dict | None):
     creds = None
@@ -217,6 +226,7 @@ def load_data_from_any(days: Any) -> list[CalendarDay]:
                 date=datetime.date.fromisoformat(day["date"]),
                 whole_day_events=whole_day_events,
                 timed_events=timed_events,
+                holiday=day.get("holiday", False),
             )
             calendar_days.append(calendar_day)
         return calendar_days
@@ -241,9 +251,12 @@ def load_event(event_dict):
 
 
 def get_events_for_date(calendar_days, date_time):
+    return get_calendar_day_for_date(calendar_days, date_time).all_events()
+
+def get_calendar_day_for_date(calendar_days, date_time) -> CalendarDay:
     match = next((day for day in calendar_days if day.date == date_time.date()), None)
     if match:
-        return match.all_events()
+        return match
     else:
         available_dates = [str(day.date) for day in calendar_days]
         raise MissingCalendarDataException(f"Could not find day matching {str(date_time.date())} in days with dates: {available_dates}")
@@ -262,8 +275,10 @@ class CalendarSource:
     def creds_valid(self):
         return self.creds and self.creds.valid
 
-    def fetch_data(self, filter):
+    def fetch_data(self, filter, holiday_keywords: list[str]):
         self.calendar_days = get_calendar_days(self.creds, filter)
+        for day in self.calendar_days:
+            day.holiday = is_school_holiday(day.all_events(), holiday_keywords)
         self.refreshed_at = datetime.datetime.now().astimezone()
         return self.calendar_days
 
@@ -296,3 +311,14 @@ class CalendarSource:
 
     def file_exists(self) -> bool:
         return os.path.exists(self.cache_file_path)
+
+
+def load_calendar_days() -> list[CalendarDay]:
+    calendar_source = CalendarSource()
+    if not calendar_source.file_exists():
+        return []
+    try:
+        return calendar_source.load_data_from_file()
+    except Exception:
+        logger.exception(f"Error loading calendar data from {calendar_source.cache_file_path}")
+        return []

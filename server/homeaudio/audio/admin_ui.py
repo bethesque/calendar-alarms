@@ -105,6 +105,13 @@ class AdminRoutes:
                             subtitle="When to play the morning announcements on weekends (24 hour time format, eg 07:17:00 for 7:17am)",
                         ),
                     ),
+                    "morning_announcements_settings.schedule.holidays": FieldConfig(
+                        placeholder="HH:MM:SS",
+                        display=DisplayConfig(
+                            title="Holidays",
+                            subtitle="When to play the morning announcements on holidays (24 hour time format, eg 07:17:00 for 7:17am)",
+                        ),
+                    ),
                     "morning_announcements_settings.prelude_options.[]": FieldConfig(
                         display=DisplayConfig(
                             title="{text}",

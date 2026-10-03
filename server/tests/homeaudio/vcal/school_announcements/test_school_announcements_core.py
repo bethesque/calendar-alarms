@@ -5,7 +5,6 @@ import homeaudio.vcal.school_announcements as school_announcements_core
 from homeaudio.vcal.school_announcements import (
     build_text,
     build_audio_file,
-    is_school_holiday,
     get_school_events,
     get_weather_forecast,
     _announcement_due,
@@ -15,7 +14,7 @@ from homeaudio.vcal.school_announcements import (
     play_school_announcements,
     ERROR_MESSAGE_AUDIO,
 )
-from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException
+from homeaudio.vcal.cal.google_calendar import CalendarDay, Event, WeatherForecast
 from homeaudio.vcal.event_notifications.text_to_voice import TextToSpeechError
 from homeaudio.audio.settings import SchoolAnnouncementsSchedule, SchoolAnnouncementsSettings
 from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, POST_ANNOUNCEMENT_SILENCE
@@ -268,30 +267,6 @@ def test_collect_speech_files_uses_error_message_audio_in_place_of_first_failed_
 def test_error_message_audio_file_exists():
     assert os.path.exists(ERROR_MESSAGE_AUDIO) is True
 
-def test_is_school_holiday_true_when_holiday_keyword_matches_case_insensitively():
-    events = [
-        Event(owner="cal", summary="no SCHOOL today", description="", calendar_id="id"),
-    ]
-
-    assert is_school_holiday(events, DEFAULT_HOLIDAY_KEYWORDS) is True
-
-
-def test_is_school_holiday_true_for_configured_keyword():
-    events = [
-        Event(owner="cal", summary="Public Holiday", description="", calendar_id="id"),
-    ]
-
-    assert is_school_holiday(events, ["public holiday"]) is True
-
-
-def test_is_school_holiday_false_when_no_keyword_matches():
-    events = [
-        Event(owner="cal", summary="School Assembly", description="", calendar_id="id"),
-    ]
-
-    assert is_school_holiday(events, DEFAULT_HOLIDAY_KEYWORDS) is False
-
-
 def test_check_for_announcement_returns_none_when_settings_disabled():
     settings = SchoolAnnouncementsSettings(enabled=False, schedule=SchoolAnnouncementsSchedule(weekdays=time(8, 30, 0)))
 
@@ -311,7 +286,7 @@ def test_check_for_announcement_builds_the_audio_file_when_due(monkeypatch):
     seen = {}
 
     events = [Event(owner="cal", summary="School excursion", description="", calendar_id="id")]
-    monkeypatch.setattr(school_announcements_core, "get_events_for_date", lambda calendar_days, base_time: events)
+    calendar_days = [CalendarDay(date=MONDAY_8_30.date(), whole_day_events=events)]
 
     def fake_create_audio_file(base_time, events, tld, s):
         seen["args"] = (base_time, events, tld, s)
@@ -319,19 +294,19 @@ def test_check_for_announcement_builds_the_audio_file_when_due(monkeypatch):
 
     monkeypatch.setattr(school_announcements_core, "_create_audio_file_for_calendar_days", fake_create_audio_file)
 
-    result = check_for_announcement(MONDAY_8_30, 1, "calendar-days", "com", settings)
+    result = check_for_announcement(MONDAY_8_30, 1, calendar_days, "com", settings)
 
     assert result == NotificationFile(path="school_announcement.wav")
     assert seen["args"] == (MONDAY_8_30, events, "com", settings)
 
 
-def test_create_audio_file_for_calendar_days_returns_none_when_school_holiday(monkeypatch):
-    events = [Event(owner="cal", summary="NO SCHOOL today", description="", calendar_id="id")]
-    monkeypatch.setattr(school_announcements_core, "get_events_for_date", lambda calendar_days, base_time: events)
+def test_check_for_announcement_returns_none_when_the_day_is_a_holiday():
+    events = [Event(owner="cal", summary="School excursion", description="", calendar_id="id")]
+    calendar_days = [CalendarDay(date=MONDAY_8_30.date(), whole_day_events=events, holiday=True)]
 
     settings = SchoolAnnouncementsSettings(enabled=True, schedule=SchoolAnnouncementsSchedule(weekdays=time(8, 30, 0)), holiday_keywords=DEFAULT_HOLIDAY_KEYWORDS, school_event_keywords=DEFAULT_SCHOOL_EVENT_KEYWORDS)
 
-    assert check_for_announcement(MONDAY_8_30, 1, [], "com", settings) is None
+    assert check_for_announcement(MONDAY_8_30, 1, calendar_days, "com", settings) is None
 
 
 def test_create_audio_file_for_calendar_days_builds_audio_when_not_a_holiday(monkeypatch):
@@ -357,10 +332,6 @@ def test_create_audio_file_for_calendar_days_builds_audio_when_not_a_holiday(mon
 
 
 def test_create_audio_file_for_calendar_days_falls_back_when_calendar_data_missing(monkeypatch):
-    def raise_missing(calendar_days, base_time):
-        raise MissingCalendarDataException("no calendar data")
-
-    monkeypatch.setattr(school_announcements_core, "get_events_for_date", raise_missing)
     monkeypatch.setattr(school_announcements_core, "build_audio_file", lambda sentences, tld: "fallback.wav")
 
     settings = SchoolAnnouncementsSettings(enabled=True, schedule=SchoolAnnouncementsSchedule(weekdays=time(8, 30, 0)), holiday_keywords=DEFAULT_HOLIDAY_KEYWORDS, school_event_keywords=DEFAULT_SCHOOL_EVENT_KEYWORDS)

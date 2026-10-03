@@ -12,6 +12,7 @@ from homeaudio.audio.select_item import select_item_by_date, select_option
 from homeaudio.env import DEFAULT_GOOGLE_TRANSLATE_TLD
 from homeaudio.vcal.event_notifications import BACKGROUND_MUSIC_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, POST_ANNOUNCEMENT_SILENCE
 from homeaudio.vcal.playback import NotificationFile
+from homeaudio.vcal.notification_schedule import morning_announcement_time_for_day
 
 logger = logging.getLogger(__name__)
 
@@ -135,8 +136,8 @@ def _datestamp() -> str:
     now = datetime.now()
     return f"{now.strftime('%y%m%d%H%M%S')}{now.microsecond // 1000:03d}"
 
-def _announcement_due(base_time: datetime, window: int, schedule: MorningAnnouncementsSchedule) -> bool:
-    scheduled_time_of_day = schedule.weekdays if base_time.weekday() < 5 else schedule.weekends
+def _announcement_due(base_time: datetime, window: int, schedule: MorningAnnouncementsSchedule, calendar_days: list[CalendarDay]) -> bool:
+    scheduled_time_of_day = morning_announcement_time_for_day(schedule, base_time.date(), calendar_days)
     if scheduled_time_of_day is None:
         return False
 
@@ -172,7 +173,7 @@ def check_for_announcement(
         logger.debug(f"Morning announcements disabled")
         return None
 
-    if not _announcement_due(base_time, window, settings.schedule):
+    if not _announcement_due(base_time, window, settings.schedule, calendar_days):
         logger.debug(f"Morning announcements not due")
         return None
 

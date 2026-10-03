@@ -60,10 +60,10 @@ def test_scheduled_announcement_notifications_skips_disabled_announcements(monke
     assert notifications == []
 
 
-def test_scheduled_announcement_notifications_skips_school_announcement_on_a_holiday(monkeypatch):
+def test_scheduled_announcement_notifications_uses_holiday_morning_schedule_and_skips_school_on_a_holiday(monkeypatch):
     holiday_event = Event(owner="Beth", calendar_id="id", summary="School holidays", description="", start_time=None)
-    monday = CalendarDay(date=datetime(2026, 4, 6, tzinfo=TIMEZONE).date(), whole_day_events=[holiday_event])
-    morning_settings = MorningAnnouncementsSettings(schedule=MorningAnnouncementsSchedule(weekdays=time(7, 17), weekends=time(9, 57)))
+    monday = CalendarDay(date=datetime(2026, 4, 6, tzinfo=TIMEZONE).date(), whole_day_events=[holiday_event], holiday=True)
+    morning_settings = MorningAnnouncementsSettings(schedule=MorningAnnouncementsSchedule(weekdays=time(7, 17), weekends=time(9, 57), holidays=time(8, 45)))
     school_settings = SchoolAnnouncementsSettings(schedule=SchoolAnnouncementsSchedule(weekdays=time(8, 30)))
 
     notifications = scheduled_announcement_notifications(
@@ -71,5 +71,19 @@ def test_scheduled_announcement_notifications_skips_school_announcement_on_a_hol
     )
 
     assert notifications == [
-        ScheduledAnnouncementNotification(summary="Morning announcements", type=ScheduledAnnouncementType.MORNING_ANNOUNCEMENTS, due_datetime=datetime(2026, 4, 6, 7, 17, tzinfo=TIMEZONE)),
+        ScheduledAnnouncementNotification(summary="Morning announcements", type=ScheduledAnnouncementType.MORNING_ANNOUNCEMENTS, due_datetime=datetime(2026, 4, 6, 8, 45, tzinfo=TIMEZONE)),
+    ]
+
+
+def test_scheduled_announcement_notifications_uses_weekend_morning_schedule_on_a_weekend_holiday(monkeypatch):
+    saturday = CalendarDay(date=datetime(2026, 4, 11, tzinfo=TIMEZONE).date(), holiday=True)
+    morning_settings = MorningAnnouncementsSettings(schedule=MorningAnnouncementsSchedule(weekdays=time(7, 17), weekends=time(9, 57), holidays=time(8, 45)))
+    school_settings = SchoolAnnouncementsSettings(schedule=SchoolAnnouncementsSchedule(weekdays=time(8, 30)))
+
+    notifications = scheduled_announcement_notifications(
+        morning_settings, school_settings, _calendar_source_for([saturday], monkeypatch)
+    )
+
+    assert notifications == [
+        ScheduledAnnouncementNotification(summary="Morning announcements", type=ScheduledAnnouncementType.MORNING_ANNOUNCEMENTS, due_datetime=datetime(2026, 4, 11, 9, 57, tzinfo=TIMEZONE)),
     ]

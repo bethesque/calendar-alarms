@@ -12,25 +12,45 @@ from homeaudio.audio.settings import (
     SchoolAnnouncementsSchedule,
     TimeRange,
 )
+from homeaudio.vcal.cal.google_calendar import CalendarDay
 
 
-def event_notification_time_range_for_day(schedule: EventNotificationSchedule, day: date) -> TimeRange:
-    return schedule.weekdays if day.weekday() < 5 else schedule.weekends  # Monday=0 ... Sunday=6
+def is_holiday(day: date, calendar_days: list[CalendarDay]) -> bool:
+    return any(calendar_day.date == day and calendar_day.holiday for calendar_day in calendar_days)
 
 
-def within_event_notification_operating_hours(dt: datetime, schedule: EventNotificationSchedule) -> bool:
-    time_range = event_notification_time_range_for_day(schedule, dt.date())
+def event_notification_time_range_for_day(
+    schedule: EventNotificationSchedule, day: date, calendar_days: list[CalendarDay]
+) -> TimeRange:
+    if day.weekday() >= 5:  # Monday=0 ... Sunday=6
+        return schedule.weekends
+    return schedule.holidays if is_holiday(day, calendar_days) else schedule.weekdays
+
+
+def within_event_notification_operating_hours(
+    dt: datetime, schedule: EventNotificationSchedule, calendar_days: list[CalendarDay]
+) -> bool:
+    time_range = event_notification_time_range_for_day(schedule, dt.date(), calendar_days)
     return time_range.start <= dt.time() < time_range.end
+
+
+def morning_announcement_time_for_day(
+    schedule: MorningAnnouncementsSchedule, day: date, calendar_days: list[CalendarDay]
+) -> time | None:
+    if day.weekday() >= 5:  # Monday=0 ... Sunday=6
+        return schedule.weekends
+    return schedule.holidays if is_holiday(day, calendar_days) else schedule.weekdays
 
 
 def announcement_times_for_day(
     day: date,
     morning_schedule: MorningAnnouncementsSchedule,
     school_schedule: SchoolAnnouncementsSchedule,
+    calendar_days: list[CalendarDay],
 ) -> list[time]:
     """Times on `day` a morning/school announcement is due outside of - and so not otherwise
     covered by - EventNotificationSettings.schedule's operating hours."""
-    is_weekday = day.weekday() < 5  # Monday=0 ... Sunday=6
-    morning_time = morning_schedule.weekdays if is_weekday else morning_schedule.weekends
-    school_time = school_schedule.weekdays if is_weekday else None  # school announcements never run on weekends
+    is_school_day = day.weekday() < 5 and not is_holiday(day, calendar_days)
+    morning_time = morning_announcement_time_for_day(morning_schedule, day, calendar_days)
+    school_time = school_schedule.weekdays if is_school_day else None
     return [scheduled_time for scheduled_time in (morning_time, school_time) if scheduled_time is not None]
