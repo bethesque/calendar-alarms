@@ -1,9 +1,8 @@
 from datetime import datetime, timedelta
 
 from homeaudio.env import CALENDAR_DATA_DIRECTORY, LOG_LEVEL
-from homeaudio.vcal.cal.google_calendar import CalendarSource, Event
+from homeaudio.vcal.cal.google_calendar import CalendarSource, Event, refresh_calendar_data as do_refresh_calendar_data
 from homeaudio.audio.log_config import setup_logging_for_data_refresh
-from homeaudio.audio.settings import GoogleCalendarSettings
 
 """
 This script refreshes the calendar data and saves it to a local file.
@@ -11,22 +10,8 @@ This script refreshes the calendar data and saves it to a local file.
 
 setup_logging_for_data_refresh(str(LOG_LEVEL))
 
-class GoogleApiTokenNotFound(Exception):
-    pass
-
 def refresh_calendar_data():
-
-    calendar_source = CalendarSource()
-    print(f"Refreshing calendar data in {calendar_source.cache_file_path}...")
-    settings = GoogleCalendarSettings()
-    token_info = settings.token_info()
-    if token_info:
-        calendar_source.load_creds(token_info)
-        calendar_source.fetch_data(settings.calendars, settings.holiday_keywords)
-        calendar_source.save_data_to_file()
-    else:
-        raise GoogleApiTokenNotFound("Please set token.json in Google Calendar settings.")
-
+    do_refresh_calendar_data()
 
 def insert_test_event():
     calendar_source = CalendarSource()

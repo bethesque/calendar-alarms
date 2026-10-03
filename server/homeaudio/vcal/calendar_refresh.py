@@ -17,8 +17,7 @@ from homeaudio.audio.settings import (
     SchoolAnnouncementsSettings,
     TimeRange,
 )
-from homeaudio.vcal.cal.google_calendar import CalendarDay, load_calendar_days
-from homeaudio.vcal.cli import refresh_calendar_data as fetch_and_save_calendar_data
+from homeaudio.vcal.cal.google_calendar import CalendarDay, load_calendar_days, refresh_calendar_data
 from homeaudio.vcal.event_notifications.events import update_calendar_travel_times
 from homeaudio.vcal.notification_schedule import announcement_times_for_day, event_notification_time_range_for_day
 from homeaudio.env import CALENDAR_DATA_REFRESH_INTERVAL_MINUTES, CALENDAR_DATA_REFRESH_OFFSET_SECONDS
@@ -114,7 +113,7 @@ def refresh_calendar(base_time: datetime) -> None:
     loop reads from, then updates car_departure_time for today's located events"""
     try:
         logger.info("Refreshing calendar data at %s", base_time)
-        fetch_and_save_calendar_data()
+        refresh_calendar_data()
     except Exception:
         # A single bad refresh must never kill the loop - log and try again next boundary.
         logger.exception("Error refreshing calendar data at %s", base_time)

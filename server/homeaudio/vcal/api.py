@@ -14,9 +14,8 @@ from homeaudio.vcal.event_notifications.events import get_all_event_notification
 from homeaudio.vcal.event_notifications.scheduled_announcements import scheduled_announcement_notifications, ScheduledAnnouncementNotification, ScheduledAnnouncementType
 from homeaudio.vcal.event_notifications.models import TestNotificationRequest, PlayScheduledAnnouncementRequest, EventSummaryResponse, NotificationResponseItem, NotificationsResponse
 from homeaudio.vcal.event_notifications.events import EventNotification, LeaveForEvent
-from homeaudio.vcal.cli import refresh_calendar_data
 from homeaudio.audio.settings import SnapcastSettings, DepartureNotificationSettings, EventNotificationSettings
-from homeaudio.vcal.cal.google_calendar import load_calendar_days
+from homeaudio.vcal.cal.google_calendar import load_calendar_days, refresh_calendar_data
 from homeaudio.vcal.notification_schedule import within_event_notification_operating_hours
 from homeaudio.audio.string_utils import json_default_encoder
 from homeaudio.env import APP_NAME, NOTIFICATIONS_CHECK_INTERVAL_MINUTES

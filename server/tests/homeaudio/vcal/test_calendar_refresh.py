@@ -250,7 +250,7 @@ def test_next_refresh_boundary_ignores_school_announcement_schedule_on_weekends(
 def test_refresh_calendar_fetches_and_saves(monkeypatch):
     calls = []
     monkeypatch.setattr(
-        "homeaudio.vcal.calendar_refresh.fetch_and_save_calendar_data", lambda: calls.append("refreshed")
+        "homeaudio.vcal.calendar_refresh.refresh_calendar_data", lambda: calls.append("refreshed")
     )
     monkeypatch.setattr("homeaudio.vcal.calendar_refresh.update_calendar_travel_times", lambda: calls.append("travel_times_updated"))
 
@@ -263,14 +263,14 @@ def test_refresh_calendar_does_not_raise_when_fetching_fails(monkeypatch):
     def raise_error():
         raise RuntimeError("boom")
 
-    monkeypatch.setattr("homeaudio.vcal.calendar_refresh.fetch_and_save_calendar_data", raise_error)
+    monkeypatch.setattr("homeaudio.vcal.calendar_refresh.refresh_calendar_data", raise_error)
     monkeypatch.setattr("homeaudio.vcal.calendar_refresh.update_calendar_travel_times", lambda: pytest.fail("must not run when the fetch step failed"))
 
     refresh_calendar(datetime.now(TIMEZONE))  # must not raise
 
 
 def test_refresh_calendar_skips_travel_time_update_when_fetch_fails(monkeypatch):
-    monkeypatch.setattr("homeaudio.vcal.calendar_refresh.fetch_and_save_calendar_data", lambda: (_ for _ in ()).throw(RuntimeError("boom")))
+    monkeypatch.setattr("homeaudio.vcal.calendar_refresh.refresh_calendar_data", lambda: (_ for _ in ()).throw(RuntimeError("boom")))
     calls = []
     monkeypatch.setattr("homeaudio.vcal.calendar_refresh.update_calendar_travel_times", lambda: calls.append("travel_times_updated"))
 
@@ -280,7 +280,7 @@ def test_refresh_calendar_skips_travel_time_update_when_fetch_fails(monkeypatch)
 
 
 def test_refresh_calendar_does_not_raise_when_updating_travel_times_fails(monkeypatch):
-    monkeypatch.setattr("homeaudio.vcal.calendar_refresh.fetch_and_save_calendar_data", lambda: None)
+    monkeypatch.setattr("homeaudio.vcal.calendar_refresh.refresh_calendar_data", lambda: None)
 
     def raise_error():
         raise RuntimeError("boom")
@@ -291,7 +291,7 @@ def test_refresh_calendar_does_not_raise_when_updating_travel_times_fails(monkey
 
 
 def test_refresh_calendar_skips_travel_time_update_when_departure_notifications_disabled(monkeypatch):
-    monkeypatch.setattr("homeaudio.vcal.calendar_refresh.fetch_and_save_calendar_data", lambda: None)
+    monkeypatch.setattr("homeaudio.vcal.calendar_refresh.refresh_calendar_data", lambda: None)
     monkeypatch.setattr(
         "homeaudio.vcal.calendar_refresh.DepartureNotificationSettings",
         lambda: type("_S", (), {"enabled": False})(),
@@ -305,7 +305,7 @@ def test_refresh_calendar_skips_travel_time_update_when_departure_notifications_
 
 
 def test_refresh_calendar_updates_travel_times_when_departure_notifications_enabled(monkeypatch):
-    monkeypatch.setattr("homeaudio.vcal.calendar_refresh.fetch_and_save_calendar_data", lambda: None)
+    monkeypatch.setattr("homeaudio.vcal.calendar_refresh.refresh_calendar_data", lambda: None)
     monkeypatch.setattr(
         "homeaudio.vcal.calendar_refresh.DepartureNotificationSettings",
         lambda: type("_S", (), {"enabled": True})(),

@@ -16,7 +16,7 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-from homeaudio.audio.settings import CalendarSetting
+from homeaudio.audio.settings import CalendarSetting, GoogleCalendarSettings
 from homeaudio.env import CALENDAR_DATA_DIRECTORY
 
 
@@ -29,6 +29,9 @@ TIMEZONE = "Australia/Melbourne"
 logger = logging.getLogger(__name__)
 
 class MissingCalendarDataException(Exception):
+    pass
+
+class GoogleApiTokenNotFound(Exception):
     pass
 
 @dataclass
@@ -324,3 +327,16 @@ def load_calendar_days() -> list[CalendarDay]:
     except Exception:
         logger.exception(f"Error loading calendar data from {calendar_source.cache_file_path}")
         return []
+
+
+def refresh_calendar_data():
+    calendar_source = CalendarSource()
+    logger.info(f"Refreshing calendar data in {calendar_source.cache_file_path}...")
+    settings = GoogleCalendarSettings()
+    token_info = settings.token_info()
+    if token_info:
+        calendar_source.load_creds(token_info)
+        calendar_source.fetch_data(settings.calendars, settings.holiday_keywords)
+        calendar_source.save_data_to_file()
+    else:
+        raise GoogleApiTokenNotFound("Please set token.json in Google Calendar settings.")
