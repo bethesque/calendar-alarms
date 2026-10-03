@@ -16,6 +16,7 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+from homeaudio.audio.settings import CalendarSetting
 from homeaudio.env import CALENDAR_DATA_DIRECTORY
 
 
@@ -69,9 +70,9 @@ class CalendarDay:
     def all_events(self):
         return self.whole_day_events + self.timed_events
 
-def is_school_holiday(events: list[Event], holiday_keywords: list[str]) -> bool:
+def is_school_holiday(events: list[Event], holiday_keywords: list[str], holiday_calendar_ids: list[str] = ()) -> bool:
     keywords = [keyword.lower() for keyword in holiday_keywords]
-    return any(
+    return any(event.calendar_id in holiday_calendar_ids for event in events) or any(
         keyword in (event.summary or "").lower()
         for event in events
         for keyword in keywords
@@ -189,7 +190,7 @@ def displayed_day_includes_event(displayed_calendar_day, event_dict):
     return displayed_calendar_day.date == start_date or ( start_date < displayed_calendar_day.date and displayed_calendar_day.date_time < end_date_time )
 
 
-def get_calendar_days(creds, filter):
+def get_calendar_days(creds, calendars: list[CalendarSetting]):
     google_calendars = list_google_calendars(creds)
     google_calendars_by_id = {calendar.id: calendar for calendar in google_calendars}
     start_of_today = datetime.datetime.combine(
@@ -201,8 +202,8 @@ def get_calendar_days(creds, filter):
         for offset in range(DAYS_TO_FETCH)
     ]
 
-    for cal_id, display_name, owner_count in filter:
-        gcal = google_calendars_by_id[cal_id]
+    for calendar in calendars:
+        gcal = google_calendars_by_id[calendar.id]
         if gcal:
             events = list_google_events(
                 creds,
@@ -211,7 +212,7 @@ def get_calendar_days(creds, filter):
                 end_of_period,
             )
             logger.info(f"Adding events from id: {gcal.id} name: {gcal.name}")
-            add_events_to_calendars(events, cal_id, display_name, displayed_calendar_days, owner_count)
+            add_events_to_calendars(events, calendar.id, calendar.name, displayed_calendar_days, calendar.owner_count)
 
     for cal in displayed_calendar_days:
         cal.timed_events.sort(key=attrgetter("start_time"))
@@ -275,10 +276,11 @@ class CalendarSource:
     def creds_valid(self):
         return self.creds and self.creds.valid
 
-    def fetch_data(self, filter, holiday_keywords: list[str]):
-        self.calendar_days = get_calendar_days(self.creds, filter)
+    def fetch_data(self, calendars: list[CalendarSetting], holiday_keywords: list[str]):
+        self.calendar_days = get_calendar_days(self.creds, calendars)
+        holiday_calendar_ids = [calendar.id for calendar in calendars if calendar.holiday]
         for day in self.calendar_days:
-            day.holiday = is_school_holiday(day.all_events(), holiday_keywords)
+            day.holiday = is_school_holiday(day.all_events(), holiday_keywords, holiday_calendar_ids)
         self.refreshed_at = datetime.datetime.now().astimezone()
         return self.calendar_days
 

@@ -22,7 +22,7 @@ def refresh_calendar_data():
     token_info = settings.token_info()
     if token_info:
         calendar_source.load_creds(token_info)
-        calendar_source.fetch_data(settings.calendar_filter(), settings.holiday_keywords)
+        calendar_source.fetch_data(settings.calendars, settings.holiday_keywords)
         calendar_source.save_data_to_file()
     else:
         raise GoogleApiTokenNotFound("Please set token.json in Google Calendar settings.")

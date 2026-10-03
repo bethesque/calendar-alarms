@@ -133,6 +133,7 @@ class CalendarSetting(BaseModel):
     id: str
     name: str
     owner_count: int = 0
+    holiday: bool = Field(default=False, title="Are all events holidays?", description="Events in this calendar are treated as holidays. This affects the notification operation schedule and the morning announcements time.")
 
 class NotificationRule(BaseModel):
     summary_pattern: str | None = Field(default=None, description="The substring to match in the event summary")
@@ -215,9 +216,6 @@ class GoogleCalendarSettings(YAMLSettings):
 
     def token_info(self) -> dict | None:
         return json.loads(self.token_file.content()) if self.token_file else None
-
-    def calendar_filter(self)-> list[tuple]:
-        return [(cal.id, cal.name, cal.owner_count) for cal in self.calendars]
 
     model_config = SettingsConfigDict(
         yaml_file=f"{CONFIG_DIR}/google_calendar.yaml"

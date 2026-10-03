@@ -1,6 +1,7 @@
 from datetime import date
 
 import homeaudio.vcal.cal.google_calendar as google_calendar
+from homeaudio.audio.settings import CalendarSetting
 from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarSource, Event, is_school_holiday, load_calendar_days, load_google_creds
 
 DEFAULT_HOLIDAY_KEYWORDS = ["no school", "school holidays"]
@@ -43,13 +44,38 @@ def test_is_school_holiday_false_when_no_keyword_matches():
     assert is_school_holiday(events, DEFAULT_HOLIDAY_KEYWORDS) is False
 
 
+def test_is_school_holiday_true_when_event_is_from_a_holiday_calendar():
+    events = [Event(owner="cal", summary="Labour Day", description="", calendar_id="holidays-id")]
+
+    assert is_school_holiday(events, DEFAULT_HOLIDAY_KEYWORDS, ["holidays-id"]) is True
+
+
+def test_is_school_holiday_false_when_event_is_not_from_a_holiday_calendar():
+    events = [Event(owner="cal", summary="Labour Day", description="", calendar_id="other-id")]
+
+    assert is_school_holiday(events, DEFAULT_HOLIDAY_KEYWORDS, ["holidays-id"]) is False
+
+
+def test_fetch_data_sets_holiday_on_days_with_a_holiday_calendar_event(monkeypatch):
+    holiday_event = Event(owner="cal", summary="Labour Day", description="", calendar_id="holidays-id")
+    days = [
+        CalendarDay(date=date(2026, 4, 6), whole_day_events=[holiday_event]),
+        CalendarDay(date=date(2026, 4, 7)),
+    ]
+    monkeypatch.setattr(google_calendar, "get_calendar_days", lambda creds, calendars: days)
+
+    calendar_days = CalendarSource(cache_file_path="").fetch_data([CalendarSetting(id="holidays-id", name="Public Holidays", holiday=True)], DEFAULT_HOLIDAY_KEYWORDS)
+
+    assert [day.holiday for day in calendar_days] == [True, False]
+
+
 def test_fetch_data_sets_holiday_on_days_with_a_holiday_keyword_event(monkeypatch):
     holiday_event = Event(owner="cal", summary="School holidays", description="", calendar_id="id")
     days = [
         CalendarDay(date=date(2026, 4, 6), whole_day_events=[holiday_event]),
         CalendarDay(date=date(2026, 4, 7)),
     ]
-    monkeypatch.setattr(google_calendar, "get_calendar_days", lambda creds, filter: days)
+    monkeypatch.setattr(google_calendar, "get_calendar_days", lambda creds, calendars: days)
 
     calendar_days = CalendarSource(cache_file_path="").fetch_data([], DEFAULT_HOLIDAY_KEYWORDS)
 

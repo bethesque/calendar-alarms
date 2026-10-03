@@ -164,3 +164,4 @@ def test_google_calendar_token_info_parses_token_file_json(tmp_path, monkeypatch
     token_file = UploadedFile(name="token.json", size=13, type="application/json", data="data:application/json;base64,eyJhIjogImIifQ==")
 
     assert GoogleCalendarSettings(token_file=token_file).token_info() == {"a": "b"}
+
