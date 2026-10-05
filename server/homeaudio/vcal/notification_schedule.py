@@ -34,6 +34,17 @@ def within_event_notification_operating_hours(
     return time_range.start <= dt.time() < time_range.end
 
 
+def event_notification_window_range(
+    base_time: datetime, window: int, schedule: EventNotificationSchedule, calendar_days: list[CalendarDay]
+) -> tuple[int, int]:
+    """(from, to) minute offsets from `base_time` to search for event notifications, reaching back to
+    midnight on the first tick of operating hours so notifications due before then aren't missed."""
+    if base_time.time() != event_notification_time_range_for_day(schedule, base_time.date(), calendar_days).start:
+        return (0, window)
+    midnight = datetime.combine(base_time.date(), time(0), tzinfo=base_time.tzinfo)
+    return (-int((base_time - midnight).total_seconds() // 60), window)
+
+
 def morning_announcement_time_for_day(
     schedule: MorningAnnouncementsSchedule, day: date, calendar_days: list[CalendarDay]
 ) -> time | None:

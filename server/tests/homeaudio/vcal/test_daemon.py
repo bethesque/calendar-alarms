@@ -236,7 +236,7 @@ def _patch_enabled(monkeypatch, *, main_settings_enabled=True, event_notificatio
     )
     monkeypatch.setattr(
         "homeaudio.vcal.daemon.EventNotificationSettings",
-        lambda: type("_S", (), {"enabled": event_notification_settings_enabled})(),
+        lambda: type("_S", (), {"enabled": event_notification_settings_enabled, "schedule": SCHEDULE})(),
     )
 
 
@@ -306,12 +306,12 @@ def test_check_for_notifications_returns_none_when_nothing_is_due(monkeypatch):
     monkeypatch.setattr(
         "homeaudio.vcal.daemon.CalendarSource",
         lambda *a, **k: type(
-            "_C", (), {"file_exists": lambda self: True, "cache_file_path": "calendar.json", "load_data_from_file": lambda self: None}
+            "_C", (), {"file_exists": lambda self: True, "cache_file_path": "calendar.json", "load_data_from_file": lambda self: []}
         )(),
     )
     monkeypatch.setattr(
         "homeaudio.vcal.daemon.prepare_notification_files",
-        lambda base_time, window, calendar_data: None,
+        lambda base_time, window_range, calendar_data: None,
     )
 
     assert check_for_notifications(datetime.now(TIMEZONE)) is None
@@ -322,17 +322,51 @@ def test_check_for_notifications_returns_the_prepared_files_when_something_is_du
     monkeypatch.setattr(
         "homeaudio.vcal.daemon.CalendarSource",
         lambda *a, **k: type(
-            "_C", (), {"file_exists": lambda self: True, "cache_file_path": "calendar.json", "load_data_from_file": lambda self: None}
+            "_C", (), {"file_exists": lambda self: True, "cache_file_path": "calendar.json", "load_data_from_file": lambda self: []}
         )(),
     )
     prepared = NotificationFiles(event_announcements_file=NotificationFile(path="announce.wav"))
     monkeypatch.setattr(
         "homeaudio.vcal.daemon.prepare_notification_files",
-        lambda base_time, window, calendar_data: prepared,
+        lambda base_time, window_range, calendar_data: prepared,
     )
 
     assert check_for_notifications(datetime.now(TIMEZONE)) is prepared
 
+
+
+def _capture_prepare_window_range(monkeypatch) -> list:
+    _patch_enabled(monkeypatch)
+    monkeypatch.setattr(
+        "homeaudio.vcal.daemon.CalendarSource",
+        lambda *a, **k: type(
+            "_C", (), {"file_exists": lambda self: True, "cache_file_path": "calendar.json", "load_data_from_file": lambda self: []}
+        )(),
+    )
+    window_ranges = []
+    monkeypatch.setattr(
+        "homeaudio.vcal.daemon.prepare_notification_files",
+        lambda base_time, window_range, calendar_data: window_ranges.append(window_range),
+    )
+    return window_ranges
+
+
+def test_check_for_notifications_reaches_back_to_midnight_at_the_start_of_operating_hours(monkeypatch):
+    window_ranges = _capture_prepare_window_range(monkeypatch)
+    monkeypatch.setattr("homeaudio.vcal.daemon.CHECK_INTERVAL_MINUTES", 5)
+
+    check_for_notifications(datetime(2026, 4, 27, 7, 0, tzinfo=TIMEZONE))  # Monday
+
+    assert window_ranges == [(-420, 5)]
+
+
+def test_check_for_notifications_uses_the_check_interval_after_the_start_of_operating_hours(monkeypatch):
+    window_ranges = _capture_prepare_window_range(monkeypatch)
+    monkeypatch.setattr("homeaudio.vcal.daemon.CHECK_INTERVAL_MINUTES", 5)
+
+    check_for_notifications(datetime(2026, 4, 27, 7, 5, tzinfo=TIMEZONE))  # Monday
+
+    assert window_ranges == [(0, 5)]
 
 def test_play_notification_files_plays_the_prepared_files(monkeypatch):
     calls = []

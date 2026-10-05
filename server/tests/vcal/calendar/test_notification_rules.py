@@ -35,7 +35,7 @@ def test_notification_rule_with_reminder_e2e(monkeypatch):
 
     calendar_data = CalendarSource(cache_file_path="").load_data_from_any(days)
     rule = NotificationRule(summary_pattern="Gym", notification_type='announce', offset_minutes=0, reminder="Remember to eat.")
-    alarm_finder = NotificationFinder(calendar_data, base_time, 5, [rule])
+    alarm_finder = NotificationFinder(calendar_data, base_time, (0, 5), [rule])
     event_notifications = alarm_finder.find_notification_events()
 
     # Greeting and before/after ordering are randomised; pin them for a deterministic assertion.

@@ -114,7 +114,7 @@ def test_test_notification_builds_a_calendar_day_for_today_and_checks_and_plays_
     monkeypatch.setattr(
         core_module,
         "check_for_and_play_notifications",
-        lambda base_time, window, calendar_days, scene: calls.append((base_time, window, calendar_days, scene)),
+        lambda base_time, window_range, calendar_days, scene: calls.append((base_time, window_range, calendar_days, scene)),
     )
     monkeypatch.setattr(core_module, "scene_for_env", lambda: "the-scene")
 
@@ -134,12 +134,28 @@ def test_test_notification_builds_a_calendar_day_for_today_and_checks_and_plays_
     core_module.test_notification(event, notification_time)
 
     assert len(calls) == 1
-    base_time, window, calendar_days, scene = calls[0]
+    base_time, window_range, calendar_days, scene = calls[0]
     assert base_time == notification_time
-    assert window == 5
+    assert window_range == (0, 5)
     assert scene == "the-scene"
     assert len(calendar_days) == 1
     assert calendar_days[0].date == notification_time.date()
     assert [e.summary for e in calendar_days[0].timed_events] == ["Gym session"]
     assert calendar_days[0].timed_events[0].start_time == notification_time
     assert calendar_days[0].whole_day_events == []
+
+
+def test_prepare_notification_files_passes_the_window_range_to_event_notifications_and_only_its_end_to_announcements(monkeypatch):
+    calls = {}
+    monkeypatch.setattr(core_module, "gtts_tld", lambda: "com")
+    monkeypatch.setattr(
+        core_module,
+        "check_for_event_notifications",
+        lambda base_time, window_range, *args: calls.setdefault("event", window_range) and (None, None),
+    )
+    monkeypatch.setattr(core_module, "check_for_morning_announcements", lambda base_time, window, *args: calls.setdefault("morning", window) and None)
+    monkeypatch.setattr(core_module, "check_for_school_announcements", lambda base_time, window, *args: calls.setdefault("school", window) and None)
+
+    core_module.prepare_notification_files(datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE), (-420, 5), [])
+
+    assert calls == {"event": (-420, 5), "morning": 5, "school": 5}

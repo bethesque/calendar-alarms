@@ -12,6 +12,7 @@ from homeaudio.vcal.notification_schedule import (
     announcement_times_for_day,
     morning_announcement_time_for_day,
     event_notification_time_range_for_day,
+    event_notification_window_range,
     within_event_notification_operating_hours,
 )
 
@@ -132,3 +133,33 @@ def test_announcement_times_for_day_uses_holiday_morning_time_and_omits_school_t
     monday = datetime(2026, 4, 27, tzinfo=TIMEZONE).date()
 
     assert announcement_times_for_day(monday, morning_schedule, school_schedule, [CalendarDay(date=monday, holiday=True)]) == [time(8, 15)]
+
+
+def test_event_notification_window_range_reaches_back_to_midnight_at_the_weekday_start():
+    base_time = datetime(2026, 4, 27, 7, 0, tzinfo=TIMEZONE)  # Monday
+
+    assert event_notification_window_range(base_time, 5, SCHEDULE, []) == (-420, 5)
+
+
+def test_event_notification_window_range_reaches_back_to_midnight_at_the_weekend_start():
+    base_time = datetime(2026, 4, 25, 8, 0, tzinfo=TIMEZONE)  # Saturday
+
+    assert event_notification_window_range(base_time, 5, SCHEDULE, []) == (-480, 5)
+
+
+def test_event_notification_window_range_reaches_back_to_midnight_at_the_holiday_start():
+    base_time = datetime(2026, 4, 27, 9, 30, tzinfo=TIMEZONE)  # Monday
+
+    assert event_notification_window_range(base_time, 5, SCHEDULE, [CalendarDay(date=base_time.date(), holiday=True)]) == (-570, 5)
+
+
+def test_event_notification_window_range_is_unchanged_after_the_start():
+    base_time = datetime(2026, 4, 27, 7, 5, tzinfo=TIMEZONE)  # Monday
+
+    assert event_notification_window_range(base_time, 5, SCHEDULE, []) == (0, 5)
+
+
+def test_event_notification_window_range_is_unchanged_at_another_days_start_time():
+    base_time = datetime(2026, 4, 27, 8, 0, tzinfo=TIMEZONE)  # Monday at the weekend start time
+
+    assert event_notification_window_range(base_time, 5, SCHEDULE, []) == (0, 5)

@@ -84,7 +84,7 @@ def test_check_for_notifications_with_announce_event_plays_via_mpd(monkeypatch, 
 
     check_for_and_play_notifications(
         base_time,
-        5,
+        (0, 5),
         calendar_data,
         NullScene(),
         event_notification_settings=EventNotificationSettings(notification_rules=[]),
@@ -123,7 +123,7 @@ def test_check_for_notifications_plays_due_snoozed_notification_with_nothing_els
 
     check_for_and_play_notifications(
         base_time,
-        5,
+        (0, 5),
         calendar_data,
         NullScene(),
         event_notification_settings=EventNotificationSettings(notification_rules=[]),

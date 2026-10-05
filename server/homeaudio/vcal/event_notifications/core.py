@@ -23,9 +23,9 @@ logger = logging.getLogger(__name__)
 # Only used for testing
 # Builds and immediately plays whatever calendar-driven notifications (plus any due snoozes) are
 # due at base_time. Used by the cron-invoked cal-alarm-check entry point (event_notifications/cli.py).
-def check_for_and_play_notifications(base_time, window, calendar_days: list[CalendarDay], scene: SceneProtocol, event_notification_settings: EventNotificationSettings | None = None, departure_notification_settings: DepartureNotificationSettings | None = None) -> None:
+def check_for_and_play_notifications(base_time, window_range: tuple[int, int], calendar_days: list[CalendarDay], scene: SceneProtocol, event_notification_settings: EventNotificationSettings | None = None, departure_notification_settings: DepartureNotificationSettings | None = None) -> None:
     event_notification_settings = event_notification_settings or EventNotificationSettings()
-    announcements_file, alarm_audio_file = check_for_event_notifications(base_time, window, calendar_days, gtts_tld(), event_notification_settings, departure_notification_settings)
+    announcements_file, alarm_audio_file = check_for_event_notifications(base_time, window_range, calendar_days, gtts_tld(), event_notification_settings, departure_notification_settings)
     if announcements_file or alarm_audio_file:
         play_notifications(
             NotificationFiles(event_alarms_file=alarm_audio_file, event_announcements_file=announcements_file),
@@ -36,9 +36,9 @@ def check_for_and_play_notifications(base_time, window, calendar_days: list[Cale
 # their announcement/alarm audio files, without playing them. Used by the daemon's early wake-up
 # (homeaudio/vcal/daemon.py) so it can build audio ahead of a scheduled tick and play right on time;
 # check_for_notifications above uses it too, just followed immediately by playing.
-def find_due_event_notifications(base_time, window, calendar_days: list[CalendarDay], event_notification_settings: EventNotificationSettings | None = None, departure_notification_settings: DepartureNotificationSettings | None = None) -> list[EventNotification]:
+def find_due_event_notifications(base_time, window_range: tuple[int, int], calendar_days: list[CalendarDay], event_notification_settings: EventNotificationSettings | None = None, departure_notification_settings: DepartureNotificationSettings | None = None) -> list[EventNotification]:
     event_notification_settings = event_notification_settings or EventNotificationSettings()
-    event_notifications = get_event_notifications(base_time, window, calendar_days, event_notification_settings, departure_notification_settings)
+    event_notifications = get_event_notifications(base_time, window_range, calendar_days, event_notification_settings, departure_notification_settings)
     event_notifications = event_notifications + snooze.due_snoozed_event_notifications(base_time)
     return event_notifications
 
@@ -46,8 +46,8 @@ def find_due_event_notifications(base_time, window, calendar_days: list[Calendar
 # their announcement/alarm audio files, without playing them. Used by the daemon's early wake-up
 # (homeaudio/vcal/daemon.py) so it can build audio ahead of a scheduled tick and play right on time;
 # check_for_notifications above uses it too, just followed immediately by playing.
-def check_for_event_notifications(base_time, window, calendar_days: list[CalendarDay], tld: str, event_notification_settings: EventNotificationSettings | None = None, departure_notification_settings: DepartureNotificationSettings | None = None) -> tuple[NotificationFile | None, NotificationFile | None]:
-    event_notifications = find_due_event_notifications(base_time, window, calendar_days, event_notification_settings, departure_notification_settings)
+def check_for_event_notifications(base_time, window_range: tuple[int, int], calendar_days: list[CalendarDay], tld: str, event_notification_settings: EventNotificationSettings | None = None, departure_notification_settings: DepartureNotificationSettings | None = None) -> tuple[NotificationFile | None, NotificationFile | None]:
+    event_notifications = find_due_event_notifications(base_time, window_range, calendar_days, event_notification_settings, departure_notification_settings)
     if not event_notifications:
         return (None, None)
 

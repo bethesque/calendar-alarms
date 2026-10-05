@@ -5,6 +5,7 @@ from homeaudio.audio.settings import EventNotificationSettings, NotificationRule
 from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarSource, Event
 from homeaudio.vcal.event_notifications.events import (
     get_calendar_refreshed_at,
+    NotificationFinder,
     get_event_notifications,
     round_down_to_interval,
     update_calendar_travel_times,
@@ -54,7 +55,7 @@ def test_get_event_notifications_ignores_disabled_rules():
     disabled_rule = NotificationRule(summary_pattern="Gym", notification_type="alarm", offset_minutes=0, enabled=False)
     settings = EventNotificationSettings(notification_rules=[enabled_rule, disabled_rule])
 
-    notifications = get_event_notifications(base_time, 5, calendar_data, settings)
+    notifications = get_event_notifications(base_time, (0, 5), calendar_data, settings)
 
     assert len(notifications) == 1
     assert notifications[0].notification_rule is enabled_rule
@@ -140,3 +141,44 @@ def test_update_calendar_travel_times_saves_computed_departure_time_for_today_an
     assert tomorrow_event.car_departure_time == computed_departure_time
     assert day_after_tomorrow_event.car_departure_time is None
     assert saved == [True]
+
+
+def _announce_events_at(*times: str) -> list[CalendarDay]:
+    days = [
+        {
+            "date": "2026-04-06",
+            "date_time": "2026-04-06T00:00:00+10:00",
+            "timed_events": [
+                {
+                    "description": "#announce",
+                    "end_time": None,
+                    "owner": "Beth",
+                    "calendar_id": "id",
+                    "recurring": False,
+                    "start_time": f"2026-04-06T{event_time}:00+10:00",
+                    "summary": event_time,
+                }
+                for event_time in times
+            ],
+            "whole_day_events": []
+        }
+    ]
+    return CalendarSource(cache_file_path="").load_data_from_any(days)
+
+
+def test_notification_finder_includes_notifications_from_the_start_of_the_window_range():
+    calendar_data = _announce_events_at("06:30", "07:03", "07:05")
+    base_time = datetime.fromisoformat("2026-04-06T07:00:00+10:00")
+
+    notifications = NotificationFinder(calendar_data, base_time, (-420, 5)).find_notification_events()
+
+    assert [n.event.summary for n in notifications] == ["06:30", "07:03"]
+
+
+def test_notification_finder_only_includes_the_next_window_for_a_zero_start_offset():
+    calendar_data = _announce_events_at("06:30", "07:03", "07:05")
+    base_time = datetime.fromisoformat("2026-04-06T07:00:00+10:00")
+
+    notifications = NotificationFinder(calendar_data, base_time, (0, 5)).find_notification_events()
+
+    assert [n.event.summary for n in notifications] == ["07:03"]

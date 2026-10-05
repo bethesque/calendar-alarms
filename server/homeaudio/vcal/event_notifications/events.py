@@ -204,10 +204,10 @@ def round_down_to_interval(dt: datetime, interval_minutes: int) -> datetime:
     return dt.replace(minute=minute, second=0, microsecond=0)
 
 class NotificationFinder:
-    def __init__(self, calendar_days: list[CalendarDay], base_time, window, notification_rules=None, departure_notification_settings: DepartureNotificationSettings | None = None):
+    def __init__(self, calendar_days: list[CalendarDay], base_time, window_range: tuple[int, int], notification_rules=None, departure_notification_settings: DepartureNotificationSettings | None = None):
         self.calendar_days = calendar_days
         self.base_time = base_time
-        self.window = window
+        self.window_range = window_range
         self.notification_rules = notification_rules or []
         self.departure_notification_settings = departure_notification_settings
 
@@ -228,16 +228,16 @@ class NotificationFinder:
 
 
     def _get_time_window(self):
-        start_time = round_down_to_interval(self.base_time, self.window)
-        end_time = start_time + timedelta(minutes=self.window)
-        return start_time, end_time
+        window_from, window_to = self.window_range
+        rounded_base_time = round_down_to_interval(self.base_time, window_to)
+        return rounded_base_time + timedelta(minutes=window_from), rounded_base_time + timedelta(minutes=window_to)
 
     def _log_results(self, start, end, results:list[EventNotification]):
         logger.info(
-            "Time window: %s → %s (WINDOW=%d mins)",
+            "Time window: %s → %s (WINDOW=%s mins)",
             start.isoformat(),
             end.isoformat(),
-            self.window)
+            self.window_range)
 
         for event_notification in results:
             logger.info(
@@ -251,9 +251,9 @@ class NotificationFinder:
         logger.info("Total matched events: %d", len(results))
         return results
 
-def get_event_notifications(base_time, window, calendar_data: list[CalendarDay], event_notification_settings: EventNotificationSettings, departure_notification_settings: DepartureNotificationSettings | None = None):
+def get_event_notifications(base_time, window_range: tuple[int, int], calendar_data: list[CalendarDay], event_notification_settings: EventNotificationSettings, departure_notification_settings: DepartureNotificationSettings | None = None):
     notification_rules = event_notification_settings.enabled_notification_rules()
-    alarm_finder = NotificationFinder(calendar_data, base_time, window, notification_rules, departure_notification_settings)
+    alarm_finder = NotificationFinder(calendar_data, base_time, window_range, notification_rules, departure_notification_settings)
     event_notifications = alarm_finder.find_notification_events()
     return event_notifications
 

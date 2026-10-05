@@ -55,7 +55,7 @@ def check_alarms():
         base_time = args.base_time or datetime.now().astimezone()
         calendar_data = load_calendar_days(args.calendar_file)
 
-        check_for_and_play_notifications(base_time, args.window, calendar_data, scene_for_env())
+        check_for_and_play_notifications(base_time, (0, args.window), calendar_data, scene_for_env())
     except Exception:
         logger.exception("Error checking for alarms")
         exit(1)

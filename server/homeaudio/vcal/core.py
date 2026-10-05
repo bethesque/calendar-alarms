@@ -128,7 +128,7 @@ def test_alarm():
 
     calendar_data = CalendarSource(cache_file_path="").load_data_from_any(days)
 
-    announcements_file, alarm_audio_file = check_for_event_notifications(now, 5, calendar_data, gtts_tld(), EventNotificationSettings())
+    announcements_file, alarm_audio_file = check_for_event_notifications(now, (0, 5), calendar_data, gtts_tld(), EventNotificationSettings())
     notification_files = NotificationFiles(event_alarms_file=alarm_audio_file, event_announcements_file=announcements_file)
     play_notifications(notification_files, scene_for_env())
 
@@ -156,7 +156,7 @@ def test_announcement():
 
     calendar_data = CalendarSource(cache_file_path="").load_data_from_any(days)
 
-    announcements_file, alarm_audio_file = check_for_event_notifications(now, 5, calendar_data, gtts_tld(), EventNotificationSettings())
+    announcements_file, alarm_audio_file = check_for_event_notifications(now, (0, 5), calendar_data, gtts_tld(), EventNotificationSettings())
     notification_files = NotificationFiles(event_alarms_file=alarm_audio_file, event_announcements_file=announcements_file)
     play_notifications(notification_files, scene_for_env())
 
@@ -174,19 +174,20 @@ def test_notification(event: dict, notification_time: datetime):
 
     calendar_data = CalendarSource(cache_file_path="").load_data_from_any(days)
 
-    check_for_and_play_notifications(notification_time, 5, calendar_data, scene_for_env())
+    check_for_and_play_notifications(notification_time, (0, 5), calendar_data, scene_for_env())
 
 # Gathers what's due at base_time (calendar-driven notifications plus any due snoozes) and builds
 # their announcement/alarm audio files, without playing them. Used by the daemon's early wake-up
 # (homeaudio/vcal/notifications/daemon.py) so it can build audio ahead of a scheduled tick and play
 # right on time; check_for_notifications above uses it too, just followed immediately by playing.
-def prepare_notification_files(base_time, window, calendar_days: list[CalendarDay], event_notification_settings: EventNotificationSettings | None = None, departure_notification_settings: DepartureNotificationSettings | None = None) -> NotificationFiles | None:
+def prepare_notification_files(base_time, window_range: tuple[int, int], calendar_days: list[CalendarDay], event_notification_settings: EventNotificationSettings | None = None, departure_notification_settings: DepartureNotificationSettings | None = None) -> NotificationFiles | None:
     event_notification_settings = event_notification_settings or EventNotificationSettings()
 
     tld = gtts_tld()
 
-    announcements_file, alarm_audio_file = check_for_event_notifications(base_time, window, calendar_days, tld, event_notification_settings, departure_notification_settings)
+    announcements_file, alarm_audio_file = check_for_event_notifications(base_time, window_range, calendar_days, tld, event_notification_settings, departure_notification_settings)
 
+    _, window = window_range
     scheduled_announcements_files = []
     if file := check_for_morning_announcements(base_time, window, calendar_days, tld, MorningAnnouncementsSettings()):
         scheduled_announcements_files.append(file)
