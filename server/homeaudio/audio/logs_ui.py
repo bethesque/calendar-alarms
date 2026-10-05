@@ -205,7 +205,7 @@ class LogRoutes:
         )
 
 class CalendarAlarmsStatusRoutes:
-    SERVICE_NAME = "calendar-alarms-http.service"
+    SERVICE_NAME = "calendar-alarms.service"
 
     def __init__(self) -> None:
         self.router = APIRouter()
