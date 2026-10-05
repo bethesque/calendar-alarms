@@ -80,7 +80,7 @@ def test_snooze_state_due_event_notifications_only_returns_when_due(monkeypatch,
     replay_at = now + timedelta(minutes=9)
 
     state = SnoozeState()
-    state.save([_event_notification()], replay_at)
+    state.save([_event_notification()], replay_at, now + timedelta(minutes=18))
 
     assert state.next_replay_at() == replay_at
     assert state.due_event_notifications(now) == []  # not due yet, and not cleared
@@ -99,3 +99,26 @@ def test_snooze_state_next_replay_at_is_none_when_nothing_pending(monkeypatch, t
     _fresh_state_files(monkeypatch, tmp_path)
 
     assert SnoozeState().next_replay_at() is None
+
+
+def test_snooze_state_due_event_notifications_clears_a_stale_snooze_without_returning_it(monkeypatch, tmp_path):
+    _fresh_state_files(monkeypatch, tmp_path)
+
+    replay_at = datetime(2026, 4, 28, 21, 4, tzinfo=TIMEZONE)
+    clear_at = datetime(2026, 4, 28, 21, 13, tzinfo=TIMEZONE)
+    state = SnoozeState()
+    state.save([_event_notification()], replay_at, clear_at)
+
+    assert state.due_event_notifications(clear_at) == []
+    assert state.next_replay_at() is None
+
+
+def test_snooze_state_due_event_notifications_returns_a_snooze_just_before_clear_at(monkeypatch, tmp_path):
+    _fresh_state_files(monkeypatch, tmp_path)
+
+    replay_at = datetime(2026, 4, 28, 21, 4, tzinfo=TIMEZONE)
+    clear_at = datetime(2026, 4, 28, 21, 13, tzinfo=TIMEZONE)
+    state = SnoozeState()
+    state.save([_event_notification()], replay_at, clear_at)
+
+    assert len(state.due_event_notifications(datetime(2026, 4, 28, 21, 12, tzinfo=TIMEZONE))) == 1

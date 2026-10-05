@@ -13,6 +13,7 @@ from homeaudio.vcal.notification_schedule import (
     morning_announcement_time_for_day,
     event_notification_time_range_for_day,
     event_notification_window_range,
+    round_down_to_interval,
     within_event_notification_operating_hours,
 )
 
@@ -163,3 +164,15 @@ def test_event_notification_window_range_is_unchanged_at_another_days_start_time
     base_time = datetime(2026, 4, 27, 8, 0, tzinfo=TIMEZONE)  # Monday at the weekend start time
 
     assert event_notification_window_range(base_time, 5, SCHEDULE, []) == (0, 5)
+
+
+def test_round_down_to_interval_rounds_down_to_the_nearest_boundary():
+    dt = datetime(2026, 4, 28, 9, 7, 30, tzinfo=TIMEZONE)
+
+    assert round_down_to_interval(dt, 5) == datetime(2026, 4, 28, 9, 5, tzinfo=TIMEZONE)
+
+
+def test_round_down_to_interval_leaves_a_time_already_on_a_boundary_unchanged():
+    dt = datetime(2026, 4, 28, 9, 10, tzinfo=TIMEZONE)
+
+    assert round_down_to_interval(dt, 5) == dt

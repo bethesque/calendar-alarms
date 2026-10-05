@@ -15,6 +15,11 @@ from homeaudio.audio.settings import (
 from homeaudio.vcal.cal.google_calendar import CalendarDay
 
 
+def round_down_to_interval(dt: datetime, interval_minutes: int) -> datetime:
+    minute = (dt.minute // interval_minutes) * interval_minutes
+    return dt.replace(minute=minute, second=0, microsecond=0)
+
+
 def is_holiday(day: date, calendar_days: list[CalendarDay]) -> bool:
     return any(calendar_day.date == day and calendar_day.holiday for calendar_day in calendar_days)
 

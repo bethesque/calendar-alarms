@@ -199,10 +199,6 @@ class EventNotifications:
 
         return deduplicated_notifications
 
-def round_down_to_interval(dt: datetime, interval_minutes: int) -> datetime:
-    minute = (dt.minute // interval_minutes) * interval_minutes
-    return dt.replace(minute=minute, second=0, microsecond=0)
-
 class NotificationFinder:
     def __init__(self, calendar_days: list[CalendarDay], base_time, window_range: tuple[int, int], notification_rules=None, departure_notification_settings: DepartureNotificationSettings | None = None):
         self.calendar_days = calendar_days
@@ -229,8 +225,7 @@ class NotificationFinder:
 
     def _get_time_window(self):
         window_from, window_to = self.window_range
-        rounded_base_time = round_down_to_interval(self.base_time, window_to)
-        return rounded_base_time + timedelta(minutes=window_from), rounded_base_time + timedelta(minutes=window_to)
+        return self.base_time + timedelta(minutes=window_from), self.base_time + timedelta(minutes=window_to)
 
     def _log_results(self, start, end, results:list[EventNotification]):
         logger.info(

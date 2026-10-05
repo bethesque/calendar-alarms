@@ -28,6 +28,7 @@ from homeaudio.vcal.notification_schedule import (
     announcement_times_for_day,
     event_notification_time_range_for_day,
     event_notification_window_range,
+    round_down_to_interval,
     within_event_notification_operating_hours,
 )
 
@@ -123,7 +124,7 @@ def next_boundary(
             next_wake_times = _wake_times_for_day(next_day, schedule, morning_schedule, school_schedule, calendar_days)
             candidate = datetime.combine(next_day, min(next_wake_times), tzinfo=candidate.tzinfo)
 
-    return min(candidate, now + timedelta(seconds=MAX_SLEEP_SECONDS))
+    return min(candidate, round_down_to_interval(now + timedelta(seconds=MAX_SLEEP_SECONDS), CHECK_INTERVAL_MINUTES))
 
 
 def check_for_notifications(base_time: datetime) -> NotificationFiles | None:

@@ -10,13 +10,13 @@ from homeaudio.vcal.morning_announcements import play_morning_announcements
 from homeaudio.vcal.school_announcements import play_school_announcements
 from homeaudio.audio.scene import scene_for_env
 from homeaudio.vcal.core import stop_alarm, test_alarm, test_announcement, test_notification, mute_alarm_for_area_of_player, replay_last_notification, snooze_alarm
-from homeaudio.vcal.event_notifications.events import get_all_event_notifications, get_all_events, get_calendar_refreshed_at, update_calendar_travel_times, round_down_to_interval
+from homeaudio.vcal.event_notifications.events import get_all_event_notifications, get_all_events, get_calendar_refreshed_at, update_calendar_travel_times
 from homeaudio.vcal.event_notifications.scheduled_announcements import scheduled_announcement_notifications, ScheduledAnnouncementNotification, ScheduledAnnouncementType
 from homeaudio.vcal.event_notifications.models import TestNotificationRequest, PlayScheduledAnnouncementRequest, EventSummaryResponse, NotificationResponseItem, NotificationsResponse
 from homeaudio.vcal.event_notifications.events import EventNotification, LeaveForEvent
 from homeaudio.audio.settings import SnapcastSettings, DepartureNotificationSettings, EventNotificationSettings
 from homeaudio.vcal.cal.google_calendar import load_calendar_days, refresh_calendar_data
-from homeaudio.vcal.notification_schedule import within_event_notification_operating_hours
+from homeaudio.vcal.notification_schedule import round_down_to_interval, within_event_notification_operating_hours
 from homeaudio.audio.string_utils import json_default_encoder
 from homeaudio.env import APP_NAME, NOTIFICATIONS_CHECK_INTERVAL_MINUTES
 

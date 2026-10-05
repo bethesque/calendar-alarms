@@ -192,8 +192,16 @@ def test_next_boundary_caps_a_long_gap_at_max_sleep_seconds(monkeypatch):
     monkeypatch.setattr("homeaudio.vcal.daemon.MAX_SLEEP_SECONDS", 3600)
     now = datetime(2026, 4, 27, 20, 57, tzinfo=TIMEZONE)  # Monday, ~10 hours before Tuesday 7am
 
-    assert next_boundary(now, SCHEDULE, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE) == now + timedelta(seconds=3600)
+    assert next_boundary(now, SCHEDULE, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE) == datetime(2026, 4, 27, 21, 55, tzinfo=TIMEZONE)
 
+
+
+def test_next_boundary_rounds_a_capped_boundary_down_onto_a_tick(monkeypatch):
+    monkeypatch.setattr("homeaudio.vcal.daemon.CHECK_INTERVAL_MINUTES", 5)
+    monkeypatch.setattr("homeaudio.vcal.daemon.MAX_SLEEP_SECONDS", 3600)
+    now = datetime(2026, 4, 27, 20, 57, 12, 400000, tzinfo=TIMEZONE)  # Monday, just after a tick finished
+
+    assert next_boundary(now, SCHEDULE, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE) == datetime(2026, 4, 27, 21, 55, tzinfo=TIMEZONE)
 
 def test_next_boundary_does_not_cap_a_gap_within_max_sleep_seconds(monkeypatch):
     monkeypatch.setattr("homeaudio.vcal.daemon.MAX_SLEEP_SECONDS", 3600)

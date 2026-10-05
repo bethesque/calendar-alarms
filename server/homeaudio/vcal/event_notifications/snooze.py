@@ -103,9 +103,10 @@ class SnoozeState:
 
     file_path: str = SNOOZE_STATE_FILE
 
-    def save(self, event_notifications: list[EventNotification], replay_at: datetime) -> None:
+    def save(self, event_notifications: list[EventNotification], replay_at: datetime, clear_at: datetime) -> None:
         data = {
             "replay_at": replay_at.isoformat(),
+            "clear_at": clear_at.isoformat(),
             "event_notifications": [_serialize(event_notification) for event_notification in event_notifications],
         }
         with open(self.file_path, "w") as f:
@@ -125,9 +126,13 @@ class SnoozeState:
         return datetime.fromisoformat(data["replay_at"])
 
     def due_event_notifications(self, now: datetime) -> list[EventNotification]:
-        """Returns and clears the pending snooze if it's due at or before `now`."""
+        """Returns and clears the pending snooze if it's due at or before `now`, or just clears it if it's stale at `now`."""
         data = self._load_raw()
         if data is None:
+            return []
+
+        if "clear_at" in data and now >= datetime.fromisoformat(data["clear_at"]):
+            self.clear()
             return []
 
         replay_at = datetime.fromisoformat(data["replay_at"])

@@ -61,8 +61,9 @@ def snooze_alarm(after_alarm_hook=None):
 
     snooze_minutes = EventNotificationSettings().snooze_minutes
     replay_at = base_time + timedelta(minutes=snooze_minutes)
+    clear_at = base_time + timedelta(minutes=2 * snooze_minutes)
     actual_snooze_minutes = int((replay_at - datetime.now().astimezone()).total_seconds() // 60)
-    SnoozeState().save(event_notifications, replay_at)
+    SnoozeState().save(event_notifications, replay_at, clear_at)
     logger.info(f"Snoozed last alarm for {actual_snooze_minutes} minutes until {replay_at}")
     play_file(_build_one_off_announcement_file(f"Snoozing for {actual_snooze_minutes} minutes"))
 

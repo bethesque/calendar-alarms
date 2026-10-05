@@ -102,6 +102,7 @@ def test_snooze_alarm_saves_snooze_state_and_confirms_via_tts(monkeypatch, tmp_p
 
     replay_at = base_time + timedelta(minutes=10)
     assert SnoozeState().next_replay_at() == replay_at
+    assert SnoozeState()._load_raw()["clear_at"] == (base_time + timedelta(minutes=20)).isoformat()
     due = SnoozeState().due_event_notifications(replay_at)
     assert len(due) == 1
     assert due[0].event.summary == "Gym session"
