@@ -166,6 +166,38 @@ def test_event_notification_window_range_is_unchanged_at_another_days_start_time
     assert event_notification_window_range(base_time, 5, SCHEDULE, []) == (0, 5)
 
 
+
+def test_event_notification_window_range_reaches_forward_to_midnight_at_the_last_weekday_tick():
+    base_time = datetime(2026, 4, 27, 20, 55, tzinfo=TIMEZONE)  # Monday, ends 21:00
+
+    assert event_notification_window_range(base_time, 5, SCHEDULE, []) == (0, 185)
+
+
+def test_event_notification_window_range_is_unchanged_at_the_tick_before_the_last():
+    base_time = datetime(2026, 4, 27, 20, 50, tzinfo=TIMEZONE)  # Monday, ends 21:00
+
+    assert event_notification_window_range(base_time, 5, SCHEDULE, []) == (0, 5)
+
+
+def test_event_notification_window_range_reaches_forward_to_midnight_when_the_end_is_off_the_grid():
+    schedule = EventNotificationSchedule(weekdays=TimeRange(start=time(7, 0), end=time(21, 2)))
+    base_time = datetime(2026, 4, 27, 21, 0, tzinfo=TIMEZONE)  # Monday
+
+    assert event_notification_window_range(base_time, 5, schedule, []) == (0, 180)
+
+
+def test_event_notification_window_range_reaches_forward_to_midnight_at_the_last_holiday_tick():
+    base_time = datetime(2026, 4, 27, 19, 55, tzinfo=TIMEZONE)  # Monday holiday, ends 20:00
+
+    assert event_notification_window_range(base_time, 5, SCHEDULE, [CalendarDay(date=base_time.date(), holiday=True)]) == (0, 245)
+
+
+def test_event_notification_window_range_reaches_both_ways_when_the_first_tick_is_also_the_last():
+    schedule = EventNotificationSchedule(weekdays=TimeRange(start=time(7, 0), end=time(7, 5)))
+    base_time = datetime(2026, 4, 27, 7, 0, tzinfo=TIMEZONE)  # Monday
+
+    assert event_notification_window_range(base_time, 5, schedule, []) == (-420, 1020)
+
 def test_round_down_to_interval_rounds_down_to_the_nearest_boundary():
     dt = datetime(2026, 4, 28, 9, 7, 30, tzinfo=TIMEZONE)
 

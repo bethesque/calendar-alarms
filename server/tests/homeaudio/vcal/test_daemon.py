@@ -376,6 +376,15 @@ def test_check_for_notifications_uses_the_check_interval_after_the_start_of_oper
 
     assert window_ranges == [(0, 5)]
 
+
+def test_check_for_notifications_reaches_forward_to_midnight_at_the_last_tick_of_operating_hours(monkeypatch):
+    window_ranges = _capture_prepare_window_range(monkeypatch)
+    monkeypatch.setattr("homeaudio.vcal.daemon.CHECK_INTERVAL_MINUTES", 5)
+
+    check_for_notifications(datetime(2026, 4, 27, 20, 55, tzinfo=TIMEZONE))  # Monday, ends 21:00
+
+    assert window_ranges == [(0, 185)]
+
 def test_play_notification_files_plays_the_prepared_files(monkeypatch):
     calls = []
     monkeypatch.setattr(

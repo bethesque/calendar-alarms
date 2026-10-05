@@ -17,6 +17,7 @@ from homeaudio.vcal.school_announcements import check_for_announcement as check_
 from homeaudio.vcal.morning_announcements import check_for_announcement as check_for_morning_announcements
 from homeaudio.vcal.event_notifications.core import check_for_event_notifications as check_for_event_notifications, check_for_and_play_notifications
 from homeaudio.vcal.playback import NotificationFiles, play_notifications, play_file
+from homeaudio.vcal.notification_schedule import within_event_notification_operating_hours
 
 logger = logging.getLogger(__name__)
 
@@ -186,7 +187,9 @@ def prepare_notification_files(base_time, window_range: tuple[int, int], calenda
 
     tld = gtts_tld()
 
-    announcements_file, alarm_audio_file = check_for_event_notifications(base_time, window_range, calendar_days, tld, event_notification_settings, departure_notification_settings)
+    announcements_file, alarm_audio_file = None, None
+    if within_event_notification_operating_hours(base_time, event_notification_settings.schedule, calendar_days):
+        announcements_file, alarm_audio_file = check_for_event_notifications(base_time, window_range, calendar_days, tld, event_notification_settings, departure_notification_settings)
 
     _, window = window_range
     scheduled_announcements_files = []

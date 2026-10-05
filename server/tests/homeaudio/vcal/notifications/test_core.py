@@ -1,6 +1,7 @@
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
+from homeaudio.audio.settings import EventNotificationSchedule, EventNotificationSettings, TimeRange
 from homeaudio.vcal.cal.google_calendar import Event
 from homeaudio.vcal.event_notifications.events import EventNotification, NotificationType
 import homeaudio.vcal.core as core_module
@@ -8,6 +9,11 @@ from homeaudio.vcal.core import snooze_alarm
 from homeaudio.vcal.event_notifications.snooze import LastPlayedState, SnoozeState
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
+
+SCHEDULE = EventNotificationSchedule(
+    weekdays=TimeRange(start=time(7, 0), end=time(21, 0)),
+    weekends=TimeRange(start=time(8, 0), end=time(21, 0)),
+)
 
 
 def _event_notification():
@@ -157,6 +163,22 @@ def test_prepare_notification_files_passes_the_window_range_to_event_notificatio
     monkeypatch.setattr(core_module, "check_for_morning_announcements", lambda base_time, window, *args: calls.setdefault("morning", window) and None)
     monkeypatch.setattr(core_module, "check_for_school_announcements", lambda base_time, window, *args: calls.setdefault("school", window) and None)
 
-    core_module.prepare_notification_files(datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE), (-420, 5), [])
+    core_module.prepare_notification_files(datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE), (-420, 5), [], EventNotificationSettings(schedule=SCHEDULE))
 
     assert calls == {"event": (-420, 5), "morning": 5, "school": 5}
+
+
+def test_prepare_notification_files_skips_event_notifications_outside_operating_hours(monkeypatch):
+    calls = {}
+    monkeypatch.setattr(core_module, "gtts_tld", lambda: "com")
+    monkeypatch.setattr(
+        core_module,
+        "check_for_event_notifications",
+        lambda base_time, window_range, *args: calls.setdefault("event", window_range) and (None, None),
+    )
+    monkeypatch.setattr(core_module, "check_for_morning_announcements", lambda base_time, window, *args: calls.setdefault("morning", window) and None)
+    monkeypatch.setattr(core_module, "check_for_school_announcements", lambda base_time, window, *args: calls.setdefault("school", window) and None)
+
+    core_module.prepare_notification_files(datetime(2026, 4, 28, 6, 30, tzinfo=TIMEZONE), (0, 5), [], EventNotificationSettings(schedule=SCHEDULE))
+
+    assert calls == {"morning": 5, "school": 5}
