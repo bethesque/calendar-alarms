@@ -43,11 +43,9 @@ def test_attr_configs_keys_exist_on_app_settings():
     generated form schema at runtime. If a field is renamed/moved without updating
     attr_configs to match, the config for it silently stops being applied instead of
     raising an error - so assert every key still resolves to a real AppSettings field."""
-    dummy_settings = types.SimpleNamespace(
-        google_calendar_settings=types.SimpleNamespace(calendars=[])
-    )
     admin_routes = AdminRoutes.__new__(AdminRoutes)
-    attr_configs = admin_routes.attr_configs(dummy_settings)
+    admin_routes.calendar_select_props = {"options": []}
+    attr_configs = admin_routes.attr_configs(None)
 
     valid_paths = _all_field_paths(AppSettings)
 

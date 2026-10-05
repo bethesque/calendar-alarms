@@ -1,5 +1,5 @@
-from fastapi import APIRouter
-from homeaudio.audio.settings import AppSettings
+from fastapi import APIRouter, Depends, Request
+from homeaudio.audio.settings import AppSettings, GoogleCalendarSettings
 from homeaudio.env import GOOGLE_TRANSLATE_TLD_OPTIONS, HOME_ASSISTANT_SUPPORTED, HOUSIE_TALKIE_ENABLED, SNAPCAST_ENABLED, WAKE_UP_ALARM_ENABLED
 from pydantic_ui import create_pydantic_ui, UIConfig, FieldConfig, DisplayConfig, Renderer, ActionButton
 
@@ -10,6 +10,7 @@ class AdminRoutes:
         self.router = APIRouter()
 
         settings = AppSettings()
+        self.calendar_select_props = {"options": self._calendar_options(settings.google_calendar_settings)}
 
         self.ui_router = create_pydantic_ui(
             AppSettings,
@@ -34,11 +35,18 @@ class AdminRoutes:
         async def home_action(data: dict, controller):
             await controller.navigate_to("/", new_tab=False)
 
-        self.router.include_router(self.ui_router)
+        self.router.include_router(self.ui_router, dependencies=[Depends(self._refresh_calendar_options)])
+
+    def _calendar_options(self, google_calendar_settings: GoogleCalendarSettings):
+        return [ { "value": c.id, "label": c.name } for c in google_calendar_settings.calendars ]
+
+    def _refresh_calendar_options(self, request: Request):
+        # The schema is rebuilt per request from these props, so updating them in place keeps the select current.
+        if request.url.path.endswith("/api/schema"):
+            self.calendar_select_props["options"] = self._calendar_options(GoogleCalendarSettings())
 
     def attr_configs(self, settings: AppSettings):
 
-        calendar_options = [ { "value": c.id, "label": c.name } for c in settings.google_calendar_settings.calendars ]
         tld_options = [ { "value": tld, "label": tld } for tld in GOOGLE_TRANSLATE_TLD_OPTIONS ]
 
         return {
@@ -63,9 +71,7 @@ class AdminRoutes:
                             title="Calendar"
                         ),
                         renderer=Renderer.SELECT,
-                        props={
-                            "options": calendar_options
-                        }
+                        props=self.calendar_select_props
                     ),
                     "snapcast_settings": FieldConfig(
                         visible_when=f"{str(SNAPCAST_ENABLED).lower()} == true"
