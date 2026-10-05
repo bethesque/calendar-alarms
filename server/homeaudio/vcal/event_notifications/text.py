@@ -40,7 +40,7 @@ class NotificationTextBuilder:
             for event in self.event_notifications:
                 self._add_core_notification_text(event, parts)
 
-        return parts
+        return list(dict.fromkeys(parts))
 
     def add_notification_text_with_extras(self, parts):
 
@@ -95,8 +95,10 @@ class NotificationTextBuilder:
 
     def _it_will_be_time_for_summary(self, event_notification: EventNotification):
         summary = event_notification.event.summary
-        if event_notification.offset > 0:
-            return f"It will be time {self._to_or_for(summary)} {summary} in {event_notification.offset} minutes."
+        minutes_until_start = int((event_notification.event.start_time - self.base_time).total_seconds() // 60)
+        if minutes_until_start > 0:
+            minutes_text = "1 minute" if minutes_until_start == 1 else f"{minutes_until_start} minutes"
+            return f"It will be time {self._to_or_for(summary)} {summary} in {minutes_text}."
         else:
             return f"It's time {self._to_or_for(summary)} {summary}."
 
