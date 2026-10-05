@@ -170,8 +170,8 @@ class AnnouncementSettings(BaseModel):
     sound_effect_probability: float = Field(default=0.25, description="Probability of a sound effect being played before an event announcement (0=never, 1=always)")
 
 class TimeRange(BaseModel):
-    start: time
-    end: time
+    start: time = Field(description="The start time is inclusive (ie. notifications due at this time WILL be played)")
+    end: time = Field(description="The end time is exclusive (ie. notifications due at this time will NOT be played)")
 
 class EventNotificationSchedule(BaseModel):
     weekdays: TimeRange = Field(default=TimeRange(start=time(7, 0), end=time(21)))
