@@ -7,6 +7,7 @@ import logging
 import signal
 import threading
 from datetime import date, datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 from homeaudio.audio.log_config import setup_logging_for_alarms
 from homeaudio.audio.scene import scene_for_env
@@ -19,7 +20,7 @@ from homeaudio.audio.settings import (
     SchoolAnnouncementsSchedule,
     SchoolAnnouncementsSettings,
 )
-from homeaudio.env import LOG_LEVEL, NOTIFICATIONS_CHECK_INTERVAL_MINUTES, NOTIFICATIONS_PREPARATION_LEAD_TIME_SECONDS
+from homeaudio.env import TIMEZONE, LOG_LEVEL, NOTIFICATIONS_CHECK_INTERVAL_MINUTES, NOTIFICATIONS_PREPARATION_LEAD_TIME_SECONDS
 from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarSource, load_calendar_days
 from homeaudio.vcal.calendar_refresh import CalendarRefreshLoop
 from homeaudio.vcal.core import prepare_notification_files, NotificationFiles
@@ -27,7 +28,6 @@ from homeaudio.vcal.core import play_notifications as _play_notifications
 from homeaudio.vcal.notification_schedule import (
     announcement_times_for_day,
     event_notification_time_range_for_day,
-    event_notification_window_range,
     round_down_to_interval,
     within_event_notification_operating_hours,
 )
@@ -69,7 +69,7 @@ def _wake_times_for_day(
     The announcement times and the start of the event notification time range.
     """
     return [
-        event_notification_time_range_for_day(schedule, day, calendar_days).start,
+        event_notification_time_range_for_day(schedule, day, calendar_days, ZoneInfo(TIMEZONE), CHECK_INTERVAL_MINUTES).start.time(),
         *announcement_times_for_day(day, morning_schedule, school_schedule, calendar_days),
     ]
 
@@ -104,7 +104,7 @@ def next_boundary(
     # Wind back to the previous whole minute and add the CHECK_INTERVAL_MINUTES to it
     candidate = now.replace(minute=0, second=0, microsecond=0) + timedelta(minutes=minute)
 
-    while not within_event_notification_operating_hours(candidate, schedule, calendar_days) and not _is_scheduled_announcement(
+    while not within_event_notification_operating_hours(candidate, schedule, calendar_days, CHECK_INTERVAL_MINUTES) and not _is_scheduled_announcement(
         candidate, morning_schedule, school_schedule, calendar_days
     ):
         # The next regular CHECK_INTERVAL_MINUTES is outside the normal event notification operating hours.
@@ -146,8 +146,7 @@ def check_for_notifications(base_time: datetime) -> NotificationFiles | None:
         if calendar_source.file_exists():
             logger.debug(f"Loading calendar data from {calendar_source.cache_file_path}")
             calendar_data = calendar_source.load_data_from_file()
-            window_range = event_notification_window_range(base_time, CHECK_INTERVAL_MINUTES, event_notification_settings.schedule, calendar_data)
-            return prepare_notification_files(base_time, window_range, calendar_data)
+            return prepare_notification_files(base_time, calendar_data, CHECK_INTERVAL_MINUTES, event_notification_settings)
         else:
             logger.info(f"No calendar file found at {calendar_source.cache_file_path}, no notifications this tick")
 

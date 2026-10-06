@@ -2,17 +2,17 @@ import sys
 from pathlib import Path
 from datetime import datetime
 
-from homeaudio.audio.settings import NotificationRule
+from homeaudio.audio.settings import EventNotificationSchedule, NotificationRule
 from homeaudio.vcal.event_notifications.text import NotificationTextBuilder
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from homeaudio.vcal.event_notifications.events import NotificationFinder
+from homeaudio.vcal.event_notifications.events import NotificationFinder, NotificationPlaytimeScheduler
 from homeaudio.vcal.cal.google_calendar import CalendarSource
 
 def test_notification_rule_with_reminder_e2e(monkeypatch):
-    date_string = "2026-04-06T00:00:00+10:00"
-    base_time = datetime.fromisoformat("2026-04-06T00:00:00+10:00")
+    date_string = "2026-04-06T09:00:00+10:00"
+    base_time = datetime.fromisoformat("2026-04-06T09:00:00+10:00")
 
     days = [
         {
@@ -35,7 +35,8 @@ def test_notification_rule_with_reminder_e2e(monkeypatch):
 
     calendar_data = CalendarSource(cache_file_path="").load_data_from_any(days)
     rule = NotificationRule(summary_pattern="Gym", notification_type='announce', offset_minutes=0, reminder="Remember to eat.")
-    alarm_finder = NotificationFinder(calendar_data, base_time, (0, 5), [rule])
+    scheduler = NotificationPlaytimeScheduler(base_time.tzinfo, EventNotificationSchedule(), calendar_data, 5)
+    alarm_finder = NotificationFinder(calendar_data, base_time, scheduler, [rule])
     event_notifications = alarm_finder.find_notification_events()
 
     # Greeting and before/after ordering are randomised; pin them for a deterministic assertion.

@@ -15,9 +15,10 @@ from homeaudio.audio.snapserver import Snapserver
 from homeaudio.vcal.event_notifications.snooze import LastPlayedState, SnoozeState
 from homeaudio.vcal.school_announcements import check_for_announcement as check_for_school_announcements
 from homeaudio.vcal.morning_announcements import check_for_announcement as check_for_morning_announcements
-from homeaudio.vcal.event_notifications.core import check_for_event_notifications as check_for_event_notifications, check_for_and_play_notifications
+from homeaudio.vcal.event_notifications.core import build_event_notification_files, check_for_event_notifications as check_for_event_notifications
 from homeaudio.vcal.playback import NotificationFiles, play_notifications, play_file
-from homeaudio.vcal.notification_schedule import within_event_notification_operating_hours
+from homeaudio.vcal.event_notifications.events import EventNotifications, NotificationPlaytimeScheduler, NotificationType
+from homeaudio.env import NOTIFICATIONS_CHECK_INTERVAL_MINUTES
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +131,8 @@ def test_alarm():
 
     calendar_data = CalendarSource(cache_file_path="").load_data_from_any(days)
 
-    announcements_file, alarm_audio_file = check_for_event_notifications(now, (0, 5), calendar_data, gtts_tld(), EventNotificationSettings())
+    scheduler = NotificationPlaytimeScheduler(now.tzinfo, EventNotificationSettings().schedule, calendar_data, NOTIFICATIONS_CHECK_INTERVAL_MINUTES)
+    announcements_file, alarm_audio_file = check_for_event_notifications(scheduler.get_play_datetime(now), scheduler, calendar_data, gtts_tld(), EventNotificationSettings())
     notification_files = NotificationFiles(event_alarms_file=alarm_audio_file, event_announcements_file=announcements_file)
     play_notifications(notification_files, scene_for_env())
 
@@ -158,17 +160,18 @@ def test_announcement():
 
     calendar_data = CalendarSource(cache_file_path="").load_data_from_any(days)
 
-    announcements_file, alarm_audio_file = check_for_event_notifications(now, (0, 5), calendar_data, gtts_tld(), EventNotificationSettings())
+    scheduler = NotificationPlaytimeScheduler(now.tzinfo, EventNotificationSettings().schedule, calendar_data, NOTIFICATIONS_CHECK_INTERVAL_MINUTES)
+    announcements_file, alarm_audio_file = check_for_event_notifications(scheduler.get_play_datetime(now), scheduler, calendar_data, gtts_tld(), EventNotificationSettings())
     notification_files = NotificationFiles(event_alarms_file=alarm_audio_file, event_announcements_file=announcements_file)
     play_notifications(notification_files, scene_for_env())
 
 # Used by the "Test" button next to a notification on the notifications page (vcal/api.py) to
-# play a specific notification on demand, using notification_time as base_time so it's found within the window.
-def test_notification(event: dict, notification_time: datetime):
+# play a specific notification on demand, as it would sound at its play_datetime.
+def test_notification(event: dict, play_datetime: datetime, notification_time: datetime, notification_type: str):
     days = [
         {
-            "date": notification_time.strftime("%Y-%m-%d"),
-            "date_time": notification_time.isoformat(),
+            "date": play_datetime.strftime("%Y-%m-%d"),
+            "date_time": play_datetime.isoformat(),
             "timed_events": [event],
             "whole_day_events": []
         }
@@ -176,22 +179,33 @@ def test_notification(event: dict, notification_time: datetime):
 
     calendar_data = CalendarSource(cache_file_path="").load_data_from_any(days)
 
-    check_for_and_play_notifications(notification_time, (0, 5), calendar_data, scene_for_env())
+    event_notification_settings = EventNotificationSettings()
+    scheduler = NotificationPlaytimeScheduler(play_datetime.tzinfo, event_notification_settings.schedule, calendar_data, NOTIFICATIONS_CHECK_INTERVAL_MINUTES)
+    notifications = [
+        notification
+        for notification in EventNotifications(calendar_data[0].timed_events[0], scheduler).notifications(event_notification_settings.enabled_notification_rules())
+        if notification.notification_time == notification_time and notification.type == NotificationType[notification_type]
+    ]
+    if not notifications:
+        logger.warning(f"No {notification_type} notification found at {notification_time} for {event.get('summary')}")
+        return
+
+    announcements_file, alarm_audio_file = build_event_notification_files(notifications, play_datetime, gtts_tld(), event_notification_settings)
+    play_notifications(NotificationFiles(event_alarms_file=alarm_audio_file, event_announcements_file=announcements_file), scene_for_env())
 
 # Gathers what's due at base_time (calendar-driven notifications plus any due snoozes) and builds
 # their announcement/alarm audio files, without playing them. Used by the daemon's early wake-up
 # (homeaudio/vcal/notifications/daemon.py) so it can build audio ahead of a scheduled tick and play
 # right on time; check_for_notifications above uses it too, just followed immediately by playing.
-def prepare_notification_files(base_time, window_range: tuple[int, int], calendar_days: list[CalendarDay], event_notification_settings: EventNotificationSettings | None = None, departure_notification_settings: DepartureNotificationSettings | None = None) -> NotificationFiles | None:
+def prepare_notification_files(base_time, calendar_days: list[CalendarDay], check_interval_minutes: int, event_notification_settings: EventNotificationSettings | None = None, departure_notification_settings: DepartureNotificationSettings | None = None) -> NotificationFiles | None:
     event_notification_settings = event_notification_settings or EventNotificationSettings()
 
     tld = gtts_tld()
 
-    announcements_file, alarm_audio_file = None, None
-    if within_event_notification_operating_hours(base_time, event_notification_settings.schedule, calendar_days):
-        announcements_file, alarm_audio_file = check_for_event_notifications(base_time, window_range, calendar_days, tld, event_notification_settings, departure_notification_settings)
+    scheduler = NotificationPlaytimeScheduler(base_time.tzinfo, event_notification_settings.schedule, calendar_days, check_interval_minutes)
+    announcements_file, alarm_audio_file = check_for_event_notifications(base_time, scheduler, calendar_days, tld, event_notification_settings, departure_notification_settings)
 
-    _, window = window_range
+    window = scheduler.window
     scheduled_announcements_files = []
     if file := check_for_morning_announcements(base_time, window, calendar_days, tld, MorningAnnouncementsSettings()):
         scheduled_announcements_files.append(file)

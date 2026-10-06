@@ -2,10 +2,11 @@ import datetime
 from zoneinfo import ZoneInfo
 
 from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarSource, Event, event_from_google_dict
-from homeaudio.vcal.event_notifications.events import EventNotifications, LeaveForEvent, NotificationType
-from homeaudio.audio.settings import DepartureNotificationSettings
+from homeaudio.vcal.event_notifications.events import EventNotifications, LeaveForEvent, NotificationPlaytimeScheduler, NotificationType
+from homeaudio.audio.settings import DepartureNotificationSettings, EventNotificationSchedule
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
+SCHEDULER = NotificationPlaytimeScheduler(TIMEZONE, EventNotificationSchedule(), [], 5)
 
 
 def test_alarm_time_with_no_offset_returns_event_start_time():
@@ -18,7 +19,7 @@ def test_alarm_time_with_no_offset_returns_event_start_time():
         start_time=start_time,
     )
 
-    assert EventNotifications(event).notifications()[0].notification_time ==  datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
+    assert EventNotifications(event, SCHEDULER).notifications()[0].notification_time ==  datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
 
 
 def test_alarm_time_with_weird_tag():
@@ -31,7 +32,7 @@ def test_alarm_time_with_weird_tag():
         start_time=start_time,
     )
 
-    assert EventNotifications(event).notifications()[0].notification_time ==  event.start_time
+    assert EventNotifications(event, SCHEDULER).notifications()[0].notification_time ==  event.start_time
 
 
 def test_alarm_time_returns_offset_from_start_time():
@@ -44,7 +45,7 @@ def test_alarm_time_returns_offset_from_start_time():
         start_time=start_time,
     )
 
-    assert EventNotifications(event).notifications()[0].notification_time ==  datetime.datetime(2026, 4, 28, 11, 40, tzinfo=TIMEZONE)
+    assert EventNotifications(event, SCHEDULER).notifications()[0].notification_time ==  datetime.datetime(2026, 4, 28, 11, 40, tzinfo=TIMEZONE)
 
 
 def test_announce_time_returns_offset_from_start_time():
@@ -57,7 +58,7 @@ def test_announce_time_returns_offset_from_start_time():
         start_time=start_time,
     )
 
-    assert EventNotifications(event).notifications()[0].notification_time ==  datetime.datetime(2026, 4, 28, 11, 40, tzinfo=TIMEZONE)
+    assert EventNotifications(event, SCHEDULER).notifications()[0].notification_time ==  datetime.datetime(2026, 4, 28, 11, 40, tzinfo=TIMEZONE)
 
 
 def test_alarm_time_returns_none_when_no_alarm_tag_present():
@@ -69,7 +70,7 @@ def test_alarm_time_returns_none_when_no_alarm_tag_present():
         start_time=datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE),
     )
 
-    assert EventNotifications(event).notifications() == []
+    assert EventNotifications(event, SCHEDULER).notifications() == []
 
 
 def test_alarm_time_returns_none_when_start_time_missing():
@@ -81,7 +82,7 @@ def test_alarm_time_returns_none_when_start_time_missing():
         start_time=None,
     )
 
-    assert EventNotifications(event).notifications() == []
+    assert EventNotifications(event, SCHEDULER).notifications() == []
 
 
 def test_notification_offset_returns_parsed_number():
@@ -93,7 +94,7 @@ def test_notification_offset_returns_parsed_number():
         start_time=datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE),
     )
 
-    assert EventNotifications(event).notifications()[0].offset == 20
+    assert EventNotifications(event, SCHEDULER).notifications()[0].offset == 20
 
 
 def test_notification_offset_returns_different_numbers():
@@ -105,7 +106,7 @@ def test_notification_offset_returns_different_numbers():
         start_time=datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE),
     )
 
-    assert EventNotifications(event).notifications()[0].offset == 5
+    assert EventNotifications(event, SCHEDULER).notifications()[0].offset == 5
 
 
 def test_notification_offset_returns_zero_when_no_number():
@@ -117,7 +118,7 @@ def test_notification_offset_returns_zero_when_no_number():
         start_time=datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE),
     )
 
-    assert EventNotifications(event).notifications()[0].offset == 0
+    assert EventNotifications(event, SCHEDULER).notifications()[0].offset == 0
 
 
 def test_targets_returns_words_starting_with_at_sign():
@@ -129,7 +130,7 @@ def test_targets_returns_words_starting_with_at_sign():
         start_time=datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE),
     )
 
-    assert EventNotifications(event).notifications()[0].targets == {"beth", "kitchen"}
+    assert EventNotifications(event, SCHEDULER).notifications()[0].targets == {"beth", "kitchen"}
 
 
 def test_targets_is_none_when_no_at_sign_present():
@@ -141,7 +142,7 @@ def test_targets_is_none_when_no_at_sign_present():
         start_time=datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE),
     )
 
-    assert EventNotifications(event).notifications()[0].targets is None
+    assert EventNotifications(event, SCHEDULER).notifications()[0].targets is None
 
 
 def test_notification_offset_returns_zero_when_no_alarm_tag():
@@ -153,7 +154,7 @@ def test_notification_offset_returns_zero_when_no_alarm_tag():
         start_time=datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE),
     )
 
-    assert EventNotifications(event).notifications() == []
+    assert EventNotifications(event, SCHEDULER).notifications() == []
 
 
 def test_notification_offset_returns_zero_when_no_start_time():
@@ -165,7 +166,7 @@ def test_notification_offset_returns_zero_when_no_start_time():
         start_time=None,
     )
 
-    assert EventNotifications(event).notifications() == []
+    assert EventNotifications(event, SCHEDULER).notifications() == []
 
 
 def test_notification_offset_caches_result():
@@ -178,9 +179,9 @@ def test_notification_offset_caches_result():
     )
 
     # First call should parse and cache
-    first_call = EventNotifications(event).notifications()[0].offset
+    first_call = EventNotifications(event, SCHEDULER).notifications()[0].offset
     # Second call should return cached value
-    second_call = EventNotifications(event).notifications()[0].offset
+    second_call = EventNotifications(event, SCHEDULER).notifications()[0].offset
 
     assert first_call == 15
     assert second_call == 15
@@ -197,7 +198,7 @@ def test_notifications_returns_no_alarm_event_notification():
         start_time=start_time,
     )
 
-    notifications = EventNotifications(event).notifications()
+    notifications = EventNotifications(event, SCHEDULER).notifications()
 
     assert len(notifications) == 0
 
@@ -212,7 +213,7 @@ def test_notifications_returns_alarm_event_notification():
         start_time=start_time,
     )
 
-    notifications = EventNotifications(event).notifications()
+    notifications = EventNotifications(event, SCHEDULER).notifications()
 
     assert len(notifications) == 1
     assert notifications[0].type.name == "ALARM"
@@ -230,7 +231,7 @@ def test_notifications_returns_announce_event_notification_without_offset():
         start_time=start_time,
     )
 
-    notifications = EventNotifications(event).notifications()
+    notifications = EventNotifications(event, SCHEDULER).notifications()
 
     assert len(notifications) == 1
     assert notifications[0].type.name == "ANNOUNCE"
@@ -247,7 +248,7 @@ def test_notifications_can_parse_multiple_tags_in_description():
         start_time=start_time,
     )
 
-    notifications = EventNotifications(event).notifications()
+    notifications = EventNotifications(event, SCHEDULER).notifications()
 
     assert len(notifications) == 2
     assert notifications[0].type.name == "ALARM"
@@ -266,7 +267,7 @@ def test_travel_notifications():
         start_time=start_time,
     )
 
-    notifications = EventNotifications(event).notifications(departure_notification_settings=_departure_notification_settings(heads_up_reminder_lead_time=5))
+    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notification_settings=_departure_notification_settings(heads_up_reminder_lead_time=5))
 
     assert len(notifications) == 2
     assert notifications[0].event.summary == "Leave for Morning meeting"
@@ -300,7 +301,7 @@ def test_event_with_car_departure_time_builds_computed_travel_notifications():
         car_departure_time=car_departure_time,
     )
 
-    notifications = EventNotifications(event).notifications(departure_notification_settings=_departure_notification_settings(house_to_car_minutes=5, heads_up_reminder_lead_time=10))
+    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notification_settings=_departure_notification_settings(house_to_car_minutes=5, heads_up_reminder_lead_time=10))
 
     # walk_out_time = car_departure_time - house_to_car_minutes = 11:55
     walk_out_time = datetime.datetime(2026, 4, 28, 11, 55, tzinfo=TIMEZONE)
@@ -329,7 +330,7 @@ def test_leave_for_event_notifications_inherit_targets_from_original_event():
         car_departure_time=car_departure_time,
     )
 
-    notifications = EventNotifications(event).notifications(departure_notification_settings=_departure_notification_settings(house_to_car_minutes=5, heads_up_reminder_lead_time=10))
+    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notification_settings=_departure_notification_settings(house_to_car_minutes=5, heads_up_reminder_lead_time=10))
 
     assert len(notifications) == 2
     assert all(isinstance(notification.event, LeaveForEvent) for notification in notifications)
@@ -351,7 +352,7 @@ def test_explicit_numbered_travel_tag_takes_precedence_over_computed_car_departu
         car_departure_time=datetime.datetime(2026, 4, 28, 11, 0, tzinfo=TIMEZONE),
     )
 
-    notifications = EventNotifications(event).notifications(departure_notification_settings=_departure_notification_settings())
+    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notification_settings=_departure_notification_settings())
 
     assert len(notifications) == 2
     assert all(n.event.start_time == datetime.datetime(2026, 4, 28, 12, 10, tzinfo=TIMEZONE) for n in notifications)
@@ -371,7 +372,7 @@ def test_bare_travel_tag_does_nothing():
         car_departure_time=datetime.datetime(2026, 4, 28, 11, 0, tzinfo=TIMEZONE),
     )
 
-    notifications = EventNotifications(event).notifications(departure_notification_settings=_departure_notification_settings())
+    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notification_settings=_departure_notification_settings())
 
     assert len(notifications) == 2
     walk_out_time = datetime.datetime(2026, 4, 28, 10, 55, tzinfo=TIMEZONE)
@@ -388,7 +389,7 @@ def test_bare_travel_tag_produces_no_notifications_without_car_departure_time():
         start_time=start_time,
     )
 
-    assert EventNotifications(event).notifications() == []
+    assert EventNotifications(event, SCHEDULER).notifications() == []
 
 
 def test_computed_departure_notification_handles_missing_description():
@@ -405,7 +406,7 @@ def test_computed_departure_notification_handles_missing_description():
         car_departure_time=datetime.datetime(2026, 4, 28, 11, 0, tzinfo=TIMEZONE),
     )
 
-    notifications = EventNotifications(event).notifications(departure_notification_settings=_departure_notification_settings())
+    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notification_settings=_departure_notification_settings())
 
     assert len(notifications) == 2
 
@@ -431,7 +432,7 @@ def test_tag_based_notification_and_departure_notification_at_the_same_time_are_
     # notification_time and offset as the #announce20 tag notification.
     settings = _departure_notification_settings(house_to_car_minutes=0, heads_up_reminder_lead_time=20)
 
-    notifications = EventNotifications(event).notifications(departure_notification_settings=settings)
+    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notification_settings=settings)
 
     matching_time = datetime.datetime(2026, 4, 28, 11, 40, tzinfo=TIMEZONE)
     coincident_notifications = [n for n in notifications if n.notification_time == matching_time]

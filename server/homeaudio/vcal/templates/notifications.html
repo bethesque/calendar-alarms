@@ -10,12 +10,13 @@
   table.notifications th, table.notifications td { padding: 10px 14px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); }
   table.notifications th { background: var(--bg); color: var(--muted); font-weight: 600; }
   table.notifications tr:last-child td { border-bottom: none; }
+  table.notifications th:first-child, table.notifications td:first-child { white-space: nowrap; }
   span.type { padding: 2px 8px; border-radius: 999px; font-size: 0.85rem; }
   span.type.alarm { background: #fde2e2; color: #b42318; }
   span.type.announce { background: #e0e7ff; color: #4338ca; }
   span.type.scheduled { background: #dcfce7; color: #15803d; }
   button.test-notification, button.play-scheduled-announcement { cursor: pointer; }
-  span.outside-schedule { cursor: default; }
+  span.play-time-changed { cursor: default; }
   .tabs a.icon-button { padding: 4px 10px; font-size: 1.6rem; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
   #recompute-departure-times { margin-left: auto; }
   #stop-alarm { background: #e24a4a; color: white; }
@@ -47,7 +48,7 @@
   <table class="notifications">
     <thead>
       <tr>
-        <th>Notification time</th>
+        <th>Play time</th>
         <th>Type</th>
         <th>Event</th>
         <th>Offset (mins)</th>
@@ -59,10 +60,10 @@
       </tr>
     </thead>
     <tbody>
-      {% for notification_time, notification, event_json, within_schedule in notifications %}
+      {% for play_datetime, notification, event_json in notifications %}
       {% if event_json is none %}
       <tr>
-        <td>{{ notification_time.strftime("%a, %d %b %y") }}<br>{{ notification_time.strftime("%I:%M %p") }}</td>
+        <td>{{ play_datetime.strftime("%a, %d %b %y") }}<br>{{ play_datetime.strftime("%I:%M %p") }}</td>
         <td><span class="type scheduled">{{ notification.type.name.replace("_", " ") }}</span></td>
         <td></td>
         <td></td>
@@ -75,13 +76,13 @@
             type="button"
             class="play-scheduled-announcement"
             data-path="{{ scheduled_announcement_paths[notification.type] }}"
-            data-base-time="{{ notification_time.isoformat() }}"
+            data-base-time="{{ play_datetime.isoformat() }}"
           >▶ Play</button>
         </td>
       </tr>
       {% else %}
       <tr>
-        <td>{{ notification.notification_time.strftime("%a, %d %b %y") }}<br>{{ notification.notification_time.strftime("%I:%M %p") }}{% if not within_schedule %} <span class="outside-schedule" title="This notification won't be played as it is outside the scheduled notification times">🔕</span>{% endif %}</td>
+        <td>{{ play_datetime.strftime("%a, %d %b %y") }}<br>{{ play_datetime.strftime("%I:%M %p") }}{% if notification.notification_time != play_datetime %} <span class="play-time-changed" title="Changed from {{ notification.notification_time.strftime("%I:%M %p") }} due to operation hours or to match notification check window">⚠︎</span>{% endif %}</td>
         <td><span class="type {{ notification.type.name.lower() }}">{{ "ANNOUNCEMENT" if notification.type.name == "ANNOUNCE" else notification.type.name }}</span></td>
         <td>{{ notification.event.summary }}</td>
         <td>{{ notification.offset }}</td>
@@ -94,7 +95,9 @@
             type="button"
             class="test-notification"
             data-event="{{ event_json }}"
+            data-play-datetime="{{ play_datetime.isoformat() }}"
             data-notification-time="{{ notification.notification_time.isoformat() }}"
+            data-notification-type="{{ notification.type.name }}"
           >▶ Play</button>
         </td>
       </tr>
@@ -163,14 +166,16 @@
   document.querySelectorAll('.test-notification').forEach(function (button) {
     button.addEventListener('click', function () {
       const event = JSON.parse(button.dataset.event);
+      const playDatetime = button.dataset.playDatetime;
       const notificationTime = button.dataset.notificationTime;
+      const notificationType = button.dataset.notificationType;
 
       button.disabled = true;
 
       fetch('/alarm/test-notification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ event: event, notification_time: notificationTime }),
+        body: JSON.stringify({ event: event, play_datetime: playDatetime, notification_time: notificationTime, notification_type: notificationType }),
       })
         .then(function (response) {
           if (response.ok) {

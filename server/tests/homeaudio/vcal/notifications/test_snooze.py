@@ -42,6 +42,31 @@ def test_serialize_deserialize_round_trips_event_notification_with_rule():
     assert round_tripped.notification_rule.reminder == "Remember to eat."
 
 
+def test_serialize_includes_notification_time_and_play_datetime():
+    event_notification = _event_notification(offset=10)
+    event_notification.play_datetime = datetime(2026, 4, 28, 6, 50, tzinfo=TIMEZONE)
+
+    data = _serialize(event_notification)
+
+    assert data["notification_time"] == "2026-04-28T06:50:00+10:00"
+    assert data["play_datetime"] == "2026-04-28T06:50:00+10:00"
+
+
+def test_serialize_deserialize_round_trips_play_datetime():
+    event_notification = _event_notification()
+    event_notification.play_datetime = datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE)
+
+    round_tripped = _deserialize(_serialize(event_notification))
+
+    assert round_tripped.play_datetime == event_notification.play_datetime
+
+
+def test_serialize_deserialize_round_trips_a_missing_play_datetime():
+    round_tripped = _deserialize(_serialize(_event_notification()))
+
+    assert round_tripped.play_datetime is None
+
+
 def _fresh_state_files(monkeypatch, tmp_path):
     last_played_path = str(tmp_path / "last_played.json")
     snooze_path = str(tmp_path / "snooze.json")

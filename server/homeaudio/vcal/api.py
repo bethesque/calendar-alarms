@@ -14,38 +14,31 @@ from homeaudio.vcal.event_notifications.events import get_all_event_notification
 from homeaudio.vcal.event_notifications.scheduled_announcements import scheduled_announcement_notifications, ScheduledAnnouncementNotification, ScheduledAnnouncementType
 from homeaudio.vcal.event_notifications.models import TestNotificationRequest, PlayScheduledAnnouncementRequest, EventSummaryResponse, NotificationResponseItem, NotificationsResponse
 from homeaudio.vcal.event_notifications.events import EventNotification, LeaveForEvent
-from homeaudio.audio.settings import SnapcastSettings, DepartureNotificationSettings, EventNotificationSettings
-from homeaudio.vcal.cal.google_calendar import load_calendar_days, refresh_calendar_data
-from homeaudio.vcal.notification_schedule import round_down_to_interval, within_event_notification_operating_hours
+from homeaudio.audio.settings import SnapcastSettings, DepartureNotificationSettings
+from homeaudio.vcal.cal.google_calendar import refresh_calendar_data
 from homeaudio.audio.string_utils import json_default_encoder
-from homeaudio.env import APP_NAME, NOTIFICATIONS_CHECK_INTERVAL_MINUTES
+from homeaudio.env import APP_NAME
 
 logger = logging.getLogger(__name__)
 
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
 
-def format_notification_for_api(
-    notification: EventNotification,
-    check_interval_minutes: int = NOTIFICATIONS_CHECK_INTERVAL_MINUTES,
-) -> NotificationResponseItem:
+def format_notification_for_api(notification: EventNotification) -> NotificationResponseItem:
     notification_type = notification.type.name.lower()
     return NotificationResponseItem(
         event=EventSummaryResponse(summary=notification.event.summary),
         type=notification_type,
         due_datetime=notification.notification_time,
-        play_datetime=round_down_to_interval(notification.notification_time, check_interval_minutes),
+        play_datetime=notification.play_datetime,
         duration_seconds=60 if notification_type == "announce" else 300,
     )
 
-def format_scheduled_announcement_for_api(
-    announcement: ScheduledAnnouncementNotification,
-    check_interval_minutes: int = NOTIFICATIONS_CHECK_INTERVAL_MINUTES,
-) -> NotificationResponseItem:
+def format_scheduled_announcement_for_api(announcement: ScheduledAnnouncementNotification) -> NotificationResponseItem:
     return NotificationResponseItem(
         event=EventSummaryResponse(summary=announcement.summary),
         type="announce",
         due_datetime=announcement.due_datetime,
-        play_datetime=round_down_to_interval(announcement.due_datetime, check_interval_minutes),
+        play_datetime=announcement.due_datetime,
         duration_seconds=300,
     )
 
@@ -102,8 +95,8 @@ class AlarmHandler:
         threading.Thread(target=test_announcement, daemon=True).start()
         return "Testing announcement..."
 
-    def test_notification(self, event: dict, notification_time: datetime) -> str:
-        threading.Thread(target=test_notification, args=(event, notification_time), daemon=True).start()
+    def test_notification(self, event: dict, play_datetime: datetime, notification_time: datetime, notification_type: str) -> str:
+        threading.Thread(target=test_notification, args=(event, play_datetime, notification_time, notification_type), daemon=True).start()
         return "Testing notification..."
 
     def play_morning_announcements(self, base_time: datetime | None = None) -> str:
@@ -273,28 +266,25 @@ class AlarmRoutes:
 
         if _wants_json(request):
             notifications = sorted(
-                [format_notification_for_api(n, NOTIFICATIONS_CHECK_INTERVAL_MINUTES) for n in event_notifications]
-                + [format_scheduled_announcement_for_api(n, NOTIFICATIONS_CHECK_INTERVAL_MINUTES) for n in scheduled_announcement_notifications()],
+                [format_notification_for_api(n) for n in event_notifications]
+                + [format_scheduled_announcement_for_api(n) for n in scheduled_announcement_notifications()],
                 key=lambda notification: notification.due_datetime,
             )
             return NotificationsResponse(notifications=notifications)
 
-        schedule = EventNotificationSettings().schedule
-        calendar_days = load_calendar_days()
         notifications = sorted(
             [
                 (
-                    notification.notification_time,
+                    notification.play_datetime,
                     notification,
                     json.dumps(
                         notification.event.target_event if isinstance(notification.event, LeaveForEvent) else notification.event,
                         default=json_default_encoder,
                     ),
-                    within_event_notification_operating_hours(notification.notification_time, schedule, calendar_days),
                 )
                 for notification in event_notifications
             ]
-            + [(n.due_datetime, n, None, True) for n in scheduled_announcement_notifications()],
+            + [(n.due_datetime, n, None) for n in scheduled_announcement_notifications()],
             key=lambda row: row[0],
         )
         return templates.TemplateResponse(
@@ -319,7 +309,7 @@ class AlarmRoutes:
         return Response(content=message, status_code=202, media_type="text/plain")
 
     async def test_notification_endpoint(self, payload: TestNotificationRequest):
-        message = self.alarm_handler.test_notification(payload.event, payload.notification_time)
+        message = self.alarm_handler.test_notification(payload.event, payload.play_datetime, payload.notification_time, payload.notification_type)
         return Response(content=message, status_code=202, media_type="text/plain")
 
     def _with_page_context(self, context: dict)-> dict:

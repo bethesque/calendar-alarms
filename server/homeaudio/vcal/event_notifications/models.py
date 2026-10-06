@@ -3,7 +3,9 @@ from pydantic import BaseModel
 
 class TestNotificationRequest(BaseModel):
     event: dict
+    play_datetime: datetime
     notification_time: datetime
+    notification_type: str
 
 class PlayScheduledAnnouncementRequest(BaseModel):
     base_time: datetime | None = None

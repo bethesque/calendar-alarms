@@ -116,69 +116,69 @@ def test_snooze_alarm_saves_snooze_state_and_confirms_via_tts(monkeypatch, tmp_p
     assert hook_calls == [1]
 
 
-def test_test_notification_builds_a_calendar_day_for_today_and_checks_and_plays_notifications(monkeypatch):
-    calls = []
+def _stub_test_notification_playback(monkeypatch):
+    calls = {}
+    monkeypatch.setattr(core_module, "gtts_tld", lambda: "com")
     monkeypatch.setattr(
         core_module,
-        "check_for_and_play_notifications",
-        lambda base_time, window_range, calendar_days, scene: calls.append((base_time, window_range, calendar_days, scene)),
+        "build_event_notification_files",
+        lambda notifications, base_time, tld, settings: calls.update(notifications=notifications, base_time=base_time) or ("announce.wav", "alarm.wav"),
     )
+    monkeypatch.setattr(core_module, "play_notifications", lambda files, scene: calls.update(files=files, scene=scene))
     monkeypatch.setattr(core_module, "scene_for_env", lambda: "the-scene")
+    return calls
 
-    notification_time = datetime(2026, 4, 28, 9, 0, tzinfo=TIMEZONE)
-    event = {
+
+def _gym_event_dict(start_time: datetime, description: str) -> dict:
+    return {
         "owner": "Beth",
         "calendar_id": "id",
         "summary": "Gym session",
-        "description": "#alarm",
-        "start_time": notification_time.isoformat(),
+        "description": description,
+        "start_time": start_time.isoformat(),
         "end_time": None,
         "recurring": False,
         "owner_count": 0,
         "location": None,
     }
 
-    core_module.test_notification(event, notification_time)
 
-    assert len(calls) == 1
-    base_time, window_range, calendar_days, scene = calls[0]
-    assert base_time == notification_time
-    assert window_range == (0, 5)
-    assert scene == "the-scene"
-    assert len(calendar_days) == 1
-    assert calendar_days[0].date == notification_time.date()
-    assert [e.summary for e in calendar_days[0].timed_events] == ["Gym session"]
-    assert calendar_days[0].timed_events[0].start_time == notification_time
-    assert calendar_days[0].whole_day_events == []
+def test_test_notification_plays_only_the_requested_notification_at_its_play_datetime(monkeypatch):
+    calls = _stub_test_notification_playback(monkeypatch)
+    monkeypatch.setattr(core_module, "EventNotificationSettings", lambda: EventNotificationSettings(schedule=SCHEDULE))
+    start_time = datetime(2026, 4, 28, 22, 0, tzinfo=TIMEZONE)
+    play_datetime = datetime(2026, 4, 28, 20, 55, tzinfo=TIMEZONE)
+
+    core_module.test_notification(_gym_event_dict(start_time, "#alarm #announce10"), play_datetime, start_time, "ALARM")
+
+    assert [(n.type, n.notification_time) for n in calls["notifications"]] == [(NotificationType.ALARM, start_time)]
+    assert calls["base_time"] == play_datetime
+    assert calls["files"].event_alarms_file == "alarm.wav"
+    assert calls["files"].event_announcements_file == "announce.wav"
+    assert calls["scene"] == "the-scene"
 
 
-def test_prepare_notification_files_passes_the_window_range_to_event_notifications_and_only_its_end_to_announcements(monkeypatch):
+def test_test_notification_plays_nothing_when_the_requested_notification_is_not_found(monkeypatch):
+    calls = _stub_test_notification_playback(monkeypatch)
+    monkeypatch.setattr(core_module, "EventNotificationSettings", lambda: EventNotificationSettings(schedule=SCHEDULE))
+    start_time = datetime(2026, 4, 28, 9, 0, tzinfo=TIMEZONE)
+
+    core_module.test_notification(_gym_event_dict(start_time, "#alarm"), start_time, start_time, "ANNOUNCE")
+
+    assert calls == {}
+
+def test_prepare_notification_files_passes_a_scheduler_to_event_notifications_and_the_check_interval_to_announcements(monkeypatch):
     calls = {}
     monkeypatch.setattr(core_module, "gtts_tld", lambda: "com")
     monkeypatch.setattr(
         core_module,
         "check_for_event_notifications",
-        lambda base_time, window_range, *args: calls.setdefault("event", window_range) and (None, None),
+        lambda base_time, scheduler, *args: calls.setdefault("event", scheduler) and (None, None),
     )
     monkeypatch.setattr(core_module, "check_for_morning_announcements", lambda base_time, window, *args: calls.setdefault("morning", window) and None)
     monkeypatch.setattr(core_module, "check_for_school_announcements", lambda base_time, window, *args: calls.setdefault("school", window) and None)
 
-    core_module.prepare_notification_files(datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE), (-420, 5), [], EventNotificationSettings(schedule=SCHEDULE))
+    core_module.prepare_notification_files(datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE), [], 5, EventNotificationSettings(schedule=SCHEDULE))
 
-    assert calls == {"event": (-420, 5), "morning": 5, "school": 5}
-
-
-def test_prepare_notification_files_skips_event_notifications_outside_operating_hours(monkeypatch):
-    calls = {}
-    monkeypatch.setattr(core_module, "gtts_tld", lambda: "com")
-    monkeypatch.setattr(
-        core_module,
-        "check_for_event_notifications",
-        lambda base_time, window_range, *args: calls.setdefault("event", window_range) and (None, None),
-    )
-    monkeypatch.setattr(core_module, "check_for_morning_announcements", lambda base_time, window, *args: calls.setdefault("morning", window) and None)
-    monkeypatch.setattr(core_module, "check_for_school_announcements", lambda base_time, window, *args: calls.setdefault("school", window) and None)
-
-    core_module.prepare_notification_files(datetime(2026, 4, 28, 6, 30, tzinfo=TIMEZONE), (0, 5), [], EventNotificationSettings(schedule=SCHEDULE))
-
+    assert calls.pop("event").window == 5
     assert calls == {"morning": 5, "school": 5}

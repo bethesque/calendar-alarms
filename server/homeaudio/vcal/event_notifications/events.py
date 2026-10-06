@@ -2,12 +2,13 @@ import logging
 import re
 from enum import Enum
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, tzinfo
 from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarSource, Event
-from homeaudio.audio.settings import EventNotificationSettings, DepartureNotificationSettings
+from homeaudio.audio.settings import EventNotificationSchedule, EventNotificationSettings, DepartureNotificationSettings
 from homeaudio.vcal.departure_time import TravelTimeCache, car_departure_time_for_event, relevant_dates
 from homeaudio.audio.settings import NotificationRule, DepartureNotificationSettings
-
+from homeaudio.vcal.notification_schedule import round_down_to_interval, event_notification_time_range_for_day, within_event_notification_operating_hours
+from homeaudio.env import NOTIFICATIONS_CHECK_INTERVAL_MINUTES
 logger = logging.getLogger(__name__)
 
 @dataclass
@@ -25,6 +26,7 @@ class EventNotification:
     type: NotificationType
     offset: int
     notification_time: datetime = field(init=False)
+    play_datetime: datetime | None = field(default=None, init=False)
     notification_rule: NotificationRule | None = None
     targets: frozenset[str] | None = None
 
@@ -38,6 +40,7 @@ class EventNotification:
             and self.type == other.type
             and self.offset == other.offset
             and self.notification_time == other.notification_time
+            and self.play_datetime == other.play_datetime
         )
 
 def _pattern_matches(pattern: str | None, value: str | None) -> bool:
@@ -97,8 +100,9 @@ def notification_rule_matches_event(event: "Event", rule: NotificationRule) -> b
 
 
 class EventNotifications:
-    def __init__(self, event: Event) -> None:
+    def __init__(self, event: Event, scheduler: "NotificationPlaytimeScheduler") -> None:
         self.event = event
+        self.scheduler = scheduler
 
     def notifications(self, rules: list[NotificationRule] | None = None, departure_notification_settings: DepartureNotificationSettings | None = None) -> list[EventNotification]:
         notifications = []
@@ -114,6 +118,9 @@ class EventNotifications:
         self._add_computed_departure_notifications(notifications, departure_notification_settings)
 
         self._add_notifications_from_description(notifications, departure_notification_settings)
+
+        for notification in notifications:
+            notification.play_datetime = self.scheduler.get_play_datetime(notification.notification_time)
 
         return self._deduplicate_notifications(notifications)
 
@@ -137,13 +144,6 @@ class EventNotifications:
                             event=self.event,
                             targets=_targets_from_description(self.event.description)
                         ))
-
-    def notifications_within_window(self, start_time, end_time, rules: list[NotificationRule] | None = None, departure_notification_settings: DepartureNotificationSettings | None = None):
-        notifications_in_window = []
-        for event_notification in self.notifications(rules, departure_notification_settings):
-            if start_time <= event_notification.notification_time < end_time:
-                notifications_in_window.append(event_notification)
-        return notifications_in_window
 
     def add_departure_notifications_from_tag(self, notifications, offset_int, departure_notification_settings: DepartureNotificationSettings):
         """
@@ -199,40 +199,45 @@ class EventNotifications:
 
         return deduplicated_notifications
 
+class NotificationPlaytimeScheduler:
+    def __init__(self, tz: tzinfo, schedule: EventNotificationSchedule, calendar_days: list[CalendarDay], window: int):
+        self.tz = tz
+        self.schedule = schedule
+        self.calendar_days = calendar_days
+        self.window = window
+
+    def get_play_datetime(self, notification_time: datetime) -> datetime:
+        local_time = notification_time.astimezone(self.tz)
+        datetime_range = event_notification_time_range_for_day(self.schedule, local_time.date(), self.calendar_days, local_time.tzinfo, self.window)
+        last_tick = datetime_range.end - timedelta(minutes=self.window)
+        return max(datetime_range.start, min(round_down_to_interval(local_time, self.window), last_tick))
+
 class NotificationFinder:
-    def __init__(self, calendar_days: list[CalendarDay], base_time, window_range: tuple[int, int], notification_rules=None, departure_notification_settings: DepartureNotificationSettings | None = None):
+    def __init__(self, calendar_days: list[CalendarDay], base_time, scheduler: NotificationPlaytimeScheduler, notification_rules=None, departure_notification_settings: DepartureNotificationSettings | None = None):
         self.calendar_days = calendar_days
         self.base_time = base_time
-        self.window_range = window_range
+        self.scheduler = scheduler
         self.notification_rules = notification_rules or []
         self.departure_notification_settings = departure_notification_settings
 
 
     def find_notification_events(self):
-        start, end = self._get_time_window()
+        if self.base_time != round_down_to_interval(self.base_time, self.scheduler.window) and within_event_notification_operating_hours(self.base_time, self.scheduler.schedule, self.calendar_days, self.scheduler.window):
+            logger.warning("Base time %s is not a multiple of the %s minute check interval, so notifications may be missed", self.base_time.isoformat(), self.scheduler.window)
 
         matching_events = []
 
         for day in self.calendar_days:
             for event in day.timed_events:
-                event_notifications = EventNotifications(event).notifications_within_window(start, end, self.notification_rules, self.departure_notification_settings)
-                matching_events.extend(event_notifications)
+                event_notifications = EventNotifications(event, self.scheduler).notifications(self.notification_rules, self.departure_notification_settings)
+                matching_events.extend(n for n in event_notifications if n.play_datetime == self.base_time)
 
-        self._log_results(start, end, matching_events)
+        self._log_results(matching_events)
 
         return matching_events
 
-
-    def _get_time_window(self):
-        window_from, window_to = self.window_range
-        return self.base_time + timedelta(minutes=window_from), self.base_time + timedelta(minutes=window_to)
-
-    def _log_results(self, start, end, results:list[EventNotification]):
-        logger.info(
-            "Time window: %s → %s (WINDOW=%s mins)",
-            start.isoformat(),
-            end.isoformat(),
-            self.window_range)
+    def _log_results(self, results:list[EventNotification]):
+        logger.info("Finding notifications to play at %s", self.base_time.isoformat())
 
         for event_notification in results:
             logger.info(
@@ -246,9 +251,9 @@ class NotificationFinder:
         logger.info("Total matched events: %d", len(results))
         return results
 
-def get_event_notifications(base_time, window_range: tuple[int, int], calendar_data: list[CalendarDay], event_notification_settings: EventNotificationSettings, departure_notification_settings: DepartureNotificationSettings | None = None):
+def get_event_notifications(base_time, scheduler: NotificationPlaytimeScheduler, calendar_data: list[CalendarDay], event_notification_settings: EventNotificationSettings, departure_notification_settings: DepartureNotificationSettings | None = None):
     notification_rules = event_notification_settings.enabled_notification_rules()
-    alarm_finder = NotificationFinder(calendar_data, base_time, window_range, notification_rules, departure_notification_settings)
+    alarm_finder = NotificationFinder(calendar_data, base_time, scheduler, notification_rules, departure_notification_settings)
     event_notifications = alarm_finder.find_notification_events()
     return event_notifications
 
@@ -257,10 +262,11 @@ def get_all_event_notifications(event_notification_settings: EventNotificationSe
     calendar_days = calendar_source.load_data_from_file()
 
     notification_rules = event_notification_settings.enabled_notification_rules()
+    scheduler = NotificationPlaytimeScheduler(datetime.now().astimezone().tzinfo, event_notification_settings.schedule, calendar_days, NOTIFICATIONS_CHECK_INTERVAL_MINUTES)
     notifications = []
     for day in calendar_days:
         for event in day.timed_events:
-            notifications.extend(EventNotifications(event).notifications(notification_rules, departure_notification_settings))
+            notifications.extend(EventNotifications(event, scheduler).notifications(notification_rules, departure_notification_settings))
 
     return notifications
 

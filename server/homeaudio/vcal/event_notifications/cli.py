@@ -9,11 +9,12 @@ from homeaudio.audio.mpd import fade_out, fade_up, mpd_connection
 from homeaudio.audio.log_config import setup_logging_for_alarms
 from homeaudio.vcal.cal.google_calendar import CalendarSource, CalendarDay
 from homeaudio.audio.scene import scene_for_env
-from homeaudio.audio.settings import MainSettings
+from homeaudio.audio.settings import EventNotificationSettings, MainSettings
 
 from homeaudio.env import CALENDAR_DATA_DIRECTORY, HOME_ASSISTANT_SUPPORTED
 from homeaudio.vcal.event_notifications.core import check_for_and_play_notifications
-from homeaudio.vcal.event_notifications.events import get_all_event_notifications
+from homeaudio.vcal.event_notifications.events import NotificationPlaytimeScheduler, get_all_event_notifications
+from homeaudio.vcal.notification_schedule import round_down_to_interval
 
 setup_logging_for_alarms(str(LOG_LEVEL))
 
@@ -38,7 +39,7 @@ def check_alarms():
         "--window",
         type=int,
         default=5,
-        help="Time window in minutes for checking alarms (default: 5)"
+        help="Check interval in minutes; base_time is rounded down to it (default: 5)"
     )
 
     parser.add_argument(
@@ -55,7 +56,8 @@ def check_alarms():
         base_time = args.base_time or datetime.now().astimezone()
         calendar_data = load_calendar_days(args.calendar_file)
 
-        check_for_and_play_notifications(base_time, (0, args.window), calendar_data, scene_for_env())
+        scheduler = NotificationPlaytimeScheduler(base_time.tzinfo, EventNotificationSettings().schedule, calendar_data, args.window)
+        check_for_and_play_notifications(round_down_to_interval(base_time, args.window), scheduler, calendar_data, scene_for_env())
     except Exception:
         logger.exception("Error checking for alarms")
         exit(1)

@@ -4,7 +4,8 @@ EventNotificationSettings.schedule's operating hours, and when morning/school an
 due outside of them.
 """
 
-from datetime import date, datetime, time, timedelta
+from dataclasses import dataclass
+from datetime import date, datetime, time, tzinfo
 
 from homeaudio.audio.settings import (
     EventNotificationSchedule,
@@ -24,49 +25,30 @@ def is_holiday(day: date, calendar_days: list[CalendarDay]) -> bool:
     return any(calendar_day.date == day and calendar_day.holiday for calendar_day in calendar_days)
 
 
+@dataclass(frozen=True)
+class DatetimeRange:
+    start: datetime
+    end: datetime
+
+
 def event_notification_time_range_for_day(
-    schedule: EventNotificationSchedule, day: date, calendar_days: list[CalendarDay]
-) -> TimeRange:
+    schedule: EventNotificationSchedule, day: date, calendar_days: list[CalendarDay], tz: tzinfo, interval_minutes: int
+) -> DatetimeRange:
     if day.weekday() >= 5:  # Monday=0 ... Sunday=6
-        return schedule.weekends
-    return schedule.holidays if is_holiday(day, calendar_days) else schedule.weekdays
+        time_range = schedule.weekends
+    else:
+        time_range = schedule.holidays if is_holiday(day, calendar_days) else schedule.weekdays
+    return DatetimeRange(
+        start=round_down_to_interval(datetime.combine(day, time_range.start, tzinfo=tz), interval_minutes),
+        end=round_down_to_interval(datetime.combine(day, time_range.end, tzinfo=tz), interval_minutes),
+    )
 
 
 def within_event_notification_operating_hours(
-    dt: datetime, schedule: EventNotificationSchedule, calendar_days: list[CalendarDay]
+    dt: datetime, schedule: EventNotificationSchedule, calendar_days: list[CalendarDay], interval_minutes: int
 ) -> bool:
-    time_range = event_notification_time_range_for_day(schedule, dt.date(), calendar_days)
-    return time_range.start <= dt.time() < time_range.end
-
-
-def event_notification_window_range(
-    base_time: datetime, window: int, schedule: EventNotificationSchedule, calendar_days: list[CalendarDay]
-) -> tuple[int, int]:
-    """(from, to) minute offsets from `base_time` to search for event notifications, reaching back to midnight on
-    the first tick of operating hours and forward to midnight on the last, so notifications outside them aren't missed."""
-
-    midnight = datetime.combine(base_time.date(), time(0), tzinfo=base_time.tzinfo)
-    window_from = -_minutes_between(midnight, base_time) if _is_start_of_event_notification_operating_hours(base_time, schedule, calendar_days) else 0
-    window_to = _minutes_between(base_time, midnight + timedelta(days=1)) if _is_end_of_event_notification_operating_hours(base_time, window, schedule, calendar_days) else window
-    return (window_from, window_to)
-
-
-def _is_start_of_event_notification_operating_hours(
-    base_time: datetime, schedule: EventNotificationSchedule, calendar_days: list[CalendarDay]
-) -> bool:
-    return base_time.time() == event_notification_time_range_for_day(schedule, base_time.date(), calendar_days).start
-
-
-def _is_end_of_event_notification_operating_hours(
-    base_time: datetime, window: int, schedule: EventNotificationSchedule, calendar_days: list[CalendarDay]
-) -> bool:
-    """Whether the `window` minutes from `base_time` reach the end of operating hours, making this the day's last tick."""
-    end_time = event_notification_time_range_for_day(schedule, base_time.date(), calendar_days).end
-    return base_time + timedelta(minutes=window) >= datetime.combine(base_time.date(), end_time, tzinfo=base_time.tzinfo)
-
-
-def _minutes_between(start: datetime, end: datetime) -> int:
-    return int((end - start).total_seconds() // 60)
+    datetime_range = event_notification_time_range_for_day(schedule, dt.date(), calendar_days, dt.tzinfo, interval_minutes)
+    return datetime_range.start <= dt < datetime_range.end
 
 
 def morning_announcement_time_for_day(

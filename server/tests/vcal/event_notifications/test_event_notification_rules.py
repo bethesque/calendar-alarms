@@ -5,10 +5,11 @@ import pytest
 from pydantic import ValidationError
 
 from homeaudio.vcal.cal.google_calendar import Event
-from homeaudio.vcal.event_notifications.events import EventNotifications, NotificationType
-from homeaudio.audio.settings import NotificationRule, DepartureNotificationSettings
+from homeaudio.vcal.event_notifications.events import EventNotifications, NotificationPlaytimeScheduler, NotificationType
+from homeaudio.audio.settings import EventNotificationSchedule, NotificationRule, DepartureNotificationSettings
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
+SCHEDULER = NotificationPlaytimeScheduler(TIMEZONE, EventNotificationSchedule(), [], 5)
 
 
 def _departure_notification_settings(**overrides) -> DepartureNotificationSettings:
@@ -33,7 +34,7 @@ def test_notifications_support_description_rules():
         offset_minutes=75,
     )
 
-    notifications = EventNotifications(event).notifications([rule])
+    notifications = EventNotifications(event, SCHEDULER).notifications([rule])
 
     assert len(notifications) == 1
     assert notifications[0].type == NotificationType.ALARM
@@ -89,7 +90,7 @@ def test_notifications_deduplicate_matching_tag_and_rule_notifications():
         reminder="Remember to eat."
     )
 
-    notifications = EventNotifications(event).notifications([rule])
+    notifications = EventNotifications(event, SCHEDULER).notifications([rule])
 
     assert len(notifications) == 1
     assert notifications[0].type == NotificationType.ALARM
@@ -130,9 +131,9 @@ def test_notifications_support_address_pattern():
         offset_minutes=75,
     )
 
-    assert len(EventNotifications(matching_event).notifications([rule])) == 1
-    assert EventNotifications(non_matching_event).notifications([rule]) == []
-    assert EventNotifications(no_location_event).notifications([rule]) == []
+    assert len(EventNotifications(matching_event, SCHEDULER).notifications([rule])) == 1
+    assert EventNotifications(non_matching_event, SCHEDULER).notifications([rule]) == []
+    assert EventNotifications(no_location_event, SCHEDULER).notifications([rule]) == []
 
 
 def test_notifications_address_pattern_is_case_insensitive():
@@ -153,7 +154,7 @@ def test_notifications_address_pattern_is_case_insensitive():
         offset_minutes=75,
     )
 
-    assert len(EventNotifications(event).notifications([rule])) == 1
+    assert len(EventNotifications(event, SCHEDULER).notifications([rule])) == 1
 
 
 def test_notifications_support_description_pattern():
@@ -180,8 +181,8 @@ def test_notifications_support_description_pattern():
         offset_minutes=75,
     )
 
-    assert len(EventNotifications(matching_event).notifications([rule])) == 1
-    assert EventNotifications(non_matching_event).notifications([rule]) == []
+    assert len(EventNotifications(matching_event, SCHEDULER).notifications([rule])) == 1
+    assert EventNotifications(non_matching_event, SCHEDULER).notifications([rule]) == []
 
 
 def test_notifications_description_pattern_is_case_insensitive():
@@ -201,7 +202,7 @@ def test_notifications_description_pattern_is_case_insensitive():
         offset_minutes=75,
     )
 
-    assert len(EventNotifications(event).notifications([rule])) == 1
+    assert len(EventNotifications(event, SCHEDULER).notifications([rule])) == 1
 
 
 def test_notifications_empty_description_and_address_patterns_do_not_filter():
@@ -223,7 +224,7 @@ def test_notifications_empty_description_and_address_patterns_do_not_filter():
         offset_minutes=75,
     )
 
-    assert len(EventNotifications(event).notifications([rule])) == 1
+    assert len(EventNotifications(event, SCHEDULER).notifications([rule])) == 1
 
 
 def test_notifications_require_pattern_description_pattern_and_address_pattern_to_all_match():
@@ -269,10 +270,10 @@ def test_notifications_require_pattern_description_pattern_and_address_pattern_t
         offset_minutes=75,
     )
 
-    assert len(EventNotifications(all_match).notifications([rule])) == 1
-    assert EventNotifications(summary_does_not_match).notifications([rule]) == []
-    assert EventNotifications(description_does_not_match).notifications([rule]) == []
-    assert EventNotifications(address_does_not_match).notifications([rule]) == []
+    assert len(EventNotifications(all_match, SCHEDULER).notifications([rule])) == 1
+    assert EventNotifications(summary_does_not_match, SCHEDULER).notifications([rule]) == []
+    assert EventNotifications(description_does_not_match, SCHEDULER).notifications([rule]) == []
+    assert EventNotifications(address_does_not_match, SCHEDULER).notifications([rule]) == []
 
 
 def test_notifications_require_exact_matching_calendar_id():
@@ -299,8 +300,8 @@ def test_notifications_require_exact_matching_calendar_id():
         calendar_id="beth-calendar",
     )
 
-    assert len(EventNotifications(matching_event).notifications([rule])) == 1
-    assert EventNotifications(non_matching_event).notifications([rule]) == []
+    assert len(EventNotifications(matching_event, SCHEDULER).notifications([rule])) == 1
+    assert EventNotifications(non_matching_event, SCHEDULER).notifications([rule]) == []
 
 
 def test_notifications_calendar_id_matches_any_rule_when_event_calendar_id_not_specified():
@@ -320,7 +321,7 @@ def test_notifications_calendar_id_matches_any_rule_when_event_calendar_id_not_s
         calendar_id="beth-calendar",
     )
 
-    assert len(EventNotifications(event).notifications([rule])) == 1
+    assert len(EventNotifications(event, SCHEDULER).notifications([rule])) == 1
 
 
 def test_notifications_calendar_id_matches_any_event_when_rule_calendar_id_not_specified():
@@ -339,7 +340,7 @@ def test_notifications_calendar_id_matches_any_event_when_rule_calendar_id_not_s
         offset_minutes=75,
     )
 
-    assert len(EventNotifications(event).notifications([rule])) == 1
+    assert len(EventNotifications(event, SCHEDULER).notifications([rule])) == 1
 
 
 def test_departure_notification_rule_matches_against_the_target_event_but_fires_on_the_leave_event():
@@ -362,7 +363,7 @@ def test_departure_notification_rule_matches_against_the_target_event_but_fires_
         reminder="Grab your coat.",
     )
 
-    notifications = EventNotifications(event).notifications(
+    notifications = EventNotifications(event, SCHEDULER).notifications(
         departure_notification_settings=_departure_notification_settings(notification_rules=[rule])
     )
 
@@ -403,7 +404,7 @@ def test_departure_notification_keeps_multiple_matching_rules_at_the_same_time()
         reminder="Take an umbrella.",
     )
 
-    notifications = EventNotifications(event).notifications(
+    notifications = EventNotifications(event, SCHEDULER).notifications(
         departure_notification_settings=_departure_notification_settings(notification_rules=[rule_one, rule_two])
     )
 
@@ -437,7 +438,7 @@ def test_departure_notification_rule_overrides_fixed_announcement_at_the_same_ti
         reminder="Grab your coat.",
     )
 
-    notifications = EventNotifications(event).notifications(
+    notifications = EventNotifications(event, SCHEDULER).notifications(
         departure_notification_settings=_departure_notification_settings(heads_up_reminder_lead_time=10, notification_rules=[rule])
     )
 

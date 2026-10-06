@@ -8,7 +8,8 @@ from fastapi.testclient import TestClient
 
 from homeaudio.audio.settings import NotificationRule
 from homeaudio.vcal.cal.google_calendar import Event
-from homeaudio.vcal.event_notifications.events import EventNotification, EventNotifications, NotificationType
+from homeaudio.vcal.event_notifications.events import EventNotification, EventNotifications, NotificationPlaytimeScheduler, NotificationType
+from homeaudio.audio.settings import EventNotificationSchedule
 from homeaudio.vcal.event_notifications.scheduled_announcements import ScheduledAnnouncementType
 import homeaudio.vcal.api as api_module
 
@@ -63,6 +64,7 @@ def test_notifications_page_lists_notifications(monkeypatch):
     )
     rule = NotificationRule(summary_pattern="gym", reminder="Remember to eat.")
     notification = EventNotification(event=event, type=NotificationType.ALARM, offset=75, notification_rule=rule)
+    notification.play_datetime = notification.notification_time
     monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [notification])
 
     response = _client().get("/alarm/notifications")
@@ -81,6 +83,7 @@ def test_notifications_page_shows_targets_when_set(monkeypatch):
         start_time=datetime(2026, 4, 28, 9, 0, tzinfo=timezone.utc),
     )
     notification = EventNotification(event=event, type=NotificationType.ALARM, offset=75, targets=frozenset({"kitchen", "bedroom"}))
+    notification.play_datetime = notification.notification_time
     monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [notification])
 
     response = _client().get("/alarm/notifications")
@@ -98,6 +101,7 @@ def test_notifications_page_shows_all_when_no_targets_set(monkeypatch):
         start_time=datetime(2026, 4, 28, 9, 0, tzinfo=timezone.utc),
     )
     notification = EventNotification(event=event, type=NotificationType.ALARM, offset=75, targets=None)
+    notification.play_datetime = notification.notification_time
     monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [notification])
 
     response = _client().get("/alarm/notifications")
@@ -115,6 +119,7 @@ def test_notifications_page_includes_morning_and_school_announcements_sorted_by_
         start_time=datetime(2026, 4, 28, 8, 0, tzinfo=timezone.utc),
     )
     notification = EventNotification(event=event, type=NotificationType.ALARM, offset=0)
+    notification.play_datetime = notification.notification_time
     monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [notification])
     monkeypatch.setattr(
         api_module,
@@ -146,6 +151,42 @@ def test_notifications_page_includes_morning_and_school_announcements_sorted_by_
     assert 'data-path="/alarm/school-announcements"' in response.text
 
 
+def _gym_alarm_playing_at(play_datetime):
+    event = Event(
+        owner="Beth",
+        calendar_id="id",
+        summary="Gym session",
+        description="#alarm",
+        start_time=datetime(2026, 4, 28, 22, 0, tzinfo=timezone.utc),
+    )
+    notification = EventNotification(event=event, type=NotificationType.ALARM, offset=0)
+    notification.play_datetime = play_datetime
+    return notification
+
+
+def test_notifications_page_shows_the_play_time_with_a_warning_when_it_differs_from_the_notification_time(monkeypatch):
+    notification = _gym_alarm_playing_at(datetime(2026, 4, 28, 20, 55, tzinfo=timezone.utc))
+    monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [notification])
+
+    response = _client().get("/alarm/notifications")
+
+    assert response.status_code == 200
+    assert "Tue, 28 Apr 26<br>08:55 PM" in response.text
+    assert 'title="Changed from 10:00 PM due to operation hours or to match notification check window"' in response.text
+    assert "⚠︎" in response.text
+
+
+def test_notifications_page_shows_no_warning_when_the_play_time_matches_the_notification_time(monkeypatch):
+    notification = _gym_alarm_playing_at(datetime(2026, 4, 28, 22, 0, tzinfo=timezone.utc))
+    monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [notification])
+
+    response = _client().get("/alarm/notifications")
+
+    assert response.status_code == 200
+    assert "Tue, 28 Apr 26<br>10:00 PM" in response.text
+    assert "⚠︎" not in response.text
+
+
 def test_notifications_page_handles_no_notifications(monkeypatch):
     monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [])
 
@@ -155,7 +196,7 @@ def test_notifications_page_handles_no_notifications(monkeypatch):
     assert "No upcoming notifications." in response.text
 
 
-def test_format_notification_for_api_maps_fields_and_rounds_play_datetime_down():
+def test_format_notification_for_api_maps_fields_and_uses_the_notifications_play_datetime():
     event = Event(
         owner="Beth",
         calendar_id="id",
@@ -164,29 +205,14 @@ def test_format_notification_for_api_maps_fields_and_rounds_play_datetime_down()
         start_time=datetime(2026, 4, 28, 9, 7, 30, tzinfo=timezone.utc),
     )
     notification = EventNotification(event=event, type=NotificationType.ALARM, offset=0)
+    notification.play_datetime = datetime(2026, 4, 28, 9, 5, tzinfo=timezone.utc)
 
-    result = api_module.format_notification_for_api(notification, check_interval_minutes=5)
+    result = api_module.format_notification_for_api(notification)
 
     assert result.event.summary == "Gym session"
     assert result.type == "alarm"
     assert result.due_datetime == notification.notification_time
     assert result.play_datetime == datetime(2026, 4, 28, 9, 5, tzinfo=timezone.utc)
-
-
-def test_format_notification_for_api_leaves_play_datetime_unchanged_when_already_on_a_boundary():
-    event = Event(
-        owner="Beth",
-        calendar_id="id",
-        summary="Gym session",
-        description="Leg day",
-        start_time=datetime(2026, 4, 28, 9, 10, tzinfo=timezone.utc),
-    )
-    notification = EventNotification(event=event, type=NotificationType.ANNOUNCE, offset=0)
-
-    result = api_module.format_notification_for_api(notification, check_interval_minutes=5)
-
-    assert result.type == "announce"
-    assert result.play_datetime == notification.notification_time
 
 
 def test_format_notification_for_api_shows_the_leave_for_event_summary():
@@ -197,10 +223,12 @@ def test_format_notification_for_api_shows_the_leave_for_event_summary():
         description="#travel10",
         start_time=datetime(2026, 4, 28, 9, 0, tzinfo=timezone.utc),
     )
-    leave_event = EventNotifications(target_event).leave_for_event(datetime(2026, 4, 28, 8, 40, tzinfo=timezone.utc))
+    scheduler = NotificationPlaytimeScheduler(timezone.utc, EventNotificationSchedule(), [], 5)
+    leave_event = EventNotifications(target_event, scheduler).leave_for_event(datetime(2026, 4, 28, 8, 40, tzinfo=timezone.utc))
     notification = EventNotification(event=leave_event, type=NotificationType.ANNOUNCE, offset=0)
+    notification.play_datetime = datetime(2026, 4, 28, 8, 40, tzinfo=timezone.utc)
 
-    result = api_module.format_notification_for_api(notification, check_interval_minutes=5)
+    result = api_module.format_notification_for_api(notification)
 
     assert result.event.summary == "Leave for Dentist"
 
@@ -214,9 +242,9 @@ def test_notifications_endpoint_returns_json_when_accept_header_requests_it(monk
         start_time=datetime(2026, 4, 28, 9, 7, 30, tzinfo=timezone.utc),
     )
     notification = EventNotification(event=event, type=NotificationType.ALARM, offset=0)
+    notification.play_datetime = datetime(2026, 4, 28, 9, 5, tzinfo=timezone.utc)
     monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [notification])
     monkeypatch.setattr(api_module, "scheduled_announcement_notifications", lambda: [])
-    monkeypatch.setattr(api_module, "NOTIFICATIONS_CHECK_INTERVAL_MINUTES", 5)
 
     response = _client().get("/alarm/notifications", headers={"Accept": "application/json"})
 
@@ -262,7 +290,7 @@ def test_notifications_endpoint_includes_morning_and_school_announcements(monkey
                 "event": {"summary": "Morning announcements"},
                 "type": "announce",
                 "due_datetime": "2026-04-28T07:17:00Z",
-                "play_datetime": "2026-04-28T07:16:00Z",
+                "play_datetime": "2026-04-28T07:17:00Z",
                 "duration_seconds": 300,
             },
             {
@@ -374,7 +402,7 @@ def test_calendar_refreshed_at_endpoint_returns_empty_string_when_never_refreshe
     assert response.text == ""
 
 
-def test_notifications_page_includes_event_json_for_the_test_button(monkeypatch):
+def test_notifications_page_includes_event_json_and_play_datetime_for_the_test_button(monkeypatch):
     event = Event(
         owner="Beth",
         calendar_id="id",
@@ -383,6 +411,7 @@ def test_notifications_page_includes_event_json_for_the_test_button(monkeypatch)
         start_time=datetime(2026, 4, 28, 9, 0, tzinfo=timezone.utc),
     )
     notification = EventNotification(event=event, type=NotificationType.ALARM, offset=0)
+    notification.play_datetime = datetime(2026, 4, 28, 8, 55, tzinfo=timezone.utc)
     monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [notification])
 
     response = _client().get("/alarm/notifications")
@@ -390,7 +419,9 @@ def test_notifications_page_includes_event_json_for_the_test_button(monkeypatch)
     assert response.status_code == 200
     assert 'data-event="' in response.text
     assert "test-notification" in response.text
-    assert notification.notification_time.isoformat() in response.text
+    assert f'data-play-datetime="{notification.play_datetime.isoformat()}"' in response.text
+    assert f'data-notification-time="{notification.notification_time.isoformat()}"' in response.text
+    assert 'data-notification-type="ALARM"' in response.text
 
 
 def test_test_notification_endpoint_starts_the_notification_test_and_returns_immediately(monkeypatch):
@@ -398,38 +429,40 @@ def test_test_notification_endpoint_starts_the_notification_test_and_returns_imm
     monkeypatch.setattr(
         api_module.AlarmHandler,
         "test_notification",
-        lambda self, event, notification_time: calls.append((event, notification_time)) or "Testing notification...",
+        lambda self, *args: calls.append(args) or "Testing notification...",
     )
 
     event = {"owner": "Beth", "calendar_id": "id", "summary": "Gym session", "description": "#alarm"}
+    play_datetime = datetime(2026, 4, 28, 8, 55, tzinfo=timezone.utc)
     notification_time = datetime(2026, 4, 28, 9, 0, tzinfo=timezone.utc)
 
     response = _client().post(
         "/alarm/test-notification",
-        json={"event": event, "notification_time": notification_time.isoformat()},
+        json={"event": event, "play_datetime": play_datetime.isoformat(), "notification_time": notification_time.isoformat(), "notification_type": "ALARM"},
     )
 
     assert response.status_code == 202
     assert response.text == "Testing notification..."
-    assert calls == [(event, notification_time)]
+    assert calls == [(event, play_datetime, notification_time, "ALARM")]
 
 
 def test_alarm_handler_test_notification_runs_test_notification_on_a_background_thread(monkeypatch):
     calls = []
     started = threading.Event()
 
-    def fake_test_notification(event, notification_time):
-        calls.append((event, notification_time))
+    def fake_test_notification(*args):
+        calls.append(args)
         started.set()
 
     monkeypatch.setattr(api_module, "test_notification", fake_test_notification)
 
     handler = api_module.AlarmHandler()
     event = {"summary": "Gym session"}
+    play_datetime = datetime(2026, 4, 28, 8, 55, tzinfo=timezone.utc)
     notification_time = datetime(2026, 4, 28, 9, 0, tzinfo=timezone.utc)
 
-    message = handler.test_notification(event, notification_time)
+    message = handler.test_notification(event, play_datetime, notification_time, "ALARM")
 
     assert message == "Testing notification..."
     assert started.wait(timeout=1)
-    assert calls == [(event, notification_time)]
+    assert calls == [(event, play_datetime, notification_time, "ALARM")]

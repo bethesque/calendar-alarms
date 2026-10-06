@@ -6,6 +6,7 @@ notification prepare/play tick.
 import logging
 import threading
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from homeaudio.audio.settings import (
     DepartureNotificationSettings,
@@ -20,7 +21,7 @@ from homeaudio.audio.settings import (
 from homeaudio.vcal.cal.google_calendar import CalendarDay, load_calendar_days, refresh_calendar_data
 from homeaudio.vcal.event_notifications.events import update_calendar_travel_times
 from homeaudio.vcal.notification_schedule import announcement_times_for_day, event_notification_time_range_for_day
-from homeaudio.env import CALENDAR_DATA_REFRESH_INTERVAL_MINUTES, CALENDAR_DATA_REFRESH_OFFSET_SECONDS
+from homeaudio.env import TIMEZONE, NOTIFICATIONS_CHECK_INTERVAL_MINUTES, CALENDAR_DATA_REFRESH_INTERVAL_MINUTES, CALENDAR_DATA_REFRESH_OFFSET_SECONDS
 
 logger = logging.getLogger(__name__)
 
@@ -53,8 +54,8 @@ def _wake_window_for_day(
     cover any morning/school announcement scheduled outside it, and opened 3 * REFRESH_INTERVAL_MINUTES
     before the earliest of those - room for a couple of retries on top of the day's first refresh,
     in case one fails, while still landing well before whichever notification fires first."""
-    base = event_notification_time_range_for_day(schedule, day, calendar_days)
-    boundary_times = [base.start, base.end, *announcement_times_for_day(day, morning_schedule, school_schedule, calendar_days)]
+    base = event_notification_time_range_for_day(schedule, day, calendar_days, ZoneInfo(TIMEZONE), NOTIFICATIONS_CHECK_INTERVAL_MINUTES)
+    boundary_times = [base.start.time(), base.end.time(), *announcement_times_for_day(day, morning_schedule, school_schedule, calendar_days)]
     start = (datetime.combine(day, min(boundary_times)) - timedelta(minutes=3 * REFRESH_INTERVAL_MINUTES)).time()
     return TimeRange(start=start, end=max(boundary_times))
 

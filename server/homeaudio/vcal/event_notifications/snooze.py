@@ -26,6 +26,8 @@ def _serialize(event_notification: EventNotification) -> dict:
         "event": _event_to_dict(event_notification.event),
         "type": event_notification.type.name,
         "offset": event_notification.offset,
+        "notification_time": event_notification.notification_time.isoformat(),
+        "play_datetime": event_notification.play_datetime.isoformat() if event_notification.play_datetime else None,
         "notification_rule": (
             event_notification.notification_rule.model_dump(mode="json")
             if event_notification.notification_rule
@@ -35,7 +37,7 @@ def _serialize(event_notification: EventNotification) -> dict:
 
 
 def _deserialize(data: dict) -> EventNotification:
-    return EventNotification(
+    event_notification = EventNotification(
         event=load_event(data["event"]),
         type=NotificationType[data["type"]],
         offset=data["offset"],
@@ -45,6 +47,9 @@ def _deserialize(data: dict) -> EventNotification:
             else None
         ),
     )
+    if data.get("play_datetime"):
+        event_notification.play_datetime = datetime.fromisoformat(data["play_datetime"])
+    return event_notification
 
 
 class LastPlayedState:
