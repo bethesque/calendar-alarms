@@ -206,7 +206,7 @@ def get_calendar_days(creds, calendars: list[CalendarSetting]):
     ]
 
     for calendar in calendars:
-        gcal = google_calendars_by_id[calendar.id]
+        gcal = google_calendars_by_id.get(calendar.id, None)
         if gcal:
             events = list_google_events(
                 creds,
@@ -216,7 +216,8 @@ def get_calendar_days(creds, calendars: list[CalendarSetting]):
             )
             logger.info(f"Adding events from id: {gcal.id} name: {gcal.name}")
             add_events_to_calendars(events, calendar.id, calendar.name, displayed_calendar_days, calendar.owner_count)
-
+        else:
+            logger.warning(f"No calendar found with id {calendar.id}")
     for cal in displayed_calendar_days:
         cal.timed_events.sort(key=attrgetter("start_time"))
     return displayed_calendar_days
