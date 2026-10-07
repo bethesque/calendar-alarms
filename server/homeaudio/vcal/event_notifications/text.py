@@ -95,10 +95,14 @@ class NotificationTextBuilder:
 
     def _it_will_be_time_for_summary(self, event_notification: EventNotification):
         summary = event_notification.event.summary
-        minutes_until_start = int((event_notification.event.start_time - self.base_time).total_seconds() // 60)
+        start_time = event_notification.event.start_time
+        minutes_until_start = int((start_time - self.base_time).total_seconds() / 60)
         if minutes_until_start > 0:
             minutes_text = "1 minute" if minutes_until_start == 1 else f"{minutes_until_start} minutes"
             return f"It will be time {self._to_or_for(summary)} {summary} in {minutes_text}."
+        elif minutes_until_start < 0:
+            start_text = f"{start_time.hour % 12 or 12}:{start_time.minute:02d}{'am' if start_time.hour < 12 else 'pm'}"
+            return f"It was time {self._to_or_for(summary)} {summary} at {start_text}."
         else:
             return f"It's time {self._to_or_for(summary)} {summary}."
 

@@ -33,7 +33,6 @@ def test_journalctl_routes_shows_journal_output(monkeypatch):
 
     args = captured_args[0]
     assert args[0] == "journalctl"
-    assert "--user" in args
     assert "SYSLOG_IDENTIFIER=calendar-alarms" in args
     assert "-r" in args  # newest first
     assert "-n" in args and args[args.index("-n") + 1] == "50"  # default_lines

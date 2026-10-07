@@ -119,11 +119,27 @@ def test_notification_text_builder_uses_the_minutes_from_base_time_to_the_event_
     assert _bare_text(monkeypatch, [event_notification], base_time) == [expected]
 
 
-def test_notification_text_builder_says_its_time_for_an_event_that_already_started(monkeypatch):
+def test_notification_text_builder_says_it_was_time_for_an_event_that_already_started(monkeypatch):
     base_time = datetime.datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE)
     event_notification = _description_event_notification(offset=15, start_time=datetime.datetime(2026, 4, 28, 6, 45, tzinfo=TIMEZONE))
 
-    assert _bare_text(monkeypatch, [event_notification], base_time) == ["It's time for Gym session."]
+    assert _bare_text(monkeypatch, [event_notification], base_time) == ["It was time for Gym session at 6:45am."]
+
+
+@pytest.mark.parametrize(
+    "summary, start_time, expected",
+    [
+        ("Feed Miller", datetime.datetime(2026, 4, 28, 7, 10, tzinfo=TIMEZONE), "It was time to Feed Miller at 7:10am."),
+        ("Gym session", datetime.datetime(2026, 4, 28, 0, 5, tzinfo=TIMEZONE), "It was time for Gym session at 12:05am."),
+        ("Gym session", datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE), "It was time for Gym session at 12:00pm."),
+        ("Gym session", datetime.datetime(2026, 4, 28, 13, 30, tzinfo=TIMEZONE), "It was time for Gym session at 1:30pm."),
+    ],
+)
+def test_notification_text_builder_says_the_start_time_for_an_event_that_already_started(monkeypatch, summary, start_time, expected):
+    base_time = datetime.datetime(2026, 4, 28, 14, 0, tzinfo=TIMEZONE)
+    event_notification = _description_event_notification(summary=summary, start_time=start_time)
+
+    assert _bare_text(monkeypatch, [event_notification], base_time) == [expected]
 
 
 def test_notification_text_builder_removes_repeated_sentences(monkeypatch):
@@ -134,4 +150,4 @@ def test_notification_text_builder_removes_repeated_sentences(monkeypatch):
         _description_event_notification(offset=5, start_time=start_time),
     ]
 
-    assert _bare_text(monkeypatch, event_notifications, base_time) == ["It's time for Gym session."]
+    assert _bare_text(monkeypatch, event_notifications, base_time) == ["It was time for Gym session at 6:45am."]

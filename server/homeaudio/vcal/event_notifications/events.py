@@ -26,7 +26,7 @@ class EventNotification:
     type: NotificationType
     offset: int
     notification_time: datetime = field(init=False)
-    play_datetime: datetime | None = field(default=None, init=False)
+    play_datetime: datetime | None = field(default=None, init=False) # The datetime it will actually play, taking into account the NOTIFICATIONS_CHECK_INTERVAL_MINUTES and the schedule hours for the day
     notification_rule: NotificationRule | None = None
     targets: frozenset[str] | None = None
 
