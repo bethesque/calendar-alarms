@@ -68,10 +68,27 @@ class AdminRoutes:
                     ),
                     "event_notification_settings.notification_rules.[].calendar_id": FieldConfig(
                         display=DisplayConfig(
-                            title="Calendar"
+                            title="Calendar",
+                            subtitle="Only match events from this calendar",
                         ),
                         renderer=Renderer.SELECT,
-                        props=self.calendar_select_props
+                        props=self.calendar_select_props,
+                        placeholder="Any calendar"
+                    ),
+                    "departure_notification_settings.notification_rules.[].calendar_id": FieldConfig(
+                        display=DisplayConfig(
+                            title="Calendar",
+                            subtitle="Only match events from this calendar",
+                        ),
+                        renderer=Renderer.SELECT,
+                        props=self.calendar_select_props,
+                        placeholder="Any calendar"
+                    ),
+                    "departure_notification_settings.notification_rules.[].offset_minutes": FieldConfig(
+                        display=DisplayConfig(
+                            title="Offset minutes",
+                            subtitle="The number of minutes before DEPARTURE to play the notification"
+                        ),
                     ),
                     "snapcast_settings": FieldConfig(
                         visible_when=f"{str(SNAPCAST_ENABLED).lower()} == true"
