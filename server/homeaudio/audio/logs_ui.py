@@ -57,7 +57,6 @@ class JournalctlRoutes:
         try:
             args = [
                 "journalctl",
-                "--user",
                 f"SYSLOG_IDENTIFIER={self.service_name}",
                 "-n", str(line_count),
                 "-r",  # newest first
