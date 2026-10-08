@@ -10,3 +10,6 @@
   notify:
     - reload system systemd daemon
     - enable and start set-amixer-volume service
+  when: is_pi == true
+  tags:
+    - set-amixer-volume

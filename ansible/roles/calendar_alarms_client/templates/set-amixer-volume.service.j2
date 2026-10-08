@@ -5,6 +5,7 @@ Wants=alsa-restore.service
 
 [Service]
 Type=oneshot
+User={{ ansible_user }}
 ExecStart=/usr/bin/amixer set Speaker {{ default_amixer_volume }}
 
 [Install]
