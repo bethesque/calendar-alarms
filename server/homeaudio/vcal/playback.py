@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+import subprocess
 import logging
 import time
 from homeaudio.audio.mpd import fade_up, mpd_connection
@@ -48,6 +49,8 @@ def play_notifications(notification_files: NotificationFiles, scene: SceneProtoc
     scheduled_announcements_files = notification_files.scheduled_announcements_files
     alarms_file = notification_files.event_alarms_file
 
+    _set_amixer_volume(mpd_settings)
+
     if announcements_file or scheduled_announcements_files:
         snapserver_manager.set_volumes("tts")
 
@@ -91,3 +94,22 @@ def play_file(file: str, mpd_settings: MpdSettings | None = None):
     with mpd_connection(mpd_settings) as mpd:
         logger.info(f"Playing {file}")
         mpd.play_file(file)
+
+def _set_amixer_volume(mpd_settings: MpdSettings):
+    """
+    amixer volume sets itself back to 10 occasionally, and I can't work out why.
+    This is the most reliable way to ensure it is set to the correct volume for Ferny.
+    """
+    if mpd_settings.volumes.amixer:
+        command = ["amixer", "set", "Speaker", str(mpd_settings.volumes.amixer)]
+        try:
+            logger.debug(f"Setting amixer volume to {mpd_settings.volumes.amixer}")
+            result = subprocess.run(
+                    command,
+                    capture_output=True,
+                    text=True,
+                )
+            if result.returncode != 0:
+                logger.warning(f"Error executing `{" ".join(command)}`: {result.stdout} {result.stderr}")
+        except:
+            logger.exception(f"Error executing `{" ".join(command)}`")

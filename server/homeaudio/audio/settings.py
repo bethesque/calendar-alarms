@@ -60,6 +60,7 @@ class MpdVolumeConfig(BaseModel):
     alarm_start: int = Field(default=50, ge=0, le=100, title="Event alarm start volume")
     alarm_end: int = Field(default=100, ge=0, le=100, title="Event alarm end volume")
     wake_up_alarm_end: int = Field(default=60, ge=0, le=100, title="Wake up alarm end volume")
+    amixer: int | None = Field(default=None, ge=0, le=30, description="If running MPD without Snapcast, the volume to set amixer")
 
     def __getitem__(self, key: str) -> int:
         return getattr(self, key)
