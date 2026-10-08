@@ -2,7 +2,7 @@ all:
   children:
     audio_host:
       hosts:
-        dwainpi.local:
+        dwainpi:
           ansible_user: pi
           ansible_ssh_private_key_file: ~/.ssh/id_ed25519
           ansible_python_interpreter: /usr/bin/python
