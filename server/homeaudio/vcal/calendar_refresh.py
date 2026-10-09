@@ -5,7 +5,7 @@ notification prepare/play tick.
 
 import logging
 import threading
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from homeaudio.audio.settings import (
@@ -56,7 +56,8 @@ def _wake_window_for_day(
     in case one fails, while still landing well before whichever notification fires first."""
     base = event_notification_time_range_for_day(schedule, day, calendar_days, ZoneInfo(TIMEZONE), NOTIFICATIONS_CHECK_INTERVAL_MINUTES)
     boundary_times = [base.start.time(), base.end.time(), *announcement_times_for_day(day, morning_schedule, school_schedule, calendar_days)]
-    start = (datetime.combine(day, min(boundary_times)) - timedelta(minutes=3 * REFRESH_INTERVAL_MINUTES)).time()
+    day_start = datetime.combine(day, time.min)
+    start = max(datetime.combine(day, min(boundary_times)) - timedelta(minutes=3 * REFRESH_INTERVAL_MINUTES), day_start).time()
     return TimeRange(start=start, end=max(boundary_times))
 
 

@@ -17,6 +17,7 @@ from homeaudio.vcal.cal.google_calendar import CalendarDay
 from homeaudio.vcal.calendar_refresh import CalendarRefreshLoop
 from homeaudio.vcal.core import NotificationFiles
 from homeaudio.vcal.daemon import (
+    MAX_SLEEP_SECONDS,
     NotificationCheckDaemon,
     next_boundary,
     check_for_notifications,
@@ -111,6 +112,15 @@ def test_next_boundary_from_saturday_night_lands_on_sunday_8am(monkeypatch):
     now = datetime(2026, 4, 25, 21, 0, tzinfo=TIMEZONE)  # Saturday, after last weekend tick
 
     assert next_boundary(now, SCHEDULE, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE) == datetime(2026, 4, 26, 8, 0, tzinfo=TIMEZONE)  # Sunday
+
+
+def test_next_boundary_returns_the_max_sleep_cap_when_no_day_has_operating_hours(monkeypatch):
+    monkeypatch.setattr("homeaudio.vcal.daemon.CHECK_INTERVAL_MINUTES", 5)
+    collapsed = TimeRange(start=time(7, 1), end=time(7, 4))
+    schedule = EventNotificationSchedule(weekdays=collapsed, weekends=collapsed, holidays=collapsed)
+    now = datetime(2026, 4, 27, 10, 0, tzinfo=TIMEZONE)  # Monday
+
+    assert next_boundary(now, schedule, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE) == now + timedelta(seconds=MAX_SLEEP_SECONDS)
 
 
 def test_next_boundary_respects_non_hour_aligned_start_time():

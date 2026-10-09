@@ -1,8 +1,10 @@
+from datetime import time
+
 import pytest
 import yaml
 from pydantic import ValidationError
 
-from homeaudio.audio.settings import EventNotificationSettings, NotificationRule, SnapcastSettings, SnapclientConfig, DepartureNotificationSettings, UploadedFile, GoogleCalendarSettings
+from homeaudio.audio.settings import EventNotificationSettings, TimeRange, NotificationRule, SnapcastSettings, SnapclientConfig, DepartureNotificationSettings, UploadedFile, GoogleCalendarSettings
 
 
 def test_label_uses_summary_pattern_only():
@@ -165,3 +167,19 @@ def test_google_calendar_token_info_parses_token_file_json(tmp_path, monkeypatch
 
     assert GoogleCalendarSettings(token_file=token_file).token_info() == {"a": "b"}
 
+
+
+def test_time_range_allows_end_after_start():
+    time_range = TimeRange(start=time(7, 0), end=time(21, 0))
+
+    assert time_range.end == time(21, 0)
+
+
+def test_time_range_rejects_end_equal_to_start():
+    with pytest.raises(ValidationError):
+        TimeRange(start=time(7, 0), end=time(7, 0))
+
+
+def test_time_range_rejects_end_before_start():
+    with pytest.raises(ValidationError):
+        TimeRange(start=time(21, 0), end=time(7, 0))

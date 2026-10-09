@@ -73,6 +73,15 @@ def test_wake_window_for_day_widens_the_end_for_a_later_announcement():
     assert window == TimeRange(start=time(6, 45), end=time(22, 0))
 
 
+def test_wake_window_for_day_clamps_the_lead_buffer_at_midnight():
+    morning_schedule = MorningAnnouncementsSchedule(weekdays=time(0, 5), weekends=None)
+    monday = datetime(2026, 4, 27, tzinfo=TIMEZONE).date()
+
+    window = _wake_window_for_day(monday, SCHEDULE, morning_schedule, NO_SCHOOL_SCHEDULE, [])
+
+    assert window == TimeRange(start=time(0, 0), end=SCHEDULE.weekdays.end)
+
+
 def test_next_refresh_boundary_rounds_up_to_the_offset_within_the_current_interval():
     base = datetime(2026, 4, 27, 7, 0, tzinfo=TIMEZONE)  # Monday
     now = base + timedelta(minutes=1)  # before this bucket's own offset instant

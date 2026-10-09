@@ -104,7 +104,9 @@ def next_boundary(
     # Wind back to the previous whole minute and add the CHECK_INTERVAL_MINUTES to it
     candidate = now.replace(minute=0, second=0, microsecond=0) + timedelta(minutes=minute)
 
-    while not within_event_notification_operating_hours(candidate, schedule, calendar_days, CHECK_INTERVAL_MINUTES) and not _is_scheduled_announcement(
+    cap = round_down_to_interval(now + timedelta(seconds=MAX_SLEEP_SECONDS), CHECK_INTERVAL_MINUTES)
+
+    while candidate < cap and not within_event_notification_operating_hours(candidate, schedule, calendar_days, CHECK_INTERVAL_MINUTES) and not _is_scheduled_announcement(
         candidate, morning_schedule, school_schedule, calendar_days
     ):
         # The next regular CHECK_INTERVAL_MINUTES is outside the normal event notification operating hours.
@@ -124,7 +126,7 @@ def next_boundary(
             next_wake_times = _wake_times_for_day(next_day, schedule, morning_schedule, school_schedule, calendar_days)
             candidate = datetime.combine(next_day, min(next_wake_times), tzinfo=candidate.tzinfo)
 
-    return min(candidate, round_down_to_interval(now + timedelta(seconds=MAX_SLEEP_SECONDS), CHECK_INTERVAL_MINUTES))
+    return min(candidate, cap)
 
 
 def check_for_notifications(base_time: datetime) -> NotificationFiles | None:
