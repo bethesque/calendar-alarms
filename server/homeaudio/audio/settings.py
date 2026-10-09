@@ -174,6 +174,12 @@ class TimeRange(BaseModel):
     start: time = Field(description="The start time is inclusive (ie. notifications due at this time WILL be played)")
     end: time = Field(description="The end time is exclusive (ie. notifications due at this time will NOT be played)")
 
+    @model_validator(mode="after")
+    def _require_end_after_start(self) -> "TimeRange":
+        if self.end <= self.start:
+            raise ValueError("End time must be after start time")
+        return self
+
 class EventNotificationSchedule(BaseModel):
     weekdays: TimeRange = Field(default=TimeRange(start=time(7, 0), end=time(21)))
     weekends: TimeRange = Field(default=TimeRange(start=time(9, 0), end=time(21)))
