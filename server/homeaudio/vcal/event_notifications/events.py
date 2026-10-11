@@ -158,6 +158,7 @@ class EventNotifications:
         """
         if self.event.car_departure_time and not self._has_travel_tag_with_number():
             walk_out_time = self.event.car_departure_time - timedelta(minutes=departure_notification_settings.house_to_car_minutes)
+            walk_out_time = (walk_out_time + timedelta(seconds=30)).replace(second=0, microsecond=0)
             self._add_departure_notifications(notifications, walk_out_time, departure_notification_settings)
 
     def _has_travel_tag_with_number(self):

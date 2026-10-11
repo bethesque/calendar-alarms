@@ -1,6 +1,8 @@
 import datetime
 from zoneinfo import ZoneInfo
 
+import pytest
+
 from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarSource, Event, event_from_google_dict
 from homeaudio.vcal.event_notifications.events import EventNotifications, LeaveForEvent, NotificationPlaytimeScheduler, NotificationType
 from homeaudio.audio.settings import DepartureNotificationSettings, EventNotificationSchedule
@@ -315,6 +317,28 @@ def test_event_with_car_departure_time_builds_computed_travel_notifications():
     assert notifications[1].offset == 0
     assert notifications[1].event.start_time == walk_out_time
     assert notifications[1].notification_time == walk_out_time
+
+
+@pytest.mark.parametrize("car_departure_seconds, expected_walk_out_minute", [
+    (29, 55),
+    (30, 56),
+    (59, 56),
+])
+def test_computed_walk_out_time_is_rounded_to_the_nearest_minute(car_departure_seconds, expected_walk_out_minute):
+    event = Event(
+        calendar_id="id",
+        owner="Beth",
+        summary="Morning meeting",
+        description="Some regular description",
+        start_time=datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE),
+        car_departure_time=datetime.datetime(2026, 4, 28, 12, 0, car_departure_seconds, 500, tzinfo=TIMEZONE),
+    )
+
+    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notification_settings=_departure_notification_settings(house_to_car_minutes=5))
+
+    walk_out_time = datetime.datetime(2026, 4, 28, 11, expected_walk_out_minute, tzinfo=TIMEZONE)
+    assert len(notifications) == 2
+    assert all(n.event.start_time == walk_out_time for n in notifications)
 
 
 def test_leave_for_event_notifications_inherit_targets_from_original_event():
