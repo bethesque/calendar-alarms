@@ -21,7 +21,7 @@ from homeaudio.audio.settings import (
     SchoolAnnouncementsSettings,
 )
 from homeaudio.env import TIMEZONE, LOG_LEVEL, NOTIFICATIONS_CHECK_INTERVAL_MINUTES, NOTIFICATIONS_PREPARATION_LEAD_TIME_SECONDS
-from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarSource, load_calendar_days
+from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, CalendarSource, load_calendar_days
 from homeaudio.vcal.calendar_refresh import CalendarRefreshLoop
 from homeaudio.vcal.core import prepare_notification_files, NotificationFiles
 from homeaudio.vcal.core import play_notifications as _play_notifications
@@ -53,7 +53,7 @@ def _is_scheduled_announcement(
     dt: datetime,
     morning_schedule: MorningAnnouncementsSchedule,
     school_schedule: SchoolAnnouncementsSchedule,
-    calendar_days: list[CalendarDay],
+    calendar_days: CalendarDayList,
 ) -> bool:
     return dt.time() in announcement_times_for_day(dt.date(), morning_schedule, school_schedule, calendar_days)
 
@@ -63,7 +63,7 @@ def _wake_times_for_day(
     schedule: EventNotificationSchedule,
     morning_schedule: MorningAnnouncementsSchedule,
     school_schedule: SchoolAnnouncementsSchedule,
-    calendar_days: list[CalendarDay],
+    calendar_days: CalendarDayList,
 ) -> list[time]:
     """
     The announcement times and the start of the event notification time range.
@@ -79,7 +79,7 @@ def next_boundary(
     schedule: EventNotificationSchedule | None = None,
     morning_schedule: MorningAnnouncementsSchedule | None = None,
     school_schedule: SchoolAnnouncementsSchedule | None = None,
-    calendar_days: list[CalendarDay] | None = None,
+    calendar_days: CalendarDayList | None = None,
 ) -> datetime:
     """The next CHECK_INTERVAL_MINUTES-aligned time at or after `now`, skipping forward over hours
     outside EventNotificationSettings.schedule's weekdays/weekends window - except for any

@@ -7,7 +7,7 @@ from homeaudio.audio.settings import (
     SchoolAnnouncementsSchedule,
     SchoolAnnouncementsSettings,
 )
-from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarSource, Event
+from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, CalendarSource, Event
 from homeaudio.vcal.event_notifications.scheduled_announcements import ScheduledAnnouncementNotification, ScheduledAnnouncementType, scheduled_announcement_notifications
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")

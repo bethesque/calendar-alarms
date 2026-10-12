@@ -7,7 +7,7 @@ from datetime import datetime
 from homeaudio.env import LOG_LEVEL
 from homeaudio.audio.mpd import fade_out, fade_up, mpd_connection
 from homeaudio.audio.log_config import setup_logging_for_alarms
-from homeaudio.vcal.cal.google_calendar import CalendarSource, CalendarDay
+from homeaudio.vcal.cal.google_calendar import CalendarSource, CalendarDay, CalendarDayList
 from homeaudio.audio.scene import scene_for_env
 from homeaudio.audio.settings import EventNotificationSettings, MainSettings
 
@@ -20,7 +20,7 @@ setup_logging_for_alarms(str(LOG_LEVEL))
 
 logger = logging.getLogger(__name__)
 
-def load_calendar_days(file_path) -> list[CalendarDay]:
+def load_calendar_days(file_path) -> CalendarDayList:
     return CalendarSource(cache_file_path=file_path).load_data_from_file()
 
 def check_alarms():

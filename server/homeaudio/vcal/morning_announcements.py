@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from typing import Callable
 from homeaudio.audio.settings import MorningAnnouncementsSchedule, MorningAnnouncementsSettings, MpdSettings, SnapcastSettings
 from homeaudio.audio.tts_playback import play_tts_audio_file
-from homeaudio.vcal.cal.google_calendar import CalendarDay, Event, WeatherForecast, MissingCalendarDataException, CalendarSource, get_calendar_day_for_date, DATA_FILE
+from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, Event, WeatherForecast, MissingCalendarDataException, CalendarSource, get_calendar_day_for_date, DATA_FILE
 from homeaudio.vcal.event_notifications.text_to_voice import gtts_tld, text_to_voice_file, TextToSpeechError
 from homeaudio.vcal import NO_CALENDAR_DATA, MORNING_GREETING, TODAYS_EVENTS_ARE, FUN_FACT_FOR_TODAY, NO_EVENTS_TODAY, HAVE_A_LOVELY_DAY
 from homeaudio.audio.sound import join_mp3s_to_wav, mix_announcement_audio
@@ -160,7 +160,7 @@ def _datestamp() -> str:
     now = datetime.now()
     return f"{now.strftime('%y%m%d%H%M%S')}{now.microsecond // 1000:03d}"
 
-def _announcement_due(base_time: datetime, window: int, schedule: MorningAnnouncementsSchedule, calendar_days: list[CalendarDay]) -> bool:
+def _announcement_due(base_time: datetime, window: int, schedule: MorningAnnouncementsSchedule, calendar_days: CalendarDayList) -> bool:
     scheduled_time_of_day = morning_announcement_time_for_day(schedule, base_time.date(), calendar_days)
     if scheduled_time_of_day is None:
         return False
@@ -168,7 +168,7 @@ def _announcement_due(base_time: datetime, window: int, schedule: MorningAnnounc
     scheduled_time = datetime.combine(base_time.date(), scheduled_time_of_day, tzinfo=base_time.tzinfo)
     return base_time <= scheduled_time < base_time + timedelta(minutes=window)
 
-def _create_audio_file_for_calendar_days(base_time: datetime, calendar_days: list[CalendarDay], tld: str, settings: MorningAnnouncementsSettings | None = None) -> str:
+def _create_audio_file_for_calendar_days(base_time: datetime, calendar_days: CalendarDayList, tld: str, settings: MorningAnnouncementsSettings | None = None) -> str:
     settings = settings or MorningAnnouncementsSettings()
     try:
         calendar_day = get_calendar_day_for_date(calendar_days, base_time)
@@ -190,7 +190,7 @@ the built audio file if the morning announcement is due this tick, or None other
 def check_for_announcement(
         base_time: datetime,
         window: int,
-        calendar_days: list[CalendarDay],
+        calendar_days: CalendarDayList,
         tld: str,
         settings: MorningAnnouncementsSettings | None = None
     ) -> NotificationFile | None:

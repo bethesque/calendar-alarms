@@ -13,7 +13,7 @@ from homeaudio.audio.settings import (
     SchoolAnnouncementsSchedule,
     TimeRange,
 )
-from homeaudio.vcal.cal.google_calendar import CalendarDay
+from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList
 
 
 def round_down_to_interval(dt: datetime, interval_minutes: int) -> datetime:
@@ -21,7 +21,7 @@ def round_down_to_interval(dt: datetime, interval_minutes: int) -> datetime:
     return dt.replace(minute=minute, second=0, microsecond=0)
 
 
-def is_holiday(day: date, calendar_days: list[CalendarDay]) -> bool:
+def is_holiday(day: date, calendar_days: CalendarDayList) -> bool:
     return any(calendar_day.date == day and calendar_day.holiday for calendar_day in calendar_days)
 
 
@@ -32,7 +32,7 @@ class DatetimeRange:
 
 
 def event_notification_time_range_for_day(
-    schedule: EventNotificationSchedule, day: date, calendar_days: list[CalendarDay], tz: tzinfo, interval_minutes: int
+    schedule: EventNotificationSchedule, day: date, calendar_days: CalendarDayList, tz: tzinfo, interval_minutes: int
 ) -> DatetimeRange:
     if day.weekday() >= 5:  # Monday=0 ... Sunday=6
         time_range = schedule.weekends
@@ -45,14 +45,14 @@ def event_notification_time_range_for_day(
 
 
 def within_event_notification_operating_hours(
-    dt: datetime, schedule: EventNotificationSchedule, calendar_days: list[CalendarDay], interval_minutes: int
+    dt: datetime, schedule: EventNotificationSchedule, calendar_days: CalendarDayList, interval_minutes: int
 ) -> bool:
     datetime_range = event_notification_time_range_for_day(schedule, dt.date(), calendar_days, dt.tzinfo, interval_minutes)
     return datetime_range.start <= dt < datetime_range.end
 
 
 def morning_announcement_time_for_day(
-    schedule: MorningAnnouncementsSchedule, day: date, calendar_days: list[CalendarDay]
+    schedule: MorningAnnouncementsSchedule, day: date, calendar_days: CalendarDayList
 ) -> time | None:
     if day.weekday() >= 5:  # Monday=0 ... Sunday=6
         return schedule.weekends
@@ -63,7 +63,7 @@ def announcement_times_for_day(
     day: date,
     morning_schedule: MorningAnnouncementsSchedule,
     school_schedule: SchoolAnnouncementsSchedule,
-    calendar_days: list[CalendarDay],
+    calendar_days: CalendarDayList,
 ) -> list[time]:
     """Times on `day` a morning/school announcement is due outside of - and so not otherwise
     covered by - EventNotificationSettings.schedule's operating hours."""

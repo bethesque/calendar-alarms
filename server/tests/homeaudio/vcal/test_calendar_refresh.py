@@ -10,7 +10,7 @@ from homeaudio.audio.settings import (
     SchoolAnnouncementsSchedule,
     TimeRange,
 )
-from homeaudio.vcal.cal.google_calendar import CalendarDay
+from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList
 from homeaudio.vcal.calendar_refresh import (
     REFRESH_INTERVAL_MINUTES,
     REFRESH_OFFSET_SECONDS,

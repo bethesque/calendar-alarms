@@ -18,7 +18,7 @@ from homeaudio.vcal.morning_announcements import (
     play_morning_announcements,
     ERROR_MESSAGE_AUDIO,
 )
-from homeaudio.vcal.cal.google_calendar import CalendarDay, Event, WeatherForecast, MissingCalendarDataException
+from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, Event, WeatherForecast, MissingCalendarDataException
 from homeaudio.vcal.event_notifications.text_to_voice import TextToSpeechError
 from homeaudio.vcal import MORNING_GREETING, NO_EVENTS_TODAY, HAVE_A_LOVELY_DAY
 from homeaudio.audio.settings import MorningAnnouncementsSchedule, MorningAnnouncementsSettings
@@ -169,7 +169,7 @@ def test_announcement_due_false_when_weekdays_schedule_unset_on_a_weekday():
 
 def test_announcement_due_uses_the_holidays_time_on_a_weekday_holiday():
     schedule = DEFAULT_SCHEDULE.model_copy(update={"holidays": time_of_day(8, 45, 0)})
-    calendar_days = [CalendarDay(date=MONDAY_7_17.date(), holiday=True)]
+    calendar_days = CalendarDayList([CalendarDay(date=MONDAY_7_17.date(), holiday=True)])
 
     assert _announcement_due(MONDAY_7_17, 1, schedule, calendar_days) is False
     assert _announcement_due(MONDAY_7_17.replace(hour=8, minute=45), 1, schedule, calendar_days) is True
@@ -177,14 +177,14 @@ def test_announcement_due_uses_the_holidays_time_on_a_weekday_holiday():
 
 def test_announcement_due_uses_the_weekends_time_on_a_weekend_holiday():
     schedule = DEFAULT_SCHEDULE.model_copy(update={"holidays": time_of_day(8, 45, 0)})
-    calendar_days = [CalendarDay(date=SATURDAY_9_57.date(), holiday=True)]
+    calendar_days = CalendarDayList([CalendarDay(date=SATURDAY_9_57.date(), holiday=True)])
 
     assert _announcement_due(SATURDAY_9_57, 1, schedule, calendar_days) is True
 
 
 def test_announcement_due_false_when_holidays_schedule_unset_on_a_holiday():
     schedule = DEFAULT_SCHEDULE.model_copy(update={"holidays": None})
-    calendar_days = [CalendarDay(date=MONDAY_7_17.date(), holiday=True)]
+    calendar_days = CalendarDayList([CalendarDay(date=MONDAY_7_17.date(), holiday=True)])
 
     assert _announcement_due(MONDAY_7_17, 1, schedule, calendar_days) is False
 
@@ -192,7 +192,7 @@ def test_announcement_due_false_when_holidays_schedule_unset_on_a_holiday():
 def test_check_for_announcement_returns_none_at_the_weekday_time_on_a_holiday():
     schedule = DEFAULT_SCHEDULE.model_copy(update={"holidays": time_of_day(8, 45, 0)})
     settings = MorningAnnouncementsSettings(enabled=True, schedule=schedule)
-    calendar_days = [CalendarDay(date=MONDAY_7_17.date(), holiday=True)]
+    calendar_days = CalendarDayList([CalendarDay(date=MONDAY_7_17.date(), holiday=True)])
 
     assert check_for_announcement(MONDAY_7_17, 1, calendar_days, "com", settings) is None
 
@@ -227,7 +227,7 @@ def test_check_for_announcement_builds_the_audio_file_when_due(monkeypatch):
 
     monkeypatch.setattr(morning_announcements_core, "_create_audio_file_for_calendar_days", fake_create_audio_file)
 
-    calendar_days = [CalendarDay(date=MONDAY_7_17.date())]
+    calendar_days = CalendarDayList([CalendarDay(date=MONDAY_7_17.date())])
 
     result = check_for_announcement(MONDAY_7_17, 1, calendar_days, "com", settings)
 
@@ -252,11 +252,11 @@ class _FakeBackgroundMusicSelector:
 
 
 def test_create_audio_file_for_calendar_days_builds_the_audio_file(monkeypatch):
-    calendar_days = [CalendarDay(
+    calendar_days = CalendarDayList([CalendarDay(
         date=MONDAY_7_17.date(),
         whole_day_events=[Event(owner="cal", summary="Meeting", description="", calendar_id="id")],
         weather_forecasts=[WeatherForecast(owner="cal", summary="Min 10 Max 20", description="", calendar_id="id")],
-    )]
+    )])
     monkeypatch.setattr(morning_announcements_core, "BackgroundMusicSelector", _FakeBackgroundMusicSelector)
 
     seen = {}

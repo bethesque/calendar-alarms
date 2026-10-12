@@ -7,7 +7,7 @@ from typing import Callable
 from homeaudio.audio.settings import SchoolAnnouncementsSchedule, SchoolAnnouncementsSettings, MpdSettings, SnapcastSettings
 from homeaudio.audio.tts_playback import play_tts_audio_file
 from homeaudio.audio.sound import join_mp3s_to_wav
-from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException, CalendarSource, get_calendar_day_for_date, CalendarDay
+from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException, CalendarSource, get_calendar_day_for_date, CalendarDay, CalendarDayList
 from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file, gtts_tld, TextToSpeechError
 from homeaudio.vcal import TIME_TO_LEAVE_FOR_SCHOOL, PACK_AN_UMBRELLA, TODAYS_SCHOOL_EVENTS_ARE, HAVE_A_NICE_DAY, IF_YOU_WANT, NOT_THE_BOSS, NO_CALENDAR_DATA, FIX_AUTHENTICATION
 from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, POST_ANNOUNCEMENT_SILENCE
@@ -104,7 +104,7 @@ Top level entry point. Announce today's school events, or skip entirely if schoo
 def check_for_announcement(
         base_time: datetime,
         window: int,
-        calendar_days: list[CalendarDay],
+        calendar_days: CalendarDayList,
         tld: str,
         settings: SchoolAnnouncementsSettings | None = None
     ) -> NotificationFile | None:

@@ -2,7 +2,7 @@ from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from homeaudio.audio.settings import EventNotificationSchedule, EventNotificationSettings, NotificationRule, TimeRange
-from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarSource, Event
+from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, CalendarSource, Event
 from homeaudio.vcal.event_notifications.events import (
     get_calendar_refreshed_at,
     NotificationFinder,
@@ -52,7 +52,7 @@ def test_get_event_notifications_ignores_disabled_rules():
 def test_get_calendar_refreshed_at_returns_the_stored_refreshed_at(tmp_path):
     cache_file = str(tmp_path / "calendar.json")
     refreshed_at = datetime(2026, 4, 28, 9, 0, tzinfo=TIMEZONE)
-    CalendarSource(cache_file_path=cache_file, calendar_days=[], refreshed_at=refreshed_at).save_data_to_file()
+    CalendarSource(cache_file_path=cache_file, calendar_days=CalendarDayList(), refreshed_at=refreshed_at).save_data_to_file()
 
     result = get_calendar_refreshed_at(CalendarSource(cache_file_path=cache_file))
 
@@ -61,7 +61,7 @@ def test_get_calendar_refreshed_at_returns_the_stored_refreshed_at(tmp_path):
 
 def test_get_calendar_refreshed_at_returns_none_when_never_refreshed(tmp_path):
     cache_file = str(tmp_path / "calendar.json")
-    CalendarSource(cache_file_path=cache_file, calendar_days=[], refreshed_at=None).save_data_to_file()
+    CalendarSource(cache_file_path=cache_file, calendar_days=CalendarDayList(), refreshed_at=None).save_data_to_file()
 
     result = get_calendar_refreshed_at(CalendarSource(cache_file_path=cache_file))
 
@@ -97,11 +97,11 @@ def test_update_calendar_travel_times_saves_computed_departure_time_for_today_an
         start_time=now + timedelta(days=2),
         google_event_id="evt-3",
     )
-    calendar_days = [
+    calendar_days = CalendarDayList([
         CalendarDay(date=now.date(), timed_events=[today_event]),
         CalendarDay(date=(now + timedelta(days=1)).date(), timed_events=[tomorrow_event]),
         CalendarDay(date=(now + timedelta(days=2)).date(), timed_events=[day_after_tomorrow_event]),
-    ]
+    ])
 
     calendar_source = CalendarSource(cache_file_path="")
     calendar_source.calendar_days = calendar_days
@@ -131,7 +131,7 @@ def test_update_calendar_travel_times_saves_computed_departure_time_for_today_an
     assert saved == [True]
 
 
-def _announce_events_at(*times: str) -> list[CalendarDay]:
+def _announce_events_at(*times: str) -> CalendarDayList:
     days = [
         {
             "date": "2026-04-06",

@@ -6,10 +6,11 @@ from typing import Any
 from zoneinfo import ZoneInfo
 import os.path
 from dataclasses import dataclass, field
-
+from collections import UserList
 from operator import attrgetter
 import logging
 import json
+import re
 from homeaudio.audio.string_utils import json_default_encoder
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -57,13 +58,20 @@ class Event:
 class WeatherForecast(Event):
     recurring: bool = True
 
+    def min_temperature(self) -> int | None:
+        match = re.search(r"\bmin\s+(-?\d+)", self.summary or "", re.IGNORECASE)
+        return int(match.group(1)) if match else None
+
+    def add_min_temperature(self, temperature: int):
+        self.summary = f"Min {temperature}, {self.summary}"
+
 
 # A day displayed on the calendar screen
 @dataclass
 class CalendarDay:
     date: datetime.date
     whole_day_events: list[Event] = field(default_factory=list)
-    weather_forecasts: list[Event] = field(default_factory=list)
+    weather_forecasts: list[WeatherForecast] = field(default_factory=list)
     timed_events: list[Event] = field(default_factory=list)
     date_time: datetime.datetime = None
     holiday: bool = False
@@ -73,6 +81,24 @@ class CalendarDay:
 
     def all_events(self):
         return self.whole_day_events + self.timed_events
+
+class CalendarDayList(UserList[CalendarDay]):
+
+    def get_calendar_day_for_date_or_none(self, date_time) -> CalendarDay | None:
+        match = next((day for day in self if day.date == date_time.date()), None)
+        if match:
+            return match
+        else:
+            return None
+
+
+    def get_calendar_day_for_date(self, date_time) -> CalendarDay:
+        match = self.get_calendar_day_for_date_or_none(date_time)
+        if match:
+            return match
+        else:
+            available_dates = [str(day.date) for day in self]
+            raise MissingCalendarDataException(f"Could not find day matching {str(date_time.date())} in days with dates: {available_dates}")
 
 def is_school_holiday(events: list[Event], holiday_keywords: list[str], holiday_calendar_ids: list[str] = ()) -> bool:
     keywords = [keyword.lower() for keyword in holiday_keywords]
@@ -129,13 +155,13 @@ def list_google_events(creds, calendar_id, min, max):
         return []
 
 
-def add_events_to_calendars(events_from_google, calendar_id, calendar_name, displayed_calendar_days, owner_count):
+def add_events_to_calendars(events_from_google, calendar_id, calendar_name, displayed_calendar_days, owner_count, weather=False):
     for event_dict in events_from_google:
 
-        matched_days = [d for d in displayed_calendar_days if displayed_day_includes_event(d, event_dict)]
+        matched_days = CalendarDayList(d for d in displayed_calendar_days if displayed_day_includes_event(d, event_dict))
 
         for matched_day in matched_days:
-            event = event_from_google_dict(event_dict, calendar_id, calendar_name, owner_count)
+            event = event_from_google_dict(event_dict, calendar_id, calendar_name, owner_count, weather)
 
             if "dateTime" in event_dict["start"]: # has a time specified, could be any timezone
                 event.start_time = datetime.datetime.fromisoformat(event_dict["start"]["dateTime"])
@@ -146,12 +172,8 @@ def add_events_to_calendars(events_from_google, calendar_id, calendar_name, disp
                 matched_day.whole_day_events.append(event)
 
 
-def is_weather_forecast(event_dict):
-    return event_dict["summary"].startswith("Min ") or event_dict["summary"].startswith("Max ")
-
-
-def event_from_google_dict(event_dict, calendar_id, calendar_name, owner_count):
-    if is_weather_forecast(event_dict):
+def event_from_google_dict(event_dict, calendar_id, calendar_name, owner_count, weather=False):
+    if weather:
         return WeatherForecast(
             owner=calendar_name,
             calendar_id=calendar_id,
@@ -196,17 +218,17 @@ def displayed_day_includes_event(displayed_calendar_day, event_dict):
     return displayed_calendar_day.date == start_date or ( start_date < displayed_calendar_day.date and displayed_calendar_day.date_time < end_date_time )
 
 
-def get_calendar_days(creds, calendars: list[CalendarSetting]):
+def fetch_calendar_days_from_google(creds, calendars: list[CalendarSetting]) -> CalendarDayList:
     google_calendars = list_google_calendars(creds)
     google_calendars_by_id = {calendar.id: calendar for calendar in google_calendars}
     start_of_today = datetime.datetime.combine(
         datetime.date.today(), datetime.time.min, tzinfo=ZoneInfo(TIMEZONE)
     )
     end_of_period = start_of_today + datetime.timedelta(days=DAYS_TO_FETCH) - datetime.timedelta(seconds=1)
-    displayed_calendar_days = [
+    displayed_calendar_days = CalendarDayList(
         CalendarDay(date=(start_of_today + datetime.timedelta(days=offset)).date())
         for offset in range(DAYS_TO_FETCH)
-    ]
+    )
 
     for calendar in calendars:
         gcal = google_calendars_by_id.get(calendar.id, None)
@@ -218,19 +240,19 @@ def get_calendar_days(creds, calendars: list[CalendarSetting]):
                 end_of_period,
             )
             logger.info(f"Adding events from id: {gcal.id} name: {gcal.name}")
-            add_events_to_calendars(events, calendar.id, calendar.name, displayed_calendar_days, calendar.owner_count)
+            add_events_to_calendars(events, calendar.id, calendar.name, displayed_calendar_days, calendar.owner_count, calendar.weather)
         else:
             logger.warning(f"No calendar found with id {calendar.id}")
     for cal in displayed_calendar_days:
         cal.timed_events.sort(key=attrgetter("start_time"))
     return displayed_calendar_days
 
-def load_data_from_any(days: Any) -> list[CalendarDay]:
-        calendar_days = []
+def load_data_from_any(days: Any) -> CalendarDayList:
+        calendar_days = CalendarDayList()
         for day in days:
             whole_day_events = [load_event(event) for event in day["whole_day_events"]]
-            weather_forecasts = [load_event(event) for event in day.get("weather_forecasts", [])]
             timed_events = [load_event(event) for event in day["timed_events"]]
+            weather_forecasts = [load_weather_forecasts(forecasts) for forecasts in day.get("weather_forecasts", [])]
             calendar_day = CalendarDay(
                 date=datetime.date.fromisoformat(day["date"]),
                 whole_day_events=whole_day_events,
@@ -254,10 +276,10 @@ def load_event(event_dict):
     if event_args.get("car_departure_time"):
         event_args["car_departure_time"] = datetime.datetime.fromisoformat(event_args.get("car_departure_time"))
 
-    if is_weather_forecast(event_dict):
-        return WeatherForecast(**event_args)
-    else:
-        return Event(**event_args)
+    return Event(**event_args)
+
+def load_weather_forecasts(event_dict):
+    return WeatherForecast(**event_dict)
 
 def get_calendar_day_for_date(calendar_days, date_time) -> CalendarDay:
     match = next((day for day in calendar_days if day.date == date_time.date()), None)
@@ -267,10 +289,22 @@ def get_calendar_day_for_date(calendar_days, date_time) -> CalendarDay:
         available_dates = [str(day.date) for day in calendar_days]
         raise MissingCalendarDataException(f"Could not find day matching {str(date_time.date())} in days with dates: {available_dates}")
 
+def copy_min_temperature_from_existing_day(existing_calendar_days: CalendarDayList, day: CalendarDay):
+    """
+    Once the time of the minimum temperature has passed, the forecast stops including the min temperature in the summary.
+    Copy it from previous data if present.
+    """
+    for forecast in day.weather_forecasts:
+        if forecast.min_temperature() is None:
+            existing_day = existing_calendar_days.get_calendar_day_for_date_or_none(day.date_time)
+            existing_min_temperature = next((f.min_temperature() for f in existing_day.weather_forecasts if f.min_temperature() is not None), None) if existing_day else None
+            if existing_min_temperature is not None:
+                forecast.add_min_temperature(existing_min_temperature)
+
 @dataclass
 class CalendarSource:
     cache_file_path: str = DATA_FILE
-    calendar_days: list = None
+    calendar_days: CalendarDayList | None = None
     creds: any = None
     refreshed_at: datetime.datetime | None = None
 
@@ -282,14 +316,23 @@ class CalendarSource:
         return self.creds and self.creds.valid
 
     def fetch_data(self, calendars: list[CalendarSetting], holiday_keywords: list[str]):
-        self.calendar_days = get_calendar_days(self.creds, calendars)
+        existing_calendar_days = CalendarDayList()
+        try:
+            existing_calendar_days = self.load_data_from_file() if self.file_exists() else CalendarDayList()
+        except:
+            pass
+
+        self.calendar_days = fetch_calendar_days_from_google(self.creds, calendars)
         holiday_calendar_ids = [calendar.id for calendar in calendars if calendar.holiday]
         for day in self.calendar_days:
             day.holiday = is_school_holiday(day.all_events(), holiday_keywords, holiday_calendar_ids)
+            copy_min_temperature_from_existing_day(existing_calendar_days, day)
+
         self.refreshed_at = datetime.datetime.now().astimezone()
         return self.calendar_days
 
-    def load_data_from_file(self) -> list[CalendarDay]:
+
+    def load_data_from_file(self) -> CalendarDayList:
         with open(self.cache_file_path, "r") as f:
             data = json.load(f)
 
@@ -303,13 +346,14 @@ class CalendarSource:
         self.calendar_days = load_data_from_any(events)
         return self.calendar_days
 
-    def load_data_from_any(self, any: Any) -> list[CalendarDay]:
+    def load_data_from_any(self, any: Any) -> CalendarDayList:
         self.calendar_days = load_data_from_any(any)
         return self.calendar_days
 
     def save_data_to_file(self):
+        # TODO rename to days
         data = {
-            "events": self.calendar_days,
+            "events": list(self.calendar_days or []),
             "refreshed_at": self.refreshed_at,
         }
         data_json = json.dumps(data, sort_keys=True, default=json_default_encoder)
@@ -320,15 +364,15 @@ class CalendarSource:
         return os.path.exists(self.cache_file_path)
 
 
-def load_calendar_days() -> list[CalendarDay]:
+def load_calendar_days() -> CalendarDayList:
     calendar_source = CalendarSource()
     if not calendar_source.file_exists():
-        return []
+        return CalendarDayList()
     try:
         return calendar_source.load_data_from_file()
     except Exception:
         logger.exception(f"Error loading calendar data from {calendar_source.cache_file_path}")
-        return []
+        return CalendarDayList()
 
 
 def refresh_calendar_data():

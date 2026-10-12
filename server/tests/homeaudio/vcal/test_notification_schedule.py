@@ -7,7 +7,7 @@ from homeaudio.audio.settings import (
     SchoolAnnouncementsSchedule,
     TimeRange,
 )
-from homeaudio.vcal.cal.google_calendar import CalendarDay
+from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList
 from homeaudio.vcal.notification_schedule import (
     DatetimeRange,
     announcement_times_for_day,
@@ -119,7 +119,7 @@ def test_time_range_for_day_uses_weekdays_range_when_a_different_day_is_a_holida
 
 def test_within_event_notification_operating_hours_uses_the_holidays_range_on_a_holiday():
     monday_8am = datetime(2026, 4, 27, 8, 0, tzinfo=TIMEZONE)
-    calendar_days = [CalendarDay(date=monday_8am.date(), holiday=True)]
+    calendar_days = CalendarDayList([CalendarDay(date=monday_8am.date(), holiday=True)])
 
     assert within_event_notification_operating_hours(monday_8am, SCHEDULE, [], 5) is True
     assert within_event_notification_operating_hours(monday_8am, SCHEDULE, calendar_days, 5) is False

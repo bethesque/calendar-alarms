@@ -1,7 +1,7 @@
 
 import logging
 from datetime import datetime, timedelta
-from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarSource
+from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, CalendarSource
 from homeaudio.audio.sound import join_mp3s_to_wav
 from homeaudio.vcal.event_notifications.text_to_voice import gtts_tld
 from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file
@@ -197,7 +197,7 @@ def test_notification(event: dict, play_datetime: datetime, notification_time: d
 # their announcement/alarm audio files, without playing them. Used by the daemon's early wake-up
 # (homeaudio/vcal/notifications/daemon.py) so it can build audio ahead of a scheduled tick and play
 # right on time; check_for_notifications above uses it too, just followed immediately by playing.
-def prepare_notification_files(base_time, calendar_days: list[CalendarDay], check_interval_minutes: int, event_notification_settings: EventNotificationSettings | None = None, departure_notification_settings: DepartureNotificationSettings | None = None) -> NotificationFiles | None:
+def prepare_notification_files(base_time, calendar_days: CalendarDayList, check_interval_minutes: int, event_notification_settings: EventNotificationSettings | None = None, departure_notification_settings: DepartureNotificationSettings | None = None) -> NotificationFiles | None:
     event_notification_settings = event_notification_settings or EventNotificationSettings()
 
     tld = gtts_tld()

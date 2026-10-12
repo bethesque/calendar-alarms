@@ -13,7 +13,7 @@ from homeaudio.audio.settings import (
     SchoolAnnouncementsSchedule,
     TimeRange,
 )
-from homeaudio.vcal.cal.google_calendar import CalendarDay
+from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList
 from homeaudio.vcal.calendar_refresh import CalendarRefreshLoop
 from homeaudio.vcal.core import NotificationFiles
 from homeaudio.vcal.daemon import (
@@ -476,7 +476,7 @@ def test_next_boundary_skips_forward_to_holidays_start_hour_on_a_weekday_holiday
     monkeypatch.setattr("homeaudio.vcal.daemon.MAX_SLEEP_SECONDS", UNCAPPED_MAX_SLEEP_SECONDS)
     schedule = SCHEDULE.model_copy(update={"holidays": TimeRange(start=time(9, 30), end=time(21, 0))})
     monday_6am = datetime(2026, 4, 27, 6, 0, tzinfo=TIMEZONE)
-    calendar_days = [CalendarDay(date=monday_6am.date(), holiday=True)]
+    calendar_days = CalendarDayList([CalendarDay(date=monday_6am.date(), holiday=True)])
 
     result = next_boundary(monday_6am, schedule, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE, calendar_days)
 
@@ -499,7 +499,7 @@ def test_next_boundary_wakes_for_the_holiday_morning_announcement_outside_operat
     schedule = SCHEDULE.model_copy(update={"holidays": TimeRange(start=time(9, 30), end=time(21, 0))})
     morning_schedule = MorningAnnouncementsSchedule(weekdays=time(6, 30), weekends=None, holidays=time(8, 15))
     monday_6am = datetime(2026, 4, 27, 6, 0, tzinfo=TIMEZONE)
-    calendar_days = [CalendarDay(date=monday_6am.date(), holiday=True)]
+    calendar_days = CalendarDayList([CalendarDay(date=monday_6am.date(), holiday=True)])
 
     result = next_boundary(monday_6am, schedule, morning_schedule, NO_SCHOOL_SCHEDULE, calendar_days)
 

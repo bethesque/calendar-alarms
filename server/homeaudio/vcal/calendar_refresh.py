@@ -18,7 +18,7 @@ from homeaudio.audio.settings import (
     SchoolAnnouncementsSettings,
     TimeRange,
 )
-from homeaudio.vcal.cal.google_calendar import CalendarDay, load_calendar_days, refresh_calendar_data
+from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, load_calendar_days, refresh_calendar_data
 from homeaudio.vcal.event_notifications.events import update_calendar_travel_times
 from homeaudio.vcal.notification_schedule import announcement_times_for_day, event_notification_time_range_for_day
 from homeaudio.env import TIMEZONE, NOTIFICATIONS_CHECK_INTERVAL_MINUTES, CALENDAR_DATA_REFRESH_INTERVAL_MINUTES, CALENDAR_DATA_REFRESH_OFFSET_SECONDS
@@ -48,7 +48,7 @@ def _wake_window_for_day(
     schedule: EventNotificationSchedule,
     morning_schedule: MorningAnnouncementsSchedule,
     school_schedule: SchoolAnnouncementsSchedule,
-    calendar_days: list[CalendarDay],
+    calendar_days: CalendarDayList,
 ) -> TimeRange:
     """EventNotificationSettings.schedule's operating hours for `day`, widened at either end to
     cover any morning/school announcement scheduled outside it, and opened 3 * REFRESH_INTERVAL_MINUTES
@@ -66,7 +66,7 @@ def next_refresh_boundary(
     schedule: EventNotificationSchedule | None = None,
     morning_schedule: MorningAnnouncementsSchedule | None = None,
     school_schedule: SchoolAnnouncementsSchedule | None = None,
-    calendar_days: list[CalendarDay] | None = None,
+    calendar_days: CalendarDayList | None = None,
 ) -> datetime:
     """The next REFRESH_INTERVAL_MINUTES-aligned time at or after `now`, offset by
     REFRESH_OFFSET_SECONDS so it stays clear of the 5-minute marks calendar events (and so

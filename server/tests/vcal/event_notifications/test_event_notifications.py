@@ -3,7 +3,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarSource, Event, event_from_google_dict
+from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, CalendarSource, Event, event_from_google_dict
 from homeaudio.vcal.event_notifications.events import EventNotifications, LeaveForEvent, NotificationPlaytimeScheduler, NotificationType
 from homeaudio.audio.settings import DepartureNotificationSettings, EventNotificationSchedule
 
@@ -496,7 +496,7 @@ def test_google_event_id_and_car_departure_time_round_trip_through_save_and_load
         google_event_id="abc123",
         car_departure_time=car_departure_time,
     )
-    calendar_source.calendar_days = [CalendarDay(date=start_time.date(), timed_events=[event])]
+    calendar_source.calendar_days = CalendarDayList([CalendarDay(date=start_time.date(), timed_events=[event])])
 
     calendar_source.save_data_to_file()
     reloaded_event = calendar_source.load_data_from_file()[0].timed_events[0]

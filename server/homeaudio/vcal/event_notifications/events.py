@@ -3,7 +3,7 @@ import re
 from enum import Enum
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, tzinfo
-from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarSource, Event
+from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, CalendarSource, Event
 from homeaudio.audio.settings import EventNotificationSchedule, EventNotificationSettings, DepartureNotificationSettings
 from homeaudio.vcal.departure_time import TravelTimeCache, car_departure_time_for_event, relevant_dates
 from homeaudio.audio.settings import NotificationRule, DepartureNotificationSettings
@@ -201,7 +201,7 @@ class EventNotifications:
         return deduplicated_notifications
 
 class NotificationPlaytimeScheduler:
-    def __init__(self, tz: tzinfo, schedule: EventNotificationSchedule, calendar_days: list[CalendarDay], window: int):
+    def __init__(self, tz: tzinfo, schedule: EventNotificationSchedule, calendar_days: CalendarDayList, window: int):
         self.tz = tz
         self.schedule = schedule
         self.calendar_days = calendar_days
@@ -214,7 +214,7 @@ class NotificationPlaytimeScheduler:
         return max(datetime_range.start, min(round_down_to_interval(local_time, self.window), last_tick))
 
 class NotificationFinder:
-    def __init__(self, calendar_days: list[CalendarDay], base_time, scheduler: NotificationPlaytimeScheduler, notification_rules=None, departure_notification_settings: DepartureNotificationSettings | None = None):
+    def __init__(self, calendar_days: CalendarDayList, base_time, scheduler: NotificationPlaytimeScheduler, notification_rules=None, departure_notification_settings: DepartureNotificationSettings | None = None):
         self.calendar_days = calendar_days
         self.base_time = base_time
         self.scheduler = scheduler
@@ -252,7 +252,7 @@ class NotificationFinder:
         logger.info("Total matched events: %d", len(results))
         return results
 
-def get_event_notifications(base_time, scheduler: NotificationPlaytimeScheduler, calendar_data: list[CalendarDay], event_notification_settings: EventNotificationSettings, departure_notification_settings: DepartureNotificationSettings | None = None):
+def get_event_notifications(base_time, scheduler: NotificationPlaytimeScheduler, calendar_data: CalendarDayList, event_notification_settings: EventNotificationSettings, departure_notification_settings: DepartureNotificationSettings | None = None):
     notification_rules = event_notification_settings.enabled_notification_rules()
     alarm_finder = NotificationFinder(calendar_data, base_time, scheduler, notification_rules, departure_notification_settings)
     event_notifications = alarm_finder.find_notification_events()

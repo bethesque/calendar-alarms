@@ -14,7 +14,7 @@ from homeaudio.vcal.school_announcements import (
     play_school_announcements,
     ERROR_MESSAGE_AUDIO,
 )
-from homeaudio.vcal.cal.google_calendar import CalendarDay, Event, WeatherForecast
+from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, Event, WeatherForecast
 from homeaudio.vcal.event_notifications.text_to_voice import TextToSpeechError
 from homeaudio.audio.settings import SchoolAnnouncementsSchedule, SchoolAnnouncementsSettings
 from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, POST_ANNOUNCEMENT_SILENCE
@@ -283,7 +283,7 @@ def test_check_for_announcement_builds_the_audio_file_when_due(monkeypatch):
 
     events = [Event(owner="cal", summary="School excursion", description="", calendar_id="id")]
     weather_forecasts = [WeatherForecast(owner="cal", summary="Min 10 Max 20", description="", calendar_id="id")]
-    calendar_days = [CalendarDay(date=MONDAY_8_30.date(), whole_day_events=events, weather_forecasts=weather_forecasts)]
+    calendar_days = CalendarDayList([CalendarDay(date=MONDAY_8_30.date(), whole_day_events=events, weather_forecasts=weather_forecasts)])
 
     def fake_create_audio_file(base_time, events, weather_forecasts, tld, s):
         seen["args"] = (base_time, events, weather_forecasts, tld, s)
@@ -299,7 +299,7 @@ def test_check_for_announcement_builds_the_audio_file_when_due(monkeypatch):
 
 def test_check_for_announcement_returns_none_when_the_day_is_a_holiday():
     events = [Event(owner="cal", summary="School excursion", description="", calendar_id="id")]
-    calendar_days = [CalendarDay(date=MONDAY_8_30.date(), whole_day_events=events, holiday=True)]
+    calendar_days = CalendarDayList([CalendarDay(date=MONDAY_8_30.date(), whole_day_events=events, holiday=True)])
 
     settings = SchoolAnnouncementsSettings(enabled=True, schedule=SchoolAnnouncementsSchedule(weekdays=time(8, 30, 0)), school_event_keywords=DEFAULT_SCHOOL_EVENT_KEYWORDS)
 
