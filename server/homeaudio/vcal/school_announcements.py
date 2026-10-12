@@ -7,7 +7,7 @@ from typing import Callable
 from homeaudio.audio.settings import SchoolAnnouncementsSchedule, SchoolAnnouncementsSettings, MpdSettings, SnapcastSettings
 from homeaudio.audio.tts_playback import play_tts_audio_file
 from homeaudio.audio.sound import join_mp3s_to_wav
-from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException, CalendarSource, get_events_for_date, get_calendar_day_for_date, CalendarDay
+from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException, CalendarSource, get_calendar_day_for_date, CalendarDay
 from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file, gtts_tld, TextToSpeechError
 from homeaudio.vcal import TIME_TO_LEAVE_FOR_SCHOOL, PACK_AN_UMBRELLA, TODAYS_SCHOOL_EVENTS_ARE, HAVE_A_NICE_DAY, IF_YOU_WANT, NOT_THE_BOSS, NO_CALENDAR_DATA, FIX_AUTHENTICATION
 from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, POST_ANNOUNCEMENT_SILENCE
@@ -31,8 +31,8 @@ def is_school_event(event: Event, school_event_keywords: list[str]) -> bool:
 def get_school_events(events: list[Event], school_event_keywords: list[str]) -> list[Event]:
     return [event for event in events if is_school_event(event, school_event_keywords)]
 
-def get_weather_forecast(events: list[Event]) -> WeatherForecast | None:
-    return next((event for event in events if isinstance(event, WeatherForecast)), None)
+def get_weather_forecast(weather_forecasts: list[WeatherForecast]) -> WeatherForecast | None:
+    return next(iter(weather_forecasts), None)
 
 
 """
@@ -91,10 +91,10 @@ def _announcement_due(base_time: datetime, window: int, schedule: SchoolAnnounce
     scheduled_time = datetime.combine(base_time.date(), schedule.weekdays, tzinfo=base_time.tzinfo)
     return base_time <= scheduled_time < base_time + timedelta(minutes=window)
 
-def _create_audio_file_for_calendar_days(base_time: datetime, events: list[Event], tld: str, settings: SchoolAnnouncementsSettings | None = None) -> str | None:
+def _create_audio_file_for_calendar_days(base_time: datetime, events: list[Event], weather_forecasts: list[WeatherForecast], tld: str, settings: SchoolAnnouncementsSettings | None = None) -> str | None:
     settings = settings or SchoolAnnouncementsSettings()
     school_events = get_school_events(events, settings.school_event_keywords)
-    weather_forecast = get_weather_forecast(events)
+    weather_forecast = get_weather_forecast(weather_forecasts)
     sentences = build_text(school_events, weather_forecast)
     return build_audio_file(sentences, tld)
 
@@ -128,7 +128,7 @@ def check_for_announcement(
         logger.info("Today is a school holiday; skipping school announcement.")
         return None
 
-    path = _create_audio_file_for_calendar_days(base_time, calendar_day.all_events(), tld, settings)
+    path = _create_audio_file_for_calendar_days(base_time, calendar_day.all_events(), calendar_day.weather_forecasts, tld, settings)
     return NotificationFile(path=path) if path else None
 
 """
@@ -147,12 +147,12 @@ def play_school_announcements(
     settings = settings or SchoolAnnouncementsSettings()
 
     try:
-        events = get_events_for_date(calendar_days, base_time)
+        calendar_day = get_calendar_day_for_date(calendar_days, base_time)
     except MissingCalendarDataException:
         logger.info(f"No calendar data found for today's date ({base_time}), playing missing calendar data message.")
         return NotificationFile(path=_missing_calendar_data_response(DEFAULT_GOOGLE_TRANSLATE_TLD))
 
-    file = _create_audio_file_for_calendar_days(base_time, events, DEFAULT_GOOGLE_TRANSLATE_TLD, settings)
+    file = _create_audio_file_for_calendar_days(base_time, calendar_day.all_events(), calendar_day.weather_forecasts, DEFAULT_GOOGLE_TRANSLATE_TLD, settings)
     if file:
         play_tts_audio_file(file, SnapcastSettings(), MpdSettings(), before_announcement_hook, after_announcement_hook)
 

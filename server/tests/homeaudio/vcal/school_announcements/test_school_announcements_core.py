@@ -181,17 +181,14 @@ def test_build_text_puts_umbrella_reminder_before_school_events():
     ]
 
 
-def test_get_weather_forecast_returns_the_weather_forecast_event():
+def test_get_weather_forecast_returns_the_first_weather_forecast():
     weather_forecast = WeatherForecast(owner="cal", summary="Min 10 Max 20", description="", calendar_id="id")
-    events = [Event(owner="cal", summary="Dentist", description="", calendar_id="id"), weather_forecast]
 
-    assert get_weather_forecast(events) is weather_forecast
+    assert get_weather_forecast([weather_forecast]) is weather_forecast
 
 
 def test_get_weather_forecast_returns_none_when_absent():
-    events = [Event(owner="cal", summary="Dentist", description="", calendar_id="id")]
-
-    assert get_weather_forecast(events) is None
+    assert get_weather_forecast([]) is None
 
 
 def test_get_school_events_matches_summary_case_insensitively():
@@ -285,10 +282,11 @@ def test_check_for_announcement_builds_the_audio_file_when_due(monkeypatch):
     seen = {}
 
     events = [Event(owner="cal", summary="School excursion", description="", calendar_id="id")]
-    calendar_days = [CalendarDay(date=MONDAY_8_30.date(), whole_day_events=events)]
+    weather_forecasts = [WeatherForecast(owner="cal", summary="Min 10 Max 20", description="", calendar_id="id")]
+    calendar_days = [CalendarDay(date=MONDAY_8_30.date(), whole_day_events=events, weather_forecasts=weather_forecasts)]
 
-    def fake_create_audio_file(base_time, events, tld, s):
-        seen["args"] = (base_time, events, tld, s)
+    def fake_create_audio_file(base_time, events, weather_forecasts, tld, s):
+        seen["args"] = (base_time, events, weather_forecasts, tld, s)
         return "school_announcement.wav"
 
     monkeypatch.setattr(school_announcements_core, "_create_audio_file_for_calendar_days", fake_create_audio_file)
@@ -296,7 +294,7 @@ def test_check_for_announcement_builds_the_audio_file_when_due(monkeypatch):
     result = check_for_announcement(MONDAY_8_30, 1, calendar_days, "com", settings)
 
     assert result == NotificationFile(path="school_announcement.wav")
-    assert seen["args"] == (MONDAY_8_30, events, "com", settings)
+    assert seen["args"] == (MONDAY_8_30, events, weather_forecasts, "com", settings)
 
 
 def test_check_for_announcement_returns_none_when_the_day_is_a_holiday():
@@ -326,7 +324,7 @@ def test_create_audio_file_for_calendar_days_builds_audio_when_not_a_holiday(mon
 
     settings = SchoolAnnouncementsSettings(school_event_keywords=DEFAULT_SCHOOL_EVENT_KEYWORDS)
 
-    assert _create_audio_file_for_calendar_days(MONDAY_8_30, events, "com", settings) == "built.wav"
+    assert _create_audio_file_for_calendar_days(MONDAY_8_30, events, [], "com", settings) == "built.wav"
     assert seen_sentences["sentences"] == build_text(events, rand=rand_false)
 
 
@@ -346,16 +344,16 @@ def test_play_school_announcements_builds_and_plays_the_audio_file(monkeypatch):
             pass
 
         def load_data_from_file(self):
-            return "calendar-days"
+            return [CalendarDay(date=MONDAY_8_30.date(), whole_day_events=events, weather_forecasts=weather_forecasts)]
 
     monkeypatch.setattr(school_announcements_core, "CalendarSource", FakeCalendarSource)
     events = [Event(owner="cal", summary="School excursion", description="", calendar_id="id")]
-    monkeypatch.setattr(school_announcements_core, "get_events_for_date", lambda calendar_days, base_time: events)
+    weather_forecasts = [WeatherForecast(owner="cal", summary="Min 10 Max 20", description="", calendar_id="id")]
 
     seen = {}
 
-    def fake_create_audio_file(base_time, events, tld, s):
-        seen["args"] = (base_time, events, s)
+    def fake_create_audio_file(base_time, events, weather_forecasts, tld, s):
+        seen["args"] = (base_time, events, weather_forecasts, s)
         return "built.wav"
 
     monkeypatch.setattr(school_announcements_core, "_create_audio_file_for_calendar_days", fake_create_audio_file)
@@ -372,5 +370,5 @@ def test_play_school_announcements_builds_and_plays_the_audio_file(monkeypatch):
 
     play_school_announcements(base_time=MONDAY_8_30, settings=settings, before_announcement_hook=before_hook, after_announcement_hook=after_hook)
 
-    assert seen["args"] == (MONDAY_8_30, events, settings)
+    assert seen["args"] == (MONDAY_8_30, events, weather_forecasts, settings)
     assert play_calls == [("built.wav", before_hook, after_hook)]

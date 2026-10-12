@@ -147,8 +147,8 @@ def check_for_notifications(base_time: datetime) -> NotificationFiles | None:
         calendar_source = CalendarSource()
         if calendar_source.file_exists():
             logger.debug(f"Loading calendar data from {calendar_source.cache_file_path}")
-            calendar_data = calendar_source.load_data_from_file()
-            return prepare_notification_files(base_time, calendar_data, CHECK_INTERVAL_MINUTES, event_notification_settings)
+            calendar_days = calendar_source.load_data_from_file()
+            return prepare_notification_files(base_time, calendar_days, CHECK_INTERVAL_MINUTES, event_notification_settings)
         else:
             logger.info(f"No calendar file found at {calendar_source.cache_file_path}, no notifications this tick")
 

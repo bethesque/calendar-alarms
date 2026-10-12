@@ -2,7 +2,7 @@ from datetime import date
 
 import homeaudio.vcal.cal.google_calendar as google_calendar
 from homeaudio.audio.settings import CalendarSetting
-from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarSource, Event, is_school_holiday, load_calendar_days, load_google_creds
+from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarSource, Event, WeatherForecast, add_events_to_calendars, is_school_holiday, load_calendar_days, load_google_creds
 
 DEFAULT_HOLIDAY_KEYWORDS = ["no school", "school holidays"]
 
@@ -99,6 +99,33 @@ def test_holiday_defaults_to_false_for_calendar_files_written_without_it():
     )
 
     assert calendar_days[0].holiday is False
+
+
+def test_add_events_to_calendars_puts_weather_forecasts_in_weather_forecasts():
+    day = CalendarDay(date=date(2026, 4, 6))
+    events = [
+        {"summary": "Min 10 Max 20", "start": {"date": "2026-04-06"}, "end": {"date": "2026-04-07"}},
+        {"summary": "Pupil free day", "start": {"date": "2026-04-06"}, "end": {"date": "2026-04-07"}},
+    ]
+
+    add_events_to_calendars(events, "id", "cal", [day], 1)
+
+    assert [event.summary for event in day.weather_forecasts] == ["Min 10 Max 20"]
+    assert isinstance(day.weather_forecasts[0], WeatherForecast)
+    assert [event.summary for event in day.whole_day_events] == ["Pupil free day"]
+
+
+def test_weather_forecasts_round_trip_through_the_calendar_file(tmp_path):
+    cache_file_path = str(tmp_path / "calendar.json")
+    source = CalendarSource(cache_file_path=cache_file_path)
+    weather = WeatherForecast(owner="cal", summary="Min 10 Max 20", description="", calendar_id="id")
+    source.calendar_days = [CalendarDay(date=date(2026, 4, 6), weather_forecasts=[weather])]
+    source.save_data_to_file()
+
+    calendar_days = CalendarSource(cache_file_path=cache_file_path).load_data_from_file()
+
+    assert calendar_days[0].weather_forecasts == [weather]
+    assert calendar_days[0].whole_day_events == []
 
 
 def test_load_calendar_days_returns_empty_list_when_the_calendar_file_is_missing(monkeypatch, tmp_path):

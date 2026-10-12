@@ -41,7 +41,7 @@ def test_get_morning_announcements_text_includes_weather_and_facts(monkeypatch):
     e2 = Event(owner="cal", summary="Appointment", description="", calendar_id="id")
     weather = WeatherForecast(owner="cal", summary="Min 10 Max 20", description="", calendar_id="id")
 
-    events = [weather, e1, e2]
+    events = [e1, e2]
 
     monkeypatch.setattr(
         "homeaudio.vcal.morning_announcements.select_option",
@@ -55,7 +55,7 @@ def test_get_morning_announcements_text_includes_weather_and_facts(monkeypatch):
     settings.unused_facts = ["fact1"]
     settings.save = Mock()
 
-    tb = TextBuilder(events, settings)
+    tb = TextBuilder(events, [weather], settings)
 
     text = tb.get_morning_announcements_text()
 
@@ -74,7 +74,7 @@ def test_get_morning_announcements_text_includes_weather_and_facts(monkeypatch):
 
 def _event_summaries(events):
     settings = Mock(enabled_prelude_options=[], unused_facts=[])
-    sentences = TextBuilder(events, settings).get_morning_announcements_text()
+    sentences = TextBuilder(events, [], settings).get_morning_announcements_text()
     return sentences[sentences.index("Todays events are:") + 1:-1]
 
 
@@ -124,14 +124,14 @@ def test_get_morning_announcements_text_skips_events_without_a_summary():
 def test_get_morning_announcements_text_says_no_events_when_there_are_no_events():
     settings = Mock(enabled_prelude_options=[], unused_facts=[])
 
-    assert TextBuilder([], settings).get_morning_announcements_text() == [MORNING_GREETING, NO_EVENTS_TODAY, HAVE_A_LOVELY_DAY]
+    assert TextBuilder([], [], settings).get_morning_announcements_text() == [MORNING_GREETING, NO_EVENTS_TODAY, HAVE_A_LOVELY_DAY]
 
 
 def test_get_morning_announcements_text_says_no_events_when_no_event_has_a_summary():
     events = [Event(owner="Kay", summary=None, description="", calendar_id="id", owner_count=1)]
     settings = Mock(enabled_prelude_options=[], unused_facts=[])
 
-    assert TextBuilder(events, settings).get_morning_announcements_text() == [MORNING_GREETING, NO_EVENTS_TODAY, HAVE_A_LOVELY_DAY]
+    assert TextBuilder(events, [], settings).get_morning_announcements_text() == [MORNING_GREETING, NO_EVENTS_TODAY, HAVE_A_LOVELY_DAY]
 
 
 # Monday/Saturday reference dates, matching the convention used in test_daemon.py.
@@ -252,8 +252,11 @@ class _FakeBackgroundMusicSelector:
 
 
 def test_create_audio_file_for_calendar_days_builds_the_audio_file(monkeypatch):
-    events = [Event(owner="cal", summary="Meeting", description="", calendar_id="id")]
-    monkeypatch.setattr(morning_announcements_core, "get_events_for_date", lambda calendar_days, base_time: events)
+    calendar_days = [CalendarDay(
+        date=MONDAY_7_17.date(),
+        whole_day_events=[Event(owner="cal", summary="Meeting", description="", calendar_id="id")],
+        weather_forecasts=[WeatherForecast(owner="cal", summary="Min 10 Max 20", description="", calendar_id="id")],
+    )]
     monkeypatch.setattr(morning_announcements_core, "BackgroundMusicSelector", _FakeBackgroundMusicSelector)
 
     seen = {}
@@ -264,17 +267,14 @@ def test_create_audio_file_for_calendar_days_builds_the_audio_file(monkeypatch):
 
     monkeypatch.setattr(morning_announcements_core, "build_audio_file", fake_build_audio_file)
 
-    assert _create_audio_file_for_calendar_days(MONDAY_7_17, [], "com", _fake_settings()) == "built.wav"
+    assert _create_audio_file_for_calendar_days(MONDAY_7_17, calendar_days, "com", _fake_settings()) == "built.wav"
     sentences, music_file = seen["args"]
     assert music_file == "music.mp3"
     assert "Meeting" in sentences
+    assert "The weather forecast for today is: Min 10 Max 20." in sentences
 
 
 def test_create_audio_file_for_calendar_days_proceeds_with_no_events_when_calendar_data_missing(monkeypatch):
-    def raise_missing(calendar_days, base_time):
-        raise MissingCalendarDataException("no data")
-
-    monkeypatch.setattr(morning_announcements_core, "get_events_for_date", raise_missing)
     monkeypatch.setattr(morning_announcements_core, "BackgroundMusicSelector", _FakeBackgroundMusicSelector)
 
     seen = {}

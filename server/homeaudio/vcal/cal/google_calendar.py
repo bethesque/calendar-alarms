@@ -45,8 +45,8 @@ class Event:
     calendar_id: str
     summary: str
     description: str
-    start_time: datetime.datetime = None
-    end_time: datetime.datetime = None
+    start_time: datetime.datetime | None = None
+    end_time: datetime.datetime | None = None
     recurring: bool = False
     owner_count: int = 0
     location: str | None = None
@@ -63,6 +63,7 @@ class WeatherForecast(Event):
 class CalendarDay:
     date: datetime.date
     whole_day_events: list[Event] = field(default_factory=list)
+    weather_forecasts: list[Event] = field(default_factory=list)
     timed_events: list[Event] = field(default_factory=list)
     date_time: datetime.datetime = None
     holiday: bool = False
@@ -136,9 +137,11 @@ def add_events_to_calendars(events_from_google, calendar_id, calendar_name, disp
         for matched_day in matched_days:
             event = event_from_google_dict(event_dict, calendar_id, calendar_name, owner_count)
 
-            if "dateTime" in event_dict["start"]: # has a time specified
+            if "dateTime" in event_dict["start"]: # has a time specified, could be any timezone
                 event.start_time = datetime.datetime.fromisoformat(event_dict["start"]["dateTime"])
                 matched_day.timed_events.append(event)
+            elif isinstance(event, WeatherForecast):
+                matched_day.weather_forecasts.append(event)
             else:
                 matched_day.whole_day_events.append(event)
 
@@ -226,10 +229,12 @@ def load_data_from_any(days: Any) -> list[CalendarDay]:
         calendar_days = []
         for day in days:
             whole_day_events = [load_event(event) for event in day["whole_day_events"]]
+            weather_forecasts = [load_event(event) for event in day.get("weather_forecasts", [])]
             timed_events = [load_event(event) for event in day["timed_events"]]
             calendar_day = CalendarDay(
                 date=datetime.date.fromisoformat(day["date"]),
                 whole_day_events=whole_day_events,
+                weather_forecasts=weather_forecasts,
                 timed_events=timed_events,
                 holiday=day.get("holiday", False),
             )
@@ -253,10 +258,6 @@ def load_event(event_dict):
         return WeatherForecast(**event_args)
     else:
         return Event(**event_args)
-
-
-def get_events_for_date(calendar_days, date_time):
-    return get_calendar_day_for_date(calendar_days, date_time).all_events()
 
 def get_calendar_day_for_date(calendar_days, date_time) -> CalendarDay:
     match = next((day for day in calendar_days if day.date == date_time.date()), None)
