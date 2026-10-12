@@ -163,11 +163,11 @@ def add_events_to_calendars(events_from_google, calendar_id, calendar_name, disp
         for matched_day in matched_days:
             event = event_from_google_dict(event_dict, calendar_id, calendar_name, owner_count, weather)
 
-            if "dateTime" in event_dict["start"]: # has a time specified, could be any timezone
+            if isinstance(event, WeatherForecast):
+                matched_day.weather_forecasts.append(event)
+            elif "dateTime" in event_dict["start"]: # has a time specified, could be any timezone
                 event.start_time = datetime.datetime.fromisoformat(event_dict["start"]["dateTime"])
                 matched_day.timed_events.append(event)
-            elif isinstance(event, WeatherForecast):
-                matched_day.weather_forecasts.append(event)
             else:
                 matched_day.whole_day_events.append(event)
 
