@@ -13,3 +13,10 @@
 - name: reload sysctl
   command: sysctl --system
   become: true
+
+- name: restart wifi-power-save-off service
+  ansible.builtin.systemd:
+    name: wifi-power-save-off
+    state: restarted
+    daemon_reload: true
+  become: true

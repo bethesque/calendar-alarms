@@ -98,3 +98,27 @@
   become: true
   tags:
     - port80
+
+- name: Install wifi power save off service
+  ansible.builtin.template:
+    src: wifi-power-save-off.service.j2
+    dest: /etc/systemd/system/wifi-power-save-off.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart wifi-power-save-off service
+  when: is_pi == true
+  become: true
+  tags:
+    - wifi_power_save
+
+- name: Enable wifi power save off service
+  ansible.builtin.systemd:
+    name: wifi-power-save-off
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: is_pi == true
+  become: true
+  tags:
+    - wifi_power_save
