@@ -268,14 +268,14 @@ def test_error_message_audio_file_exists():
 def test_check_for_announcement_returns_none_when_settings_disabled():
     settings = SchoolAnnouncementsSettings(enabled=False, schedule=SchoolAnnouncementsSchedule(weekdays=time(8, 30, 0)))
 
-    assert check_for_announcement(MONDAY_8_30, 1, [], "com", settings) is None
+    assert check_for_announcement(MONDAY_8_30, 1, CalendarDayList(), "com", settings) is None
 
 
 def test_check_for_announcement_returns_none_when_not_due():
     settings = SchoolAnnouncementsSettings(enabled=True, schedule=SchoolAnnouncementsSchedule(weekdays=time(8, 30, 0)))
     base_time = datetime(2026, 4, 27, 8, 0, 0)  # Monday, well before 8:30
 
-    assert check_for_announcement(base_time, 1, [], "com", settings) is None
+    assert check_for_announcement(base_time, 1, CalendarDayList(), "com", settings) is None
 
 
 def test_check_for_announcement_builds_the_audio_file_when_due(monkeypatch):
@@ -335,7 +335,7 @@ def test_create_audio_file_for_calendar_days_falls_back_when_calendar_data_missi
 
     settings = SchoolAnnouncementsSettings(enabled=True, schedule=SchoolAnnouncementsSchedule(weekdays=time(8, 30, 0)), school_event_keywords=DEFAULT_SCHOOL_EVENT_KEYWORDS)
 
-    assert check_for_announcement(MONDAY_8_30, 1, [], "com", settings) == NotificationFile(path="fallback.wav")
+    assert check_for_announcement(MONDAY_8_30, 1, CalendarDayList(), "com", settings) == NotificationFile(path="fallback.wav")
 
 
 def test_play_school_announcements_builds_and_plays_the_audio_file(monkeypatch):
@@ -346,7 +346,7 @@ def test_play_school_announcements_builds_and_plays_the_audio_file(monkeypatch):
             pass
 
         def load_data_from_file(self):
-            return [CalendarDay(date=MONDAY_8_30.date(), whole_day_events=events, weather_forecasts=weather_forecasts)]
+            return CalendarDayList([CalendarDay(date=MONDAY_8_30.date(), whole_day_events=events, weather_forecasts=weather_forecasts)])
 
     monkeypatch.setattr(school_announcements_core, "CalendarSource", FakeCalendarSource)
     events = [Event(owner="cal", summary="School excursion", description="", calendar_id="id")]

@@ -281,14 +281,6 @@ def load_event(event_dict):
 def load_weather_forecasts(event_dict):
     return WeatherForecast(**event_dict)
 
-def get_calendar_day_for_date(calendar_days, date_time) -> CalendarDay:
-    match = next((day for day in calendar_days if day.date == date_time.date()), None)
-    if match:
-        return match
-    else:
-        available_dates = [str(day.date) for day in calendar_days]
-        raise MissingCalendarDataException(f"Could not find day matching {str(date_time.date())} in days with dates: {available_dates}")
-
 def copy_min_temperature_from_existing_day(existing_calendar_days: CalendarDayList, day: CalendarDay):
     """
     Once the time of the minimum temperature has passed, the forecast stops including the min temperature in the summary.

@@ -7,7 +7,7 @@ from typing import Callable
 from homeaudio.audio.settings import SchoolAnnouncementsSchedule, SchoolAnnouncementsSettings, MpdSettings, SnapcastSettings
 from homeaudio.audio.tts_playback import play_tts_audio_file
 from homeaudio.audio.sound import join_mp3s_to_wav
-from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException, CalendarSource, get_calendar_day_for_date, CalendarDay, CalendarDayList
+from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException, CalendarSource, CalendarDay, CalendarDayList
 from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file, gtts_tld, TextToSpeechError
 from homeaudio.vcal import TIME_TO_LEAVE_FOR_SCHOOL, PACK_AN_UMBRELLA, TODAYS_SCHOOL_EVENTS_ARE, HAVE_A_NICE_DAY, IF_YOU_WANT, NOT_THE_BOSS, NO_CALENDAR_DATA, FIX_AUTHENTICATION
 from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, POST_ANNOUNCEMENT_SILENCE
@@ -115,7 +115,7 @@ def check_for_announcement(
         return None
 
     try:
-        calendar_day = get_calendar_day_for_date(calendar_days, base_time)
+        calendar_day = calendar_days.get_calendar_day_for_date(base_time)
     except MissingCalendarDataException:
         logger.info(f"No calendar data found for today's date ({base_time}), playing missing calendar data message.")
         return NotificationFile(path=_missing_calendar_data_response(tld))
@@ -143,7 +143,7 @@ def play_school_announcements(
     settings = settings or SchoolAnnouncementsSettings()
 
     try:
-        calendar_day = get_calendar_day_for_date(calendar_days, base_time)
+        calendar_day = calendar_days.get_calendar_day_for_date(base_time)
     except MissingCalendarDataException:
         logger.info(f"No calendar data found for today's date ({base_time}), playing missing calendar data message.")
         return NotificationFile(path=_missing_calendar_data_response(DEFAULT_GOOGLE_TRANSLATE_TLD))

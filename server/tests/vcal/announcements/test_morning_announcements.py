@@ -158,29 +158,29 @@ DEFAULT_SCHEDULE = MorningAnnouncementsSchedule(weekdays=time_of_day(7, 17, 0), 
 
 
 def test_announcement_due_true_exactly_at_the_weekday_scheduled_time():
-    assert _announcement_due(MONDAY_7_17, 1, DEFAULT_SCHEDULE, []) is True
+    assert _announcement_due(MONDAY_7_17, 1, DEFAULT_SCHEDULE, CalendarDayList()) is True
 
 
 def test_announcement_due_true_exactly_at_the_weekend_scheduled_time():
-    assert _announcement_due(SATURDAY_9_57, 1, DEFAULT_SCHEDULE, []) is True
+    assert _announcement_due(SATURDAY_9_57, 1, DEFAULT_SCHEDULE, CalendarDayList()) is True
 
 
 def test_announcement_due_false_before_the_window():
     base_time = datetime(2026, 4, 27, 7, 15, 0)  # Monday, too early
 
-    assert _announcement_due(base_time, 1, DEFAULT_SCHEDULE, []) is False
+    assert _announcement_due(base_time, 1, DEFAULT_SCHEDULE, CalendarDayList()) is False
 
 
 def test_announcement_due_false_after_the_scheduled_time_has_passed():
     base_time = datetime(2026, 4, 27, 7, 18, 0)  # Monday, already past
 
-    assert _announcement_due(base_time, 1, DEFAULT_SCHEDULE, []) is False
+    assert _announcement_due(base_time, 1, DEFAULT_SCHEDULE, CalendarDayList()) is False
 
 
 def test_announcement_due_false_when_weekdays_schedule_unset_on_a_weekday():
     schedule = MorningAnnouncementsSchedule(weekdays=None, weekends=time_of_day(9, 57, 0))
 
-    assert _announcement_due(MONDAY_7_17, 1, schedule, []) is False
+    assert _announcement_due(MONDAY_7_17, 1, schedule, CalendarDayList()) is False
 
 
 def test_announcement_due_uses_the_holidays_time_on_a_weekday_holiday():
@@ -216,20 +216,20 @@ def test_check_for_announcement_returns_none_at_the_weekday_time_on_a_holiday():
 def test_announcement_due_false_when_weekends_schedule_unset_on_a_weekend():
     schedule = MorningAnnouncementsSchedule(weekdays=time_of_day(7, 17, 0), weekends=None)
 
-    assert _announcement_due(SATURDAY_9_57, 1, schedule, []) is False
+    assert _announcement_due(SATURDAY_9_57, 1, schedule, CalendarDayList()) is False
 
 
 def test_check_for_announcement_returns_none_when_settings_disabled():
     settings = MorningAnnouncementsSettings(enabled=False, schedule=DEFAULT_SCHEDULE)
 
-    assert check_for_announcement(MONDAY_7_17, 1, [], "com", settings) is None
+    assert check_for_announcement(MONDAY_7_17, 1, CalendarDayList(), "com", settings) is None
 
 
 def test_check_for_announcement_returns_none_when_not_due():
     settings = MorningAnnouncementsSettings(enabled=True, schedule=DEFAULT_SCHEDULE)
     base_time = datetime(2026, 4, 27, 7, 0, 0)  # Monday, well before 7:17
 
-    assert check_for_announcement(base_time, 1, [], "com", settings) is None
+    assert check_for_announcement(base_time, 1, CalendarDayList(), "com", settings) is None
 
 
 def test_check_for_announcement_builds_the_audio_file_when_due(monkeypatch):
@@ -301,7 +301,7 @@ def test_create_audio_file_for_calendar_days_proceeds_with_no_events_when_calend
 
     monkeypatch.setattr(morning_announcements_core, "build_audio_file", fake_build_audio_file)
 
-    assert _create_audio_file_for_calendar_days(MONDAY_7_17, [], "com", _fake_settings()) == "fallback.wav"
+    assert _create_audio_file_for_calendar_days(MONDAY_7_17, CalendarDayList(), "com", _fake_settings()) == "fallback.wav"
     sentences, music_file = seen["args"]
     assert music_file == "music.mp3"
     assert "There are no events scheduled for today." in sentences

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from typing import Callable
 from homeaudio.audio.settings import MorningAnnouncementsSchedule, MorningAnnouncementsSettings, MpdSettings, SnapcastSettings
 from homeaudio.audio.tts_playback import play_tts_audio_file
-from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, Event, WeatherForecast, MissingCalendarDataException, CalendarSource, get_calendar_day_for_date, DATA_FILE
+from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, Event, WeatherForecast, MissingCalendarDataException, CalendarSource, DATA_FILE
 from homeaudio.vcal.event_notifications.text_to_voice import gtts_tld, text_to_voice_file, TextToSpeechError
 from homeaudio.vcal import NO_CALENDAR_DATA, MORNING_GREETING, TODAYS_EVENTS_ARE, FUN_FACT_FOR_TODAY, NO_EVENTS_TODAY, HAVE_A_LOVELY_DAY
 from homeaudio.audio.sound import join_mp3s_to_wav, mix_announcement_audio
@@ -170,7 +170,7 @@ def _announcement_due(base_time: datetime, window: int, schedule: MorningAnnounc
 def _create_audio_file_for_calendar_days(base_time: datetime, calendar_days: CalendarDayList, tld: str, settings: MorningAnnouncementsSettings | None = None) -> str:
     settings = settings or MorningAnnouncementsSettings()
     try:
-        calendar_day = get_calendar_day_for_date(calendar_days, base_time)
+        calendar_day = calendar_days.get_calendar_day_for_date(base_time)
         events = calendar_day.all_events()
         weather_forecasts = calendar_day.weather_forecasts
     except MissingCalendarDataException:
