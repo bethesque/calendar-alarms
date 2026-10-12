@@ -49,13 +49,43 @@ class TextBuilder:
         if weather_forecast:
             sentences.append(f"The weather forecast for today is: {weather_forecast.summary}.")
 
-        if events:
-            # Collect the summary from each event on the first day and join them together with a ". " separator
-            event_summaries = [event.summary + "." for event in events if event.summary]
+        # non_owned_events = [e for e in events if e.owner_count == 0]
+        # events_by_owner = {owner: [e for e in events if e.owner == owner] for owner in dict.fromkeys(e.owner for e in events if e.owner_count == 1)}
+        # group_events = [e for e in events if e.owner_count > 1]
+
+        # sentence_parts = []
+
+        # # non owned events
+        # summaries = dict.fromkeys(e.summary for e in non_owned_events)
+        # sentence_parts.extend(summaries)
+
+        # # single owner events
+        # for owner, owned_events in events_by_owner.items():
+        #     sentence_parts.append(owner + ":")
+        #     summaries = dict.fromkeys(e.summary for e in owned_events)
+        #     sentence_parts.extend(summaries)
+
+        # # group owned events
+        # summaries = dict.fromkeys(e.summary for e in group_events)
+        # sentence_parts.extend(summaries)
+
+        sentence_parts = []
+        for event in events:
+            if event.summary:
+                if event.owner_count == 1 and not event.owner in event.summary:
+                    next_part = event.owner + " " + event.summary
+                else:
+                    next_part = event.summary
+
+                if not next_part in sentence_parts:
+                    sentence_parts.append(next_part)
+
+        if sentence_parts:
             sentences.append(TODAYS_EVENTS_ARE)
-            sentences.extend(event_summaries)
+            sentences.extend(sentence_parts)
         else:
             sentences.append(NO_EVENTS_TODAY)
+
 
         sentences.extend(self._get_postlude())
 
@@ -83,7 +113,8 @@ class TextBuilder:
             return []
 
     def _get_non_weather_forecast_events(self, events):
-        return [event for event in events if not isinstance(event, WeatherForecast)]
+        calendar_events = [event for event in events if not isinstance(event, WeatherForecast)]
+        return calendar_events
 
     def _get_weather_forecast(self, events):
         return next((event for event in events if isinstance(event, WeatherForecast)), None)

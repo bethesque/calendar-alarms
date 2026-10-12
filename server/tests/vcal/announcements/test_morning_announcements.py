@@ -20,6 +20,7 @@ from homeaudio.vcal.morning_announcements import (
 )
 from homeaudio.vcal.cal.google_calendar import CalendarDay, Event, WeatherForecast, MissingCalendarDataException
 from homeaudio.vcal.event_notifications.text_to_voice import TextToSpeechError
+from homeaudio.vcal import MORNING_GREETING, NO_EVENTS_TODAY, HAVE_A_LOVELY_DAY
 from homeaudio.audio.settings import MorningAnnouncementsSchedule, MorningAnnouncementsSettings
 
 select_option_call_count = 0
@@ -62,13 +63,75 @@ def test_get_morning_announcements_text_includes_weather_and_facts(monkeypatch):
         "Prelude text.",
         "The weather forecast for today is: Min 10 Max 20.",
         "Todays events are:",
-        "Meeting.",
-        "Appointment.",
+        "Meeting",
+        "Appointment",
         "Your fun fact for today is:",
         "Selected fact",
         "Have a lovely day.",
     ]
     assert text == expected
+
+
+def _event_summaries(events):
+    settings = Mock(enabled_prelude_options=[], unused_facts=[])
+    sentences = TextBuilder(events, settings).get_morning_announcements_text()
+    return sentences[sentences.index("Todays events are:") + 1:-1]
+
+
+def test_get_morning_announcements_text_prefixes_single_owner_events_with_owner():
+    events = [Event(owner="Kay", summary="Swimming", description="", calendar_id="id", owner_count=1)]
+
+    assert _event_summaries(events) == ["Kay Swimming"]
+
+
+def test_get_morning_announcements_text_does_not_prefix_owner_already_in_summary():
+    events = [Event(owner="Kay", summary="Kay to dentist", description="", calendar_id="id", owner_count=1)]
+
+    assert _event_summaries(events) == ["Kay to dentist"]
+
+
+def test_get_morning_announcements_text_does_not_prefix_unowned_or_group_events():
+    events = [
+        Event(owner="Family", summary="Bin night", description="", calendar_id="id", owner_count=0),
+        Event(owner="Kids", summary="School", description="", calendar_id="id", owner_count=2),
+    ]
+
+    assert _event_summaries(events) == ["Bin night", "School"]
+
+
+def test_get_morning_announcements_text_removes_duplicates_keeping_first_occurrence():
+    events = [
+        Event(owner="Family", summary="Bin night", description="", calendar_id="id"),
+        Event(owner="Kay", summary="Swimming", description="", calendar_id="id", owner_count=1),
+        Event(owner="Family", summary="Bin night", description="", calendar_id="id2"),
+        Event(owner="Pat", summary="Swimming", description="", calendar_id="id", owner_count=1),
+        Event(owner="Kay", summary="Swimming", description="", calendar_id="id", owner_count=1),
+    ]
+
+    assert _event_summaries(events) == ["Bin night", "Kay Swimming", "Pat Swimming"]
+
+
+def test_get_morning_announcements_text_skips_events_without_a_summary():
+    events = [
+        Event(owner="Kay", summary=None, description="", calendar_id="id", owner_count=1),
+        Event(owner="Family", summary="", description="", calendar_id="id"),
+        Event(owner="Family", summary="Bin night", description="", calendar_id="id"),
+    ]
+
+    assert _event_summaries(events) == ["Bin night"]
+
+
+def test_get_morning_announcements_text_says_no_events_when_there_are_no_events():
+    settings = Mock(enabled_prelude_options=[], unused_facts=[])
+
+    assert TextBuilder([], settings).get_morning_announcements_text() == [MORNING_GREETING, NO_EVENTS_TODAY, HAVE_A_LOVELY_DAY]
+
+
+def test_get_morning_announcements_text_says_no_events_when_no_event_has_a_summary():
+    events = [Event(owner="Kay", summary=None, description="", calendar_id="id", owner_count=1)]
+    settings = Mock(enabled_prelude_options=[], unused_facts=[])
+
+    assert TextBuilder(events, settings).get_morning_announcements_text() == [MORNING_GREETING, NO_EVENTS_TODAY, HAVE_A_LOVELY_DAY]
 
 
 # Monday/Saturday reference dates, matching the convention used in test_daemon.py.
@@ -204,7 +267,7 @@ def test_create_audio_file_for_calendar_days_builds_the_audio_file(monkeypatch):
     assert _create_audio_file_for_calendar_days(MONDAY_7_17, [], "com", _fake_settings()) == "built.wav"
     sentences, music_file = seen["args"]
     assert music_file == "music.mp3"
-    assert "Meeting." in sentences
+    assert "Meeting" in sentences
 
 
 def test_create_audio_file_for_calendar_days_proceeds_with_no_events_when_calendar_data_missing(monkeypatch):
