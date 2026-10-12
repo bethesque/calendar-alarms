@@ -38,16 +38,15 @@ class TextBuilder:
     Build a List of sentences to speak aloud from the given list of Events.
     """
     def _build_sentences(self):
-        weather_forecast = next(iter(self.weather_forecasts), None)
-
         sentences = [MORNING_GREETING]
 
         prelude = self._get_prelude()
         if prelude:
             sentences.append(prelude)
 
-        if weather_forecast:
-            sentences.append(f"The weather forecast for today is: {weather_forecast.summary}.")
+        if self.weather_forecasts:
+            summaries = ". ".join(forecast.summary.rstrip(".") for forecast in self.weather_forecasts)
+            sentences.append(f"The weather forecast for today is: {summaries}.")
 
         # non_owned_events = [e for e in events if e.owner_count == 0]
         # events_by_owner = {owner: [e for e in events if e.owner == owner] for owner in dict.fromkeys(e.owner for e in events if e.owner_count == 1)}

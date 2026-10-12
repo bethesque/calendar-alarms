@@ -31,17 +31,14 @@ def is_school_event(event: Event, school_event_keywords: list[str]) -> bool:
 def get_school_events(events: list[Event], school_event_keywords: list[str]) -> list[Event]:
     return [event for event in events if is_school_event(event, school_event_keywords)]
 
-def get_weather_forecast(weather_forecasts: list[WeatherForecast]) -> WeatherForecast | None:
-    return next(iter(weather_forecasts), None)
-
 
 """
 Build a list of sentences to speak aloud for the school announcement.
 """
-def build_text(school_events: list[Event], weather_forecast: WeatherForecast | None = None, rand = random.random) -> list[str]:
+def build_text(school_events: list[Event], weather_forecasts: list[WeatherForecast] | None = None, rand = random.random) -> list[str]:
     sentences = [TIME_TO_LEAVE_FOR_SCHOOL]
 
-    if weather_forecast and any(keyword in weather_forecast.summary.lower() for keyword in ("rain", "showers")):
+    if any(keyword in forecast.summary.lower() for forecast in weather_forecasts or [] for keyword in ("rain", "showers")):
         sentences.append(PACK_AN_UMBRELLA)
 
     if school_events:
@@ -94,8 +91,7 @@ def _announcement_due(base_time: datetime, window: int, schedule: SchoolAnnounce
 def _create_audio_file_for_calendar_days(base_time: datetime, events: list[Event], weather_forecasts: list[WeatherForecast], tld: str, settings: SchoolAnnouncementsSettings | None = None) -> str | None:
     settings = settings or SchoolAnnouncementsSettings()
     school_events = get_school_events(events, settings.school_event_keywords)
-    weather_forecast = get_weather_forecast(weather_forecasts)
-    sentences = build_text(school_events, weather_forecast)
+    sentences = build_text(school_events, weather_forecasts)
     return build_audio_file(sentences, tld)
 
 """

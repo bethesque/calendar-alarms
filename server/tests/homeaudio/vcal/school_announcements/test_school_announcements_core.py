@@ -6,7 +6,6 @@ from homeaudio.vcal.school_announcements import (
     build_text,
     build_audio_file,
     get_school_events,
-    get_weather_forecast,
     _announcement_due,
     _create_audio_file_for_calendar_days,
     _collect_speech_files,
@@ -137,9 +136,9 @@ def test_build_text_preserves_event_order_for_multiple_events():
 
 
 def test_build_text_adds_umbrella_reminder_when_forecast_mentions_rain():
-    weather_forecast = WeatherForecast(owner="cal", summary="Rain clearing later", description="", calendar_id="id")
+    weather_forecasts = [WeatherForecast(owner="cal", summary="Rain clearing later", description="", calendar_id="id")]
 
-    assert build_text([], weather_forecast, rand=rand_false) == [
+    assert build_text([], weather_forecasts, rand=rand_false) == [
         "It's time to leave for school.",
         "You may wish to pack an umbrella as there is rain forecast.",
         "Have a nice day.",
@@ -147,21 +146,21 @@ def test_build_text_adds_umbrella_reminder_when_forecast_mentions_rain():
 
 
 def test_build_text_matches_rain_case_insensitively():
-    weather_forecast = WeatherForecast(owner="cal", summary="Possible RAIN", description="", calendar_id="id")
+    weather_forecasts = [WeatherForecast(owner="cal", summary="Possible RAIN", description="", calendar_id="id")]
 
-    assert "You may wish to pack an umbrella as there is rain forecast." in build_text([], weather_forecast, rand=rand_false)
+    assert "You may wish to pack an umbrella as there is rain forecast." in build_text([], weather_forecasts, rand=rand_false)
 
 
 def test_build_text_adds_umbrella_reminder_when_forecast_mentions_showers():
-    weather_forecast = WeatherForecast(owner="cal", summary="Scattered showers", description="", calendar_id="id")
+    weather_forecasts = [WeatherForecast(owner="cal", summary="Scattered showers", description="", calendar_id="id")]
 
-    assert "You may wish to pack an umbrella as there is rain forecast." in build_text([], weather_forecast, rand=rand_false)
+    assert "You may wish to pack an umbrella as there is rain forecast." in build_text([], weather_forecasts, rand=rand_false)
 
 
 def test_build_text_omits_umbrella_reminder_when_forecast_has_no_rain():
-    weather_forecast = WeatherForecast(owner="cal", summary="Sunny", description="", calendar_id="id")
+    weather_forecasts = [WeatherForecast(owner="cal", summary="Sunny", description="", calendar_id="id")]
 
-    assert build_text([], weather_forecast, rand=rand_false) == ["It's time to leave for school.", "Have a nice day."]
+    assert build_text([], weather_forecasts, rand=rand_false) == ["It's time to leave for school.", "Have a nice day."]
 
 
 def test_build_text_omits_umbrella_reminder_when_no_forecast():
@@ -170,9 +169,9 @@ def test_build_text_omits_umbrella_reminder_when_no_forecast():
 
 def test_build_text_puts_umbrella_reminder_before_school_events():
     school_events = [Event(owner="cal", summary="School excursion", description="", calendar_id="id")]
-    weather_forecast = WeatherForecast(owner="cal", summary="Heavy rain", description="", calendar_id="id")
+    weather_forecasts = [WeatherForecast(owner="cal", summary="Heavy rain", description="", calendar_id="id")]
 
-    assert build_text(school_events, weather_forecast, rand=rand_false) == [
+    assert build_text(school_events, weather_forecasts, rand=rand_false) == [
         "It's time to leave for school.",
         "You may wish to pack an umbrella as there is rain forecast.",
         "Today's school events are:",
@@ -181,14 +180,17 @@ def test_build_text_puts_umbrella_reminder_before_school_events():
     ]
 
 
-def test_get_weather_forecast_returns_the_first_weather_forecast():
-    weather_forecast = WeatherForecast(owner="cal", summary="Min 10 Max 20", description="", calendar_id="id")
+def test_build_text_adds_umbrella_reminder_when_any_forecast_mentions_rain():
+    weather_forecasts = [
+        WeatherForecast(owner="cal", summary="Sunny", description="", calendar_id="id"),
+        WeatherForecast(owner="cal", summary="Showers later", description="", calendar_id="id"),
+    ]
 
-    assert get_weather_forecast([weather_forecast]) is weather_forecast
+    assert "You may wish to pack an umbrella as there is rain forecast." in build_text([], weather_forecasts, rand=rand_false)
 
 
-def test_get_weather_forecast_returns_none_when_absent():
-    assert get_weather_forecast([]) is None
+def test_build_text_omits_umbrella_reminder_when_forecasts_empty():
+    assert build_text([], [], rand=rand_false) == ["It's time to leave for school.", "Have a nice day."]
 
 
 def test_get_school_events_matches_summary_case_insensitively():
@@ -311,7 +313,7 @@ def test_create_audio_file_for_calendar_days_builds_audio_when_not_a_holiday(mon
     monkeypatch.setattr(
         school_announcements_core,
         "build_text",
-        lambda school_events, weather_forecast=None: build_text(school_events, weather_forecast, rand=rand_false),
+        lambda school_events, weather_forecasts=None: build_text(school_events, weather_forecasts, rand=rand_false),
     )
 
     seen_sentences = {}

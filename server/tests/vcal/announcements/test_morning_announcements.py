@@ -72,6 +72,22 @@ def test_get_morning_announcements_text_includes_weather_and_facts(monkeypatch):
     assert text == expected
 
 
+def test_get_morning_announcements_text_concatenates_all_weather_forecasts():
+    weather_forecasts = [
+        WeatherForecast(owner="cal", summary="Min 10 Max 20", description="", calendar_id="id"),
+        WeatherForecast(owner="cal", summary="Showers later.", description="", calendar_id="id"),
+    ]
+    settings = Mock()
+    settings.enabled_prelude_options = []
+    settings.prelude_probability = 0.0
+    settings.unused_facts = []
+    settings.save = Mock()
+
+    text = TextBuilder([], weather_forecasts, settings).get_morning_announcements_text()
+
+    assert "The weather forecast for today is: Min 10 Max 20. Showers later." in text
+
+
 def _event_summaries(events):
     settings = Mock(enabled_prelude_options=[], unused_facts=[])
     sentences = TextBuilder(events, [], settings).get_morning_announcements_text()
