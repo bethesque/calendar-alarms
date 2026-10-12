@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from homeaudio.env import CALENDAR_DATA_DIRECTORY, LOG_LEVEL
+from homeaudio.env import NOTIFICATIONS_CHECK_INTERVAL_MINUTES, LOG_LEVEL
 from homeaudio.vcal.cal.google_calendar import CalendarSource, Event, refresh_calendar_data as do_refresh_calendar_data
 from homeaudio.audio.log_config import setup_logging_for_data_refresh
 
@@ -18,7 +18,7 @@ def insert_test_event():
     calendar_days = calendar_source.load_data_from_file()
     # find the calendar day for the current date
     today = next(day for day in calendar_days if day.date == datetime.now().date())
-    start_time = datetime.now().astimezone() + timedelta(minutes=1)
+    start_time = datetime.now().astimezone() + timedelta(minutes=NOTIFICATIONS_CHECK_INTERVAL_MINUTES + 1)
     end_time = datetime.now().astimezone() + timedelta(minutes=30)
     event = Event(
         summary="A dynamically inserted test event",
