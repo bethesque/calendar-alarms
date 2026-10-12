@@ -76,12 +76,14 @@ def build_event_notification_files(event_notifications: list[EventNotification],
         alarm_audio_file = None
 
         if announcement_event_notifications:
+            logger.info(f"Building audio for announcements: {announcement_texts}")
             announcements_file = NotificationFile(
                 path=AnnouncementAudio(announcement_texts, base_time, tld, SoundEffectSelector(event_notification_settings.announcements.sound_effect_probability)).build_announcement_file(),
                 targets=targets
             )
 
         if alarm_event_notifications:
+            logger.info(f"Building audio for alarms: {alarm_texts}")
             alarm_audio_file = NotificationFile(
                 path=AlarmAudio(alarm_texts, tld, event_notification_settings.alarms, base_time).build_alarm_file(),
                 targets=targets
