@@ -490,13 +490,14 @@ def test_car_departure_time_for_event_recomputes_when_start_time_changes_after_c
     assert result == new_departure_time
 
 
-def test_car_departure_time_for_event_skips_events_with_a_travel_tag(monkeypatch):
+@pytest.mark.parametrize("description", ["#travel20", "#notravel"])
+def test_car_departure_time_for_event_skips_events_with_a_travel_tag(monkeypatch, description):
     now = datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE)
-    event = _located_event_today(now, description="#travel20")
+    event = _located_event_today(now, description=description)
     cache = TravelTimeCache(cache_file_path="")
     monkeypatch.setattr(
         "homeaudio.vcal.departure_time.solve_car_departure_time",
-        lambda **kwargs: pytest.fail("must not solve for an event with a #travel<N> tag"),
+        lambda **kwargs: pytest.fail("must not solve for an event with a #travel<N> or #notravel tag"),
     )
 
     result = car_departure_time_for_event(event, _settings(), cache, now)
