@@ -3,7 +3,6 @@ import glob
 from datetime import datetime, timedelta
 from typing import Callable
 from homeaudio.audio.settings import MorningAnnouncementsSchedule, MorningAnnouncementsSettings, MpdSettings, SnapcastSettings
-from homeaudio.audio.tts_playback import play_tts_audio_file
 from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, Event, WeatherForecast, MissingCalendarDataException, CalendarSource, DATA_FILE
 from homeaudio.vcal.event_notifications.text_to_voice import gtts_tld, text_to_voice_file, TextToSpeechError
 from homeaudio.vcal import NO_CALENDAR_DATA, MORNING_GREETING, TODAYS_EVENTS_ARE, FUN_FACT_FOR_TODAY, NO_EVENTS_TODAY, HAVE_A_LOVELY_DAY
@@ -11,8 +10,9 @@ from homeaudio.audio.sound import join_mp3s_to_wav, mix_announcement_audio
 from homeaudio.audio.select_item import select_item_by_date, select_option
 from homeaudio.env import DEFAULT_GOOGLE_TRANSLATE_TLD
 from homeaudio.vcal.event_notifications import BACKGROUND_MUSIC_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, POST_ANNOUNCEMENT_SILENCE
-from homeaudio.vcal.playback import NotificationFile
+from homeaudio.vcal.playback import NotificationFile, NotificationFiles, play_notifications
 from homeaudio.vcal.notification_schedule import morning_announcement_time_for_day
+from homeaudio.audio.scene import SceneProtocol, scene_for_env
 
 logger = logging.getLogger(__name__)
 
@@ -212,12 +212,15 @@ def play_morning_announcements(
         base_time: datetime | None = None,
         calendar_file = DATA_FILE,
         settings: MorningAnnouncementsSettings | None = None,
-        before_announcement_hook: Callable | None = None,
-        after_announcement_hook: Callable | None = None
+        scene: SceneProtocol | None = None
     ):
     logger.debug(f"Loading calendar data from {calendar_file}")
-    _base_time = base_time or datetime.now().astimezone()
-    _settings = settings or MorningAnnouncementsSettings()
+    base_time = base_time or datetime.now().astimezone()
+    settings = settings or MorningAnnouncementsSettings()
+    scene = scene or scene_for_env()
+
     calendar_days = CalendarSource(cache_file_path=calendar_file).load_data_from_file()
-    output_file = _create_audio_file_for_calendar_days(_base_time, calendar_days, DEFAULT_GOOGLE_TRANSLATE_TLD, _settings)
-    play_tts_audio_file(output_file, SnapcastSettings(), MpdSettings(), before_announcement_hook, after_announcement_hook)
+    output_file = _create_audio_file_for_calendar_days(base_time, calendar_days, DEFAULT_GOOGLE_TRANSLATE_TLD, settings)
+
+    notification_files = NotificationFiles(scheduled_announcements_files=[NotificationFile(output_file)])
+    play_notifications(notification_files, scene)

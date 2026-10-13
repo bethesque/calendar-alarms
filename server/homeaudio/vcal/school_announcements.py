@@ -1,19 +1,17 @@
 import logging
 import os
-import time as time_module
 import random
-from datetime import datetime, time, timedelta
-from typing import Callable
-from homeaudio.audio.settings import SchoolAnnouncementsSchedule, SchoolAnnouncementsSettings, MpdSettings, SnapcastSettings
-from homeaudio.audio.tts_playback import play_tts_audio_file
+from datetime import datetime, timedelta
+from homeaudio.audio.settings import SchoolAnnouncementsSchedule, SchoolAnnouncementsSettings
 from homeaudio.audio.sound import join_mp3s_to_wav
 from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException, CalendarSource, CalendarDay, CalendarDayList
-from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file, gtts_tld, TextToSpeechError
+from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file, TextToSpeechError
 from homeaudio.vcal import TIME_TO_LEAVE_FOR_SCHOOL, PACK_AN_UMBRELLA, TODAYS_SCHOOL_EVENTS_ARE, HAVE_A_NICE_DAY, IF_YOU_WANT, NOT_THE_BOSS, NO_CALENDAR_DATA, FIX_AUTHENTICATION
 from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, POST_ANNOUNCEMENT_SILENCE
 from homeaudio.env import CALENDAR_DATA_DIRECTORY
-from homeaudio.vcal.playback import NotificationFile
+from homeaudio.vcal.playback import NotificationFile, NotificationFiles, play_notifications
 from homeaudio.env import DEFAULT_GOOGLE_TRANSLATE_TLD
+from homeaudio.audio.scene import SceneProtocol, scene_for_env
 
 CHANCE_OF_I_AM_NOT_THE_BOSS = 1/5
 # gtts-cli  "An error occurred generating the school announcements. Some of the notifications may have been missing. Please check the calendar for today's events." > audio_resources/school_announcements_error_message.mp3
@@ -134,13 +132,13 @@ def play_school_announcements(
         base_time: datetime | None = None,
         calendar_file=os.path.join(CALENDAR_DATA_DIRECTORY, "calendar.json"),
         settings: SchoolAnnouncementsSettings | None = None,
-        before_announcement_hook: Callable | None = None,
-        after_announcement_hook: Callable | None = None
+        scene: SceneProtocol | None = None
     ):
 
     calendar_days = CalendarSource(cache_file_path=calendar_file).load_data_from_file()
     base_time = base_time or datetime.now().astimezone()
     settings = settings or SchoolAnnouncementsSettings()
+    scene = scene or scene_for_env()
 
     try:
         calendar_day = calendar_days.get_calendar_day_for_date(base_time)
@@ -150,6 +148,6 @@ def play_school_announcements(
 
     file = _create_audio_file_for_calendar_days(base_time, calendar_day.all_events(), calendar_day.weather_forecasts, DEFAULT_GOOGLE_TRANSLATE_TLD, settings)
     if file:
-        play_tts_audio_file(file, SnapcastSettings(), MpdSettings(), before_announcement_hook, after_announcement_hook)
-
+        notification_files = NotificationFiles(scheduled_announcements_files=[NotificationFile(file)])
+        play_notifications(notification_files, scene)
 

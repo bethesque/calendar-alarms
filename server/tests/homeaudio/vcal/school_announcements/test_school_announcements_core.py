@@ -17,7 +17,8 @@ from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, Eve
 from homeaudio.vcal.event_notifications.text_to_voice import TextToSpeechError
 from homeaudio.audio.settings import SchoolAnnouncementsSchedule, SchoolAnnouncementsSettings
 from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, POST_ANNOUNCEMENT_SILENCE
-from homeaudio.vcal.playback import NotificationFile
+from homeaudio.vcal.playback import NotificationFile, NotificationFiles
+from homeaudio.audio.scene import NullScene
 
 DEFAULT_SCHOOL_EVENT_KEYWORDS = ["school"]
 
@@ -351,6 +352,7 @@ def test_play_school_announcements_builds_and_plays_the_audio_file(monkeypatch):
     monkeypatch.setattr(school_announcements_core, "CalendarSource", FakeCalendarSource)
     events = [Event(owner="cal", summary="School excursion", description="", calendar_id="id")]
     weather_forecasts = [WeatherForecast(owner="cal", summary="Min 10 Max 20", description="", calendar_id="id")]
+    scene = NullScene()
 
     seen = {}
 
@@ -363,14 +365,12 @@ def test_play_school_announcements_builds_and_plays_the_audio_file(monkeypatch):
     play_calls = []
     monkeypatch.setattr(
         school_announcements_core,
-        "play_tts_audio_file",
-        lambda file, snapcast_settings, mpd_settings, before_hook, after_hook: play_calls.append((file, before_hook, after_hook)),
+        "play_notifications",
+        lambda notifications_files, scene: play_calls.append((notifications_files, scene)),
     )
 
-    before_hook = lambda: None
-    after_hook = lambda: None
 
-    play_school_announcements(base_time=MONDAY_8_30, settings=settings, before_announcement_hook=before_hook, after_announcement_hook=after_hook)
+    play_school_announcements(base_time=MONDAY_8_30, settings=settings, scene=scene)
 
     assert seen["args"] == (MONDAY_8_30, events, weather_forecasts, settings)
-    assert play_calls == [("built.wav", before_hook, after_hook)]
+    assert play_calls == [(NotificationFiles(scheduled_announcements_files=[NotificationFile("built.wav")]), scene)]

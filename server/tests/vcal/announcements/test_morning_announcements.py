@@ -4,7 +4,7 @@ from datetime import datetime, time as time_of_day
 from pathlib import Path
 from unittest.mock import Mock
 
-from homeaudio.vcal.playback import NotificationFile
+from homeaudio.vcal.playback import NotificationFile, NotificationFiles
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -22,6 +22,7 @@ from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, Eve
 from homeaudio.vcal.event_notifications.text_to_voice import TextToSpeechError
 from homeaudio.vcal import MORNING_GREETING, NO_EVENTS_TODAY, HAVE_A_LOVELY_DAY
 from homeaudio.audio.settings import MorningAnnouncementsSchedule, MorningAnnouncementsSettings
+from homeaudio.audio.scene import NullScene
 
 select_option_call_count = 0
 
@@ -317,6 +318,7 @@ class _FakeCalendarSource:
 
 def test_play_morning_announcements_builds_and_plays_the_audio_file(monkeypatch):
     settings = MorningAnnouncementsSettings()
+    scene = NullScene()
 
     monkeypatch.setattr(morning_announcements_core, "CalendarSource", _FakeCalendarSource)
 
@@ -331,17 +333,14 @@ def test_play_morning_announcements_builds_and_plays_the_audio_file(monkeypatch)
     play_calls = []
     monkeypatch.setattr(
         morning_announcements_core,
-        "play_tts_audio_file",
-        lambda audio_file, snapcast_settings, mpd_settings, before_hook, after_hook: play_calls.append((audio_file, before_hook, after_hook)),
+        "play_notifications",
+        lambda notifications_files, scene: play_calls.append((notifications_files, scene)),
     )
 
-    before_hook = lambda: None
-    after_hook = lambda: None
-
-    play_morning_announcements(base_time=MONDAY_7_17, settings=settings, before_announcement_hook=before_hook, after_announcement_hook=after_hook)
+    play_morning_announcements(base_time=MONDAY_7_17, settings=settings, scene=scene)
 
     assert seen["args"] == (MONDAY_7_17, "calendar-days", settings)
-    assert play_calls == [("built.wav", before_hook, after_hook)]
+    assert play_calls == [(NotificationFiles(scheduled_announcements_files=[NotificationFile("built.wav")]), scene)]
 
 
 def test_collect_speech_files_uses_error_message_audio_in_place_of_first_failed_sentence(monkeypatch):
