@@ -51,11 +51,11 @@
         <th>Play time</th>
         <th>Type</th>
         <th>Event</th>
-        <th>Offset (mins)</th>
         <th>Calendar</th>
         <th>Notification Source</th>
+        <th>Offset (mins)</th>
         <th>Reminder</th>
-        <th>Targets</th>
+        <th>Players</th>
         <th></th>
       </tr>
     </thead>
@@ -85,9 +85,9 @@
         <td>{{ play_datetime.strftime("%a, %d %b %y") }}<br>{{ play_datetime.strftime("%I:%M %p") }}{% if notification.notification_time != play_datetime %} <span class="play-time-changed" title="Changed from {{ notification.notification_time.strftime("%I:%M %p") }} due to operation hours or to match notification check window">⚠︎</span>{% endif %}</td>
         <td><span class="type {{ notification.type.name.lower() }}">{{ "ANNOUNCEMENT" if notification.type.name == "ANNOUNCE" else notification.type.name }}</span></td>
         <td>{{ notification.event.summary }}</td>
-        <td>{{ notification.offset }}</td>
         <td>{{ notification.event.owner }}</td>
-        <td>{{ "Departure" if notification.event.__class__.__name__ == "LeaveForEvent" else ("Rule" if notification.notification_rule else "Event tags") }}</td>
+        <td>{{ "Departure rule (based on address)" if notification.event.__class__.__name__ == "LeaveForEvent" else ("Notification rule" if notification.notification_rule else "Event tags") }}</td>
+        <td>{{ notification.offset }} mins {{ "before departure" if notification.event.__class__.__name__ == "LeaveForEvent" else "before event" }}</td>
         <td>{{ notification.notification_rule.reminder if notification.notification_rule and notification.notification_rule.reminder else "" }}</td>
         <td>{{ notification.targets | sort | join(", ") if notification.targets else "All" }}</td>
         <td>
