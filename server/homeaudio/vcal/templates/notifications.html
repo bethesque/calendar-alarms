@@ -29,6 +29,44 @@
   .tabs button.tab { background: var(--card-bg); color: var(--text); border: 1px solid var(--border); }
   .tabs button.tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
   .tab-panel[hidden] { display: none; }
+  tr.day-heading { display: none; }
+
+  @media (max-width: 640px) {
+    .tabs { flex-wrap: wrap; }
+    .tabs button.tab { flex: 1 1 40%; }
+    #refresh-calendar-data { margin-left: auto; }
+    #recompute-departure-times { margin-left: 0; }
+
+    table.notifications, table.events, table.notifications tbody, table.events tbody { display: block; background: none; box-shadow: none; border-radius: 0; overflow: visible; }
+    table.notifications thead, table.events thead { display: none; }
+    table.notifications tr.day-heading, table.events tr.day-heading { display: block; }
+    tr.day-heading td { display: block; padding: 0; border: none; margin: 14px 4px 6px; color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; }
+    table.notifications tr:not(.day-heading), table.events tr:not(.day-heading) { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; padding: 12px; margin-bottom: 10px; background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); }
+    table.notifications td, table.events td { display: block; padding: 0; border: none; }
+    table.notifications td:empty, table.events td:empty { display: none; }
+    td .date { display: none; }
+
+    table.notifications tr:not(.day-heading) { grid-template-areas: "time type" "event event" "calendar offset" "source players" "reminder play"; }
+    table.notifications td.time { grid-area: time; font-weight: 600; }
+    table.notifications td.type { grid-area: type; justify-self: end; }
+    table.notifications td.event { grid-area: event; font-size: 1.05rem; }
+    table.notifications td.calendar, table.notifications td.offset, table.notifications td.source, table.notifications td.players { font-size: 0.85rem; color: var(--muted); }
+    table.notifications td.calendar { grid-area: calendar; }
+    table.notifications td.offset { grid-area: offset; text-align: right; }
+    table.notifications td.source { grid-area: source; }
+    table.notifications td.players { grid-area: players; text-align: right; }
+    table.notifications td.reminder { grid-area: reminder; font-style: italic; align-self: center; }
+    table.notifications td.play { grid-area: play; justify-self: end; align-self: end; }
+    table.notifications td.play button { min-height: 44px; }
+
+    table.events tr:not(.day-heading) { grid-template-areas: "start calendar" "summary summary" "description description" "location location"; }
+    table.events td.start { grid-area: start; font-weight: 600; }
+    table.events td.calendar { grid-area: calendar; justify-self: end; font-size: 0.85rem; color: var(--muted); }
+    table.events td.summary { grid-area: summary; font-size: 1.05rem; }
+    table.events td.description { grid-area: description; font-size: 0.85rem; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    table.events td.description:empty { display: none; }
+    table.events td.location { grid-area: location; font-size: 0.85rem; color: var(--muted); }
+  }
 </style>
 </head>
 <body>
@@ -61,17 +99,20 @@
     </thead>
     <tbody>
       {% for play_datetime, notification, event_json in notifications %}
+      {% if loop.changed(play_datetime.date()) %}
+      <tr class="day-heading"><td colspan="9">{{ play_datetime.strftime("%a %d %b") }}</td></tr>
+      {% endif %}
       {% if event_json is none %}
       <tr>
-        <td>{{ play_datetime.strftime("%a, %d %b %y") }}<br>{{ play_datetime.strftime("%I:%M %p") }}</td>
-        <td><span class="type scheduled">{{ notification.type.name.replace("_", " ") }}</span></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td>
+        <td class="time"><span class="date">{{ play_datetime.strftime("%a, %d %b %y") }}<br></span>{{ play_datetime.strftime("%I:%M %p") }}</td>
+        <td class="type"><span class="type scheduled">{{ notification.type.name.replace("_", " ") }}</span></td>
+        <td class="event"></td>
+        <td class="calendar"></td>
+        <td class="source"></td>
+        <td class="offset"></td>
+        <td class="reminder"></td>
+        <td class="players"></td>
+        <td class="play">
           <button
             type="button"
             class="play-scheduled-announcement"
@@ -82,15 +123,15 @@
       </tr>
       {% else %}
       <tr>
-        <td>{{ play_datetime.strftime("%a, %d %b %y") }}<br>{{ play_datetime.strftime("%I:%M %p") }}{% if notification.notification_time != play_datetime %} <span class="play-time-changed" title="Changed from {{ notification.notification_time.strftime("%I:%M %p") }} due to operation hours or to match notification check window">⚠︎</span>{% endif %}</td>
-        <td><span class="type {{ notification.type.name.lower() }}">{{ "ANNOUNCEMENT" if notification.type.name == "ANNOUNCE" else notification.type.name }}</span></td>
-        <td>{{ notification.event.summary }}</td>
-        <td>{{ notification.event.owner }}</td>
-        <td>{{ "Departure rule (based on address)" if notification.event.__class__.__name__ == "LeaveForEvent" else ("Notification rule" if notification.notification_rule else "Event tags") }}</td>
-        <td>{{ notification.offset }} mins {{ "before departure" if notification.event.__class__.__name__ == "LeaveForEvent" else "before event" }}</td>
-        <td>{{ notification.notification_rule.reminder if notification.notification_rule and notification.notification_rule.reminder else "" }}</td>
-        <td>{{ notification.targets | sort | join(", ") if notification.targets else "All" }}</td>
-        <td>
+        <td class="time"><span class="date">{{ play_datetime.strftime("%a, %d %b %y") }}<br></span>{{ play_datetime.strftime("%I:%M %p") }}{% if notification.notification_time != play_datetime %} <span class="play-time-changed" title="Changed from {{ notification.notification_time.strftime("%I:%M %p") }} due to operation hours or to match notification check window">⚠︎</span>{% endif %}</td>
+        <td class="type"><span class="type {{ notification.type.name.lower() }}">{{ "ANNOUNCEMENT" if notification.type.name == "ANNOUNCE" else notification.type.name }}</span></td>
+        <td class="event">{{ notification.event.summary }}</td>
+        <td class="calendar">{{ notification.event.owner }}</td>
+        <td class="source">{{ "Departure rule (based on address)" if notification.event.__class__.__name__ == "LeaveForEvent" else ("Notification rule" if notification.notification_rule else "Event tags") }}</td>
+        <td class="offset">{{ notification.offset }} mins {{ "before departure" if notification.event.__class__.__name__ == "LeaveForEvent" else "before event" }}</td>
+        <td class="reminder">{{ notification.notification_rule.reminder if notification.notification_rule and notification.notification_rule.reminder else "" }}</td>
+        <td class="players">{{ notification.targets | sort | join(", ") if notification.targets else "All" }}</td>
+        <td class="play">
           <button
             type="button"
             class="test-notification"
@@ -123,18 +164,21 @@
     </thead>
     <tbody>
       {% for event in events %}
+      {% if event.start_time and loop.changed(event.start_time.date()) %}
+      <tr class="day-heading"><td colspan="5">{{ event.start_time.strftime("%a %d %b") }}</td></tr>
+      {% endif %}
       <tr>
-        <td>
+        <td class="start">
           {% if event.start_time %}
-            {{ event.start_time.strftime("%a, %d %b %Y") }}<br>{{ event.start_time.strftime("%I:%M %p") }}
+            <span class="date">{{ event.start_time.strftime("%a, %d %b %Y") }}<br></span>{{ event.start_time.strftime("%I:%M %p") }}
           {% else %}
             &nbsp;
           {% endif %}
         </td>
-        <td>{{ event.owner }}</td>
-        <td>{{ event.summary }}</td>
-        <td>{{ event.description or "" }}</td>
-        <td>{{ event.location or "" }}</td>
+        <td class="calendar">{{ event.owner }}</td>
+        <td class="summary">{{ event.summary }}</td>
+        <td class="description">{{ event.description or "" }}</td>
+        <td class="location">{{ event.location or "" }}</td>
       </tr>
       {% endfor %}
     </tbody>
