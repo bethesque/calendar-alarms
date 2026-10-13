@@ -25,7 +25,7 @@ MAX_ITERATIONS = 4
 CONVERGENCE_THRESHOLD = timedelta(minutes=1)
 DEFAULT_TRIP_DURATION_GUESS = timedelta(minutes=30)
 
-_TRAVEL_TAG_RE = re.compile(r"#travel(\d+)?")
+_TRAVEL_TAG_RE = re.compile(r"#travel(\d+)")
 
 
 class TravelTimeUnavailableError(Exception):

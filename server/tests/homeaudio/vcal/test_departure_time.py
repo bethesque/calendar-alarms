@@ -490,20 +490,35 @@ def test_car_departure_time_for_event_recomputes_when_start_time_changes_after_c
     assert result == new_departure_time
 
 
-@pytest.mark.parametrize("description", ["#travel", "#travel20"])
-def test_car_departure_time_for_event_skips_events_with_a_travel_tag(monkeypatch, description):
+def test_car_departure_time_for_event_skips_events_with_a_travel_tag(monkeypatch):
     now = datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE)
-    event = _located_event_today(now, description=description)
+    event = _located_event_today(now, description="#travel20")
     cache = TravelTimeCache(cache_file_path="")
     monkeypatch.setattr(
         "homeaudio.vcal.departure_time.solve_car_departure_time",
-        lambda **kwargs: pytest.fail("must not solve for an event with a #travel/#travel<N> tag"),
+        lambda **kwargs: pytest.fail("must not solve for an event with a #travel<N> tag"),
     )
 
     result = car_departure_time_for_event(event, _settings(), cache, now)
 
     assert result is None
     assert cache.get("evt-1") is None
+
+
+def test_car_departure_time_for_event_computes_for_events_with_a_bare_travel_tag(monkeypatch):
+    now = datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE)
+    event = _located_event_today(now, description="#travel")
+    cache = TravelTimeCache(cache_file_path="")
+    departure_time = now + timedelta(hours=1)
+    monkeypatch.setattr(
+        "homeaudio.vcal.departure_time.solve_car_departure_time",
+        lambda **kwargs: (departure_time, timedelta(minutes=10)),
+    )
+
+    result = car_departure_time_for_event(event, _settings(), cache, now)
+
+    assert result == departure_time
+    assert cache.get("evt-1").car_departure_time == departure_time
 
 
 def test_car_departure_time_for_event_reuses_a_fresh_cache_entry(monkeypatch):
