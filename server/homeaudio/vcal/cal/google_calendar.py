@@ -291,6 +291,7 @@ def copy_min_temperature_from_existing_day(existing_calendar_days: CalendarDayLi
             existing_day = existing_calendar_days.get_calendar_day_for_date_or_none(day.date_time)
             existing_min_temperature = next((f.min_temperature() for f in existing_day.weather_forecasts if f.min_temperature() is not None), None) if existing_day else None
             if existing_min_temperature is not None:
+                logger.debug(f"Updating weather forecast for {day.date} with minimum temperature {existing_min_temperature}")
                 forecast.add_min_temperature(existing_min_temperature)
 
 @dataclass
