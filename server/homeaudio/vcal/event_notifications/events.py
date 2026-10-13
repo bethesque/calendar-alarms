@@ -271,15 +271,8 @@ def get_all_event_notifications(event_notification_settings: EventNotificationSe
 
     return notifications
 
-def get_all_events(calendar_source: CalendarSource = CalendarSource()):
-    calendar_days = calendar_source.load_data_from_file()
-    events_by_day = [
-        (calendar_day.date, event.start_time is not None, event.start_time, event)
-        for calendar_day in calendar_days
-        for event in calendar_day.all_events()
-    ]
-    events_by_day.sort(key=lambda item: (item[0], item[1], item[2] or datetime.min))
-    return [event for *_, event in events_by_day]
+def get_calendar_days(calendar_source: CalendarSource = CalendarSource()) -> CalendarDayList:
+    return calendar_source.load_data_from_file()
 
 def get_calendar_refreshed_at(calendar_source: CalendarSource = CalendarSource()) -> datetime | None:
     calendar_source.load_data_from_file()

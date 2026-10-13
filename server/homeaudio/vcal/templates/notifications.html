@@ -33,9 +33,10 @@
 
   @media (max-width: 640px) {
     .tabs { flex-wrap: wrap; }
-    .tabs button.tab { flex: 1 1 40%; }
+    .tabs button.tab { flex: 1 1 calc(50% - 4px); }
     #refresh-calendar-data { margin-left: auto; }
     #recompute-departure-times { margin-left: 0; }
+    #stop-alarm { margin-right: auto; }
 
     table.notifications, table.events, table.notifications tbody, table.events tbody { display: block; background: none; box-shadow: none; border-radius: 0; overflow: visible; }
     table.notifications thead, table.events thead { display: none; }
@@ -151,7 +152,7 @@
   {% endif %}
   </div>
   <div class="tab-panel" id="events" hidden>
-  {% if events %}
+  {% if calendar_days %}
   <table class="events">
     <thead>
       <tr>
@@ -163,23 +164,19 @@
       </tr>
     </thead>
     <tbody>
-      {% for event in events %}
-      {% if event.start_time and loop.changed(event.start_time.date()) %}
-      <tr class="day-heading"><td colspan="5">{{ event.start_time.strftime("%a %d %b") }}</td></tr>
-      {% endif %}
+      {% for day in calendar_days %}
+      <tr class="day-heading"><td colspan="5">{{ day.date.strftime("%a %d %b") }}</td></tr>
+      {% for event in day.whole_day_events + (day.timed_events | sort(attribute="start_time")) %}
       <tr>
         <td class="start">
-          {% if event.start_time %}
-            <span class="date">{{ event.start_time.strftime("%a, %d %b %Y") }}<br></span>{{ event.start_time.strftime("%I:%M %p") }}
-          {% else %}
-            &nbsp;
-          {% endif %}
+          <span class="date">{{ day.date.strftime("%a, %d %b %Y") }}<br></span>{{ event.start_time.strftime("%I:%M %p") if event.start_time else "All day" }}
         </td>
         <td class="calendar">{{ event.owner }}</td>
         <td class="summary">{{ event.summary }}</td>
         <td class="description">{{ event.description or "" }}</td>
         <td class="location">{{ event.location or "" }}</td>
       </tr>
+      {% endfor %}
       {% endfor %}
     </tbody>
   </table>

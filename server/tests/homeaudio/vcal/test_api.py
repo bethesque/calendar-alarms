@@ -1,5 +1,5 @@
 import threading
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from types import SimpleNamespace
 
 import pytest
@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from homeaudio.audio.settings import NotificationRule
-from homeaudio.vcal.cal.google_calendar import Event
+from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, Event
 from homeaudio.vcal.event_notifications.events import EventNotification, EventNotifications, NotificationPlaytimeScheduler, NotificationType
 from homeaudio.audio.settings import EventNotificationSchedule
 from homeaudio.vcal.event_notifications.scheduled_announcements import ScheduledAnnouncementType
@@ -16,7 +16,7 @@ import homeaudio.vcal.api as api_module
 
 @pytest.fixture(autouse=True)
 def no_calendar_events(monkeypatch):
-    monkeypatch.setattr(api_module, "get_all_events", lambda: [])
+    monkeypatch.setattr(api_module, "get_calendar_days", lambda: CalendarDayList())
     monkeypatch.setattr(api_module, "scheduled_announcement_notifications", lambda: [])
 
 
@@ -26,26 +26,38 @@ def _client():
     return TestClient(app)
 
 
-def test_events_page_lists_events(monkeypatch):
-    event = Event(
+def test_events_page_lists_events_under_their_day(monkeypatch):
+    timed_event = Event(
         owner="Beth",
         calendar_id="id",
         summary="Gym session",
         description="Leg day",
         start_time=datetime(2026, 4, 28, 9, 0, tzinfo=timezone.utc),
     )
-    monkeypatch.setattr(api_module, "get_all_events", lambda: [event])
+    whole_day_event = Event(owner="Beth", calendar_id="id", summary="Public holiday", description="")
+    days = CalendarDayList([
+        CalendarDay(date=date(2026, 4, 27)),
+        CalendarDay(date=date(2026, 4, 28), whole_day_events=[whole_day_event], timed_events=[timed_event]),
+        CalendarDay(date=date(2026, 4, 29), whole_day_events=[whole_day_event]),
+    ])
+    monkeypatch.setattr(api_module, "get_calendar_days", lambda: days)
     monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [])
 
     response = _client().get("/alarm/notifications")
 
     assert response.status_code == 200
-    assert "Gym session" in response.text
+    assert "Mon 27 Apr" not in response.text
+    tuesday = response.text.index("Tue 28 Apr")
+    holiday = response.text.index("Public holiday")
+    gym = response.text.index("Gym session")
+    wednesday = response.text.index("Wed 29 Apr")
+    assert tuesday < holiday < gym < wednesday
+    assert response.text.index("Public holiday", wednesday) > wednesday
     assert "Leg day" in response.text
 
 
 def test_events_page_handles_no_events(monkeypatch):
-    monkeypatch.setattr(api_module, "get_all_events", lambda: [])
+    monkeypatch.setattr(api_module, "get_calendar_days", lambda: CalendarDayList())
     monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [])
 
     response = _client().get("/alarm/notifications")
@@ -145,7 +157,7 @@ def test_notifications_page_includes_morning_and_school_announcements_sorted_by_
     gym = response.text.index("Gym session")
     school = response.text.index("SCHOOL ANNOUNCEMENTS")
     assert morning < gym < school
-    assert "Tue, 28 Apr 26<br>07:15 AM" in response.text
+    assert "Tue, 28 Apr 26<br></span>07:15 AM" in response.text
     assert 'data-path="/alarm/morning-announcements"' in response.text
     assert 'data-base-time="2026-04-28T07:15:00+00:00"' in response.text
     assert 'data-path="/alarm/school-announcements"' in response.text
@@ -171,7 +183,7 @@ def test_notifications_page_shows_the_play_time_with_a_warning_when_it_differs_f
     response = _client().get("/alarm/notifications")
 
     assert response.status_code == 200
-    assert "Tue, 28 Apr 26<br>08:55 PM" in response.text
+    assert "Tue, 28 Apr 26<br></span>08:55 PM" in response.text
     assert 'title="Changed from 10:00 PM due to operation hours or to match notification check window"' in response.text
     assert "⚠︎" in response.text
 
@@ -183,7 +195,7 @@ def test_notifications_page_shows_no_warning_when_the_play_time_matches_the_noti
     response = _client().get("/alarm/notifications")
 
     assert response.status_code == 200
-    assert "Tue, 28 Apr 26<br>10:00 PM" in response.text
+    assert "Tue, 28 Apr 26<br></span>10:00 PM" in response.text
     assert "⚠︎" not in response.text
 
 

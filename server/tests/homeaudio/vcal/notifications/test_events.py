@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 from homeaudio.audio.settings import EventNotificationSchedule, EventNotificationSettings, NotificationRule, TimeRange
 from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, CalendarSource, Event
 from homeaudio.vcal.event_notifications.events import (
+    get_calendar_days,
     get_calendar_refreshed_at,
     NotificationFinder,
     NotificationPlaytimeScheduler,
@@ -47,6 +48,17 @@ def test_get_event_notifications_ignores_disabled_rules():
 
     assert len(notifications) == 1
     assert notifications[0].notification_rule is enabled_rule
+
+
+def test_get_calendar_days_returns_the_days_from_the_file(tmp_path):
+    cache_file = str(tmp_path / "calendar.json")
+    days = CalendarDayList([CalendarDay(date=datetime(2026, 4, 6).date()), CalendarDay(date=datetime(2026, 4, 7).date())])
+    CalendarSource(cache_file_path=cache_file, calendar_days=days).save_data_to_file()
+
+    result = get_calendar_days(CalendarSource(cache_file_path=cache_file))
+
+    assert isinstance(result, CalendarDayList)
+    assert [day.date for day in result] == [datetime(2026, 4, 6).date(), datetime(2026, 4, 7).date()]
 
 
 def test_get_calendar_refreshed_at_returns_the_stored_refreshed_at(tmp_path):
