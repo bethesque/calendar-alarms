@@ -9,7 +9,7 @@ from homeaudio.vcal import NOTHING_TO_SNOOZE, snoozing_message
 from homeaudio.audio.mpd import mpd_connection
 from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, POST_ANNOUNCEMENT_SILENCE
 from homeaudio.audio.scene import scene_for_env
-from homeaudio.audio.settings import MorningAnnouncementsSettings, SchoolAnnouncementsSettings, SnapcastSettings, MpdSettings, EventNotificationSettings, DepartureNotificationSettings
+from homeaudio.audio.settings import GoogleCalendarSettings, MorningAnnouncementsSettings, SchoolAnnouncementsSettings, SnapcastSettings, MpdSettings, EventNotificationSettings, DepartureNotificationSettings
 
 from homeaudio.audio.snapserver import Snapserver
 from homeaudio.vcal.event_notifications.snooze import LastPlayedState, SnoozeState
@@ -207,7 +207,7 @@ def prepare_notification_files(base_time, calendar_days: CalendarDayList, check_
 
     window = scheduler.window
     scheduled_announcements_files = []
-    if file := check_for_morning_announcements(base_time, window, calendar_days, tld, MorningAnnouncementsSettings()):
+    if file := check_for_morning_announcements(base_time, window, calendar_days, tld, MorningAnnouncementsSettings(), GoogleCalendarSettings()):
         scheduled_announcements_files.append(file)
     if file := check_for_school_announcements(base_time, window, calendar_days, tld, SchoolAnnouncementsSettings()):
         scheduled_announcements_files.append(file)

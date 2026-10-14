@@ -2,7 +2,7 @@ import logging
 import glob
 from datetime import datetime, timedelta
 from typing import Callable
-from homeaudio.audio.settings import MorningAnnouncementsSchedule, MorningAnnouncementsSettings, MpdSettings, SnapcastSettings
+from homeaudio.audio.settings import CalendarSetting, GoogleCalendarSettings, MorningAnnouncementsSchedule, MorningAnnouncementsSettings, MpdSettings, SnapcastSettings
 from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, Event, WeatherForecast, MissingCalendarDataException, CalendarSource, DATA_FILE
 from homeaudio.vcal.event_notifications.text_to_voice import gtts_tld, text_to_voice_file, TextToSpeechError
 from homeaudio.vcal import NO_CALENDAR_DATA, MORNING_GREETING, TODAYS_EVENTS_ARE, FUN_FACT_FOR_TODAY, NO_EVENTS_TODAY, HAVE_A_LOVELY_DAY
@@ -167,11 +167,16 @@ def _announcement_due(base_time: datetime, window: int, schedule: MorningAnnounc
     scheduled_time = datetime.combine(base_time.date(), scheduled_time_of_day, tzinfo=base_time.tzinfo)
     return base_time <= scheduled_time < base_time + timedelta(minutes=window)
 
-def _create_audio_file_for_calendar_days(base_time: datetime, calendar_days: CalendarDayList, tld: str, settings: MorningAnnouncementsSettings | None = None) -> str:
+def _excluded_calendar_ids(calendars: list[CalendarSetting]) -> set[str]:
+    return {calendar.id for calendar in calendars if not calendar.include_in_morning_announcements}
+
+def _create_audio_file_for_calendar_days(base_time: datetime, calendar_days: CalendarDayList, tld: str, settings: MorningAnnouncementsSettings | None = None, calendars: list[CalendarSetting] | None = None) -> str:
     settings = settings or MorningAnnouncementsSettings()
+    calendars = GoogleCalendarSettings().calendars if calendars is None else calendars
+    excluded_calendar_ids = _excluded_calendar_ids(calendars)
     try:
         calendar_day = calendar_days.get_calendar_day_for_date(base_time)
-        events = calendar_day.all_events()
+        events = [event for event in calendar_day.all_events() if event.calendar_id not in excluded_calendar_ids]
         weather_forecasts = calendar_day.weather_forecasts
     except MissingCalendarDataException:
         logger.info(f"No calendar data found for today's date ({base_time}), proceeding with no events.")
@@ -191,9 +196,11 @@ def check_for_announcement(
         window: int,
         calendar_days: CalendarDayList,
         tld: str,
-        settings: MorningAnnouncementsSettings | None = None
+        settings: MorningAnnouncementsSettings | None = None,
+        google_calendar_settings: GoogleCalendarSettings | None = None
     ) -> NotificationFile | None:
     settings = settings or MorningAnnouncementsSettings()
+    google_calendar_settings = google_calendar_settings or GoogleCalendarSettings()
 
     if not settings.enabled:
         logger.debug(f"Morning announcements disabled")
@@ -203,7 +210,7 @@ def check_for_announcement(
         logger.debug(f"Morning announcements not due")
         return None
 
-    return NotificationFile(path=_create_audio_file_for_calendar_days(base_time, calendar_days, tld, settings))
+    return NotificationFile(path=_create_audio_file_for_calendar_days(base_time, calendar_days, tld, settings, google_calendar_settings.calendars))
 
 """
 Entry point for UI. Generate a summary of today's events, convert them to voice, and play them.
@@ -212,15 +219,17 @@ def play_morning_announcements(
         base_time: datetime | None = None,
         calendar_file = DATA_FILE,
         settings: MorningAnnouncementsSettings | None = None,
+        google_calendar_settings: GoogleCalendarSettings | None = None,
         scene: SceneProtocol | None = None
     ):
     logger.debug(f"Loading calendar data from {calendar_file}")
     base_time = base_time or datetime.now().astimezone()
     settings = settings or MorningAnnouncementsSettings()
+    google_calendar_settings = google_calendar_settings or GoogleCalendarSettings()
     scene = scene or scene_for_env()
 
     calendar_days = CalendarSource(cache_file_path=calendar_file).load_data_from_file()
-    output_file = _create_audio_file_for_calendar_days(base_time, calendar_days, DEFAULT_GOOGLE_TRANSLATE_TLD, settings)
+    output_file = _create_audio_file_for_calendar_days(base_time, calendar_days, DEFAULT_GOOGLE_TRANSLATE_TLD, settings, google_calendar_settings.calendars)
 
     notification_files = NotificationFiles(scheduled_announcements_files=[NotificationFile(output_file)])
     play_notifications(notification_files, scene)

@@ -21,7 +21,7 @@ from homeaudio.vcal.morning_announcements import (
 from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, Event, WeatherForecast, MissingCalendarDataException
 from homeaudio.vcal.event_notifications.text_to_voice import TextToSpeechError
 from homeaudio.vcal import MORNING_GREETING, NO_EVENTS_TODAY, HAVE_A_LOVELY_DAY
-from homeaudio.audio.settings import MorningAnnouncementsSchedule, MorningAnnouncementsSettings
+from homeaudio.audio.settings import CalendarSetting, GoogleCalendarSettings, MorningAnnouncementsSchedule, MorningAnnouncementsSettings
 from homeaudio.audio.scene import NullScene
 
 select_option_call_count = 0
@@ -235,21 +235,23 @@ def test_check_for_announcement_returns_none_when_not_due():
 
 def test_check_for_announcement_builds_the_audio_file_when_due(monkeypatch):
     settings = MorningAnnouncementsSettings(enabled=True, schedule=DEFAULT_SCHEDULE)
+    calendars = [CalendarSetting(id="id", name="Calendar")]
+    google_calendar_settings = GoogleCalendarSettings(calendars=calendars)
 
     seen = {}
 
-    def fake_create_audio_file(base_time, calendar_days, tld, s):
-        seen["args"] = (base_time, calendar_days, tld, s)
+    def fake_create_audio_file(base_time, calendar_days, tld, s, c):
+        seen["args"] = (base_time, calendar_days, tld, s, c)
         return "morning_announcement.wav"
 
     monkeypatch.setattr(morning_announcements_core, "_create_audio_file_for_calendar_days", fake_create_audio_file)
 
     calendar_days = CalendarDayList([CalendarDay(date=MONDAY_7_17.date())])
 
-    result = check_for_announcement(MONDAY_7_17, 1, calendar_days, "com", settings)
+    result = check_for_announcement(MONDAY_7_17, 1, calendar_days, "com", settings, google_calendar_settings)
 
     assert result == NotificationFile(path="morning_announcement.wav")
-    assert seen["args"] == (MONDAY_7_17, calendar_days, "com", settings)
+    assert seen["args"] == (MONDAY_7_17, calendar_days, "com", settings, calendars)
 
 
 def _fake_settings():
@@ -291,6 +293,34 @@ def test_create_audio_file_for_calendar_days_builds_the_audio_file(monkeypatch):
     assert "The weather forecast for today is: Min 10 Max 20." in sentences
 
 
+def test_create_audio_file_for_calendar_days_excludes_events_from_calendars_not_included_in_morning_announcements(monkeypatch):
+    calendar_days = CalendarDayList([CalendarDay(
+        date=MONDAY_7_17.date(),
+        whole_day_events=[
+            Event(owner="cal", summary="Meeting", description="", calendar_id="included"),
+            Event(owner="cal", summary="Bin night", description="", calendar_id="excluded"),
+        ],
+    )])
+    calendars = [
+        CalendarSetting(id="included", name="Included"),
+        CalendarSetting(id="excluded", name="Excluded", include_in_morning_announcements=False),
+    ]
+    monkeypatch.setattr(morning_announcements_core, "BackgroundMusicSelector", _FakeBackgroundMusicSelector)
+
+    seen = {}
+
+    def fake_build_audio_file(sentences, tld, music_file):
+        seen["sentences"] = sentences
+        return "built.wav"
+
+    monkeypatch.setattr(morning_announcements_core, "build_audio_file", fake_build_audio_file)
+
+    _create_audio_file_for_calendar_days(MONDAY_7_17, calendar_days, "com", _fake_settings(), calendars)
+
+    assert "Meeting" in seen["sentences"]
+    assert "Bin night" not in seen["sentences"]
+
+
 def test_create_audio_file_for_calendar_days_proceeds_with_no_events_when_calendar_data_missing(monkeypatch):
     monkeypatch.setattr(morning_announcements_core, "BackgroundMusicSelector", _FakeBackgroundMusicSelector)
 
@@ -318,14 +348,16 @@ class _FakeCalendarSource:
 
 def test_play_morning_announcements_builds_and_plays_the_audio_file(monkeypatch):
     settings = MorningAnnouncementsSettings()
+    calendars = [CalendarSetting(id="id", name="Calendar")]
+    google_calendar_settings = GoogleCalendarSettings(calendars=calendars)
     scene = NullScene()
 
     monkeypatch.setattr(morning_announcements_core, "CalendarSource", _FakeCalendarSource)
 
     seen = {}
 
-    def fake_create_audio_file(base_time, calendar_days, tld, s):
-        seen["args"] = (base_time, calendar_days, s)
+    def fake_create_audio_file(base_time, calendar_days, tld, s, c):
+        seen["args"] = (base_time, calendar_days, s, c)
         return "built.wav"
 
     monkeypatch.setattr(morning_announcements_core, "_create_audio_file_for_calendar_days", fake_create_audio_file)
@@ -337,9 +369,9 @@ def test_play_morning_announcements_builds_and_plays_the_audio_file(monkeypatch)
         lambda notifications_files, scene: play_calls.append((notifications_files, scene)),
     )
 
-    play_morning_announcements(base_time=MONDAY_7_17, settings=settings, scene=scene)
+    play_morning_announcements(base_time=MONDAY_7_17, settings=settings, google_calendar_settings=google_calendar_settings, scene=scene)
 
-    assert seen["args"] == (MONDAY_7_17, "calendar-days", settings)
+    assert seen["args"] == (MONDAY_7_17, "calendar-days", settings, calendars)
     assert play_calls == [(NotificationFiles(scheduled_announcements_files=[NotificationFile("built.wav")]), scene)]
 
 

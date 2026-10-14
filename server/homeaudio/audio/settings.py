@@ -136,6 +136,8 @@ class CalendarSetting(BaseModel):
     owner_count: int = 0
     holiday: bool = Field(default=False, title="Are all events holidays?", description="Events in this calendar are treated as holidays. This affects the notification operation schedule and the morning announcements time.")
     weather: bool = Field(default=False, title="Are all events weather forecasts?", description="Events in this calendar are treated as weather forecasts.")
+    include_in_morning_announcements: bool = Field(default=True, title="Include in morning announcements?", description="Events in this calendar are read out in the morning announcements.")
+
 
 class NotificationRule(BaseModel):
     summary_pattern: str | None = Field(default=None, description="The substring to match in the event summary")
