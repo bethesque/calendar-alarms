@@ -9,7 +9,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 def greeting_options(good_greeting: str, owner: str | None = None) -> list[str]:
-    options = [f"{good_greeting}.", *GREETINGS]
+    options = [good_greeting, *GREETINGS]
     if owner:
         options.extend([
             f"{good_greeting} {owner}",

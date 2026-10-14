@@ -33,7 +33,7 @@ def test_notification_text_builder_creates_text_for_travel_announcement(monkeypa
     monkeypatch.setattr("homeaudio.vcal.event_notifications.text.random.choice", lambda seq: seq[0])
     announcement_texts = NotificationTextBuilder([event_notification], base_time).build()
 
-    assert announcement_texts == ["Good afternoon.", "It will be time to Leave for An appointment in 5 minutes."]
+    assert announcement_texts == ["Good afternoon", "It will be time to Leave for An appointment in 5 minutes."]
 
 
 def _description_event_notification(summary="Gym session", offset=0, start_time=datetime.datetime(2026, 4, 28, 12, 10, tzinfo=TIMEZONE)):
@@ -57,7 +57,7 @@ def test_notification_text_builder_adds_greeting_and_extras_when_lucky_roll(monk
 
     announcement_texts = NotificationTextBuilder([event_notification], base_time).build()
 
-    assert announcement_texts == ["Good afternoon.", "It's time for Gym session."]
+    assert announcement_texts == ["Good afternoon", "It's time for Gym session."]
 
 
 def test_notification_text_builder_uses_bare_phrasing_when_unlucky_roll(monkeypatch):
@@ -83,7 +83,7 @@ def test_notification_text_builder_skips_bare_summary_when_notification_rule_pre
 
     announcement_texts = NotificationTextBuilder([event_notification], base_time).build()
 
-    assert announcement_texts == ["Good afternoon.", "It's time for Gym session."]
+    assert announcement_texts == ["Good afternoon", "It's time for Gym session."]
 
 
 def test_notification_text_builder_skips_bare_summary_when_offset_is_nonzero(monkeypatch):
@@ -96,7 +96,7 @@ def test_notification_text_builder_skips_bare_summary_when_offset_is_nonzero(mon
 
     announcement_texts = NotificationTextBuilder([event_notification], base_time).build()
 
-    assert announcement_texts == ["Good afternoon.", "It will be time for Gym session in 20 minutes."]
+    assert announcement_texts == ["Good afternoon", "It will be time for Gym session in 20 minutes."]
 
 
 def _bare_text(monkeypatch, event_notifications, base_time):
@@ -157,11 +157,11 @@ def test_notification_text_builder_removes_repeated_sentences(monkeypatch):
 def test_all_greeting_options_includes_time_of_day_and_owner_greetings():
     options = all_greeting_options(["Beth"])
 
-    assert "Good morning." in options
-    assert "Good afternoon." in options
-    assert "Good evening." in options
-    assert "Good evening Beth." in options
-    assert "Hi Beth. " in options
-    assert "Attention Beth." in options
+    assert "Good morning" in options
+    assert "Good afternoon" in options
+    assert "Good evening" in options
+    assert "Good evening Beth" in options
+    assert "Hi Beth" in options
+    assert "Attention Beth" in options
     assert all(greeting in options for greeting in GREETINGS)
     assert len(options) == len(set(options))
