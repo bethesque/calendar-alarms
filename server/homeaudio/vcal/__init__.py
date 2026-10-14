@@ -16,7 +16,11 @@ HAVE_A_NICE_DAY = "Have a nice day."
 IF_YOU_WANT = "If you want."
 NOT_THE_BOSS = "I'm not the boss of you."
 
-GREETINGS = ["Hi there.", "Hey.", "Hey there.", "Hello."]
+GREETINGS = ["Hi there", "Hey", "Hey there", "Hello"]
+GOOD_MORNING = "Good morning"
+GOOD_AFTERNOON = "Good afternoon"
+GOOD_EVENING = "Good evening"
+GOOD_GREETINGS = [GOOD_MORNING, GOOD_AFTERNOON, GOOD_EVENING]
 COMPLIMENTS_FOR_1 = ["What a beautiful name.", "Everyone loves working with you.", "You are fabulous.", "What beautiful eyes you have.", "You're the best!", "You are one of the most talented people we know.", "Lots of people love you.", "You are thoughtful, intelligent and beautiful."]
 COMPLIMENTS_FOR_2 = ["What a great looking pair you are.", "You're both awesome.", "It's a great day because you're here."]
 COMPLIMENTS_FOR_MANY = ["What a good looking bunch you are.", "You are all awesome."]
@@ -39,8 +43,12 @@ ALL_SENTENCES = [
     IF_YOU_WANT,
     NOT_THE_BOSS,
     *GREETINGS,
+    *GOOD_GREETINGS,
     *COMPLIMENTS_FOR_1,
     *COMPLIMENTS_FOR_2,
     *COMPLIMENTS_FOR_MANY,
     *ENCOURAGEMENTS,
 ]
+
+def snoozing_message(minutes: int) -> str:
+    return f"Snoozing for {minutes} minutes"

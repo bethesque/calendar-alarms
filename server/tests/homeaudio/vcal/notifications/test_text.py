@@ -7,7 +7,8 @@ from pydantic import ValidationError
 from homeaudio.vcal.cal.google_calendar import Event
 from homeaudio.vcal.event_notifications.events import EventNotification, LeaveForEvent, NotificationType
 from homeaudio.audio.settings import NotificationRule
-from homeaudio.vcal.event_notifications.text import NotificationTextBuilder
+from homeaudio.vcal import GREETINGS
+from homeaudio.vcal.event_notifications.text import NotificationTextBuilder, all_greeting_options
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
 
@@ -151,3 +152,16 @@ def test_notification_text_builder_removes_repeated_sentences(monkeypatch):
     ]
 
     assert _bare_text(monkeypatch, event_notifications, base_time) == ["It was time for Gym session at 6:45am."]
+
+
+def test_all_greeting_options_includes_time_of_day_and_owner_greetings():
+    options = all_greeting_options(["Beth"])
+
+    assert "Good morning." in options
+    assert "Good afternoon." in options
+    assert "Good evening." in options
+    assert "Good evening Beth." in options
+    assert "Hi Beth. " in options
+    assert "Attention Beth." in options
+    assert all(greeting in options for greeting in GREETINGS)
+    assert len(options) == len(set(options))

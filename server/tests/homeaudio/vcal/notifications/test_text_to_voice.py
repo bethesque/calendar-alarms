@@ -1,10 +1,12 @@
 import os
 
 import pytest
+from gtts import gTTSError
 
 from homeaudio.vcal.event_notifications import text_to_voice as text_to_voice_module
 from homeaudio.vcal.event_notifications.text_to_voice import (
     TextToSpeechError,
+    TextToSpeechRateLimitError,
     text_to_voice_file,
 )
 
@@ -136,3 +138,35 @@ def test_truncates_text_to_word_limit_before_generating(monkeypatch, tmp_path):
     )
 
     assert FakeGTTS.calls == ["one two three"]
+
+
+class FakeResponse:
+    def __init__(self, status_code, reason):
+        self.status_code = status_code
+        self.reason = reason
+
+
+def test_raises_rate_limit_error_without_retrying_on_429(monkeypatch, tmp_path):
+    _install_fake_gtts(
+        monkeypatch,
+        behaviours=[gTTSError(response=FakeResponse(429, "Too Many Requests")), b"real audio bytes"],
+    )
+    cache_dir = tmp_path / "audio"
+
+    with pytest.raises(TextToSpeechRateLimitError):
+        text_to_voice_file("Hello there", audio_cache_directory=str(cache_dir))
+
+    assert len(FakeGTTS.calls) == 1
+
+
+def test_retries_after_non_rate_limit_gtts_error(monkeypatch, tmp_path):
+    _install_fake_gtts(
+        monkeypatch,
+        behaviours=[gTTSError(response=FakeResponse(500, "Internal Server Error")), b"real audio bytes"],
+    )
+    cache_dir = tmp_path / "audio"
+
+    result = text_to_voice_file("Hello there", audio_cache_directory=str(cache_dir))
+
+    assert os.path.getsize(result) == len(b"real audio bytes")
+    assert len(FakeGTTS.calls) == 2

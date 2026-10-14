@@ -5,7 +5,7 @@ from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, Cal
 from homeaudio.audio.sound import join_mp3s_to_wav
 from homeaudio.vcal.event_notifications.text_to_voice import gtts_tld
 from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file
-from homeaudio.vcal import NOTHING_TO_SNOOZE
+from homeaudio.vcal import NOTHING_TO_SNOOZE, snoozing_message
 from homeaudio.audio.mpd import mpd_connection
 from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, POST_ANNOUNCEMENT_SILENCE
 from homeaudio.audio.scene import scene_for_env
@@ -67,7 +67,7 @@ def snooze_alarm(after_alarm_hook=None):
     actual_snooze_minutes = int((replay_at - datetime.now().astimezone()).total_seconds() // 60)
     SnoozeState().save(event_notifications, replay_at, clear_at)
     logger.info(f"Snoozed last alarm for {actual_snooze_minutes} minutes until {replay_at}")
-    play_file(_build_one_off_announcement_file(f"Snoozing for {actual_snooze_minutes} minutes"))
+    play_file(_build_one_off_announcement_file(snoozing_message(actual_snooze_minutes)))
 
     if after_alarm_hook:
         after_alarm_hook()

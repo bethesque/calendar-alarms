@@ -20,19 +20,24 @@ class TextToSpeechError(Exception):
     """Raised when TTS generation fails after all retry attempts."""
 
 
+class TextToSpeechRateLimitError(TextToSpeechError):
+    """Raised when the TTS API responds with HTTP 429."""
+
+
 """
 Converts text to a voice file and saves it to the cache directory.
 Returns the path to the saved audio file.
 """
 def text_to_voice_file(text, tld: str| None = None, word_limit=1000, audio_cache_directory=AUDIO_CACHE_DIR):
-    logger.debug(f"Converting text to voice: {text}")
+    tld = tld or gtts_tld()
+    logger.debug(f"Converting text to speech with TLD {tld}: {text}")
+
     if word_limit is not None:
         words = text.split()
         text_to_say = " ".join(words[:word_limit])
     else:
         text_to_say = text
-    tld = tld or gtts_tld()
-    logger.debug(f"Using tld '{tld}' for gTTS")
+
     audio_file_path = _get_file_path_for_text(text_to_say, tld, audio_cache_directory)
     # if the file already exists and isn't a leftover empty/corrupt write, return it
     if os.path.exists(audio_file_path) and os.path.getsize(audio_file_path) > 0:
@@ -56,13 +61,18 @@ def text_to_voice_file(text, tld: str| None = None, word_limit=1000, audio_cache
             return audio_file_path
         except (gTTSError, ValueError, ConnectionError) as e:
             last_error = e
-            logger.error(f"Error generating TTS for text: {text_to_say} (attempt {attempt}/{max_attempts}). Error: {e}")
             if os.path.exists(tmp_file_path):
                 os.remove(tmp_file_path)
+            if _is_rate_limited(e):
+                raise TextToSpeechRateLimitError(f"Rate limited by TTS API for text: {text_to_say!r}") from e
+            logger.error(f"Error generating TTS for text: {text_to_say} (attempt {attempt}/{max_attempts}). Error: {e}")
             if attempt < max_attempts:
                 time.sleep(TTS_RETRY_DELAY_SECONDS)
 
     raise TextToSpeechError(f"Failed to generate TTS after {max_attempts} attempts for text: {text_to_say!r}") from last_error
+
+def _is_rate_limited(error: Exception) -> bool:
+    return isinstance(error, gTTSError) and error.rsp is not None and error.rsp.status_code == 429
 
 def _get_file_path_for_text(text, tld, cache_directory=AUDIO_CACHE_DIR):
     file_hash = hashlib.sha256(f"{text}_{tld}".encode("utf-8")).hexdigest()

@@ -2,11 +2,35 @@ import logging
 import re
 import random
 from homeaudio.audio.random_text import ListOptionsSource, select_option_pseudorandomly
-from homeaudio.vcal import GREETINGS, COMPLIMENTS_FOR_1, COMPLIMENTS_FOR_2, COMPLIMENTS_FOR_MANY, ENCOURAGEMENTS
+from homeaudio.vcal import GREETINGS, COMPLIMENTS_FOR_1, COMPLIMENTS_FOR_2, COMPLIMENTS_FOR_MANY, ENCOURAGEMENTS, GOOD_GREETINGS, GOOD_MORNING, GOOD_AFTERNOON, GOOD_EVENING
 from homeaudio.vcal.event_notifications.events import EventNotification
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+def greeting_options(good_greeting: str, owner: str | None = None) -> list[str]:
+    options = [f"{good_greeting}.", *GREETINGS]
+    if owner:
+        options.extend([
+            f"{good_greeting} {owner}",
+            f"Hi {owner}",
+            f"Hey {owner}",
+            f"Hey there {owner}",
+            f"Hello {owner}",
+            f"Attention {owner}",
+        ])
+    return options
+
+def all_greeting_options(owners: list[str]) -> list[str]:
+    """
+    Used for pre-generating audio files
+    """
+    return list(dict.fromkeys(
+        option
+        for good_greeting in GOOD_GREETINGS
+        for owner in [None, *owners]
+        for option in greeting_options(good_greeting, owner)
+    ))
 
 class VerbIdentifier:
     def __init__(self, verb_file: str):
@@ -107,24 +131,9 @@ class NotificationTextBuilder:
             return f"It's time {self._to_or_for(summary)} {summary}."
 
     def _greeting(self, event_notification: EventNotification):
-        good_greeting = "Good morning" if self.base_time.hour < 12 else "Good afternoon" if self.base_time.hour < 17 else "Good evening"
-
-        choices = [
-            f"{good_greeting}.",
-            *GREETINGS,
-        ]
-
-        if event_notification.event.owner_count > 0:
-            choices.extend([
-                f"{good_greeting} {event_notification.event.owner}.",
-                f"Hi {event_notification.event.owner}. ",
-                f"Hey {event_notification.event.owner}.",
-                f"Hey there {event_notification.event.owner}.",
-                f"Hello {event_notification.event.owner}.",
-                f"Attention {event_notification.event.owner}.",
-            ])
-
-        return random.choice(choices)
+        good_greeting = GOOD_MORNING if self.base_time.hour < 12 else GOOD_AFTERNOON if self.base_time.hour < 17 else GOOD_EVENING
+        owner = event_notification.event.owner if event_notification.event.owner_count > 0 else None
+        return random.choice(greeting_options(good_greeting, owner))
 
     def _compliment(self, owner_count: int) -> str | None:
         if owner_count == 1:

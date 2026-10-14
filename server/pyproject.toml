@@ -52,16 +52,17 @@ Homepage = "https://github.com/bethesque/calendar-alarms"
 
 [project.scripts]
 
-cal-alarm-stop = "vcal.alarms.cli:stop_alarm"
-cal-alarm-test = "vcal.alarms.cli:test_alarm"
-cal-alarm-check = "vcal.alarms.cli:check_alarms"
+vcal-alarm-stop = "vcal.alarms.cli:stop_alarm"
+vcal-alarm-test = "vcal.alarms.cli:test_alarm"
+vcal-alarm-check = "vcal.alarms.cli:check_alarms"
 
-cal-announce = "homeaudio.vcal.morning_announcements:play_morning_announcements" # Morning summary announcement
+vcal-announce = "homeaudio.vcal.morning_announcements:play_morning_announcements" # Morning summary announcement
 
-cal-school-announce = "homeaudio.vcal.school_announcements:play_school_announcements" # School events announcement
+vcal-school-announce = "homeaudio.vcal.school_announcements:play_school_announcements" # School events announcement
 
-cal-data-refresh = "homeaudio.vcal.cli:refresh_calendar_data"
-cal-data-insert-test = "homeaudio.vcal.cli:insert_test_event"
+vcal-data-refresh = "homeaudio.vcal.cli:refresh_calendar_data"
+vcal-data-insert-test = "homeaudio.vcal.cli:insert_test_event"
+vcal-generate-sentence-audio = "homeaudio.vcal.cli:generate_sentence_audio_files"
 
 [tool.setuptools]
 # Tells setuptools where to find your source code
