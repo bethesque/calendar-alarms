@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ title }}</title>
+<link rel="stylesheet" href="/static/styles.css">
+<style>
+  .doc { max-width: 900px; background: var(--card-bg); box-shadow: var(--shadow); border-radius: var(--radius); padding: 8px 24px; line-height: 1.5; }
+  .doc table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+  .doc th, .doc td { padding: 8px 12px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); }
+  .doc th { color: var(--muted); font-weight: 600; }
+  .doc code { background: var(--bg); padding: 1px 4px; border-radius: 4px; }
+  .doc pre { background: var(--bg); padding: 12px; border-radius: var(--radius); overflow-x: auto; }
+  .doc pre code { padding: 0; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <a href="{{ back }}" class="back">⬅️</a>
+    <h1>Help</h1>
+  </div>
+  <article class="doc">
+    {{ content | safe }}
+  </article>
+</body>
+</html>

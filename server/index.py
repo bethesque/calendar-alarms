@@ -15,6 +15,7 @@ from homeaudio.audio.admin_ui import AdminRoutes
 from homeaudio.vcal.api import AlarmRoutes
 from homeaudio.audio.snapclients_ui import SnapclientsRoutes
 from homeaudio.audio.audio_files_ui import AudioFilesRoutes
+from homeaudio.audio.help_ui import HelpRoutes
 from homeaudio.audio.logs_ui import CalendarAlarmsStatusRoutes, JournalctlRoutes, LogRoutes
 from homeaudio.vcal.wake_up_alarm.api import WakeUpAlarmRoutes
 from homeaudio.housie_talkie.ui import UserInterfaceRoutes
@@ -69,6 +70,7 @@ app.include_router(WakeUpAlarmRoutes().router, prefix="/wake-up-alarm")
 app.include_router(AdminRoutes().router, prefix="/settings")
 app.include_router(SnapclientsRoutes().router, prefix="/admin")
 app.include_router(AudioFilesRoutes().router, prefix="/admin")
+app.include_router(HelpRoutes().router, prefix="/alarm/help")
 app.include_router(CalendarAlarmsStatusRoutes().router, prefix="/status/calendar-alarms-service")
 app.include_router(JournalctlRoutes(service_name="calendar-alarms-http", route="/http").router, prefix="/logs")
 app.include_router(JournalctlRoutes(service_name="calendar-alarms", route="/calendar-alarms").router, prefix="/logs")
