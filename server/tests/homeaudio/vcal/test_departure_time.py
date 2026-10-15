@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 import pytest
 import requests
 
-from homeaudio.audio.settings import DepartureNotificationSettings
+from homeaudio.audio.settings import LocationBasedDepartureTimes
 from homeaudio.vcal.cal.google_calendar import Event
 from homeaudio.vcal.departure_time import (
     CONVERGENCE_THRESHOLD,
@@ -22,18 +22,17 @@ from homeaudio.vcal.departure_time import (
 TIMEZONE = ZoneInfo("Australia/Melbourne")
 
 
-def _settings(**overrides) -> DepartureNotificationSettings:
+def _settings(**overrides) -> LocationBasedDepartureTimes:
     defaults = dict(
         api_key="fake-api-key",
         origin_address="1 Origin St",
         parking_minutes=5,
         house_to_car_minutes=5,
         safety_factor=10,
-        heads_up_reminder_lead_time=5,
         recompute_interval_minutes=20,
     )
     defaults.update(overrides)
-    return DepartureNotificationSettings(**defaults)
+    return LocationBasedDepartureTimes(**defaults)
 
 
 class _FakeResponse:

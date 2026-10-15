@@ -6,16 +6,16 @@ from pydantic import ValidationError
 
 from homeaudio.vcal.cal.google_calendar import Event
 from homeaudio.vcal.event_notifications.events import EventNotifications, NotificationPlaytimeScheduler, NotificationSource, NotificationType
-from homeaudio.audio.settings import EventNotificationSchedule, NotificationRule, NotificationTiming, DepartureNotificationSettings, DepartureTimeRule
+from homeaudio.audio.settings import EventNotificationSchedule, NotificationRule, NotificationTiming, DepartureNotificationSettings, DepartureTimeRule, LocationBasedDepartureTimes
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
 SCHEDULER = NotificationPlaytimeScheduler(TIMEZONE, EventNotificationSchedule(), [], 5)
 
 
-def _departure_notification_settings(**overrides) -> DepartureNotificationSettings:
-    defaults = dict(house_to_car_minutes=5, heads_up_reminder_lead_time=10)
+def _departure_notification_settings(house_to_car_minutes=5, **overrides) -> DepartureNotificationSettings:
+    defaults = dict(heads_up_reminder_lead_time=10)
     defaults.update(overrides)
-    return DepartureNotificationSettings(**defaults)
+    return DepartureNotificationSettings(location_based_departure_times=LocationBasedDepartureTimes(house_to_car_minutes=house_to_car_minutes), **defaults)
 
 
 def test_notifications_support_description_rules():

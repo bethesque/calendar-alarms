@@ -325,15 +325,19 @@ class HomeAssistantSettings(YAMLSettings):
         yaml_file=f"{CONFIG_DIR}/home_assistant.yaml"
     )
 
-class DepartureNotificationSettings(YAMLSettings):
+class LocationBasedDepartureTimes(BaseModel):
     enabled: bool = Field(default=False, description="Whether to calculate and announce departure times for events with locations.")
     api_key: str = Field(default="", description="Google Maps Platform API key")
     origin_address: str = Field(default="", description="The address to calculate travel time from")
     parking_minutes: int = Field(default=5, ge=0, description="Time to park and walk to the event location")
     house_to_car_minutes: int = Field(default=5, ge=0, description="Time to collect belongings, walk out of the house and get into the car")
     safety_factor: int = Field(default=10, ge=0, le=100, description="Percentage to pad the travel duration by because sometimes Google Maps is a bit optimistic")
-    heads_up_reminder_lead_time: int = Field(default=10, ge=0, description="Minutes before the walk-out time announcement that the heads-up reminder plays")
     recompute_interval_minutes: int = Field(default=20, ge=1, description="How often to re-calculate the travel time to ensure the most accurate results.")
+
+
+class DepartureNotificationSettings(YAMLSettings):
+    location_based_departure_times: LocationBasedDepartureTimes = Field(default_factory=LocationBasedDepartureTimes, description="Calculate departure times based on the event's location")
+    heads_up_reminder_lead_time: int = Field(default=10, ge=0, description="Minutes before the walk-out time announcement that the heads-up reminder plays")
 
     departure_time_rules: list[DepartureTimeRule] = Field(default_factory=list, description="Rules for calculating the departure time based on the summary")
 
@@ -343,7 +347,7 @@ class DepartureNotificationSettings(YAMLSettings):
 
     @model_validator(mode="after")
     def _require_api_key_and_origin_when_enabled(self) -> "DepartureNotificationSettings":
-        if self.enabled and not (self.api_key and self.origin_address):
+        if self.location_based_departure_times.enabled and not (self.location_based_departure_times.api_key and self.location_based_departure_times.origin_address):
             raise ValueError("api_key and origin_address must be set when enabled is true")
         return self
 

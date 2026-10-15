@@ -5,7 +5,7 @@ import pytest
 
 from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, CalendarSource, Event, event_from_google_dict
 from homeaudio.vcal.event_notifications.events import EventNotifications, LeaveForEvent, NotificationPlaytimeScheduler, NotificationSource, NotificationType
-from homeaudio.audio.settings import DepartureNotificationSettings, DepartureTimeRule, EventNotificationSchedule
+from homeaudio.audio.settings import DepartureNotificationSettings, DepartureTimeRule, LocationBasedDepartureTimes, EventNotificationSchedule
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
 SCHEDULER = NotificationPlaytimeScheduler(TIMEZONE, EventNotificationSchedule(), [], 5)
@@ -283,10 +283,10 @@ def test_travel_notifications():
     assert notifications[1].event.start_time == datetime.datetime(2026, 4, 28, 12, 10, tzinfo=TIMEZONE)
 
 
-def _departure_notification_settings(**overrides) -> DepartureNotificationSettings:
-    defaults = dict(house_to_car_minutes=5, heads_up_reminder_lead_time=10)
+def _departure_notification_settings(house_to_car_minutes=5, **overrides) -> DepartureNotificationSettings:
+    defaults = dict(heads_up_reminder_lead_time=10)
     defaults.update(overrides)
-    return DepartureNotificationSettings(**defaults)
+    return DepartureNotificationSettings(location_based_departure_times=LocationBasedDepartureTimes(house_to_car_minutes=house_to_car_minutes), **defaults)
 
 
 def test_event_with_car_departure_time_builds_computed_travel_notifications():

@@ -4,7 +4,7 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from homeaudio.audio.settings import EventNotificationSettings, TimeRange, NotificationRule, NotificationTiming, SnapcastSettings, SnapclientConfig, DepartureNotificationSettings, DepartureTimeRule, UploadedFile, GoogleCalendarSettings
+from homeaudio.audio.settings import EventNotificationSettings, TimeRange, NotificationRule, NotificationTiming, SnapcastSettings, SnapclientConfig, DepartureNotificationSettings, DepartureTimeRule, LocationBasedDepartureTimes, UploadedFile, GoogleCalendarSettings
 
 
 def test_label_uses_summary_pattern_only():
@@ -130,31 +130,31 @@ def test_departure_notification_settings_defaults(tmp_path, monkeypatch):
 
     settings = DepartureNotificationSettings()
 
-    assert settings.enabled is False
-    assert settings.api_key == ""
-    assert settings.origin_address == ""
-    assert settings.parking_minutes == 5
-    assert settings.house_to_car_minutes == 5
-    assert settings.safety_factor == 10
+    assert settings.location_based_departure_times.enabled is False
+    assert settings.location_based_departure_times.api_key == ""
+    assert settings.location_based_departure_times.origin_address == ""
+    assert settings.location_based_departure_times.parking_minutes == 5
+    assert settings.location_based_departure_times.house_to_car_minutes == 5
+    assert settings.location_based_departure_times.safety_factor == 10
+    assert settings.location_based_departure_times.recompute_interval_minutes == 20
     assert settings.heads_up_reminder_lead_time == 10
-    assert settings.recompute_interval_minutes == 20
 
 
 def test_departure_notification_settings_saves_and_reloads_from_yaml(tmp_path, monkeypatch):
     yaml_file = tmp_path / "departure_notifications.yaml"
     monkeypatch.setitem(DepartureNotificationSettings.model_config, "yaml_file", str(yaml_file))
 
-    settings = DepartureNotificationSettings(api_key="secret-key", origin_address="1 Home St", safety_factor=25)
+    settings = DepartureNotificationSettings(location_based_departure_times=LocationBasedDepartureTimes(api_key="secret-key", origin_address="1 Home St", safety_factor=25))
     settings.save()
 
     saved = yaml.safe_load(yaml_file.read_text())
-    assert saved["api_key"] == "secret-key"
-    assert saved["origin_address"] == "1 Home St"
-    assert saved["safety_factor"] == 25
+    assert saved["location_based_departure_times"]["api_key"] == "secret-key"
+    assert saved["location_based_departure_times"]["origin_address"] == "1 Home St"
+    assert saved["location_based_departure_times"]["safety_factor"] == 25
 
     reloaded = DepartureNotificationSettings()
-    assert reloaded.api_key == "secret-key"
-    assert reloaded.safety_factor == 25
+    assert reloaded.location_based_departure_times.api_key == "secret-key"
+    assert reloaded.location_based_departure_times.safety_factor == 25
 
 
 def test_departure_time_rules_save_and_reload_from_yaml(tmp_path, monkeypatch):
@@ -168,25 +168,25 @@ def test_departure_time_rules_save_and_reload_from_yaml(tmp_path, monkeypatch):
 
 
 def test_departure_notification_settings_allows_disabled_with_no_api_key_or_origin_address():
-    settings = DepartureNotificationSettings(enabled=False)
+    settings = DepartureNotificationSettings(location_based_departure_times=LocationBasedDepartureTimes(enabled=False))
 
-    assert settings.enabled is False
+    assert settings.location_based_departure_times.enabled is False
 
 
 def test_departure_notification_settings_rejects_enabled_with_no_api_key():
     with pytest.raises(ValidationError):
-        DepartureNotificationSettings(enabled=True, api_key="", origin_address="1 Home St")
+        DepartureNotificationSettings(location_based_departure_times=LocationBasedDepartureTimes(enabled=True, api_key="", origin_address="1 Home St"))
 
 
 def test_departure_notification_settings_rejects_enabled_with_no_origin_address():
     with pytest.raises(ValidationError):
-        DepartureNotificationSettings(enabled=True, api_key="secret-key", origin_address="")
+        DepartureNotificationSettings(location_based_departure_times=LocationBasedDepartureTimes(enabled=True, api_key="secret-key", origin_address=""))
 
 
 def test_departure_notification_settings_allows_enabled_with_api_key_and_origin_address():
-    settings = DepartureNotificationSettings(enabled=True, api_key="secret-key", origin_address="1 Home St")
+    settings = DepartureNotificationSettings(location_based_departure_times=LocationBasedDepartureTimes(enabled=True, api_key="secret-key", origin_address="1 Home St"))
 
-    assert settings.enabled is True
+    assert settings.location_based_departure_times.enabled is True
 
 
 def test_uploaded_file_content_decodes_base64_data_url():

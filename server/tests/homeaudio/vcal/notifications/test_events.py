@@ -131,7 +131,7 @@ def test_update_calendar_travel_times_saves_computed_departure_time_for_today_an
     computed_departure_time = now + timedelta(hours=1)
     calls = []
 
-    def fake_car_departure_time_for_event(event, departure_notification_settings, cache, call_now):
+    def fake_car_departure_time_for_event(event, location_based_departure_times, cache, call_now):
         calls.append(event.google_event_id)
         return computed_departure_time if event is not day_after_tomorrow_event else event.car_departure_time
 

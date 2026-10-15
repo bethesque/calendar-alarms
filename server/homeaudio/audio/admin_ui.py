@@ -160,7 +160,7 @@ class AdminRoutes:
                             "options": tld_options
                         }
                     ),
-                    "departure_notification_settings.api_key": FieldConfig(
+                    "departure_notification_settings.location_based_departure_times.api_key": FieldConfig(
                         renderer=Renderer.PASSWORD
                     ),
                 }

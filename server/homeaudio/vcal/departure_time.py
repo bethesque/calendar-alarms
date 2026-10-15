@@ -12,7 +12,7 @@ from typing import Callable
 
 import requests
 
-from homeaudio.audio.settings import DepartureNotificationSettings
+from homeaudio.audio.settings import LocationBasedDepartureTimes
 from homeaudio.env import CALENDAR_DATA_DIRECTORY
 from homeaudio.vcal.cal.google_calendar import Event
 
@@ -199,27 +199,27 @@ def _is_in_scope(event: Event, now: datetime) -> bool:
     return True
 
 
-def _entry_matches_event(entry: TravelTimeCacheEntry, event: Event, departure_notification_settings: DepartureNotificationSettings) -> bool:
+def _entry_matches_event(entry: TravelTimeCacheEntry, event: Event, location_based_departure_times: LocationBasedDepartureTimes) -> bool:
     if entry.event_start_time != event.start_time:
         return False
     if entry.location != event.location:
         return False
-    if entry.parking_minutes != departure_notification_settings.parking_minutes:
+    if entry.parking_minutes != location_based_departure_times.parking_minutes:
         return False
-    if entry.safety_factor != departure_notification_settings.safety_factor:
+    if entry.safety_factor != location_based_departure_times.safety_factor:
         return False
     return True
 
 
-def _is_stale(entry: TravelTimeCacheEntry | None, event: Event, departure_notification_settings: DepartureNotificationSettings, now: datetime) -> bool:
+def _is_stale(entry: TravelTimeCacheEntry | None, event: Event, location_based_departure_times: LocationBasedDepartureTimes, now: datetime) -> bool:
     if entry is None:
         return True
-    if not _entry_matches_event(entry, event, departure_notification_settings):
+    if not _entry_matches_event(entry, event, location_based_departure_times):
         return True
-    return now - entry.computed_at >= timedelta(minutes=departure_notification_settings.recompute_interval_minutes)
+    return now - entry.computed_at >= timedelta(minutes=location_based_departure_times.recompute_interval_minutes)
 
 
-def car_departure_time_for_event(event: Event, departure_notification_settings: DepartureNotificationSettings, cache: TravelTimeCache, now: datetime) -> datetime | None:
+def car_departure_time_for_event(event: Event, location_based_departure_times: LocationBasedDepartureTimes, cache: TravelTimeCache, now: datetime) -> datetime | None:
     if not _is_in_scope(event, now):
         return event.car_departure_time
 
@@ -229,26 +229,26 @@ def car_departure_time_for_event(event: Event, departure_notification_settings: 
 
     cached_entry = cache.get(event.google_event_id)
 
-    if cached_entry and _entry_matches_event(cached_entry, event, departure_notification_settings) and cached_entry.car_departure_time <= now:
+    if cached_entry and _entry_matches_event(cached_entry, event, location_based_departure_times) and cached_entry.car_departure_time <= now:
         return cached_entry.car_departure_time
 
-    if not _is_stale(cached_entry, event, departure_notification_settings, now):
+    if not _is_stale(cached_entry, event, location_based_departure_times, now):
         return cached_entry.car_departure_time
 
     if cached_entry is None and event.start_time <= now:
         logger.info("Event '%s' has already started with no cached travel time; skipping the Routes API call", event.summary)
         return event.car_departure_time
 
-    target_arrival = event.start_time - timedelta(minutes=departure_notification_settings.parking_minutes)
+    target_arrival = event.start_time - timedelta(minutes=location_based_departure_times.parking_minutes)
     cached_duration = cached_entry.duration if cached_entry else None
 
     result = solve_car_departure_time(
         target_arrival=target_arrival,
         cached_duration=cached_duration,
-        safety_factor=departure_notification_settings.safety_factor,
+        safety_factor=location_based_departure_times.safety_factor,
         now=now,
         fetch_duration=lambda departure_time: traffic_aware_duration(
-            departure_notification_settings.api_key, departure_notification_settings.origin_address, event.location, departure_time
+            location_based_departure_times.api_key, location_based_departure_times.origin_address, event.location, departure_time
         ),
     )
 
@@ -263,7 +263,7 @@ def car_departure_time_for_event(event: Event, departure_notification_settings: 
         computed_at=now,
         event_start_time=event.start_time,
         location=event.location,
-        parking_minutes=departure_notification_settings.parking_minutes,
-        safety_factor=departure_notification_settings.safety_factor,
+        parking_minutes=location_based_departure_times.parking_minutes,
+        safety_factor=location_based_departure_times.safety_factor,
     ))
     return car_departure_time

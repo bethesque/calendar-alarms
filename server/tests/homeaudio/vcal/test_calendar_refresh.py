@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 import threading
 from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
@@ -303,7 +304,7 @@ def test_refresh_calendar_skips_travel_time_update_when_departure_notifications_
     monkeypatch.setattr("homeaudio.vcal.calendar_refresh.refresh_calendar_data", lambda: None)
     monkeypatch.setattr(
         "homeaudio.vcal.calendar_refresh.DepartureNotificationSettings",
-        lambda: type("_S", (), {"enabled": False})(),
+        lambda: SimpleNamespace(location_based_departure_times=SimpleNamespace(enabled=False)),
     )
     calls = []
     monkeypatch.setattr("homeaudio.vcal.calendar_refresh.update_calendar_travel_times", lambda: calls.append("travel_times_updated"))
@@ -317,7 +318,7 @@ def test_refresh_calendar_updates_travel_times_when_departure_notifications_enab
     monkeypatch.setattr("homeaudio.vcal.calendar_refresh.refresh_calendar_data", lambda: None)
     monkeypatch.setattr(
         "homeaudio.vcal.calendar_refresh.DepartureNotificationSettings",
-        lambda: type("_S", (), {"enabled": True})(),
+        lambda: SimpleNamespace(location_based_departure_times=SimpleNamespace(enabled=True)),
     )
     calls = []
     monkeypatch.setattr("homeaudio.vcal.calendar_refresh.update_calendar_travel_times", lambda: calls.append("travel_times_updated"))

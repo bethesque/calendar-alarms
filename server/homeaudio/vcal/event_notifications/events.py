@@ -203,7 +203,7 @@ class EventNotifications:
             return
 
         if self.event.car_departure_time:
-            walk_out_time = round_to_nearest_minute(self.event.car_departure_time - timedelta(minutes=departure_notification_settings.house_to_car_minutes))
+            walk_out_time = round_to_nearest_minute(self.event.car_departure_time - timedelta(minutes=departure_notification_settings.location_based_departure_times.house_to_car_minutes))
             self._add_departure_notifications(notifications, walk_out_time, departure_notification_settings, notification_rules, NotificationSource.LOCATION)
             return
 
@@ -369,7 +369,7 @@ def update_calendar_travel_times() -> None:
         for day in relevant_days:
             for event in day.timed_events:
                 try:
-                    event.car_departure_time = car_departure_time_for_event(event, departure_notification_settings, cache, now)
+                    event.car_departure_time = car_departure_time_for_event(event, departure_notification_settings.location_based_departure_times, cache, now)
                     if event.car_departure_time:
                         logger.info(f"Set departure time for {event.summary} to {event.car_departure_time}")
                 except Exception:
