@@ -25,7 +25,7 @@ MAX_ITERATIONS = 4
 CONVERGENCE_THRESHOLD = timedelta(minutes=1)
 DEFAULT_TRIP_DURATION_GUESS = timedelta(minutes=30)
 
-_TRAVEL_TAG_RE = re.compile(r"#travel(\d+)|#notravel")
+_DEPART_TAG_RE = re.compile(r"#depart(\d+)|#nodepart")
 
 
 class TravelTimeUnavailableError(Exception):
@@ -176,8 +176,8 @@ class TravelTimeCache:
         }
 
 
-def _has_travel_tag(description: str | None) -> bool:
-    return bool(description and _TRAVEL_TAG_RE.search(description))
+def _has_depart_tag(description: str | None) -> bool:
+    return bool(description and _DEPART_TAG_RE.search(description))
 
 
 def relevant_dates(now: datetime) -> set[date]:
@@ -194,7 +194,7 @@ def _is_in_scope(event: Event, now: datetime) -> bool:
         return False
     if event.start_time.date() not in relevant_dates(now):
         return False
-    if _has_travel_tag(event.description):
+    if _has_depart_tag(event.description):
         return False
     return True
 

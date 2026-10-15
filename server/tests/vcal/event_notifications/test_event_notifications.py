@@ -265,7 +265,7 @@ def test_travel_notifications():
         calendar_id="id",
         owner="Beth",
         summary="Morning meeting",
-        description="#travel20",
+        description="#depart20",
         start_time=start_time,
     )
 
@@ -290,7 +290,7 @@ def _departure_notification_settings(**overrides) -> DepartureNotificationSettin
 
 
 def test_event_with_car_departure_time_builds_computed_travel_notifications():
-    # No #travel tag anywhere in the description - having a location is enough on its own.
+    # No #depart tag anywhere in the description - having a location is enough on its own.
     start_time = datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE)
     car_departure_time = datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE)
     event = Event(
@@ -363,14 +363,14 @@ def test_leave_for_event_notifications_inherit_targets_from_original_event():
 
 
 def test_explicit_numbered_travel_tag_takes_precedence_over_computed_car_departure_time():
-    # An explicit #travel<N> tag is a manual override - it wins over any computed
+    # An explicit #depart<N> tag is a manual override - it wins over any computed
     # car_departure_time, so only the tag-based notifications are added.
     start_time = datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE)
     event = Event(
         calendar_id="id",
         owner="Beth",
         summary="Morning meeting",
-        description="#travel20",
+        description="#depart20",
         location="123 Fake St",
         start_time=start_time,
         car_departure_time=datetime.datetime(2026, 4, 28, 11, 0, tzinfo=TIMEZONE),
@@ -383,14 +383,14 @@ def test_explicit_numbered_travel_tag_takes_precedence_over_computed_car_departu
 
 
 def test_bare_travel_tag_does_nothing():
-    # A bare #travel tag (no number) is a no-op - it neither adds its own notifications nor
+    # A bare #depart tag (no number) is a no-op - it neither adds its own notifications nor
     # suppresses the computed car_departure_time ones.
     start_time = datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE)
     event = Event(
         calendar_id="id",
         owner="Beth",
         summary="Morning meeting",
-        description="#travel",
+        description="#depart",
         location="123 Fake St",
         start_time=start_time,
         car_departure_time=datetime.datetime(2026, 4, 28, 11, 0, tzinfo=TIMEZONE),
@@ -409,7 +409,7 @@ def test_bare_travel_tag_produces_no_notifications_without_car_departure_time():
         calendar_id="id",
         owner="Beth",
         summary="Morning meeting",
-        description="#travel",
+        description="#depart",
         start_time=start_time,
     )
 
@@ -418,7 +418,7 @@ def test_bare_travel_tag_produces_no_notifications_without_car_departure_time():
 
 def test_computed_departure_notification_handles_missing_description():
     # description can be None (e.g. event_from_google_dict when Google omits it); checking it for
-    # a #travel<N> tag must not blow up.
+    # a #depart<N> tag must not blow up.
     start_time = datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE)
     event = Event(
         calendar_id="id",
@@ -490,7 +490,7 @@ def test_google_event_id_and_car_departure_time_round_trip_through_save_and_load
         calendar_id="id",
         owner="Beth",
         summary="Dentist",
-        description="#travel",
+        description="#depart",
         location="123 Fake St",
         start_time=start_time,
         google_event_id="abc123",

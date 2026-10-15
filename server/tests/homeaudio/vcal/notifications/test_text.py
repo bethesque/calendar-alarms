@@ -16,7 +16,7 @@ def test_notification_text_builder_creates_text_for_travel_announcement(monkeypa
     base_time = datetime.datetime(2026, 4, 28, 12, 25, tzinfo=TIMEZONE)
     event = LeaveForEvent(
         summary="Leave for An appointment",
-        description="#travel20",
+        description="#depart20",
         owner="Beth",
         calendar_id="id",
         start_time=datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE)

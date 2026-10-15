@@ -19,7 +19,7 @@ A Calendar Alarms tag is a word starting with a `#` in the event description tha
 | --- | --- |
 | `#alarm` / `#alarm<n>` | Plays an **alarm**: music that starts gently and gets louder, with the event summary read out repeatedly. |
 | `#announce` / `#announce<n>` | Plays a short spoken **announcement** of the event. |
-| `#travel<n>` | Sets your **leave time** to `<n>` minutes before the event. You get an announcement when it's time to leave, plus a heads-up a few minutes before that. |
+| `#depart<n>` | Sets your **departure time** to `<n>` minutes before the event. You get an announcement when it's time to leave, plus a heads-up a few minutes before that. |
 
 
 You can use more than one tag on an event. For example, this description:
@@ -52,7 +52,7 @@ For each event with a location you get two announcements:
 - A **heads-up** a few minutes before you need to leave
 - A **time to leave** announcement - this is the time you need to *walk out your door*, taking into account the time it takes to get from your house to the car.
 
-If you'd rather choose the departure time yourself, use `#travel<n>` eg. `#travel20`. To disable departure announcements for an event with a location, use `#notravel`.
+If you'd rather choose the departure time yourself, use `#depart<n>` eg. `#depart20`. To disable departure announcements for an event with a location, use `#nodepart`.
 
 ### Departure rules
 

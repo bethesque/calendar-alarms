@@ -232,7 +232,7 @@ def test_format_notification_for_api_shows_the_leave_for_event_summary():
         owner="Beth",
         calendar_id="id",
         summary="Dentist",
-        description="#travel10",
+        description="#depart10",
         start_time=datetime(2026, 4, 28, 9, 0, tzinfo=timezone.utc),
     )
     scheduler = NotificationPlaytimeScheduler(timezone.utc, EventNotificationSchedule(), [], 5)

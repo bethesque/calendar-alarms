@@ -126,14 +126,14 @@ class EventNotifications:
 
     def _add_notifications_from_description(self, notifications, departure_notification_settings: DepartureNotificationSettings):
         if self.event.description and self.event.start_time:
-            matches = re.findall(r"#(alarm|announce|travel)(\d+)?", self.event.description)
+            matches = re.findall(r"#(alarm|announce|depart)(\d+)?", self.event.description)
             if matches:
                 for match in matches:
                     tag, offset = match
 
                     offset_int = int(offset) if offset else 0
 
-                    if tag == "travel":
+                    if tag == "depart":
                         if offset:
                             self.add_departure_notifications_from_tag(notifications, offset_int, departure_notification_settings)
                     else:
@@ -156,13 +156,13 @@ class EventNotifications:
         """
             Add notification for leaving time, and for the configured lead time before leaving time
         """
-        if self.event.car_departure_time and not self._has_travel_tag_with_number():
+        if self.event.car_departure_time and not self._has_depart_tag_with_number():
             walk_out_time = self.event.car_departure_time - timedelta(minutes=departure_notification_settings.house_to_car_minutes)
             walk_out_time = (walk_out_time + timedelta(seconds=30)).replace(second=0, microsecond=0)
             self._add_departure_notifications(notifications, walk_out_time, departure_notification_settings)
 
-    def _has_travel_tag_with_number(self):
-        return (self.event.description and re.findall(r"#travel(\d+)", self.event.description))
+    def _has_depart_tag_with_number(self):
+        return (self.event.description and re.findall(r"#depart(\d+)", self.event.description))
 
     def _add_departure_notifications(self, notifications, walk_out_time: datetime, departure_notification_settings: DepartureNotificationSettings):
         leave_event = self.leave_for_event(walk_out_time)

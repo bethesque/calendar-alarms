@@ -490,14 +490,14 @@ def test_car_departure_time_for_event_recomputes_when_start_time_changes_after_c
     assert result == new_departure_time
 
 
-@pytest.mark.parametrize("description", ["#travel20", "#notravel"])
+@pytest.mark.parametrize("description", ["#depart20", "#nodepart"])
 def test_car_departure_time_for_event_skips_events_with_a_travel_tag(monkeypatch, description):
     now = datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE)
     event = _located_event_today(now, description=description)
     cache = TravelTimeCache(cache_file_path="")
     monkeypatch.setattr(
         "homeaudio.vcal.departure_time.solve_car_departure_time",
-        lambda **kwargs: pytest.fail("must not solve for an event with a #travel<N> or #notravel tag"),
+        lambda **kwargs: pytest.fail("must not solve for an event with a #depart<N> or #nodepart tag"),
     )
 
     result = car_departure_time_for_event(event, _settings(), cache, now)
@@ -508,7 +508,7 @@ def test_car_departure_time_for_event_skips_events_with_a_travel_tag(monkeypatch
 
 def test_car_departure_time_for_event_computes_for_events_with_a_bare_travel_tag(monkeypatch):
     now = datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE)
-    event = _located_event_today(now, description="#travel")
+    event = _located_event_today(now, description="#depart")
     cache = TravelTimeCache(cache_file_path="")
     departure_time = now + timedelta(hours=1)
     monkeypatch.setattr(
