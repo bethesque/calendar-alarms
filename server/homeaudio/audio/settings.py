@@ -139,25 +139,13 @@ class CalendarSetting(BaseModel):
     weather: bool = Field(default=False, title="Are all events weather forecasts?", description="Events in this calendar are treated as weather forecasts.")
     include_in_morning_announcements: bool = Field(default=True, title="Include in morning announcements?", description="Events in this calendar are read out in the morning announcements.")
 
-class NotificationTiming(Enum):
-    EVENT_START = "event_start"
-    DEPARTURE_TIME = "departure_time"
-
-    @property
-    def label(self):
-        if self == self.EVENT_START:
-            return "Event start"
-        else:
-            return "Departure time"
-
 class NotificationRule(BaseModel):
     summary_pattern: str | None = Field(default=None, description="The substring to match in the event summary")
     description_pattern: str | None = Field(default=None, description="The substring to match in the event description")
     location_pattern: str | None = Field(default=None, description="The substring to match in the location")
     calendar_id: str | None = Field(default=None, description="The ID of the calendar that must match for the rule to apply")
     notification_type: Literal["alarm", "announce"] = Field(default="alarm", description="The notification type: alarm or announce")
-    notification_timing: NotificationTiming = Field(title="Notification timing", default=NotificationTiming.EVENT_START, description="Play notifications counting down to:")
-    offset_minutes: int = Field(default=0, ge=0, description="Minutes before the event start or departure time")
+    offset_minutes: int = Field(default=0, ge=0, description="Minutes before the event start")
     reminder: str | None = None
     replace: bool = Field(default=False, description="When true, the reminder replaces the announcement text, otherwise it is appended.")
     enabled: bool = Field(default=True, description="Set to false to disable this notification")
@@ -174,7 +162,16 @@ class NotificationRule(BaseModel):
     @property
     def label(self) -> str:
         patterns = [p for p in [self.summary_pattern, self.description_pattern, self.location_pattern] if p]
-        return f"{("/".join(patterns) or self.calendar_id)} @ {self.offset_minutes} minutes before {self.notification_timing.label.lower()}"
+        return f"{("/".join(patterns) or self.calendar_id)} @ {self.offset_minutes} minutes before event start"
+
+class DepartureNotificationRule(NotificationRule):
+    offset_minutes: int = Field(default=0, ge=0, description="Minutes before the departure time")
+
+    @computed_field
+    @property
+    def label(self) -> str:
+        patterns = [p for p in [self.summary_pattern, self.description_pattern, self.location_pattern] if p]
+        return f"{("/".join(patterns) or self.calendar_id)} @ {self.offset_minutes} minutes before departure"
 
 class DepartureTimeRule(BaseModel):
     summary_pattern: str = Field(description="The substring to match in the event summary")
@@ -204,7 +201,7 @@ class EventNotificationSchedule(BaseModel):
     holidays: TimeRange = Field(default=TimeRange(start=time(9, 0), end=time(21)))
 
 class EventNotificationSettings(YAMLSettings):
-    enabled: bool = True
+    enabled: bool = Field(default=True, description="Enables/disables event and departure notifications")
     notification_rules: list[NotificationRule] = Field(default_factory=list, description="Rules for creating notifications from event descriptions")
     alarms: AlarmSettings = Field(default_factory=AlarmSettings)
     announcements: AnnouncementSettings = Field(default_factory=AnnouncementSettings)
@@ -340,10 +337,14 @@ class DepartureNotificationSettings(YAMLSettings):
     heads_up_reminder_lead_time: int = Field(default=10, ge=0, description="Minutes before the walk-out time announcement that the heads-up reminder plays")
 
     departure_time_rules: list[DepartureTimeRule] = Field(default_factory=list, description="Rules for calculating the departure time based on the summary")
+    notification_rules: list[DepartureNotificationRule] = Field(default_factory=list, description="Rules for creating departure notifications from event descriptions")
 
     model_config = SettingsConfigDict(
         yaml_file=f"{CONFIG_DIR}/departure_notifications.yaml"
     )
+
+    def _dump_for_save(self) -> dict:
+        return self.model_dump(mode="json", exclude={"notification_rules": {"__all__": {"label"}}})
 
     @model_validator(mode="after")
     def _require_api_key_and_origin_when_enabled(self) -> "DepartureNotificationSettings":
