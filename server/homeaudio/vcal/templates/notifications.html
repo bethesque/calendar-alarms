@@ -25,6 +25,8 @@
   table.events th, table.events td { padding: 10px 14px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); }
   table.events th { background: var(--bg); color: var(--muted); font-weight: 600; }
   table.events tr:last-child td { border-bottom: none; }
+  table.events td { overflow-wrap: anywhere; }
+  table.events td.start { white-space: nowrap; }
   .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
   .tabs button.tab { background: var(--card-bg); color: var(--text); border: 1px solid var(--border); }
   .tabs button.tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
