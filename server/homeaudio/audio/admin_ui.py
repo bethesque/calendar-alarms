@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Request
-from homeaudio.audio.settings import AppSettings, GoogleCalendarSettings
+from homeaudio.audio.settings import AppSettings, GoogleCalendarSettings, NotificationTiming
 from homeaudio.env import GOOGLE_TRANSLATE_TLD_OPTIONS, HOME_ASSISTANT_SUPPORTED, HOUSIE_TALKIE_ENABLED, SNAPCAST_ENABLED, WAKE_UP_ALARM_ENABLED
 from pydantic_ui import create_pydantic_ui, UIConfig, FieldConfig, DisplayConfig, Renderer, ActionButton
 
@@ -75,20 +75,11 @@ class AdminRoutes:
                         props=self.calendar_select_props,
                         placeholder="Any calendar"
                     ),
-                    "departure_notification_settings.notification_rules.[].calendar_id": FieldConfig(
-                        display=DisplayConfig(
-                            title="Calendar",
-                            subtitle="Only match events from this calendar",
-                        ),
+                    "event_notification_settings.notification_rules.[].notification_timing": FieldConfig(
                         renderer=Renderer.SELECT,
-                        props=self.calendar_select_props,
-                        placeholder="Any calendar"
-                    ),
-                    "departure_notification_settings.notification_rules.[].offset_minutes": FieldConfig(
-                        display=DisplayConfig(
-                            title="Offset minutes",
-                            subtitle="The number of minutes before DEPARTURE to play the notification"
-                        ),
+                        props={
+                            "options": [{ "value": NotificationTiming.EVENT_START.value, "label": NotificationTiming.EVENT_START.label}, { "value": NotificationTiming.DEPARTURE_TIME.value, "label": NotificationTiming.DEPARTURE_TIME.label} ]
+                        }
                     ),
                     "snapcast_settings": FieldConfig(
                         visible_when=f"{str(SNAPCAST_ENABLED).lower()} == true"

@@ -9,7 +9,7 @@ from homeaudio.audio.settings import NotificationRule
 from homeaudio.audio.string_utils import json_default_encoder
 from homeaudio.env import CACHE_DIRECTORY
 from homeaudio.vcal.cal.google_calendar import Event, load_event
-from homeaudio.vcal.event_notifications.events import EventNotification, EventNotifications, NotificationType
+from homeaudio.vcal.event_notifications.events import EventNotification, EventNotifications, NotificationSource, NotificationType
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,7 @@ def _serialize(event_notification: EventNotification) -> dict:
         "event": _event_to_dict(event_notification.event),
         "type": event_notification.type.name,
         "offset": event_notification.offset,
+        "source": event_notification.source.name,
         "notification_time": event_notification.notification_time.isoformat(),
         "play_datetime": event_notification.play_datetime.isoformat() if event_notification.play_datetime else None,
         "notification_rule": (
@@ -41,6 +42,7 @@ def _deserialize(data: dict) -> EventNotification:
         event=load_event(data["event"]),
         type=NotificationType[data["type"]],
         offset=data["offset"],
+        source=NotificationSource[data["source"]],
         notification_rule=(
             NotificationRule.model_validate(data["notification_rule"])
             if data["notification_rule"]

@@ -3,7 +3,7 @@ from zoneinfo import ZoneInfo
 
 from homeaudio.audio.settings import EventNotificationSchedule, EventNotificationSettings, TimeRange
 from homeaudio.vcal.cal.google_calendar import Event
-from homeaudio.vcal.event_notifications.events import EventNotification, NotificationType
+from homeaudio.vcal.event_notifications.events import EventNotification, NotificationSource, NotificationType
 import homeaudio.vcal.core as core_module
 from homeaudio.vcal.core import snooze_alarm
 from homeaudio.vcal.event_notifications.snooze import LastPlayedState, SnoozeState
@@ -24,7 +24,7 @@ def _event_notification():
         description="#alarm",
         start_time=datetime(2026, 4, 28, 9, 0, tzinfo=TIMEZONE),
     )
-    return EventNotification(event=event, type=NotificationType.ALARM, offset=0)
+    return EventNotification(event=event, type=NotificationType.ALARM, offset=0, source=NotificationSource.ALARM_DESCRIPTION_TAG)
 
 
 def _stub_snooze_alarm_playback(monkeypatch):

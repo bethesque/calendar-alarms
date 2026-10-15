@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 from homeaudio.audio.settings import NotificationRule
 from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, Event
-from homeaudio.vcal.event_notifications.events import EventNotification, EventNotifications, NotificationPlaytimeScheduler, NotificationType
+from homeaudio.vcal.event_notifications.events import EventNotification, EventNotifications, NotificationPlaytimeScheduler, NotificationSource, NotificationType
 from homeaudio.audio.settings import EventNotificationSchedule
 from homeaudio.vcal.event_notifications.scheduled_announcements import ScheduledAnnouncementType
 import homeaudio.vcal.api as api_module
@@ -75,7 +75,7 @@ def test_notifications_page_lists_notifications(monkeypatch):
         start_time=datetime(2026, 4, 28, 9, 0, tzinfo=timezone.utc),
     )
     rule = NotificationRule(summary_pattern="gym", reminder="Remember to eat.")
-    notification = EventNotification(event=event, type=NotificationType.ALARM, offset=75, notification_rule=rule)
+    notification = EventNotification(event=event, type=NotificationType.ALARM, offset=75, notification_rule=rule, source=NotificationSource.NOTIFICATION_RULE)
     notification.play_datetime = notification.notification_time
     monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [notification])
 
@@ -94,7 +94,7 @@ def test_notifications_page_shows_targets_when_set(monkeypatch):
         description="Leg day @kitchen @bedroom",
         start_time=datetime(2026, 4, 28, 9, 0, tzinfo=timezone.utc),
     )
-    notification = EventNotification(event=event, type=NotificationType.ALARM, offset=75, targets=frozenset({"kitchen", "bedroom"}))
+    notification = EventNotification(event=event, type=NotificationType.ALARM, offset=75, targets=frozenset({"kitchen", "bedroom"}), source=NotificationSource.ALARM_DESCRIPTION_TAG)
     notification.play_datetime = notification.notification_time
     monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [notification])
 
@@ -112,7 +112,7 @@ def test_notifications_page_shows_all_when_no_targets_set(monkeypatch):
         description="Leg day",
         start_time=datetime(2026, 4, 28, 9, 0, tzinfo=timezone.utc),
     )
-    notification = EventNotification(event=event, type=NotificationType.ALARM, offset=75, targets=None)
+    notification = EventNotification(event=event, type=NotificationType.ALARM, offset=75, targets=None, source=NotificationSource.ALARM_DESCRIPTION_TAG)
     notification.play_datetime = notification.notification_time
     monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [notification])
 
@@ -130,7 +130,7 @@ def test_notifications_page_includes_morning_and_school_announcements_sorted_by_
         description="Leg day",
         start_time=datetime(2026, 4, 28, 8, 0, tzinfo=timezone.utc),
     )
-    notification = EventNotification(event=event, type=NotificationType.ALARM, offset=0)
+    notification = EventNotification(event=event, type=NotificationType.ALARM, offset=0, source=NotificationSource.ALARM_DESCRIPTION_TAG)
     notification.play_datetime = notification.notification_time
     monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [notification])
     monkeypatch.setattr(
@@ -171,7 +171,7 @@ def _gym_alarm_playing_at(play_datetime):
         description="#alarm",
         start_time=datetime(2026, 4, 28, 22, 0, tzinfo=timezone.utc),
     )
-    notification = EventNotification(event=event, type=NotificationType.ALARM, offset=0)
+    notification = EventNotification(event=event, type=NotificationType.ALARM, offset=0, source=NotificationSource.ALARM_DESCRIPTION_TAG)
     notification.play_datetime = play_datetime
     return notification
 
@@ -216,7 +216,7 @@ def test_format_notification_for_api_maps_fields_and_uses_the_notifications_play
         description="Leg day",
         start_time=datetime(2026, 4, 28, 9, 7, 30, tzinfo=timezone.utc),
     )
-    notification = EventNotification(event=event, type=NotificationType.ALARM, offset=0)
+    notification = EventNotification(event=event, type=NotificationType.ALARM, offset=0, source=NotificationSource.ALARM_DESCRIPTION_TAG)
     notification.play_datetime = datetime(2026, 4, 28, 9, 5, tzinfo=timezone.utc)
 
     result = api_module.format_notification_for_api(notification)
@@ -237,7 +237,7 @@ def test_format_notification_for_api_shows_the_leave_for_event_summary():
     )
     scheduler = NotificationPlaytimeScheduler(timezone.utc, EventNotificationSchedule(), [], 5)
     leave_event = EventNotifications(target_event, scheduler).leave_for_event(datetime(2026, 4, 28, 8, 40, tzinfo=timezone.utc))
-    notification = EventNotification(event=leave_event, type=NotificationType.ANNOUNCE, offset=0)
+    notification = EventNotification(event=leave_event, type=NotificationType.ANNOUNCE, offset=0, source=NotificationSource.DEPART_DESCRIPTION_TAG)
     notification.play_datetime = datetime(2026, 4, 28, 8, 40, tzinfo=timezone.utc)
 
     result = api_module.format_notification_for_api(notification)
@@ -253,7 +253,7 @@ def test_notifications_endpoint_returns_json_when_accept_header_requests_it(monk
         description="Leg day",
         start_time=datetime(2026, 4, 28, 9, 7, 30, tzinfo=timezone.utc),
     )
-    notification = EventNotification(event=event, type=NotificationType.ALARM, offset=0)
+    notification = EventNotification(event=event, type=NotificationType.ALARM, offset=0, source=NotificationSource.ALARM_DESCRIPTION_TAG)
     notification.play_datetime = datetime(2026, 4, 28, 9, 5, tzinfo=timezone.utc)
     monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [notification])
     monkeypatch.setattr(api_module, "scheduled_announcement_notifications", lambda: [])
@@ -376,13 +376,13 @@ def test_snooze_endpoint_stops_the_alarm_with_snooze_flag_set(monkeypatch):
 def test_recompute_departure_times_endpoint_recomputes_synchronously(monkeypatch):
     calls = []
     monkeypatch.setattr(api_module, "DepartureNotificationSettings", lambda: SimpleNamespace(enabled=True))
-    monkeypatch.setattr(api_module, "update_calendar_travel_times", lambda: calls.append("recomputed"))
+    monkeypatch.setattr(api_module, "update_calendar_travel_times", lambda: calls.append("recalculated"))
 
     response = _client().post("/alarm/recompute-departure-times")
 
     assert response.status_code == 200
-    assert response.text == "Departure times recomputed"
-    assert calls == ["recomputed"]
+    assert response.text == "Departure times recalculated"
+    assert calls == ["recalculated"]
 
 
 def test_recompute_departure_times_endpoint_returns_conflict_when_departure_notifications_are_disabled(monkeypatch):
@@ -422,7 +422,7 @@ def test_notifications_page_includes_event_json_and_play_datetime_for_the_test_b
         description="#alarm",
         start_time=datetime(2026, 4, 28, 9, 0, tzinfo=timezone.utc),
     )
-    notification = EventNotification(event=event, type=NotificationType.ALARM, offset=0)
+    notification = EventNotification(event=event, type=NotificationType.ALARM, offset=0, source=NotificationSource.ALARM_DESCRIPTION_TAG)
     notification.play_datetime = datetime(2026, 4, 28, 8, 55, tzinfo=timezone.utc)
     monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [notification])
 

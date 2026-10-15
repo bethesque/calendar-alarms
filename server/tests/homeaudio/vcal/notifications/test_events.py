@@ -3,7 +3,10 @@ from zoneinfo import ZoneInfo
 
 from homeaudio.audio.settings import EventNotificationSchedule, EventNotificationSettings, NotificationRule, TimeRange
 from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, CalendarSource, Event
+import pytest
+
 from homeaudio.vcal.event_notifications.events import (
+    NotificationSource,
     get_calendar_days,
     get_calendar_refreshed_at,
     NotificationFinder,
@@ -268,3 +271,34 @@ def test_notification_finder_does_not_warn_when_the_base_time_is_off_the_grid_ou
     NotificationFinder([], base_time, _scheduler()).find_notification_events()
 
     assert "not a multiple" not in caplog.text
+
+
+@pytest.mark.parametrize("source, expected", [
+    (NotificationSource.DEPART_DESCRIPTION_TAG, NotificationSource.DEPART_DESCRIPTION_TAG_AND_NOTIFICATION_RULE),
+    (NotificationSource.LOCATION, NotificationSource.LOCATION_AND_NOTIFICATION_RULE),
+    (NotificationSource.DEPARTURE_TIME_RULE, NotificationSource.DEPARTURE_TIME_RULE_AND_NOTIFICATION_RULE),
+])
+def test_notification_source_with_notification_rule(source, expected):
+    assert source.with_notification_rule() == expected
+
+
+@pytest.mark.parametrize("source, expected", [
+    (NotificationSource.DEPART_DESCRIPTION_TAG, NotificationSource.DEPART_DESCRIPTION_TAG_AND_HEADS_UP),
+    (NotificationSource.LOCATION, NotificationSource.LOCATION_AND_HEADS_UP),
+    (NotificationSource.DEPARTURE_TIME_RULE, NotificationSource.DEPARTURE_TIME_RULE_AND_HEADS_UP),
+])
+def test_notification_source_with_heads_up_reminder(source, expected):
+    assert source.with_heads_up_reminder() == expected
+
+
+@pytest.mark.parametrize("tag, expected", [
+    ("alarm", NotificationSource.ALARM_DESCRIPTION_TAG),
+    ("announce", NotificationSource.ANNOUNCE_DESCRIPTION_TAG),
+    ("depart", NotificationSource.DEPART_DESCRIPTION_TAG),
+])
+def test_notification_source_for_tag(tag, expected):
+    assert NotificationSource.for_tag(tag) == expected
+
+
+def test_notification_source_label():
+    assert NotificationSource.NOTIFICATION_RULE.label == "Notification rule"

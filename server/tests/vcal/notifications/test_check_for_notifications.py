@@ -3,7 +3,7 @@ from datetime import datetime
 
 from homeaudio.vcal.event_notifications.core import check_for_and_play_notifications
 from homeaudio.vcal.cal.google_calendar import CalendarSource, Event
-from homeaudio.vcal.event_notifications.events import EventNotification, NotificationPlaytimeScheduler, NotificationType
+from homeaudio.vcal.event_notifications.events import EventNotification, NotificationPlaytimeScheduler, NotificationSource, NotificationType
 from homeaudio.audio.scene import NullScene
 from homeaudio.audio.settings import EventNotificationSchedule, EventNotificationSettings
 from homeaudio.vcal.event_notifications.snooze import LastPlayedState
@@ -113,7 +113,7 @@ def test_check_for_notifications_plays_due_snoozed_notification_with_nothing_els
         description="",
         start_time=base_time,
     )
-    snoozed_notification = EventNotification(event=snoozed_event, type=NotificationType.ANNOUNCE, offset=0)
+    snoozed_notification = EventNotification(event=snoozed_event, type=NotificationType.ANNOUNCE, offset=0, source=NotificationSource.ANNOUNCE_DESCRIPTION_TAG)
     monkeypatch.setattr(
         "homeaudio.vcal.event_notifications.snooze.due_snoozed_event_notifications",
         lambda now: [snoozed_notification],

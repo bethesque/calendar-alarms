@@ -128,7 +128,7 @@
         <td class="type"><span class="type {{ notification.type.name.lower() }}">{{ "ANNOUNCEMENT" if notification.type.name == "ANNOUNCE" else notification.type.name }}</span></td>
         <td class="event">{{ notification.event.summary }}</td>
         <td class="calendar">{{ notification.event.owner }}</td>
-        <td class="source">{{ "Departure rule (based on address)" if notification.event.__class__.__name__ == "LeaveForEvent" else ("Notification rule" if notification.notification_rule else "Event tags") }}</td>
+        <td class="source">{{ notification.source.label }}</td>
         <td class="offset">{{ notification.offset }} mins {{ "before departure" if notification.event.__class__.__name__ == "LeaveForEvent" else "before event" }}</td>
         <td class="reminder">{{ notification.notification_rule.reminder if notification.notification_rule and notification.notification_rule.reminder else "" }}</td>
         <td class="players">{{ notification.targets | sort | join(", ") if notification.targets else "All" }}</td>

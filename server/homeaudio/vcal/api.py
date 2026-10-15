@@ -113,7 +113,7 @@ class AlarmHandler:
 
     def recompute_departure_times(self) -> str:
         update_calendar_travel_times()
-        return "Departure times recomputed"
+        return "Departure times recalculated"
 
     def replay_last_notification(self) -> str:
         threading.Thread(target=replay_last_notification, daemon=True).start()

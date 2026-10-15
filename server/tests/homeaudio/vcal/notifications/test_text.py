@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 from pydantic import ValidationError
 
 from homeaudio.vcal.cal.google_calendar import Event
-from homeaudio.vcal.event_notifications.events import EventNotification, LeaveForEvent, NotificationType
+from homeaudio.vcal.event_notifications.events import EventNotification, LeaveForEvent, NotificationSource, NotificationType
 from homeaudio.audio.settings import NotificationRule
 from homeaudio.vcal import GREETINGS
 from homeaudio.vcal.event_notifications.text import NotificationTextBuilder, all_greeting_options
@@ -24,7 +24,8 @@ def test_notification_text_builder_creates_text_for_travel_announcement(monkeypa
     event_notification = EventNotification(
         event=event,
         offset=5,
-        type=NotificationType.ANNOUNCE
+        type=NotificationType.ANNOUNCE,
+        source=NotificationSource.ANNOUNCE_DESCRIPTION_TAG
     )
 
     # Whether extras/greeting are added, and which greeting/extra, are randomised; pin them
@@ -44,7 +45,7 @@ def _description_event_notification(summary="Gym session", offset=0, start_time=
         calendar_id="id",
         start_time=start_time,
     )
-    return EventNotification(event=event, offset=offset, type=NotificationType.ANNOUNCE)
+    return EventNotification(event=event, offset=offset, type=NotificationType.ANNOUNCE, source=NotificationSource.ANNOUNCE_DESCRIPTION_TAG)
 
 
 def test_notification_text_builder_adds_greeting_and_extras_when_lucky_roll(monkeypatch):

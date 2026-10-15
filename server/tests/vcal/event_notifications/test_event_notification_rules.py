@@ -5,8 +5,8 @@ import pytest
 from pydantic import ValidationError
 
 from homeaudio.vcal.cal.google_calendar import Event
-from homeaudio.vcal.event_notifications.events import EventNotifications, NotificationPlaytimeScheduler, NotificationType
-from homeaudio.audio.settings import EventNotificationSchedule, NotificationRule, DepartureNotificationSettings
+from homeaudio.vcal.event_notifications.events import EventNotifications, NotificationPlaytimeScheduler, NotificationSource, NotificationType
+from homeaudio.audio.settings import EventNotificationSchedule, NotificationRule, NotificationTiming, DepartureNotificationSettings, DepartureTimeRule
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
 SCHEDULER = NotificationPlaytimeScheduler(TIMEZONE, EventNotificationSchedule(), [], 5)
@@ -361,10 +361,11 @@ def test_departure_notification_rule_matches_against_the_target_event_but_fires_
         notification_type="announce",
         offset_minutes=15,
         reminder="Grab your coat.",
+        notification_timing=NotificationTiming.DEPARTURE_TIME,
     )
 
     notifications = EventNotifications(event, SCHEDULER).notifications(
-        departure_notification_settings=_departure_notification_settings(notification_rules=[rule])
+        [rule], departure_notification_settings=_departure_notification_settings()
     )
 
     rule_notifications = [n for n in notifications if n.notification_rule is not None]
@@ -396,16 +397,18 @@ def test_departure_notification_keeps_multiple_matching_rules_at_the_same_time()
         notification_type="announce",
         offset_minutes=15,
         reminder="Grab your coat.",
+        notification_timing=NotificationTiming.DEPARTURE_TIME,
     )
     rule_two = NotificationRule(
         summary_pattern="Morning meeting",
         notification_type="announce",
         offset_minutes=15,
         reminder="Take an umbrella.",
+        notification_timing=NotificationTiming.DEPARTURE_TIME,
     )
 
     notifications = EventNotifications(event, SCHEDULER).notifications(
-        departure_notification_settings=_departure_notification_settings(notification_rules=[rule_one, rule_two])
+        [rule_one, rule_two], departure_notification_settings=_departure_notification_settings()
     )
 
     rule_notifications = [n for n in notifications if n.notification_rule is not None]
@@ -436,10 +439,11 @@ def test_departure_notification_rule_overrides_fixed_announcement_at_the_same_ti
         notification_type="announce",
         offset_minutes=10,
         reminder="Grab your coat.",
+        notification_timing=NotificationTiming.DEPARTURE_TIME,
     )
 
     notifications = EventNotifications(event, SCHEDULER).notifications(
-        departure_notification_settings=_departure_notification_settings(heads_up_reminder_lead_time=10, notification_rules=[rule])
+        [rule], departure_notification_settings=_departure_notification_settings(heads_up_reminder_lead_time=10)
     )
 
     matching_offset_notifications = [n for n in notifications if n.offset == 10]
@@ -447,3 +451,58 @@ def test_departure_notification_rule_overrides_fixed_announcement_at_the_same_ti
     assert matching_offset_notifications[0].notification_rule is rule
 
 
+
+
+def test_departure_time_rule_is_not_applied_to_event_start():
+    event = Event(
+        calendar_id="id",
+        owner="Beth",
+        summary="Gym session",
+        description="",
+        start_time=datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE),
+    )
+    rule = NotificationRule(summary_pattern="gym", offset_minutes=15, notification_timing=NotificationTiming.DEPARTURE_TIME)
+
+    assert EventNotifications(event, SCHEDULER).notifications([rule], _departure_notification_settings()) == []
+
+
+def test_event_start_rule_is_not_applied_to_departure_time():
+    event = Event(
+        calendar_id="id",
+        owner="Beth",
+        summary="Morning meeting",
+        description="",
+        start_time=datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE),
+        car_departure_time=datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE),
+    )
+    rule = NotificationRule(summary_pattern="Morning meeting", offset_minutes=15, reminder="Grab your coat.")
+
+    notifications = EventNotifications(event, SCHEDULER).notifications([rule], _departure_notification_settings())
+
+    rule_notifications = [n for n in notifications if n.notification_rule is not None]
+    assert len(rule_notifications) == 1
+    assert rule_notifications[0].event is event
+    assert rule_notifications[0].source == NotificationSource.NOTIFICATION_RULE
+
+
+@pytest.mark.parametrize("description, car_departure_time, departure_time_rules, expected_source", [
+    ("#depart20", None, [], NotificationSource.DEPART_DESCRIPTION_TAG_AND_NOTIFICATION_RULE),
+    ("", datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE), [], NotificationSource.LOCATION_AND_NOTIFICATION_RULE),
+    ("", None, [DepartureTimeRule(summary_pattern="meeting", departure_minutes=20)], NotificationSource.DEPARTURE_TIME_RULE_AND_NOTIFICATION_RULE),
+])
+def test_departure_notification_rule_source_reflects_where_the_walk_out_time_came_from(description, car_departure_time, departure_time_rules, expected_source):
+    event = Event(
+        calendar_id="id",
+        owner="Beth",
+        summary="Morning meeting",
+        description=description,
+        start_time=datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE),
+        car_departure_time=car_departure_time,
+    )
+    rule = NotificationRule(summary_pattern="Morning meeting", offset_minutes=15, notification_timing=NotificationTiming.DEPARTURE_TIME)
+
+    notifications = EventNotifications(event, SCHEDULER).notifications([rule], _departure_notification_settings(departure_time_rules=departure_time_rules))
+
+    rule_notifications = [n for n in notifications if n.notification_rule is not None]
+    assert len(rule_notifications) == 1
+    assert rule_notifications[0].source == expected_source

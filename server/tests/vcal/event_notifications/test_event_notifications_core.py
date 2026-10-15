@@ -3,7 +3,7 @@ from pathlib import Path
 
 from homeaudio.audio.settings import EventNotificationSettings
 from homeaudio.vcal.cal.google_calendar import CalendarSource, Event
-from homeaudio.vcal.event_notifications.events import EventNotification, NotificationType
+from homeaudio.vcal.event_notifications.events import EventNotification, NotificationSource, NotificationType
 from homeaudio.vcal.event_notifications.core import ERROR_MESSAGE_AUDIO, build_event_notification_files, check_for_event_notifications
 from homeaudio.vcal.event_notifications.snooze import LastPlayedState
 from homeaudio.vcal.playback import NotificationFile
@@ -41,7 +41,7 @@ def _event_notification(monkeypatch, tmp_path, base_time, type=NotificationType.
         description="",
         start_time=base_time,
     )
-    return EventNotification(event=event, type=type, offset=0, targets=targets)
+    return EventNotification(event=event, type=type, offset=0, targets=targets, source=NotificationSource.ALARM_DESCRIPTION_TAG)
 
 
 def test_error_message_audio_file_exists():
@@ -64,7 +64,7 @@ def test_check_for_event_notifications_returns_error_message_audio_on_exception(
         description="",
         start_time=base_time,
     )
-    due_notification = EventNotification(event=due_event, type=NotificationType.ANNOUNCE, offset=0)
+    due_notification = EventNotification(event=due_event, type=NotificationType.ANNOUNCE, offset=0, source=NotificationSource.ANNOUNCE_DESCRIPTION_TAG)
     monkeypatch.setattr(
         "homeaudio.vcal.event_notifications.core.get_event_notifications",
         lambda base_time, window_range, calendar_days, event_notification_settings, departure_notification_settings=None: [due_notification],

@@ -3,13 +3,13 @@ from zoneinfo import ZoneInfo
 
 from homeaudio.audio.settings import NotificationRule
 from homeaudio.vcal.cal.google_calendar import Event
-from homeaudio.vcal.event_notifications.events import EventNotification, NotificationType
+from homeaudio.vcal.event_notifications.events import EventNotification, NotificationSource, NotificationType
 from homeaudio.vcal.event_notifications.snooze import LastPlayedState, SnoozeState, _deserialize, _serialize
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
 
 
-def _event_notification(summary="Gym session", type=NotificationType.ALARM, offset=0, notification_rule=None):
+def _event_notification(summary="Gym session", type=NotificationType.ALARM, offset=0, notification_rule=None, source=NotificationSource.ALARM_DESCRIPTION_TAG):
     event = Event(
         owner="Beth",
         calendar_id="id",
@@ -18,7 +18,7 @@ def _event_notification(summary="Gym session", type=NotificationType.ALARM, offs
         start_time=datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE),
         location="Croydon",
     )
-    return EventNotification(event=event, type=type, offset=offset, notification_rule=notification_rule)
+    return EventNotification(event=event, type=type, offset=offset, notification_rule=notification_rule, source=source)
 
 
 def test_serialize_deserialize_round_trips_event_notification_without_rule():
@@ -30,6 +30,14 @@ def test_serialize_deserialize_round_trips_event_notification_without_rule():
     assert round_tripped.type == NotificationType.ANNOUNCE
     assert round_tripped.offset == 5
     assert round_tripped.notification_rule is None
+
+
+def test_serialize_deserialize_round_trips_source():
+    event_notification = _event_notification(source=NotificationSource.LOCATION_AND_HEADS_UP)
+
+    round_tripped = _deserialize(_serialize(event_notification))
+
+    assert round_tripped.source == NotificationSource.LOCATION_AND_HEADS_UP
 
 
 def test_serialize_deserialize_round_trips_event_notification_with_rule():

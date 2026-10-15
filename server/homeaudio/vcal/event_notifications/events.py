@@ -1,12 +1,11 @@
 import logging
 import re
-from enum import Enum
+from enum import Enum, IntEnum
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, tzinfo
 from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, CalendarSource, Event
-from homeaudio.audio.settings import EventNotificationSchedule, EventNotificationSettings, DepartureNotificationSettings
+from homeaudio.audio.settings import EventNotificationSchedule, EventNotificationSettings, DepartureNotificationSettings, DepartureTimeRule, NotificationTiming, NotificationRule
 from homeaudio.vcal.departure_time import TravelTimeCache, car_departure_time_for_event, relevant_dates
-from homeaudio.audio.settings import NotificationRule, DepartureNotificationSettings
 from homeaudio.vcal.notification_schedule import round_down_to_interval, event_notification_time_range_for_day, within_event_notification_operating_hours
 from homeaudio.env import NOTIFICATIONS_CHECK_INTERVAL_MINUTES
 logger = logging.getLogger(__name__)
@@ -19,12 +18,48 @@ class NotificationType(Enum):
     ALARM = 1
     ANNOUNCE = 2
 
+class NotificationSource(Enum):
+    NOTIFICATION_RULE = (1, "Notification rule")
+
+    ALARM_DESCRIPTION_TAG = (2, "#alarm in event description")
+    ANNOUNCE_DESCRIPTION_TAG = (3, "#announce in event description")
+
+    DEPART_DESCRIPTION_TAG = (4, "#depart tag in description")
+    DEPART_DESCRIPTION_TAG_AND_HEADS_UP = (5, "#depart tag in description and heads-up reminder")
+    DEPART_DESCRIPTION_TAG_AND_NOTIFICATION_RULE = (6, "#depart tag in description and notification rule")
+
+    LOCATION = (7, "Location (calculated travel time)")
+    LOCATION_AND_HEADS_UP = (8, "Location (calculated travel time) and heads-up reminder")
+    LOCATION_AND_NOTIFICATION_RULE = (9, "Location (calculated travel time) and notification rule")
+
+    DEPARTURE_TIME_RULE = (10, "Departure time rule")
+    DEPARTURE_TIME_RULE_AND_HEADS_UP = (11, "Departure time rule and heads-up reminder")
+    DEPARTURE_TIME_RULE_AND_NOTIFICATION_RULE = (12, "Departure time rule and notification rule")
+
+    def __init__(self, _, label):
+        self._label = label
+
+    @property
+    def label(self) -> str:
+        return self._label
+
+    def with_notification_rule(self):
+        return NotificationSource[f"{self.name}_AND_NOTIFICATION_RULE"]
+
+    def with_heads_up_reminder(self):
+        return NotificationSource[f"{self.name}_AND_HEADS_UP"]
+
+    @staticmethod
+    def for_tag(tag) -> "NotificationSource":
+        return NotificationSource[f"{tag.upper()}_DESCRIPTION_TAG"]
+
 
 @dataclass
 class EventNotification:
     event: "Event"
     type: NotificationType
     offset: int
+    source: NotificationSource
     notification_time: datetime = field(init=False)
     play_datetime: datetime | None = field(default=None, init=False) # The datetime it will actually play, taking into account the NOTIFICATIONS_CHECK_INTERVAL_MINUTES and the schedule hours for the day
     notification_rule: NotificationRule | None = None
@@ -42,6 +77,7 @@ class EventNotification:
             and self.notification_time == other.notification_time
             and self.play_datetime == other.play_datetime
         )
+
 
 def _pattern_matches(pattern: str | None, value: str | None) -> bool:
     """A pattern that is empty/unset always matches; otherwise it must be a
@@ -65,7 +101,7 @@ def _calendar_id_matches(rule_calendar_id: str | None, event_calendar_id: str | 
         return True
     return rule_calendar_id == event_calendar_id
 
-def notifications_from_rules(event_to_match: "Event", rules: list[NotificationRule], event_for_notification: "Event | None" = None) -> list[EventNotification]:
+def notifications_from_rules(event_to_match: "Event", rules: list[NotificationRule], source: NotificationSource | None = None, event_for_notification: "Event | None" = None) -> list[EventNotification]:
     notifications: list[EventNotification] = []
     # When checking for departure notifications, the matching logic is done on the target event, but the notification is
     # added for the LeaveForEvent
@@ -83,7 +119,8 @@ def notifications_from_rules(event_to_match: "Event", rules: list[NotificationRu
             type=NotificationType[rule.notification_type.upper()],
             offset=rule.offset_minutes,
             notification_rule = rule,
-            targets=_targets_from_description(event_for_notification.description)
+            targets=_targets_from_description(event_for_notification.description),
+            source= source.with_notification_rule() if source else NotificationSource.NOTIFICATION_RULE
         ))
     return notifications
 
@@ -98,6 +135,14 @@ def notification_rule_matches_event(event: "Event", rule: NotificationRule) -> b
         return False
     return True
 
+def departure_time_rule_matches_event(event: "Event", rule: DepartureTimeRule) -> bool:
+    if not _pattern_matches(rule.summary_pattern, event.summary):
+        return False
+    return True
+
+
+def round_to_nearest_minute(dt: datetime):
+    return (dt + timedelta(seconds=30)).replace(second=0, microsecond=0)
 
 class EventNotifications:
     def __init__(self, event: Event, scheduler: "NotificationPlaytimeScheduler") -> None:
@@ -105,74 +150,100 @@ class EventNotifications:
         self.scheduler = scheduler
 
     def notifications(self, rules: list[NotificationRule] | None = None, departure_notification_settings: DepartureNotificationSettings | None = None) -> list[EventNotification]:
-        notifications = []
+
+        event_start_notifications = []
+        departure_time_notifications = []
+        rules = rules or []
 
         departure_notification_settings = departure_notification_settings or DepartureNotificationSettings()
 
         # Add the notifications from rules first because they have reminders, and will be used in preference
         # to notifications sourced from the description if there is a duplicate.
-        if rules:
-            notifications.extend(notifications_from_rules(self.event, rules))
 
+        event_start_notification_rules = [ rule for rule in rules if rule.notification_timing == NotificationTiming.EVENT_START]
+        event_start_notifications.extend(notifications_from_rules(self.event, event_start_notification_rules))
 
-        self._add_computed_departure_notifications(notifications, departure_notification_settings)
+        self._add_event_start_notifications_from_description(event_start_notifications)
 
-        self._add_notifications_from_description(notifications, departure_notification_settings)
+        self._add_departure_time_notifications(departure_time_notifications, departure_notification_settings, rules)
+
+        notifications = self._deduplicate_notifications(event_start_notifications) + self._deduplicate_notifications(departure_time_notifications)
 
         for notification in notifications:
             notification.play_datetime = self.scheduler.get_play_datetime(notification.notification_time)
 
-        return self._deduplicate_notifications(notifications)
+        return notifications
 
-    def _add_notifications_from_description(self, notifications, departure_notification_settings: DepartureNotificationSettings):
+    def _add_event_start_notifications_from_description(self, notifications):
         if self.event.description and self.event.start_time:
-            matches = re.findall(r"#(alarm|announce|depart)(\d+)?", self.event.description)
+            matches = re.findall(r"#(alarm|announce)(\d+)?", self.event.description)
             if matches:
                 for match in matches:
                     tag, offset = match
 
                     offset_int = int(offset) if offset else 0
 
-                    if tag == "depart":
-                        if offset:
-                            self.add_departure_notifications_from_tag(notifications, offset_int, departure_notification_settings)
-                    else:
-                        type_enum = NotificationType[tag.upper()]
-                        notifications.append(EventNotification(
-                            type=type_enum,
-                            offset=offset_int,
-                            event=self.event,
-                            targets=_targets_from_description(self.event.description)
-                        ))
+                    type_enum = NotificationType[tag.upper()]
+                    notifications.append(EventNotification(
+                        type=type_enum,
+                        offset=offset_int,
+                        event=self.event,
+                        targets=_targets_from_description(self.event.description),
+                        source=NotificationSource.for_tag(tag)
+                    ))
 
-    def add_departure_notifications_from_tag(self, notifications, offset_int, departure_notification_settings: DepartureNotificationSettings):
-        """
-            Add notification for leaving time, and for 5 minutes before leaving time
-        """
-        walk_out_time = self.event.start_time - timedelta(minutes=offset_int)
-        self._add_departure_notifications(notifications, walk_out_time, departure_notification_settings)
+    def _add_departure_time_notifications(self, notifications, departure_notification_settings: DepartureNotificationSettings, notification_rules: list[NotificationRule]):
+        if not self.event.start_time:
+            return
 
-    def _add_computed_departure_notifications(self, notifications, departure_notification_settings: DepartureNotificationSettings):
-        """
-            Add notification for leaving time, and for the configured lead time before leaving time
-        """
-        if self.event.car_departure_time and not self._has_depart_tag_with_number():
-            walk_out_time = self.event.car_departure_time - timedelta(minutes=departure_notification_settings.house_to_car_minutes)
-            walk_out_time = (walk_out_time + timedelta(seconds=30)).replace(second=0, microsecond=0)
-            self._add_departure_notifications(notifications, walk_out_time, departure_notification_settings)
+        walk_out_time = self._get_walk_out_time_from_description_tag()
 
-    def _has_depart_tag_with_number(self):
-        return (self.event.description and re.findall(r"#depart(\d+)", self.event.description))
+        if walk_out_time:
+            self._add_departure_notifications(notifications, walk_out_time, departure_notification_settings, notification_rules, NotificationSource.DEPART_DESCRIPTION_TAG)
+            return
 
-    def _add_departure_notifications(self, notifications, walk_out_time: datetime, departure_notification_settings: DepartureNotificationSettings):
+        if self.event.car_departure_time:
+            walk_out_time = round_to_nearest_minute(self.event.car_departure_time - timedelta(minutes=departure_notification_settings.house_to_car_minutes))
+            self._add_departure_notifications(notifications, walk_out_time, departure_notification_settings, notification_rules, NotificationSource.LOCATION)
+            return
+
+        walk_out_time = self._get_walk_out_time_from_departure_rules(departure_notification_settings.departure_time_rules)
+        if walk_out_time:
+            self._add_departure_notifications(notifications, walk_out_time, departure_notification_settings, notification_rules, NotificationSource.DEPARTURE_TIME_RULE)
+
+    def _get_walk_out_time_from_description_tag(self) -> datetime | None:
+        if self.event.description and self.event.start_time:
+            offsets = [int(match) for match in re.findall(r"#depart(\d+)", self.event.description)]
+            if offsets:
+                offset_max = max(offsets)
+                if len(offsets) > 1:
+                    logger.warning(f"Event {self.event.summary} had multiple depart tags: {offsets}. Using offset={offset_max}.")
+                walk_out_time = self.event.start_time - timedelta(minutes=offset_max)
+                return walk_out_time
+
+        return None
+
+    def _get_walk_out_time_from_departure_rules(self, departure_time_rules: list[DepartureTimeRule]) -> datetime | None:
+        matching_rules = [ rule for rule in departure_time_rules if departure_time_rule_matches_event(self.event, rule)]
+
+        if matching_rules and self.event.start_time:
+            departure_minutes = max([rule.departure_minutes for rule in matching_rules])
+            if len(matching_rules) > 1:
+                logger.warning(f"Event {self.event.summary} matched multiple departure time rules: {matching_rules}. Using departure_minutes={departure_minutes}.")
+            return self.event.start_time - timedelta(minutes=departure_minutes)
+        else:
+            return None
+
+    def _add_departure_notifications(self, notifications, walk_out_time: datetime, departure_notification_settings: DepartureNotificationSettings, notification_rules: list[NotificationRule], source: NotificationSource):
         leave_event = self.leave_for_event(walk_out_time)
 
         # Do the rules ones first because they'll override the non-rules ones if there are notifications at the same time
-        notifications.extend(notifications_from_rules(self.event, departure_notification_settings.notification_rules, leave_event))
+        departure_notification_rules = [ rule for rule in notification_rules if rule.notification_timing == NotificationTiming.DEPARTURE_TIME]
+        notifications.extend(notifications_from_rules(self.event, departure_notification_rules, source, leave_event))
 
         leave_event_targets = _targets_from_description(leave_event.description)
-        notifications.append(EventNotification(type=NotificationType.ANNOUNCE, offset=departure_notification_settings.heads_up_reminder_lead_time, event=leave_event, targets=leave_event_targets))
-        notifications.append(EventNotification(type=NotificationType.ANNOUNCE, offset=0, event=leave_event, targets=leave_event_targets))
+        notifications.append(EventNotification(type=NotificationType.ANNOUNCE, offset=departure_notification_settings.heads_up_reminder_lead_time, event=leave_event, targets=leave_event_targets, source=source.with_heads_up_reminder()))
+        notifications.append(EventNotification(type=NotificationType.ANNOUNCE, offset=0, event=leave_event, targets=leave_event_targets, source=source))
 
 
     def leave_for_event(self, walk_out_time) -> "LeaveForEvent":
@@ -192,6 +263,10 @@ class EventNotifications:
                         )
 
     def _deduplicate_notifications(self, notifications):
+        """
+        Any notification with a notification_rule attatched overrides one which is otherwise the same but has
+        no notification rule.
+        """
         deduplicated_notifications = []
         for notification in notifications:
             if any(existing.same_excluding_notification_rule(notification) and not notification.notification_rule for existing in deduplicated_notifications):

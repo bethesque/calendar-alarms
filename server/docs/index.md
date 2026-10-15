@@ -45,15 +45,27 @@ Each rule has:
 
 ## Departure notifications
 
-When departure notifications are enabled, any event that has a **location** gets a departure time calculated for it using Google Maps. The calculation allows time for getting from the house to the car, for parking, and a safety margin in case the estimate is optimistic, all of which are set by the user. The estimate is updated regularly as the event gets closer.
+There are 3 ways to get departure notifications.
 
-For each event with a location you get two announcements:
+1. Add a `#depart` tag with a number (eg. `#depart20`) in the event *description*.
+2. Enter an address into the *location* of an event and the Calendar App will calculate the departure time automatically.
+3. Create a Departure Rule based on the *summary* (eg. for all "Gym" events, set departure time to 10 minutes before the event start)
 
-- A **heads-up** a few minutes before you need to leave
-- A **time to leave** announcement - this is the time you need to *walk out your door*, taking into account the time it takes to get from your house to the car.
+For each event with a departure notification you get two announcements:
 
-If you'd rather choose the departure time yourself, use `#depart<n>` eg. `#depart20`. To disable departure announcements for an event with a location, use `#nodepart`.
+- A **heads-up** a few minutes before you need to leave (you can configure how far ahead this happens in the settings)
+- A **time to leave** announcement - this is the time you need to *walk out your door*.
 
-### Departure rules
+To disable departure announcements for an event with a location, use `#nodepart` in the description. If there are multiple depature time sources (eg. a location and a tag ) then the first one in the list above will be used (tag with number trumps other sources, then location, then depature rule)
 
-Departure rules work like notification rules, with one difference: the minutes count back from the **departure time**, not from the start of the event. Use them for reminders about getting ready to go, for example "75 minutes before leaving for the gym: eat something now".
+### Departure notifications based on calculated travel time
+
+When departure notifications are enabled in the settings, any event that has a **location** gets a departure time calculated for it using Google Maps. The calculation allows time for getting from the house to the car, for parking, and a safety margin in case the estimate is optimistic, all of which are set by the user. The estimate is updated regularly as the event gets closer.
+
+### Departure time rules
+
+If you have regular events (eg. gym, scouts) that you want to set a specific departure time for, you can make a departure rule that allows you to specify "when the summary matches `<key word>` then the departure time will be `<x>` minutes before the event start". For example, "when the summary matches `gym` then set the departure time to `20` minutes before the event start time".
+
+### Extra departure notifications
+
+By default, the app will give you a "heads-up notification" and a "depart now" notification. If you would like to add extra notifications (eg. "remind me to have a snack to eat 60 minutes before I need to leave for gym") then you can create a notification rule where the notificating timing is based on the departure time, rather than the event start time.

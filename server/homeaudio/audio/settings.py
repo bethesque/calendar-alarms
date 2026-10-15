@@ -1,5 +1,6 @@
 import base64
 from datetime import datetime, time
+from enum import Enum
 import json
 import logging
 from pathlib import Path
@@ -138,6 +139,16 @@ class CalendarSetting(BaseModel):
     weather: bool = Field(default=False, title="Are all events weather forecasts?", description="Events in this calendar are treated as weather forecasts.")
     include_in_morning_announcements: bool = Field(default=True, title="Include in morning announcements?", description="Events in this calendar are read out in the morning announcements.")
 
+class NotificationTiming(Enum):
+    EVENT_START = "event_start"
+    DEPARTURE_TIME = "departure_time"
+
+    @property
+    def label(self):
+        if self == self.EVENT_START:
+            return "Event start"
+        else:
+            return "Departure time"
 
 class NotificationRule(BaseModel):
     summary_pattern: str | None = Field(default=None, description="The substring to match in the event summary")
@@ -145,7 +156,8 @@ class NotificationRule(BaseModel):
     location_pattern: str | None = Field(default=None, description="The substring to match in the location")
     calendar_id: str | None = Field(default=None, description="The ID of the calendar that must match for the rule to apply")
     notification_type: Literal["alarm", "announce"] = Field(default="alarm", description="The notification type: alarm or announce")
-    offset_minutes: int = Field(default=0, ge=0, description="Minutes before the event start")
+    notification_timing: NotificationTiming = Field(title="Notification timing", default=NotificationTiming.EVENT_START, description="Play notifications counting down to:")
+    offset_minutes: int = Field(default=0, ge=0, description="Minutes before the event start or departure time")
     reminder: str | None = None
     replace: bool = Field(default=False, description="When true, the reminder replaces the announcement text, otherwise it is appended.")
     enabled: bool = Field(default=True, description="Set to false to disable this notification")
@@ -162,8 +174,11 @@ class NotificationRule(BaseModel):
     @property
     def label(self) -> str:
         patterns = [p for p in [self.summary_pattern, self.description_pattern, self.location_pattern] if p]
-        return f"{("/".join(patterns) or self.calendar_id)} @ {self.offset_minutes} minutes before"
+        return f"{("/".join(patterns) or self.calendar_id)} @ {self.offset_minutes} minutes before {self.notification_timing.label.lower()}"
 
+class DepartureTimeRule(BaseModel):
+    summary_pattern: str = Field(description="The substring to match in the event summary")
+    departure_minutes: int = Field(description="The number of minutes before the event start to play the departure notification")
 
 class AlarmSettings(BaseModel):
     gentle_alarm_duration: int = Field(default=120, description="The number of seconds to play the gentle alarm", ge=0)
@@ -319,7 +334,8 @@ class DepartureNotificationSettings(YAMLSettings):
     safety_factor: int = Field(default=10, ge=0, le=100, description="Percentage to pad the travel duration by because sometimes Google Maps is a bit optimistic")
     heads_up_reminder_lead_time: int = Field(default=10, ge=0, description="Minutes before the walk-out time announcement that the heads-up reminder plays")
     recompute_interval_minutes: int = Field(default=20, ge=1, description="How often to re-calculate the travel time to ensure the most accurate results.")
-    notification_rules: list[NotificationRule] = Field(default_factory=list, description="Rules for creating notifications based on departure time")
+
+    departure_time_rules: list[DepartureTimeRule] = Field(default_factory=list, description="Rules for calculating the departure time based on the summary")
 
     model_config = SettingsConfigDict(
         yaml_file=f"{CONFIG_DIR}/departure_notifications.yaml"
