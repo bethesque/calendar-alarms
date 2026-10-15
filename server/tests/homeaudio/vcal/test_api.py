@@ -375,7 +375,7 @@ def test_snooze_endpoint_stops_the_alarm_with_snooze_flag_set(monkeypatch):
 
 def test_recompute_departure_times_endpoint_recomputes_synchronously(monkeypatch):
     calls = []
-    monkeypatch.setattr(api_module, "EventNotificationSettings", lambda: SimpleNamespace(departure_notifications=SimpleNamespace(location_based_departure_times=SimpleNamespace(enabled=True))))
+    monkeypatch.setattr(api_module, "EventNotificationSettings", lambda: SimpleNamespace(location_based_departure_times=SimpleNamespace(enabled=True)))
     monkeypatch.setattr(api_module, "update_calendar_travel_times", lambda: calls.append("recalculated"))
 
     response = _client().post("/alarm/recompute-departure-times")
@@ -386,13 +386,13 @@ def test_recompute_departure_times_endpoint_recomputes_synchronously(monkeypatch
 
 
 def test_recompute_departure_times_endpoint_returns_conflict_when_departure_notifications_are_disabled(monkeypatch):
-    monkeypatch.setattr(api_module, "EventNotificationSettings", lambda: SimpleNamespace(departure_notifications=SimpleNamespace(location_based_departure_times=SimpleNamespace(enabled=False))))
+    monkeypatch.setattr(api_module, "EventNotificationSettings", lambda: SimpleNamespace(location_based_departure_times=SimpleNamespace(enabled=False)))
     monkeypatch.setattr(api_module, "update_calendar_travel_times", lambda: pytest.fail("must not recompute when disabled"))
 
     response = _client().post("/alarm/recompute-departure-times")
 
     assert response.status_code == 409
-    assert response.text == "Departure notifications are disabled"
+    assert response.text == "Location based departure notifications are disabled"
 
 
 def test_calendar_refreshed_at_endpoint_returns_the_refreshed_at_isoformat(monkeypatch):

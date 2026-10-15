@@ -120,7 +120,7 @@ def refresh_calendar(base_time: datetime) -> None:
         logger.exception("Error refreshing calendar data at %s", base_time)
         return
 
-    if not EventNotificationSettings().departure_notifications.location_based_departure_times.enabled:
+    if not EventNotificationSettings().location_based_departure_times.enabled:
         return
 
     try:

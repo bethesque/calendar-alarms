@@ -139,13 +139,25 @@ class CalendarSetting(BaseModel):
     weather: bool = Field(default=False, title="Are all events weather forecasts?", description="Events in this calendar are treated as weather forecasts.")
     include_in_morning_announcements: bool = Field(default=True, title="Include in morning announcements?", description="Events in this calendar are read out in the morning announcements.")
 
+class NotificationTiming(Enum):
+    EVENT_START = "event_start"
+    DEPARTURE_TIME = "departure_time"
+
+    @property
+    def label(self):
+        if self == self.EVENT_START:
+            return "Event start time"
+        else:
+            return "Departure time"
+
 class NotificationRule(BaseModel):
     summary_pattern: str | None = Field(default=None, description="The substring to match in the event summary")
     description_pattern: str | None = Field(default=None, description="The substring to match in the event description")
     location_pattern: str | None = Field(default=None, description="The substring to match in the location")
     calendar_id: str | None = Field(default=None, description="The ID of the calendar that must match for the rule to apply")
     notification_type: Literal["alarm", "announce"] = Field(default="alarm", description="The notification type: alarm or announce")
-    offset_minutes: int = Field(default=0, ge=0, description="Minutes before the event start")
+    notification_timing: NotificationTiming = Field(title="Notification timing", default=NotificationTiming.EVENT_START, description="Play notifications counting down to:")
+    offset_minutes: int = Field(default=0, ge=0, description="Minutes before the event start or departure time")
     reminder: str | None = None
     replace: bool = Field(default=False, description="When true, the reminder replaces the announcement text, otherwise it is appended.")
     enabled: bool = Field(default=True, description="Set to false to disable this notification")
@@ -162,16 +174,7 @@ class NotificationRule(BaseModel):
     @property
     def label(self) -> str:
         patterns = [p for p in [self.summary_pattern, self.description_pattern, self.location_pattern] if p]
-        return f"{("/".join(patterns) or self.calendar_id)} @ {self.offset_minutes} minutes before event start"
-
-class DepartureNotificationRule(NotificationRule):
-    offset_minutes: int = Field(default=0, ge=0, description="Minutes before the departure time")
-
-    @computed_field
-    @property
-    def label(self) -> str:
-        patterns = [p for p in [self.summary_pattern, self.description_pattern, self.location_pattern] if p]
-        return f"{("/".join(patterns) or self.calendar_id)} @ {self.offset_minutes} minutes before departure"
+        return f"When '{("/".join(patterns) or self.calendar_id)}' then {self.notification_type} {self.offset_minutes} minutes before {self.notification_timing.label.lower()}"
 
 class DepartureTimeRule(BaseModel):
     summary_pattern: str = Field(description="The substring to match in the event summary")
@@ -215,22 +218,16 @@ class LocationBasedDepartureTimes(BaseModel):
             raise ValueError("api_key and origin_address must be set when enabled is true")
         return self
 
-class DepartureNotification(BaseModel):
-    location_based_departure_times: LocationBasedDepartureTimes = Field(default_factory=LocationBasedDepartureTimes, description="Calculate departure times based on the event's location")
-    heads_up_reminder_lead_time: int = Field(default=10, ge=0, description="Minutes before the walk-out time announcement that the heads-up reminder plays")
-
-    departure_time_rules: list[DepartureTimeRule] = Field(default_factory=list, description="Rules for calculating the departure time based on the summary")
-    notification_rules: list[DepartureNotificationRule] = Field(default_factory=list, description="Rules for creating departure notifications from event descriptions")
-
-
 class EventNotificationSettings(YAMLSettings):
     enabled: bool = Field(default=True, description="Enables/disables event and departure notifications")
+    snooze_minutes: int = Field(default=10, ge=1, multiple_of=5, description="Number of minutes to wait before replaying a snoozed alarm or announcement")
+    heads_up_reminder_lead_time: int = Field(default=10, ge=0, title="Departure heads-up notification lead time", description="Number of minutes before the departure time announcement that the heads-up reminder plays")
     notification_rules: list[NotificationRule] = Field(default_factory=list, description="Rules for creating notifications from event descriptions")
+    departure_time_rules: list[DepartureTimeRule] = Field(default_factory=list, description="Rules for calculating the departure time based on the summary")
     alarms: AlarmSettings = Field(default_factory=AlarmSettings)
     announcements: AnnouncementSettings = Field(default_factory=AnnouncementSettings)
+    location_based_departure_times: LocationBasedDepartureTimes = Field(default_factory=LocationBasedDepartureTimes, description="Calculate departure times based on the event's location")
     schedule: EventNotificationSchedule = Field(default_factory=EventNotificationSchedule)
-    snooze_minutes: int = Field(default=10, ge=1, multiple_of=5, description="Minutes to wait before replaying a snoozed alarm or announcement")
-    departure_notifications: DepartureNotification = Field(default_factory=DepartureNotification, description="Departure notification settings")
 
     model_config = SettingsConfigDict(
         yaml_file=f"{CONFIG_DIR}/notifications.yaml"
@@ -238,10 +235,22 @@ class EventNotificationSettings(YAMLSettings):
 
     def _dump_for_save(self) -> dict:
         # label is a computed, read-only field for the UI - it shouldn't be persisted.
-        return self.model_dump(mode="json", exclude={"notification_rules": {"__all__": {"label"}}, "departure_notifications": {"notification_rules": {"__all__": {"label"}}}})
+        return self.model_dump(mode="json", exclude={"notification_rules": {"__all__": {"label"}}})
+
+    @model_validator(mode="after")
+    def _require_api_key_and_origin_when_enabled(self) -> "EventNotificationSettings":
+        if self.location_based_departure_times.enabled and not (self.location_based_departure_times.api_key and self.location_based_departure_times.origin_address):
+            raise ValueError("api_key and origin_address must be set when enabled is true")
+        return self
 
     def enabled_notification_rules(self) -> list[NotificationRule]:
         return [rule for rule in self.notification_rules if rule.enabled]
+
+    def event_start_notification_rules(self) -> list[NotificationRule]:
+        return [rule for rule in self.enabled_notification_rules() if rule.notification_timing == NotificationTiming.EVENT_START]
+
+    def departure_time_notification_rules(self) -> list[NotificationRule]:
+        return [rule for rule in self.enabled_notification_rules() if rule.notification_timing == NotificationTiming.DEPARTURE_TIME]
 
 class UploadedFile(BaseModel):
     name: str

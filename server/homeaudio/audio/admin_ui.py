@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Request
-from homeaudio.audio.settings import AppSettings, GoogleCalendarSettings
+from homeaudio.audio.settings import AppSettings, GoogleCalendarSettings, NotificationTiming
 from homeaudio.env import GOOGLE_TRANSLATE_TLD_OPTIONS, HOME_ASSISTANT_SUPPORTED, HOUSIE_TALKIE_ENABLED, SNAPCAST_ENABLED, WAKE_UP_ALARM_ENABLED
 from pydantic_ui import create_pydantic_ui, UIConfig, FieldConfig, DisplayConfig, Renderer, ActionButton
 
@@ -63,7 +63,7 @@ class AdminRoutes:
                     "event_notification_settings.notification_rules.[]": FieldConfig(
                         display=DisplayConfig(
                             title="{label}",
-                            subtitle="{notification_type}"
+                            subtitle=" "
                         )
                     ),
                     "event_notification_settings.notification_rules.[].calendar_id": FieldConfig(
@@ -75,14 +75,17 @@ class AdminRoutes:
                         props=self.calendar_select_props,
                         placeholder="Any calendar"
                     ),
-                    "event_notification_settings.departure_notifications.notification_rules.[].calendar_id": FieldConfig(
-                        display=DisplayConfig(
-                            title="Calendar",
-                            subtitle="Only match events from this calendar",
-                        ),
+                    "event_notification_settings.notification_rules.[].notification_timing": FieldConfig(
                         renderer=Renderer.SELECT,
-                        props=self.calendar_select_props,
-                        placeholder="Any calendar"
+                        props={
+                            "options": [{ "value": NotificationTiming.EVENT_START.value, "label": NotificationTiming.EVENT_START.label}, { "value": NotificationTiming.DEPARTURE_TIME.value, "label": NotificationTiming.DEPARTURE_TIME.label} ]
+                        }
+                    ),
+                    "event_notification_settings.departure_time_rules.[]": FieldConfig(
+                        display=DisplayConfig(
+                            title="When '{summary_pattern}' then depart {departure_minutes} minutes before event start time",
+                            subtitle=" ",
+                        )
                     ),
                     "snapcast_settings": FieldConfig(
                         visible_when=f"{str(SNAPCAST_ENABLED).lower()} == true"
@@ -163,7 +166,7 @@ class AdminRoutes:
                             "options": tld_options
                         }
                     ),
-                    "event_notification_settings.departure_notifications.location_based_departure_times.api_key": FieldConfig(
+                    "event_notification_settings.location_based_departure_times.api_key": FieldConfig(
                         renderer=Renderer.PASSWORD
                     ),
                 }

@@ -180,7 +180,7 @@ def test_notification(event: dict, play_datetime: datetime, notification_time: d
     scheduler = NotificationPlaytimeScheduler(play_datetime.tzinfo, event_notification_settings.schedule, calendar_data, NOTIFICATIONS_CHECK_INTERVAL_MINUTES)
     notifications = [
         notification
-        for notification in EventNotifications(calendar_data[0].timed_events[0], scheduler).notifications(event_notification_settings.enabled_notification_rules())
+        for notification in EventNotifications(calendar_data[0].timed_events[0], scheduler).notifications(event_notification_settings)
         if notification.notification_time == notification_time and notification.type == NotificationType[notification_type]
     ]
     if not notifications:

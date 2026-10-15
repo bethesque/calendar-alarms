@@ -252,8 +252,8 @@ class AlarmRoutes:
         return Response(content=message, status_code=200, media_type="text/plain")
 
     async def recompute_departure_times_endpoint(self):
-        if not EventNotificationSettings().departure_notifications.location_based_departure_times.enabled:
-            return Response(content="Departure notifications are disabled", status_code=409, media_type="text/plain")
+        if not EventNotificationSettings().location_based_departure_times.enabled:
+            return Response(content="Location based departure notifications are disabled", status_code=409, media_type="text/plain")
         message = self.alarm_handler.recompute_departure_times()
         return Response(content=message, status_code=200, media_type="text/plain")
 

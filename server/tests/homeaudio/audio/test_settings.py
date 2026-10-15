@@ -4,13 +4,13 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from homeaudio.audio.settings import EventNotificationSettings, TimeRange, NotificationRule, DepartureNotificationRule, SnapcastSettings, SnapclientConfig, DepartureNotification, DepartureTimeRule, LocationBasedDepartureTimes, UploadedFile, GoogleCalendarSettings
+from homeaudio.audio.settings import EventNotificationSettings, TimeRange, NotificationRule, NotificationTiming, SnapcastSettings, SnapclientConfig, DepartureTimeRule, LocationBasedDepartureTimes, UploadedFile, GoogleCalendarSettings
 
 
 def test_label_uses_summary_pattern_only():
     rule = NotificationRule(summary_pattern="gym", offset_minutes=75)
 
-    assert rule.label == "gym @ 75 minutes before event start"
+    assert rule.label == "When 'gym' then alarm 75 minutes before event start time"
 
 
 def test_label_joins_multiple_patterns_with_slash():
@@ -21,31 +21,37 @@ def test_label_joins_multiple_patterns_with_slash():
         offset_minutes=75,
     )
 
-    assert rule.label == "gym/strength/Croydon @ 75 minutes before event start"
+    assert rule.label == "When 'gym/strength/Croydon' then alarm 75 minutes before event start time"
 
 
 def test_label_falls_back_to_calendar_id_when_no_patterns_set():
     rule = NotificationRule(calendar_id="beth-calendar", offset_minutes=20)
 
-    assert rule.label == "beth-calendar @ 20 minutes before event start"
+    assert rule.label == "When 'beth-calendar' then alarm 20 minutes before event start time"
 
 
 def test_label_reflects_zero_offset():
     rule = NotificationRule(summary_pattern="gym", offset_minutes=0)
 
-    assert rule.label == "gym @ 0 minutes before event start"
+    assert rule.label == "When 'gym' then alarm 0 minutes before event start time"
 
 
 def test_departure_notification_rule_label_counts_down_to_departure():
-    rule = DepartureNotificationRule(summary_pattern="gym", offset_minutes=10)
+    rule = NotificationRule(summary_pattern="gym", offset_minutes=10, notification_timing=NotificationTiming.DEPARTURE_TIME)
 
-    assert rule.label == "gym @ 10 minutes before departure"
+    assert rule.label == "When 'gym' then alarm 10 minutes before departure time"
+
+
+def test_label_includes_notification_type():
+    rule = NotificationRule(summary_pattern="gym", offset_minutes=10, notification_type="announce")
+
+    assert rule.label == "When 'gym' then announce 10 minutes before event start time"
 
 
 def test_label_is_included_in_model_dump():
     rule = NotificationRule(summary_pattern="gym", offset_minutes=75)
 
-    assert rule.model_dump()["label"] == "gym @ 75 minutes before event start"
+    assert rule.model_dump()["label"] == "When 'gym' then alarm 75 minutes before event start time"
 
 
 def test_label_is_included_in_standard_model_dump_when_nested():
@@ -55,7 +61,7 @@ def test_label_is_included_in_standard_model_dump_when_nested():
 
     saved_rule = settings.model_dump()["notification_rules"][0]
 
-    assert saved_rule["label"] == "gym @ 75 minutes before event start"
+    assert saved_rule["label"] == "When 'gym' then alarm 75 minutes before event start time"
 
 
 def test_label_is_excluded_when_saving_to_file(tmp_path, monkeypatch):
@@ -73,16 +79,16 @@ def test_label_is_excluded_when_saving_to_file(tmp_path, monkeypatch):
     assert saved_rule["summary_pattern"] == "gym"
 
 
-def test_departure_notification_rules_save_and_reload_from_yaml(tmp_path, monkeypatch):
+def test_departure_time_notification_rule_saves_and_reloads_from_yaml(tmp_path, monkeypatch):
     yaml_file = tmp_path / "notifications.yaml"
     monkeypatch.setitem(EventNotificationSettings.model_config, "yaml_file", str(yaml_file))
 
-    EventNotificationSettings(departure_notifications=DepartureNotification(notification_rules=[DepartureNotificationRule(summary_pattern="gym", offset_minutes=10)])).save()
+    EventNotificationSettings(notification_rules=[NotificationRule(summary_pattern="gym", offset_minutes=10, notification_timing=NotificationTiming.DEPARTURE_TIME)]).save()
 
-    saved_rule = yaml.safe_load(yaml_file.read_text())["departure_notifications"]["notification_rules"][0]
-    assert saved_rule["summary_pattern"] == "gym"
+    saved_rule = yaml.safe_load(yaml_file.read_text())["notification_rules"][0]
+    assert saved_rule["notification_timing"] == "departure_time"
     assert "label" not in saved_rule
-    assert EventNotificationSettings().departure_notifications.notification_rules[0].summary_pattern == "gym"
+    assert EventNotificationSettings().notification_rules[0].notification_timing == NotificationTiming.DEPARTURE_TIME
 
 
 def test_notification_rule_is_enabled_by_default():
@@ -99,6 +105,24 @@ def test_enabled_notification_rules_excludes_disabled_rules():
     assert settings.enabled_notification_rules() == [enabled_rule]
 
 
+def test_event_start_notification_rules_returns_enabled_event_start_rules():
+    event_start_rule = NotificationRule(summary_pattern="gym")
+    departure_time_rule = NotificationRule(summary_pattern="gym", notification_timing=NotificationTiming.DEPARTURE_TIME)
+    disabled_rule = NotificationRule(summary_pattern="swim", enabled=False)
+    settings = EventNotificationSettings(notification_rules=[event_start_rule, departure_time_rule, disabled_rule])
+
+    assert settings.event_start_notification_rules() == [event_start_rule]
+
+
+def test_departure_time_notification_rules_returns_enabled_departure_time_rules():
+    event_start_rule = NotificationRule(summary_pattern="gym")
+    departure_time_rule = NotificationRule(summary_pattern="gym", notification_timing=NotificationTiming.DEPARTURE_TIME)
+    disabled_rule = NotificationRule(summary_pattern="swim", notification_timing=NotificationTiming.DEPARTURE_TIME, enabled=False)
+    settings = EventNotificationSettings(notification_rules=[event_start_rule, departure_time_rule, disabled_rule])
+
+    assert settings.departure_time_notification_rules() == [departure_time_rule]
+
+
 def test_snapclient_config_is_enabled_by_default():
     snapclient = SnapclientConfig(name="kaypi", display_name="KayPi")
 
@@ -113,10 +137,10 @@ def test_disabled_snapclient_names_returns_only_disabled_clients():
     assert settings.disabled_snapclient_names == {"patpi"}
 
 
-def test_departure_notification_defaults(tmp_path, monkeypatch):
+def test_departure_notification_settings_defaults(tmp_path, monkeypatch):
     monkeypatch.setitem(EventNotificationSettings.model_config, "yaml_file", str(tmp_path / "notifications.yaml"))
 
-    settings = EventNotificationSettings().departure_notifications
+    settings = EventNotificationSettings()
 
     assert settings.location_based_departure_times.enabled is False
     assert settings.location_based_departure_times.api_key == ""
@@ -128,19 +152,19 @@ def test_departure_notification_defaults(tmp_path, monkeypatch):
     assert settings.heads_up_reminder_lead_time == 10
 
 
-def test_departure_notification_saves_and_reloads_from_yaml(tmp_path, monkeypatch):
+def test_departure_notification_settings_saves_and_reloads_from_yaml(tmp_path, monkeypatch):
     yaml_file = tmp_path / "notifications.yaml"
     monkeypatch.setitem(EventNotificationSettings.model_config, "yaml_file", str(yaml_file))
 
-    settings = EventNotificationSettings(departure_notifications=DepartureNotification(location_based_departure_times=LocationBasedDepartureTimes(api_key="secret-key", origin_address="1 Home St", safety_factor=25)))
+    settings = EventNotificationSettings(location_based_departure_times=LocationBasedDepartureTimes(api_key="secret-key", origin_address="1 Home St", safety_factor=25))
     settings.save()
 
-    saved = yaml.safe_load(yaml_file.read_text())["departure_notifications"]
+    saved = yaml.safe_load(yaml_file.read_text())
     assert saved["location_based_departure_times"]["api_key"] == "secret-key"
     assert saved["location_based_departure_times"]["origin_address"] == "1 Home St"
     assert saved["location_based_departure_times"]["safety_factor"] == 25
 
-    reloaded = EventNotificationSettings().departure_notifications
+    reloaded = EventNotificationSettings()
     assert reloaded.location_based_departure_times.api_key == "secret-key"
     assert reloaded.location_based_departure_times.safety_factor == 25
 
@@ -149,30 +173,30 @@ def test_departure_time_rules_save_and_reload_from_yaml(tmp_path, monkeypatch):
     yaml_file = tmp_path / "notifications.yaml"
     monkeypatch.setitem(EventNotificationSettings.model_config, "yaml_file", str(yaml_file))
 
-    EventNotificationSettings(departure_notifications=DepartureNotification(departure_time_rules=[DepartureTimeRule(summary_pattern="Gym", departure_minutes=11)])).save()
+    EventNotificationSettings(departure_time_rules=[DepartureTimeRule(summary_pattern="Gym", departure_minutes=11)]).save()
 
-    assert yaml.safe_load(yaml_file.read_text())["departure_notifications"]["departure_time_rules"] == [{"summary_pattern": "Gym", "departure_minutes": 11}]
-    assert EventNotificationSettings().departure_notifications.departure_time_rules == [DepartureTimeRule(summary_pattern="Gym", departure_minutes=11)]
+    assert yaml.safe_load(yaml_file.read_text())["departure_time_rules"] == [{"summary_pattern": "Gym", "departure_minutes": 11}]
+    assert EventNotificationSettings().departure_time_rules == [DepartureTimeRule(summary_pattern="Gym", departure_minutes=11)]
 
 
-def test_departure_notification_allows_disabled_with_no_api_key_or_origin_address():
-    settings = DepartureNotification(location_based_departure_times=LocationBasedDepartureTimes(enabled=False))
+def test_departure_notification_settings_allows_disabled_with_no_api_key_or_origin_address():
+    settings = EventNotificationSettings(location_based_departure_times=LocationBasedDepartureTimes(enabled=False))
 
     assert settings.location_based_departure_times.enabled is False
 
 
-def test_departure_notification_rejects_enabled_with_no_api_key():
+def test_departure_notification_settings_rejects_enabled_with_no_api_key():
     with pytest.raises(ValidationError):
-        DepartureNotification(location_based_departure_times=LocationBasedDepartureTimes(enabled=True, api_key="", origin_address="1 Home St"))
+        EventNotificationSettings(location_based_departure_times=LocationBasedDepartureTimes(enabled=True, api_key="", origin_address="1 Home St"))
 
 
-def test_departure_notification_rejects_enabled_with_no_origin_address():
+def test_departure_notification_settings_rejects_enabled_with_no_origin_address():
     with pytest.raises(ValidationError):
-        DepartureNotification(location_based_departure_times=LocationBasedDepartureTimes(enabled=True, api_key="secret-key", origin_address=""))
+        EventNotificationSettings(location_based_departure_times=LocationBasedDepartureTimes(enabled=True, api_key="secret-key", origin_address=""))
 
 
-def test_departure_notification_allows_enabled_with_api_key_and_origin_address():
-    settings = DepartureNotification(location_based_departure_times=LocationBasedDepartureTimes(enabled=True, api_key="secret-key", origin_address="1 Home St"))
+def test_departure_notification_settings_allows_enabled_with_api_key_and_origin_address():
+    settings = EventNotificationSettings(location_based_departure_times=LocationBasedDepartureTimes(enabled=True, api_key="secret-key", origin_address="1 Home St"))
 
     assert settings.location_based_departure_times.enabled is True
 
