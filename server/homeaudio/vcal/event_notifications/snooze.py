@@ -8,7 +8,7 @@ from pathlib import Path
 from homeaudio.audio.settings import NotificationRule
 from homeaudio.audio.string_utils import json_default_encoder
 from homeaudio.env import CACHE_DIRECTORY
-from homeaudio.vcal.cal.google_calendar import Event, load_event
+from homeaudio.vcal.cal.google_calendar import Event, load_timed_event
 from homeaudio.vcal.event_notifications.events import EventNotification, EventNotifications, NotificationSource, NotificationType
 
 logger = logging.getLogger(__name__)
@@ -39,7 +39,7 @@ def _serialize(event_notification: EventNotification) -> dict:
 
 def _deserialize(data: dict) -> EventNotification:
     event_notification = EventNotification(
-        event=load_event(data["event"]),
+        event=load_timed_event(data["event"]),
         type=NotificationType[data["type"]],
         offset=data["offset"],
         source=NotificationSource[data["source"]],

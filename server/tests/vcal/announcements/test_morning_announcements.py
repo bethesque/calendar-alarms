@@ -18,7 +18,7 @@ from homeaudio.vcal.morning_announcements import (
     play_morning_announcements,
     ERROR_MESSAGE_AUDIO,
 )
-from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, Event, WeatherForecast, MissingCalendarDataException
+from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, WholeDayEvent, WeatherForecast, MissingCalendarDataException
 from homeaudio.vcal.event_notifications.text_to_voice import TextToSpeechError
 from homeaudio.vcal import MORNING_GREETING, NO_EVENTS_TODAY, HAVE_A_LOVELY_DAY
 from homeaudio.audio.settings import CalendarSetting, GoogleCalendarSettings, MorningAnnouncementsSchedule, MorningAnnouncementsSettings
@@ -38,8 +38,8 @@ def fake_select_option(opts):
 
 def test_get_morning_announcements_text_includes_weather_and_facts(monkeypatch):
     # Create three events: two normal and one weather forecast
-    e1 = Event(owner="cal", summary="Meeting", description="", calendar_id="id")
-    e2 = Event(owner="cal", summary="Appointment", description="", calendar_id="id")
+    e1 = WholeDayEvent(owner="cal", summary="Meeting", description="", calendar_id="id")
+    e2 = WholeDayEvent(owner="cal", summary="Appointment", description="", calendar_id="id")
     weather = WeatherForecast(owner="cal", summary="Min 10 Max 20", description="", calendar_id="id")
 
     events = [e1, e2]
@@ -96,21 +96,21 @@ def _event_summaries(events):
 
 
 def test_get_morning_announcements_text_prefixes_single_owner_events_with_owner():
-    events = [Event(owner="Kay", summary="Swimming", description="", calendar_id="id", owner_count=1)]
+    events = [WholeDayEvent(owner="Kay", summary="Swimming", description="", calendar_id="id", owner_count=1)]
 
     assert _event_summaries(events) == ["Kay Swimming"]
 
 
 def test_get_morning_announcements_text_does_not_prefix_owner_already_in_summary():
-    events = [Event(owner="Kay", summary="Kay to dentist", description="", calendar_id="id", owner_count=1)]
+    events = [WholeDayEvent(owner="Kay", summary="Kay to dentist", description="", calendar_id="id", owner_count=1)]
 
     assert _event_summaries(events) == ["Kay to dentist"]
 
 
 def test_get_morning_announcements_text_does_not_prefix_unowned_or_group_events():
     events = [
-        Event(owner="Family", summary="Bin night", description="", calendar_id="id", owner_count=0),
-        Event(owner="Kids", summary="School", description="", calendar_id="id", owner_count=2),
+        WholeDayEvent(owner="Family", summary="Bin night", description="", calendar_id="id", owner_count=0),
+        WholeDayEvent(owner="Kids", summary="School", description="", calendar_id="id", owner_count=2),
     ]
 
     assert _event_summaries(events) == ["Bin night", "School"]
@@ -118,11 +118,11 @@ def test_get_morning_announcements_text_does_not_prefix_unowned_or_group_events(
 
 def test_get_morning_announcements_text_removes_duplicates_keeping_first_occurrence():
     events = [
-        Event(owner="Family", summary="Bin night", description="", calendar_id="id"),
-        Event(owner="Kay", summary="Swimming", description="", calendar_id="id", owner_count=1),
-        Event(owner="Family", summary="Bin night", description="", calendar_id="id2"),
-        Event(owner="Pat", summary="Swimming", description="", calendar_id="id", owner_count=1),
-        Event(owner="Kay", summary="Swimming", description="", calendar_id="id", owner_count=1),
+        WholeDayEvent(owner="Family", summary="Bin night", description="", calendar_id="id"),
+        WholeDayEvent(owner="Kay", summary="Swimming", description="", calendar_id="id", owner_count=1),
+        WholeDayEvent(owner="Family", summary="Bin night", description="", calendar_id="id2"),
+        WholeDayEvent(owner="Pat", summary="Swimming", description="", calendar_id="id", owner_count=1),
+        WholeDayEvent(owner="Kay", summary="Swimming", description="", calendar_id="id", owner_count=1),
     ]
 
     assert _event_summaries(events) == ["Bin night", "Kay Swimming", "Pat Swimming"]
@@ -130,9 +130,9 @@ def test_get_morning_announcements_text_removes_duplicates_keeping_first_occurre
 
 def test_get_morning_announcements_text_skips_events_without_a_summary():
     events = [
-        Event(owner="Kay", summary=None, description="", calendar_id="id", owner_count=1),
-        Event(owner="Family", summary="", description="", calendar_id="id"),
-        Event(owner="Family", summary="Bin night", description="", calendar_id="id"),
+        WholeDayEvent(owner="Kay", summary=None, description="", calendar_id="id", owner_count=1),
+        WholeDayEvent(owner="Family", summary="", description="", calendar_id="id"),
+        WholeDayEvent(owner="Family", summary="Bin night", description="", calendar_id="id"),
     ]
 
     assert _event_summaries(events) == ["Bin night"]
@@ -145,7 +145,7 @@ def test_get_morning_announcements_text_says_no_events_when_there_are_no_events(
 
 
 def test_get_morning_announcements_text_says_no_events_when_no_event_has_a_summary():
-    events = [Event(owner="Kay", summary=None, description="", calendar_id="id", owner_count=1)]
+    events = [WholeDayEvent(owner="Kay", summary=None, description="", calendar_id="id", owner_count=1)]
     settings = Mock(enabled_prelude_options=[], unused_facts=[])
 
     assert TextBuilder(events, [], settings).get_morning_announcements_text() == [MORNING_GREETING, NO_EVENTS_TODAY, HAVE_A_LOVELY_DAY]
@@ -273,7 +273,7 @@ class _FakeBackgroundMusicSelector:
 def test_create_audio_file_for_calendar_days_builds_the_audio_file(monkeypatch):
     calendar_days = CalendarDayList([CalendarDay(
         date=MONDAY_7_17.date(),
-        whole_day_events=[Event(owner="cal", summary="Meeting", description="", calendar_id="id")],
+        whole_day_events=[WholeDayEvent(owner="cal", summary="Meeting", description="", calendar_id="id")],
         weather_forecasts=[WeatherForecast(owner="cal", summary="Min 10 Max 20", description="", calendar_id="id")],
     )])
     monkeypatch.setattr(morning_announcements_core, "BackgroundMusicSelector", _FakeBackgroundMusicSelector)
@@ -297,8 +297,8 @@ def test_create_audio_file_for_calendar_days_excludes_events_from_calendars_not_
     calendar_days = CalendarDayList([CalendarDay(
         date=MONDAY_7_17.date(),
         whole_day_events=[
-            Event(owner="cal", summary="Meeting", description="", calendar_id="included"),
-            Event(owner="cal", summary="Bin night", description="", calendar_id="excluded"),
+            WholeDayEvent(owner="cal", summary="Meeting", description="", calendar_id="included"),
+            WholeDayEvent(owner="cal", summary="Bin night", description="", calendar_id="excluded"),
         ],
     )])
     calendars = [

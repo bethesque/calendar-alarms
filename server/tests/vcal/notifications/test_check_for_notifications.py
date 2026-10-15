@@ -67,7 +67,6 @@ def test_check_for_notifications_with_announce_event_plays_via_mpd(monkeypatch, 
             "timed_events": [
                 {
                     "description": "#announce",
-                    "end_time": None,
                     "owner": "Beth",
                     "calendar_id": "id",
                     "recurring": False,

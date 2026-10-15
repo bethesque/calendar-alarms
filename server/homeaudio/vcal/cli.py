@@ -27,13 +27,11 @@ def insert_test_event():
     # find the calendar day for the current date
     today = next(day for day in calendar_days if day.date == datetime.now().date())
     start_time = datetime.now().astimezone() + timedelta(minutes=NOTIFICATIONS_CHECK_INTERVAL_MINUTES + 1)
-    end_time = datetime.now().astimezone() + timedelta(minutes=30)
     event = Event(
         summary="A dynamically inserted test event",
         description="#announce",
         calendar_id="1",
         start_time=start_time,
-        end_time=end_time,
         recurring=False,
         location=None,
         owner="Beth",

@@ -4,7 +4,7 @@ import random
 from datetime import datetime, timedelta
 from homeaudio.audio.settings import SchoolAnnouncementsSchedule, SchoolAnnouncementsSettings
 from homeaudio.audio.sound import join_mp3s_to_wav
-from homeaudio.vcal.cal.google_calendar import Event, WeatherForecast, MissingCalendarDataException, CalendarSource, CalendarDay, CalendarDayList
+from homeaudio.vcal.cal.google_calendar import CalendarEvent, WeatherForecast, MissingCalendarDataException, CalendarSource, CalendarDay, CalendarDayList
 from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file, TextToSpeechError
 from homeaudio.vcal import TIME_TO_LEAVE_FOR_SCHOOL, PACK_AN_UMBRELLA, TODAYS_SCHOOL_EVENTS_ARE, HAVE_A_NICE_DAY, IF_YOU_WANT, NOT_THE_BOSS, NO_CALENDAR_DATA, FIX_AUTHENTICATION
 from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, POST_ANNOUNCEMENT_SILENCE
@@ -19,21 +19,21 @@ ERROR_MESSAGE_AUDIO = "audio_resources/school_announcements_error_message.mp3"
 
 logger = logging.getLogger(__name__)
 
-def is_school_event(event: Event, school_event_keywords: list[str]) -> bool:
+def is_school_event(event: CalendarEvent, school_event_keywords: list[str]) -> bool:
     keywords = [keyword.lower() for keyword in school_event_keywords]
     return any(
         keyword in (event.summary or "").lower() or keyword in (event.description or "").lower()
         for keyword in keywords
     )
 
-def get_school_events(events: list[Event], school_event_keywords: list[str]) -> list[Event]:
+def get_school_events(events: list[CalendarEvent], school_event_keywords: list[str]) -> list[CalendarEvent]:
     return [event for event in events if is_school_event(event, school_event_keywords)]
 
 
 """
 Build a list of sentences to speak aloud for the school announcement.
 """
-def build_text(school_events: list[Event], weather_forecasts: list[WeatherForecast] | None = None, rand = random.random) -> list[str]:
+def build_text(school_events: list[CalendarEvent], weather_forecasts: list[WeatherForecast] | None = None, rand = random.random) -> list[str]:
     sentences = [TIME_TO_LEAVE_FOR_SCHOOL]
 
     if any(keyword in forecast.summary.lower() for forecast in weather_forecasts or [] for keyword in ("rain", "showers")):
@@ -86,7 +86,7 @@ def _announcement_due(base_time: datetime, window: int, schedule: SchoolAnnounce
     scheduled_time = datetime.combine(base_time.date(), schedule.weekdays, tzinfo=base_time.tzinfo)
     return base_time <= scheduled_time < base_time + timedelta(minutes=window)
 
-def _create_audio_file_for_calendar_days(base_time: datetime, events: list[Event], weather_forecasts: list[WeatherForecast], tld: str, settings: SchoolAnnouncementsSettings | None = None) -> str | None:
+def _create_audio_file_for_calendar_days(base_time: datetime, events: list[CalendarEvent], weather_forecasts: list[WeatherForecast], tld: str, settings: SchoolAnnouncementsSettings | None = None) -> str | None:
     settings = settings or SchoolAnnouncementsSettings()
     school_events = get_school_events(events, settings.school_event_keywords)
     sentences = build_text(school_events, weather_forecasts)

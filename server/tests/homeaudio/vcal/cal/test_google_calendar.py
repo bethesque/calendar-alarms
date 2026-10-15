@@ -4,7 +4,7 @@ import pytest
 
 import homeaudio.vcal.cal.google_calendar as google_calendar
 from homeaudio.audio.settings import CalendarSetting
-from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, CalendarSource, Event, GoogleCalendar, MissingCalendarDataException, WeatherForecast, add_events_to_calendars, copy_min_temperature_from_existing_day, fetch_calendar_days_from_google, is_school_holiday, load_calendar_days, load_google_creds
+from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, CalendarSource, WholeDayEvent, GoogleCalendar, MissingCalendarDataException, WeatherForecast, add_events_to_calendars, copy_min_temperature_from_existing_day, fetch_calendar_days_from_google, is_school_holiday, load_calendar_days, load_data_from_any, load_google_creds, Event
 
 DEFAULT_HOLIDAY_KEYWORDS = ["no school", "school holidays"]
 
@@ -29,37 +29,37 @@ def test_load_google_creds_loads_credentials_from_token_info():
 
 
 def test_is_school_holiday_true_when_holiday_keyword_matches_case_insensitively():
-    events = [Event(owner="cal", summary="no SCHOOL today", description="", calendar_id="id")]
+    events = [WholeDayEvent(owner="cal", summary="no SCHOOL today", description="", calendar_id="id")]
 
     assert is_school_holiday(events, DEFAULT_HOLIDAY_KEYWORDS) is True
 
 
 def test_is_school_holiday_true_for_configured_keyword():
-    events = [Event(owner="cal", summary="Public Holiday", description="", calendar_id="id")]
+    events = [WholeDayEvent(owner="cal", summary="Public Holiday", description="", calendar_id="id")]
 
     assert is_school_holiday(events, ["public holiday"]) is True
 
 
 def test_is_school_holiday_false_when_no_keyword_matches():
-    events = [Event(owner="cal", summary="School Assembly", description="", calendar_id="id")]
+    events = [WholeDayEvent(owner="cal", summary="School Assembly", description="", calendar_id="id")]
 
     assert is_school_holiday(events, DEFAULT_HOLIDAY_KEYWORDS) is False
 
 
 def test_is_school_holiday_true_when_event_is_from_a_holiday_calendar():
-    events = [Event(owner="cal", summary="Labour Day", description="", calendar_id="holidays-id")]
+    events = [WholeDayEvent(owner="cal", summary="Labour Day", description="", calendar_id="holidays-id")]
 
     assert is_school_holiday(events, DEFAULT_HOLIDAY_KEYWORDS, ["holidays-id"]) is True
 
 
 def test_is_school_holiday_false_when_event_is_not_from_a_holiday_calendar():
-    events = [Event(owner="cal", summary="Labour Day", description="", calendar_id="other-id")]
+    events = [WholeDayEvent(owner="cal", summary="Labour Day", description="", calendar_id="other-id")]
 
     assert is_school_holiday(events, DEFAULT_HOLIDAY_KEYWORDS, ["holidays-id"]) is False
 
 
 def test_fetch_data_sets_holiday_on_days_with_a_holiday_calendar_event(monkeypatch, tmp_path):
-    holiday_event = Event(owner="cal", summary="Labour Day", description="", calendar_id="holidays-id")
+    holiday_event = WholeDayEvent(owner="cal", summary="Labour Day", description="", calendar_id="holidays-id")
     days = CalendarDayList([
         CalendarDay(date=date(2026, 4, 6), whole_day_events=[holiday_event]),
         CalendarDay(date=date(2026, 4, 7)),
@@ -72,7 +72,7 @@ def test_fetch_data_sets_holiday_on_days_with_a_holiday_calendar_event(monkeypat
 
 
 def test_fetch_data_sets_holiday_on_days_with_a_holiday_keyword_event(monkeypatch, tmp_path):
-    holiday_event = Event(owner="cal", summary="School holidays", description="", calendar_id="id")
+    holiday_event = WholeDayEvent(owner="cal", summary="School holidays", description="", calendar_id="id")
     days = CalendarDayList([
         CalendarDay(date=date(2026, 4, 6), whole_day_events=[holiday_event]),
         CalendarDay(date=date(2026, 4, 7)),
@@ -334,3 +334,18 @@ def test_load_calendar_days_returns_empty_list_when_the_calendar_file_is_corrupt
 
     assert load_calendar_days() == []
 
+
+
+def test_load_data_from_any_loads_whole_day_events_as_whole_day_events_and_timed_events_as_events():
+    event_fields = {"owner": "Beth", "calendar_id": "id", "summary": "Dentist", "description": ""}
+    days = [{
+        "date": "2026-04-28",
+        "whole_day_events": [{**event_fields, "start_time": None, "end_time": None}],
+        "timed_events": [{**event_fields, "start_time": "2026-04-28T12:30:00+10:00", "end_time": "2026-04-28T13:30:00+10:00"}],
+    }]
+
+    calendar_days = load_data_from_any(days)
+
+    assert type(calendar_days[0].whole_day_events[0]) is WholeDayEvent
+    assert type(calendar_days[0].timed_events[0]) is Event
+    assert calendar_days[0].timed_events[0].start_time == datetime.fromisoformat("2026-04-28T12:30:00+10:00")

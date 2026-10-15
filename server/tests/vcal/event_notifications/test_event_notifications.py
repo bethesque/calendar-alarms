@@ -75,18 +75,6 @@ def test_alarm_time_returns_none_when_no_alarm_tag_present():
     assert EventNotifications(event, SCHEDULER).notifications() == []
 
 
-def test_alarm_time_returns_none_when_start_time_missing():
-    event = Event(
-        calendar_id="id",
-        owner="Beth",
-        summary="Alarm without start",
-        description="#alarm20",
-        start_time=None,
-    )
-
-    assert EventNotifications(event, SCHEDULER).notifications() == []
-
-
 def test_notification_offset_returns_parsed_number():
     event = Event(
         calendar_id="id",
@@ -154,18 +142,6 @@ def test_notification_offset_returns_zero_when_no_alarm_tag():
         summary="Meeting",
         description="Regular description",
         start_time=datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE),
-    )
-
-    assert EventNotifications(event, SCHEDULER).notifications() == []
-
-
-def test_notification_offset_returns_zero_when_no_start_time():
-    event = Event(
-        calendar_id="id",
-        owner="Beth",
-        summary="Meeting",
-        description="#alarm20",
-        start_time=None,
     )
 
     assert EventNotifications(event, SCHEDULER).notifications() == []
@@ -607,6 +583,8 @@ def test_event_from_google_dict_captures_google_event_id():
         "summary": "Dentist",
         "description": "",
         "location": "123 Fake St",
+        "start": {"dateTime": "2026-04-28T12:30:00+10:00"},
+        "end": {"dateTime": "2026-04-28T13:30:00+10:00"},
     }
 
     event = event_from_google_dict(event_dict, calendar_id="id", calendar_name="Beth", owner_count=1)

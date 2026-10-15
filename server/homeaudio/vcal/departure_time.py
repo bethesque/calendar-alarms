@@ -190,8 +190,6 @@ def relevant_dates(now: datetime) -> set[date]:
 def _is_in_scope(event: Event, now: datetime) -> bool:
     if not event.location:
         return False
-    if event.start_time is None:
-        return False
     if event.start_time.date() not in relevant_dates(now):
         return False
     if _has_depart_tag(event.description):

@@ -30,7 +30,6 @@ def test_get_event_notifications_ignores_disabled_rules():
             "timed_events": [
                 {
                     "description": "",
-                    "end_time": None,
                     "owner": "Beth",
                     "calendar_id": "id",
                     "recurring": False,
@@ -154,7 +153,6 @@ def _announce_events_at(*times: str) -> CalendarDayList:
             "timed_events": [
                 {
                     "description": "#announce",
-                    "end_time": None,
                     "owner": "Beth",
                     "calendar_id": "id",
                     "recurring": False,

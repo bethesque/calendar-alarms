@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from homeaudio.audio.settings import NotificationRule
-from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, Event
+from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, WholeDayEvent, Event
 from homeaudio.vcal.event_notifications.events import EventNotification, EventNotifications, NotificationPlaytimeScheduler, NotificationSource, NotificationType
 from homeaudio.audio.settings import EventNotificationSchedule
 from homeaudio.vcal.event_notifications.scheduled_announcements import ScheduledAnnouncementType
@@ -34,7 +34,7 @@ def test_events_page_lists_events_under_their_day(monkeypatch):
         description="Leg day",
         start_time=datetime(2026, 4, 28, 9, 0, tzinfo=timezone.utc),
     )
-    whole_day_event = Event(owner="Beth", calendar_id="id", summary="Public holiday", description="")
+    whole_day_event = WholeDayEvent(owner="Beth", calendar_id="id", summary="Public holiday", description="")
     days = CalendarDayList([
         CalendarDay(date=date(2026, 4, 27)),
         CalendarDay(date=date(2026, 4, 28), whole_day_events=[whole_day_event], timed_events=[timed_event]),

@@ -41,21 +41,27 @@ class GoogleCalendar:
     name: str
 
 @dataclass
-class Event:
+class CalendarEvent:
     owner: str
     calendar_id: str
     summary: str
     description: str
-    start_time: datetime.datetime | None = None
-    end_time: datetime.datetime | None = None
     recurring: bool = False
     owner_count: int = 0
     location: str | None = None
     google_event_id: str | None = None
+
+@dataclass
+class WholeDayEvent(CalendarEvent):
+    pass
+
+@dataclass(kw_only=True)
+class Event(CalendarEvent):
+    start_time: datetime.datetime
     car_departure_time: datetime.datetime | None = None
 
 @dataclass
-class WeatherForecast(Event):
+class WeatherForecast(WholeDayEvent):
     recurring: bool = True
 
     def min_temperature(self) -> int | None:
@@ -70,7 +76,7 @@ class WeatherForecast(Event):
 @dataclass
 class CalendarDay:
     date: datetime.date
-    whole_day_events: list[Event] = field(default_factory=list)
+    whole_day_events: list[WholeDayEvent] = field(default_factory=list)
     weather_forecasts: list[WeatherForecast] = field(default_factory=list)
     timed_events: list[Event] = field(default_factory=list)
     date_time: datetime.datetime = None
@@ -79,7 +85,7 @@ class CalendarDay:
     def __post_init__(self):
         self.date_time = datetime.datetime.combine(self.date, datetime.time.min, tzinfo=ZoneInfo(TIMEZONE))
 
-    def all_events(self):
+    def all_events(self) -> list[CalendarEvent]:
         return self.whole_day_events + self.timed_events
 
 class CalendarDayList(UserList[CalendarDay]):
@@ -100,7 +106,7 @@ class CalendarDayList(UserList[CalendarDay]):
             available_dates = [str(day.date) for day in self]
             raise MissingCalendarDataException(f"Could not find day matching {str(date_time.date())} in days with dates: {available_dates}")
 
-def is_school_holiday(events: list[Event], holiday_keywords: list[str], holiday_calendar_ids: list[str] = ()) -> bool:
+def is_school_holiday(events: list[CalendarEvent], holiday_keywords: list[str], holiday_calendar_ids: list[str] = ()) -> bool:
     keywords = [keyword.lower() for keyword in holiday_keywords]
     return any(event.calendar_id in holiday_calendar_ids for event in events) or any(
         keyword in (event.summary or "").lower()
@@ -165,8 +171,7 @@ def add_events_to_calendars(events_from_google, calendar_id, calendar_name, disp
 
             if isinstance(event, WeatherForecast):
                 matched_day.weather_forecasts.append(event)
-            elif "dateTime" in event_dict["start"]: # has a time specified, could be any timezone
-                event.start_time = datetime.datetime.fromisoformat(event_dict["start"]["dateTime"])
+            elif isinstance(event, Event):
                 matched_day.timed_events.append(event)
             else:
                 matched_day.whole_day_events.append(event)
@@ -181,8 +186,20 @@ def event_from_google_dict(event_dict, calendar_id, calendar_name, owner_count, 
             summary=event_dict["summary"],
             description="",
         )
-    else:
+    elif "dateTime" in event_dict["start"]: # has a time specified, could be any timezone
         return Event(
+            owner=calendar_name,
+            calendar_id=calendar_id,
+            owner_count=owner_count,
+            summary=event_dict["summary"],
+            description=event_dict.get("description"),
+            recurring=bool(event_dict.get("recurringEventId")),
+            location=event_dict.get("location", None),
+            google_event_id=event_dict.get("id"),
+            start_time=datetime.datetime.fromisoformat(event_dict["start"]["dateTime"]),
+        )
+    else:
+        return WholeDayEvent(
             owner=calendar_name,
             calendar_id=calendar_id,
             owner_count=owner_count,
@@ -251,7 +268,7 @@ def load_data_from_any(days: Any) -> CalendarDayList:
         calendar_days = CalendarDayList()
         for day in days:
             whole_day_events = [load_event(event) for event in day["whole_day_events"]]
-            timed_events = [load_event(event) for event in day["timed_events"]]
+            timed_events = [load_timed_event(event) for event in day["timed_events"]]
             weather_forecasts = [load_weather_forecasts(forecasts) for forecasts in day.get("weather_forecasts", [])]
             calendar_day = CalendarDay(
                 date=datetime.date.fromisoformat(day["date"]),
@@ -267,11 +284,20 @@ def load_data_from_any(days: Any) -> CalendarDayList:
 def load_event(event_dict):
     event_args = { **event_dict }
 
-    if event_args.get("start_time"):
-        event_args["start_time"] = datetime.datetime.fromisoformat(event_args.get("start_time"))
+    # Whole day events in older cache files have null start_time/end_time/car_departure_time keys.
+    event_args.pop("start_time", None)
+    event_args.pop("end_time", None)
+    event_args.pop("car_departure_time", None)
 
-    if event_args.get("end_time"):
-        event_args["end_time"] = datetime.datetime.fromisoformat(event_args.get("end_time"))
+    return WholeDayEvent(**event_args)
+
+def load_timed_event(event_dict):
+    event_args = { **event_dict }
+
+    event_args["start_time"] = datetime.datetime.fromisoformat(event_args["start_time"])
+
+    # Timed events in older cache files have an end_time key.
+    event_args.pop("end_time", None)
 
     if event_args.get("car_departure_time"):
         event_args["car_departure_time"] = datetime.datetime.fromisoformat(event_args.get("car_departure_time"))

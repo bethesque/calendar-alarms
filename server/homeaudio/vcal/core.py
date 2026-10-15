@@ -108,7 +108,6 @@ def test_alarm():
             "timed_events": [
                 {
                     "description": "#announce",
-                    "end_time": None,
                     "owner": "Beth",
                     "calendar_id": "id",
                     "recurring": False,
@@ -117,7 +116,6 @@ def test_alarm():
                 },
                 {
                     "description": "#alarm",
-                    "end_time": None,
                     "owner": "Beth",
                     "calendar_id": "id",
                     "recurring": False,
@@ -146,7 +144,6 @@ def test_announcement():
             "timed_events": [
                 {
                     "description": "#announce",
-                    "end_time": None,
                     "owner": "Beth",
                     "calendar_id": "id",
                     "recurring": False,

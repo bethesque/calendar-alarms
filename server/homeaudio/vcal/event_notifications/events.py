@@ -107,8 +107,6 @@ def notifications_from_rules(event_to_match: "Event", rules: list[NotificationRu
     # added for the LeaveForEvent
 
     event_for_notification = event_for_notification or event_to_match
-    if not event_to_match.start_time:
-        return notifications
 
     for rule in rules:
         if not notification_rule_matches_event(event_to_match, rule):
@@ -175,7 +173,7 @@ class EventNotifications:
         return notifications
 
     def _add_event_start_notifications_from_description(self, notifications):
-        if self.event.description and self.event.start_time:
+        if self.event.description:
             matches = re.findall(r"#(alarm|announce)(\d+)?", self.event.description)
             if matches:
                 for match in matches:
@@ -193,9 +191,6 @@ class EventNotifications:
                     ))
 
     def _add_departure_time_notifications(self, notifications, departure_notification_settings: DepartureNotificationSettings):
-        if not self.event.start_time:
-            return
-
         walk_out_time = self._get_walk_out_time_from_description_tag()
 
         if walk_out_time:
@@ -212,7 +207,7 @@ class EventNotifications:
             self._add_departure_notifications(notifications, walk_out_time, departure_notification_settings, NotificationSource.DEPARTURE_TIME_RULE)
 
     def _get_walk_out_time_from_description_tag(self) -> datetime | None:
-        if self.event.description and self.event.start_time:
+        if self.event.description:
             offsets = [int(match) for match in re.findall(r"#depart(\d+)", self.event.description)]
             if offsets:
                 offset_max = max(offsets)
@@ -226,7 +221,7 @@ class EventNotifications:
     def _get_walk_out_time_from_departure_rules(self, departure_time_rules: list[DepartureTimeRule]) -> datetime | None:
         matching_rules = [ rule for rule in departure_time_rules if departure_time_rule_matches_event(self.event, rule)]
 
-        if matching_rules and self.event.start_time:
+        if matching_rules:
             departure_minutes = max([rule.departure_minutes for rule in matching_rules])
             if len(matching_rules) > 1:
                 logger.warning(f"Event {self.event.summary} matched multiple departure time rules: {matching_rules}. Using departure_minutes={departure_minutes}.")
@@ -256,7 +251,6 @@ class EventNotifications:
                             summary=f"Leave for {self.event.summary}",
                             description=self.event.description,
                             start_time=walk_out_time,
-                            end_time=self.event.start_time,
                             location=self.event.location,
                             target_event=self.event
                         )

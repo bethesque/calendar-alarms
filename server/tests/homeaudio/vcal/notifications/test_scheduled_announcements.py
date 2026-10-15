@@ -7,7 +7,7 @@ from homeaudio.audio.settings import (
     SchoolAnnouncementsSchedule,
     SchoolAnnouncementsSettings,
 )
-from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, CalendarSource, Event
+from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, CalendarSource, WholeDayEvent
 from homeaudio.vcal.event_notifications.scheduled_announcements import ScheduledAnnouncementNotification, ScheduledAnnouncementType, scheduled_announcement_notifications
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
@@ -61,7 +61,7 @@ def test_scheduled_announcement_notifications_skips_disabled_announcements(monke
 
 
 def test_scheduled_announcement_notifications_uses_holiday_morning_schedule_and_skips_school_on_a_holiday(monkeypatch):
-    holiday_event = Event(owner="Beth", calendar_id="id", summary="School holidays", description="", start_time=None)
+    holiday_event = WholeDayEvent(owner="Beth", calendar_id="id", summary="School holidays", description="")
     monday = CalendarDay(date=datetime(2026, 4, 6, tzinfo=TIMEZONE).date(), whole_day_events=[holiday_event], holiday=True)
     morning_settings = MorningAnnouncementsSettings(schedule=MorningAnnouncementsSchedule(weekdays=time(7, 17), weekends=time(9, 57), holidays=time(8, 45)))
     school_settings = SchoolAnnouncementsSettings(schedule=SchoolAnnouncementsSchedule(weekdays=time(8, 30)))

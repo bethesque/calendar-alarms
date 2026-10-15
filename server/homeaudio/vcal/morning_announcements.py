@@ -3,7 +3,7 @@ import glob
 from datetime import datetime, timedelta
 from typing import Callable
 from homeaudio.audio.settings import CalendarSetting, GoogleCalendarSettings, MorningAnnouncementsSchedule, MorningAnnouncementsSettings, MpdSettings, SnapcastSettings
-from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, Event, WeatherForecast, MissingCalendarDataException, CalendarSource, DATA_FILE
+from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, CalendarEvent, WeatherForecast, MissingCalendarDataException, CalendarSource, DATA_FILE
 from homeaudio.vcal.event_notifications.text_to_voice import gtts_tld, text_to_voice_file, TextToSpeechError
 from homeaudio.vcal import NO_CALENDAR_DATA, MORNING_GREETING, TODAYS_EVENTS_ARE, FUN_FACT_FOR_TODAY, NO_EVENTS_TODAY, HAVE_A_LOVELY_DAY
 from homeaudio.audio.sound import join_mp3s_to_wav, mix_announcement_audio
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 ERROR_MESSAGE_AUDIO = "audio_resources/morning_announcements_error_message.mp3"
 
 class TextBuilder:
-    def __init__(self, events: list[Event], weather_forecasts: list[WeatherForecast], settings: MorningAnnouncementsSettings | None = None) -> None:
+    def __init__(self, events: list[CalendarEvent], weather_forecasts: list[WeatherForecast], settings: MorningAnnouncementsSettings | None = None) -> None:
         self.events = events
         self.weather_forecasts = weather_forecasts
         self.settings = settings or MorningAnnouncementsSettings()

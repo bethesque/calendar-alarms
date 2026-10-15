@@ -136,7 +136,6 @@ def _gym_event_dict(start_time: datetime, description: str) -> dict:
         "summary": "Gym session",
         "description": description,
         "start_time": start_time.isoformat(),
-        "end_time": None,
         "recurring": False,
         "owner_count": 0,
         "location": None,
