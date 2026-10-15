@@ -4,7 +4,7 @@ from enum import Enum, IntEnum
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, tzinfo
 from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, CalendarSource, Event
-from homeaudio.audio.settings import EventNotificationSchedule, EventNotificationSettings, DepartureNotificationSettings, DepartureTimeRule, NotificationRule
+from homeaudio.audio.settings import EventNotificationSchedule, EventNotificationSettings, DepartureNotification, DepartureTimeRule, NotificationRule
 from homeaudio.vcal.departure_time import TravelTimeCache, car_departure_time_for_event, relevant_dates
 from homeaudio.vcal.notification_schedule import round_down_to_interval, event_notification_time_range_for_day, within_event_notification_operating_hours
 from homeaudio.env import NOTIFICATIONS_CHECK_INTERVAL_MINUTES
@@ -147,13 +147,13 @@ class EventNotifications:
         self.event = event
         self.scheduler = scheduler
 
-    def notifications(self, rules: list[NotificationRule] | None = None, departure_notification_settings: DepartureNotificationSettings | None = None) -> list[EventNotification]:
+    def notifications(self, rules: list[NotificationRule] | None = None, departure_notifications: DepartureNotification | None = None) -> list[EventNotification]:
 
         event_start_notifications = []
         departure_time_notifications = []
 
 
-        departure_notification_settings = departure_notification_settings or DepartureNotificationSettings()
+        departure_notifications = departure_notifications or EventNotificationSettings().departure_notifications
 
         # Add the notifications from rules first because they have reminders, and will be used in preference
         # to notifications sourced from the description if there is a duplicate.
@@ -163,7 +163,7 @@ class EventNotifications:
 
         self._add_event_start_notifications_from_description(event_start_notifications)
 
-        self._add_departure_time_notifications(departure_time_notifications, departure_notification_settings)
+        self._add_departure_time_notifications(departure_time_notifications, departure_notifications)
 
         notifications = self._deduplicate_notifications(event_start_notifications) + self._deduplicate_notifications(departure_time_notifications)
 
@@ -190,21 +190,21 @@ class EventNotifications:
                         source=NotificationSource.for_tag(tag)
                     ))
 
-    def _add_departure_time_notifications(self, notifications, departure_notification_settings: DepartureNotificationSettings):
+    def _add_departure_time_notifications(self, notifications, departure_notifications: DepartureNotification):
         walk_out_time = self._get_walk_out_time_from_description_tag()
 
         if walk_out_time:
-            self._add_departure_notifications(notifications, walk_out_time, departure_notification_settings, NotificationSource.DEPART_DESCRIPTION_TAG)
+            self._add_departure_notifications(notifications, walk_out_time, departure_notifications, NotificationSource.DEPART_DESCRIPTION_TAG)
             return
 
         if self.event.car_departure_time:
-            walk_out_time = round_to_nearest_minute(self.event.car_departure_time - timedelta(minutes=departure_notification_settings.location_based_departure_times.house_to_car_minutes))
-            self._add_departure_notifications(notifications, walk_out_time, departure_notification_settings, NotificationSource.LOCATION)
+            walk_out_time = round_to_nearest_minute(self.event.car_departure_time - timedelta(minutes=departure_notifications.location_based_departure_times.house_to_car_minutes))
+            self._add_departure_notifications(notifications, walk_out_time, departure_notifications, NotificationSource.LOCATION)
             return
 
-        walk_out_time = self._get_walk_out_time_from_departure_rules(departure_notification_settings.departure_time_rules)
+        walk_out_time = self._get_walk_out_time_from_departure_rules(departure_notifications.departure_time_rules)
         if walk_out_time:
-            self._add_departure_notifications(notifications, walk_out_time, departure_notification_settings, NotificationSource.DEPARTURE_TIME_RULE)
+            self._add_departure_notifications(notifications, walk_out_time, departure_notifications, NotificationSource.DEPARTURE_TIME_RULE)
 
     def _get_walk_out_time_from_description_tag(self) -> datetime | None:
         if self.event.description:
@@ -229,14 +229,14 @@ class EventNotifications:
         else:
             return None
 
-    def _add_departure_notifications(self, notifications, walk_out_time: datetime, departure_notification_settings: DepartureNotificationSettings, source: NotificationSource):
+    def _add_departure_notifications(self, notifications, walk_out_time: datetime, departure_notifications: DepartureNotification, source: NotificationSource):
         leave_event = self.leave_for_event(walk_out_time)
 
         # Do the rules ones first because they'll override the non-rules ones if there are notifications at the same time
-        notifications.extend(notifications_from_rules(self.event, departure_notification_settings.notification_rules, source, leave_event))
+        notifications.extend(notifications_from_rules(self.event, departure_notifications.notification_rules, source, leave_event))
 
         leave_event_targets = _targets_from_description(leave_event.description)
-        notifications.append(EventNotification(type=NotificationType.ANNOUNCE, offset=departure_notification_settings.heads_up_reminder_lead_time, event=leave_event, targets=leave_event_targets, source=source.with_heads_up_reminder()))
+        notifications.append(EventNotification(type=NotificationType.ANNOUNCE, offset=departure_notifications.heads_up_reminder_lead_time, event=leave_event, targets=leave_event_targets, source=source.with_heads_up_reminder()))
         notifications.append(EventNotification(type=NotificationType.ANNOUNCE, offset=0, event=leave_event, targets=leave_event_targets, source=source))
 
 
@@ -282,12 +282,12 @@ class NotificationPlaytimeScheduler:
         return max(datetime_range.start, min(round_down_to_interval(local_time, self.window), last_tick))
 
 class NotificationFinder:
-    def __init__(self, calendar_days: CalendarDayList, base_time, scheduler: NotificationPlaytimeScheduler, notification_rules=None, departure_notification_settings: DepartureNotificationSettings | None = None):
+    def __init__(self, calendar_days: CalendarDayList, base_time, scheduler: NotificationPlaytimeScheduler, notification_rules=None, departure_notifications: DepartureNotification | None = None):
         self.calendar_days = calendar_days
         self.base_time = base_time
         self.scheduler = scheduler
         self.notification_rules = notification_rules or []
-        self.departure_notification_settings = departure_notification_settings
+        self.departure_notifications = departure_notifications
 
 
     def find_notification_events(self):
@@ -298,7 +298,7 @@ class NotificationFinder:
 
         for day in self.calendar_days:
             for event in day.timed_events:
-                event_notifications = EventNotifications(event, self.scheduler).notifications(self.notification_rules, self.departure_notification_settings)
+                event_notifications = EventNotifications(event, self.scheduler).notifications(self.notification_rules, self.departure_notifications)
                 matching_events.extend(n for n in event_notifications if n.play_datetime == self.base_time)
 
         self._log_results(matching_events)
@@ -320,13 +320,13 @@ class NotificationFinder:
         logger.info("Total matched events: %d", len(results))
         return results
 
-def get_event_notifications(base_time, scheduler: NotificationPlaytimeScheduler, calendar_data: CalendarDayList, event_notification_settings: EventNotificationSettings, departure_notification_settings: DepartureNotificationSettings | None = None):
+def get_event_notifications(base_time, scheduler: NotificationPlaytimeScheduler, calendar_data: CalendarDayList, event_notification_settings: EventNotificationSettings):
     notification_rules = event_notification_settings.enabled_notification_rules()
-    alarm_finder = NotificationFinder(calendar_data, base_time, scheduler, notification_rules, departure_notification_settings)
+    alarm_finder = NotificationFinder(calendar_data, base_time, scheduler, notification_rules, event_notification_settings.departure_notifications)
     event_notifications = alarm_finder.find_notification_events()
     return event_notifications
 
-def get_all_event_notifications(event_notification_settings: EventNotificationSettings | None = None, calendar_source: CalendarSource = CalendarSource(), departure_notification_settings: DepartureNotificationSettings | None = None):
+def get_all_event_notifications(event_notification_settings: EventNotificationSettings | None = None, calendar_source: CalendarSource = CalendarSource()):
     event_notification_settings = event_notification_settings or EventNotificationSettings()
     calendar_days = calendar_source.load_data_from_file()
 
@@ -335,7 +335,7 @@ def get_all_event_notifications(event_notification_settings: EventNotificationSe
     notifications = []
     for day in calendar_days:
         for event in day.timed_events:
-            notifications.extend(EventNotifications(event, scheduler).notifications(notification_rules, departure_notification_settings))
+            notifications.extend(EventNotifications(event, scheduler).notifications(notification_rules, event_notification_settings.departure_notifications))
 
     return notifications
 
@@ -347,7 +347,7 @@ def get_calendar_refreshed_at(calendar_source: CalendarSource = CalendarSource()
     return calendar_source.refreshed_at
 
 def update_calendar_travel_times() -> None:
-    departure_notification_settings = DepartureNotificationSettings()
+    departure_notifications = EventNotificationSettings().departure_notifications
     calendar_source = CalendarSource()
     calendar_days = calendar_source.load_data_from_file()
 
@@ -362,7 +362,7 @@ def update_calendar_travel_times() -> None:
         for day in relevant_days:
             for event in day.timed_events:
                 try:
-                    event.car_departure_time = car_departure_time_for_event(event, departure_notification_settings.location_based_departure_times, cache, now)
+                    event.car_departure_time = car_departure_time_for_event(event, departure_notifications.location_based_departure_times, cache, now)
                     if event.car_departure_time:
                         logger.info(f"Set departure time for {event.summary} to {event.car_departure_time}")
                 except Exception:

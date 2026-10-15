@@ -9,7 +9,6 @@ from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from homeaudio.audio.settings import (
-    DepartureNotificationSettings,
     EventNotificationSchedule,
     EventNotificationSettings,
     MorningAnnouncementsSchedule,
@@ -121,7 +120,7 @@ def refresh_calendar(base_time: datetime) -> None:
         logger.exception("Error refreshing calendar data at %s", base_time)
         return
 
-    if not DepartureNotificationSettings().location_based_departure_times.enabled:
+    if not EventNotificationSettings().departure_notifications.location_based_departure_times.enabled:
         return
 
     try:

@@ -5,7 +5,7 @@ import pytest
 
 from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, CalendarSource, Event, event_from_google_dict
 from homeaudio.vcal.event_notifications.events import EventNotifications, LeaveForEvent, NotificationPlaytimeScheduler, NotificationSource, NotificationType
-from homeaudio.audio.settings import DepartureNotificationSettings, DepartureTimeRule, LocationBasedDepartureTimes, EventNotificationSchedule
+from homeaudio.audio.settings import DepartureNotification, DepartureTimeRule, LocationBasedDepartureTimes, EventNotificationSchedule
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
 SCHEDULER = NotificationPlaytimeScheduler(TIMEZONE, EventNotificationSchedule(), [], 5)
@@ -245,7 +245,7 @@ def test_travel_notifications():
         start_time=start_time,
     )
 
-    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notification_settings=_departure_notification_settings(heads_up_reminder_lead_time=5))
+    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notifications=_departure_notifications(heads_up_reminder_lead_time=5))
 
     assert len(notifications) == 2
     assert notifications[0].event.summary == "Leave for Morning meeting"
@@ -259,10 +259,10 @@ def test_travel_notifications():
     assert notifications[1].event.start_time == datetime.datetime(2026, 4, 28, 12, 10, tzinfo=TIMEZONE)
 
 
-def _departure_notification_settings(house_to_car_minutes=5, **overrides) -> DepartureNotificationSettings:
+def _departure_notifications(house_to_car_minutes=5, **overrides) -> DepartureNotification:
     defaults = dict(heads_up_reminder_lead_time=10)
     defaults.update(overrides)
-    return DepartureNotificationSettings(location_based_departure_times=LocationBasedDepartureTimes(house_to_car_minutes=house_to_car_minutes), **defaults)
+    return DepartureNotification(location_based_departure_times=LocationBasedDepartureTimes(house_to_car_minutes=house_to_car_minutes), **defaults)
 
 
 def test_event_with_car_departure_time_builds_computed_travel_notifications():
@@ -279,7 +279,7 @@ def test_event_with_car_departure_time_builds_computed_travel_notifications():
         car_departure_time=car_departure_time,
     )
 
-    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notification_settings=_departure_notification_settings(house_to_car_minutes=5, heads_up_reminder_lead_time=10))
+    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notifications=_departure_notifications(house_to_car_minutes=5, heads_up_reminder_lead_time=10))
 
     # walk_out_time = car_departure_time - house_to_car_minutes = 11:55
     walk_out_time = datetime.datetime(2026, 4, 28, 11, 55, tzinfo=TIMEZONE)
@@ -310,7 +310,7 @@ def test_computed_walk_out_time_is_rounded_to_the_nearest_minute(car_departure_s
         car_departure_time=datetime.datetime(2026, 4, 28, 12, 0, car_departure_seconds, 500, tzinfo=TIMEZONE),
     )
 
-    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notification_settings=_departure_notification_settings(house_to_car_minutes=5))
+    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notifications=_departure_notifications(house_to_car_minutes=5))
 
     walk_out_time = datetime.datetime(2026, 4, 28, 11, expected_walk_out_minute, tzinfo=TIMEZONE)
     assert len(notifications) == 2
@@ -330,7 +330,7 @@ def test_leave_for_event_notifications_inherit_targets_from_original_event():
         car_departure_time=car_departure_time,
     )
 
-    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notification_settings=_departure_notification_settings(house_to_car_minutes=5, heads_up_reminder_lead_time=10))
+    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notifications=_departure_notifications(house_to_car_minutes=5, heads_up_reminder_lead_time=10))
 
     assert len(notifications) == 2
     assert all(isinstance(notification.event, LeaveForEvent) for notification in notifications)
@@ -352,7 +352,7 @@ def test_explicit_numbered_travel_tag_takes_precedence_over_computed_car_departu
         car_departure_time=datetime.datetime(2026, 4, 28, 11, 0, tzinfo=TIMEZONE),
     )
 
-    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notification_settings=_departure_notification_settings())
+    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notifications=_departure_notifications())
 
     assert len(notifications) == 2
     assert all(n.event.start_time == datetime.datetime(2026, 4, 28, 12, 10, tzinfo=TIMEZONE) for n in notifications)
@@ -372,7 +372,7 @@ def test_bare_travel_tag_does_nothing():
         car_departure_time=datetime.datetime(2026, 4, 28, 11, 0, tzinfo=TIMEZONE),
     )
 
-    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notification_settings=_departure_notification_settings())
+    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notifications=_departure_notifications())
 
     assert len(notifications) == 2
     walk_out_time = datetime.datetime(2026, 4, 28, 10, 55, tzinfo=TIMEZONE)
@@ -406,7 +406,7 @@ def test_computed_departure_notification_handles_missing_description():
         car_departure_time=datetime.datetime(2026, 4, 28, 11, 0, tzinfo=TIMEZONE),
     )
 
-    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notification_settings=_departure_notification_settings())
+    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notifications=_departure_notifications())
 
     assert len(notifications) == 2
 
@@ -430,9 +430,9 @@ def test_tag_based_notification_and_departure_notification_at_the_same_time_are_
     # house_to_car_minutes=0 puts the walk_out_time at car_departure_time (12:00), and
     # heads_up_reminder_lead_time=20 puts the computed heads-up notification at 11:40 - the same
     # notification_time and offset as the #announce20 tag notification.
-    settings = _departure_notification_settings(house_to_car_minutes=0, heads_up_reminder_lead_time=20)
+    settings = _departure_notifications(house_to_car_minutes=0, heads_up_reminder_lead_time=20)
 
-    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notification_settings=settings)
+    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notifications=settings)
 
     matching_time = datetime.datetime(2026, 4, 28, 11, 40, tzinfo=TIMEZONE)
     coincident_notifications = [n for n in notifications if n.notification_time == matching_time]
@@ -474,7 +474,7 @@ def test_departure_notifications_have_the_source_of_their_walk_out_time(descript
         car_departure_time=car_departure_time,
     )
 
-    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notification_settings=_departure_notification_settings(departure_time_rules=departure_time_rules))
+    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notifications=_departure_notifications(departure_time_rules=departure_time_rules))
 
     assert [n.source for n in notifications] == [expected_source.with_heads_up_reminder(), expected_source]
 
@@ -487,9 +487,9 @@ def test_departure_time_rule_sets_walk_out_time_relative_to_event_start():
         description="",
         start_time=datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE),
     )
-    settings = _departure_notification_settings(departure_time_rules=[DepartureTimeRule(summary_pattern="gym", departure_minutes=15)])
+    settings = _departure_notifications(departure_time_rules=[DepartureTimeRule(summary_pattern="gym", departure_minutes=15)])
 
-    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notification_settings=settings)
+    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notifications=settings)
 
     assert len(notifications) == 2
     assert all(n.event.start_time == datetime.datetime(2026, 4, 28, 12, 15, tzinfo=TIMEZONE) for n in notifications)
@@ -503,9 +503,9 @@ def test_departure_time_rule_that_does_not_match_adds_no_notifications():
         description="",
         start_time=datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE),
     )
-    settings = _departure_notification_settings(departure_time_rules=[DepartureTimeRule(summary_pattern="gym", departure_minutes=15)])
+    settings = _departure_notifications(departure_time_rules=[DepartureTimeRule(summary_pattern="gym", departure_minutes=15)])
 
-    assert EventNotifications(event, SCHEDULER).notifications(departure_notification_settings=settings) == []
+    assert EventNotifications(event, SCHEDULER).notifications(departure_notifications=settings) == []
 
 
 def test_multiple_matching_departure_time_rules_use_the_earliest_walk_out_time(caplog):
@@ -516,12 +516,12 @@ def test_multiple_matching_departure_time_rules_use_the_earliest_walk_out_time(c
         description="",
         start_time=datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE),
     )
-    settings = _departure_notification_settings(departure_time_rules=[
+    settings = _departure_notifications(departure_time_rules=[
         DepartureTimeRule(summary_pattern="gym", departure_minutes=15),
         DepartureTimeRule(summary_pattern="session", departure_minutes=25),
     ])
 
-    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notification_settings=settings)
+    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notifications=settings)
 
     assert len(notifications) == 2
     assert all(n.event.start_time == datetime.datetime(2026, 4, 28, 12, 5, tzinfo=TIMEZONE) for n in notifications)
@@ -537,9 +537,9 @@ def test_computed_car_departure_time_takes_precedence_over_departure_time_rule()
         start_time=datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE),
         car_departure_time=datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE),
     )
-    settings = _departure_notification_settings(house_to_car_minutes=5, departure_time_rules=[DepartureTimeRule(summary_pattern="gym", departure_minutes=15)])
+    settings = _departure_notifications(house_to_car_minutes=5, departure_time_rules=[DepartureTimeRule(summary_pattern="gym", departure_minutes=15)])
 
-    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notification_settings=settings)
+    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notifications=settings)
 
     assert len(notifications) == 2
     assert all(n.event.start_time == datetime.datetime(2026, 4, 28, 11, 55, tzinfo=TIMEZONE) for n in notifications)
@@ -553,9 +553,9 @@ def test_numbered_depart_tag_takes_precedence_over_departure_time_rule():
         description="#depart20",
         start_time=datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE),
     )
-    settings = _departure_notification_settings(departure_time_rules=[DepartureTimeRule(summary_pattern="gym", departure_minutes=15)])
+    settings = _departure_notifications(departure_time_rules=[DepartureTimeRule(summary_pattern="gym", departure_minutes=15)])
 
-    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notification_settings=settings)
+    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notifications=settings)
 
     assert len(notifications) == 2
     assert all(n.event.start_time == datetime.datetime(2026, 4, 28, 12, 10, tzinfo=TIMEZONE) for n in notifications)
@@ -570,7 +570,7 @@ def test_multiple_numbered_depart_tags_use_the_earliest_walk_out_time(caplog):
         start_time=datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE),
     )
 
-    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notification_settings=_departure_notification_settings())
+    notifications = EventNotifications(event, SCHEDULER).notifications(departure_notifications=_departure_notifications())
 
     assert len(notifications) == 2
     assert all(n.event.start_time == datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE) for n in notifications)

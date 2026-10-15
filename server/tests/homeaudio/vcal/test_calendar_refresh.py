@@ -262,6 +262,10 @@ def test_refresh_calendar_fetches_and_saves(monkeypatch):
     monkeypatch.setattr(
         "homeaudio.vcal.calendar_refresh.refresh_calendar_data", lambda: calls.append("refreshed")
     )
+    monkeypatch.setattr(
+        "homeaudio.vcal.calendar_refresh.EventNotificationSettings",
+        lambda: SimpleNamespace(departure_notifications=SimpleNamespace(location_based_departure_times=SimpleNamespace(enabled=True))),
+    )
     monkeypatch.setattr("homeaudio.vcal.calendar_refresh.update_calendar_travel_times", lambda: calls.append("travel_times_updated"))
 
     refresh_calendar(datetime.now(TIMEZONE))
@@ -303,8 +307,8 @@ def test_refresh_calendar_does_not_raise_when_updating_travel_times_fails(monkey
 def test_refresh_calendar_skips_travel_time_update_when_departure_notifications_disabled(monkeypatch):
     monkeypatch.setattr("homeaudio.vcal.calendar_refresh.refresh_calendar_data", lambda: None)
     monkeypatch.setattr(
-        "homeaudio.vcal.calendar_refresh.DepartureNotificationSettings",
-        lambda: SimpleNamespace(location_based_departure_times=SimpleNamespace(enabled=False)),
+        "homeaudio.vcal.calendar_refresh.EventNotificationSettings",
+        lambda: SimpleNamespace(departure_notifications=SimpleNamespace(location_based_departure_times=SimpleNamespace(enabled=False))),
     )
     calls = []
     monkeypatch.setattr("homeaudio.vcal.calendar_refresh.update_calendar_travel_times", lambda: calls.append("travel_times_updated"))
@@ -317,8 +321,8 @@ def test_refresh_calendar_skips_travel_time_update_when_departure_notifications_
 def test_refresh_calendar_updates_travel_times_when_departure_notifications_enabled(monkeypatch):
     monkeypatch.setattr("homeaudio.vcal.calendar_refresh.refresh_calendar_data", lambda: None)
     monkeypatch.setattr(
-        "homeaudio.vcal.calendar_refresh.DepartureNotificationSettings",
-        lambda: SimpleNamespace(location_based_departure_times=SimpleNamespace(enabled=True)),
+        "homeaudio.vcal.calendar_refresh.EventNotificationSettings",
+        lambda: SimpleNamespace(departure_notifications=SimpleNamespace(location_based_departure_times=SimpleNamespace(enabled=True))),
     )
     calls = []
     monkeypatch.setattr("homeaudio.vcal.calendar_refresh.update_calendar_travel_times", lambda: calls.append("travel_times_updated"))

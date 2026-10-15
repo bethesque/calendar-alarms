@@ -1,9 +1,9 @@
 import pytest
 
-from homeaudio.audio.settings import DepartureNotificationSettings
+from homeaudio.audio.settings import EventNotificationSettings
 
 
 @pytest.fixture(autouse=True)
-def isolate_departure_notification_settings(tmp_path, monkeypatch):
-    """Stops DepartureNotificationSettings() from reading departure_time_rules from the real config/ dir."""
-    monkeypatch.setitem(DepartureNotificationSettings.model_config, "yaml_file", str(tmp_path / "departure_notifications.yaml"))
+def isolate_event_notification_settings(tmp_path, monkeypatch):
+    """Stops EventNotificationSettings() from reading departure_notifications from the real config/ dir."""
+    monkeypatch.setitem(EventNotificationSettings.model_config, "yaml_file", str(tmp_path / "notifications.yaml"))

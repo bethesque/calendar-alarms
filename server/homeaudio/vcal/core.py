@@ -9,7 +9,7 @@ from homeaudio.vcal import NOTHING_TO_SNOOZE, snoozing_message
 from homeaudio.audio.mpd import mpd_connection
 from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, POST_ANNOUNCEMENT_SILENCE
 from homeaudio.audio.scene import scene_for_env
-from homeaudio.audio.settings import GoogleCalendarSettings, MorningAnnouncementsSettings, SchoolAnnouncementsSettings, SnapcastSettings, MpdSettings, EventNotificationSettings, DepartureNotificationSettings
+from homeaudio.audio.settings import GoogleCalendarSettings, MorningAnnouncementsSettings, SchoolAnnouncementsSettings, SnapcastSettings, MpdSettings, EventNotificationSettings
 
 from homeaudio.audio.snapserver import Snapserver
 from homeaudio.vcal.event_notifications.snooze import LastPlayedState, SnoozeState
@@ -194,13 +194,13 @@ def test_notification(event: dict, play_datetime: datetime, notification_time: d
 # their announcement/alarm audio files, without playing them. Used by the daemon's early wake-up
 # (homeaudio/vcal/notifications/daemon.py) so it can build audio ahead of a scheduled tick and play
 # right on time; check_for_notifications above uses it too, just followed immediately by playing.
-def prepare_notification_files(base_time, calendar_days: CalendarDayList, check_interval_minutes: int, event_notification_settings: EventNotificationSettings | None = None, departure_notification_settings: DepartureNotificationSettings | None = None) -> NotificationFiles | None:
+def prepare_notification_files(base_time, calendar_days: CalendarDayList, check_interval_minutes: int, event_notification_settings: EventNotificationSettings | None = None) -> NotificationFiles | None:
     event_notification_settings = event_notification_settings or EventNotificationSettings()
 
     tld = gtts_tld()
 
     scheduler = NotificationPlaytimeScheduler(base_time.tzinfo, event_notification_settings.schedule, calendar_days, check_interval_minutes)
-    announcements_file, alarm_audio_file = check_for_event_notifications(base_time, scheduler, calendar_days, tld, event_notification_settings, departure_notification_settings)
+    announcements_file, alarm_audio_file = check_for_event_notifications(base_time, scheduler, calendar_days, tld, event_notification_settings)
 
     window = scheduler.window
     scheduled_announcements_files = []

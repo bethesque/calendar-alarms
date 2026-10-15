@@ -14,7 +14,7 @@ from homeaudio.vcal.event_notifications.events import get_all_event_notification
 from homeaudio.vcal.event_notifications.scheduled_announcements import scheduled_announcement_notifications, ScheduledAnnouncementNotification, ScheduledAnnouncementType
 from homeaudio.vcal.event_notifications.models import TestNotificationRequest, PlayScheduledAnnouncementRequest, EventSummaryResponse, NotificationResponseItem, NotificationsResponse
 from homeaudio.vcal.event_notifications.events import EventNotification, LeaveForEvent
-from homeaudio.audio.settings import SnapcastSettings, DepartureNotificationSettings
+from homeaudio.audio.settings import SnapcastSettings, EventNotificationSettings
 from homeaudio.vcal.cal.google_calendar import refresh_calendar_data
 from homeaudio.audio.string_utils import json_default_encoder
 from homeaudio.env import APP_NAME
@@ -252,7 +252,7 @@ class AlarmRoutes:
         return Response(content=message, status_code=200, media_type="text/plain")
 
     async def recompute_departure_times_endpoint(self):
-        if not DepartureNotificationSettings().location_based_departure_times.enabled:
+        if not EventNotificationSettings().departure_notifications.location_based_departure_times.enabled:
             return Response(content="Departure notifications are disabled", status_code=409, media_type="text/plain")
         message = self.alarm_handler.recompute_departure_times()
         return Response(content=message, status_code=200, media_type="text/plain")

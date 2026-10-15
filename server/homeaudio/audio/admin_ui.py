@@ -75,7 +75,7 @@ class AdminRoutes:
                         props=self.calendar_select_props,
                         placeholder="Any calendar"
                     ),
-                    "departure_notification_settings.notification_rules.[].calendar_id": FieldConfig(
+                    "event_notification_settings.departure_notifications.notification_rules.[].calendar_id": FieldConfig(
                         display=DisplayConfig(
                             title="Calendar",
                             subtitle="Only match events from this calendar",
@@ -163,7 +163,7 @@ class AdminRoutes:
                             "options": tld_options
                         }
                     ),
-                    "departure_notification_settings.location_based_departure_times.api_key": FieldConfig(
+                    "event_notification_settings.departure_notifications.location_based_departure_times.api_key": FieldConfig(
                         renderer=Renderer.PASSWORD
                     ),
                 }

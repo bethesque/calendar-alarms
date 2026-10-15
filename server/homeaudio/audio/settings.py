@@ -200,6 +200,29 @@ class EventNotificationSchedule(BaseModel):
     weekends: TimeRange = Field(default=TimeRange(start=time(9, 0), end=time(21)))
     holidays: TimeRange = Field(default=TimeRange(start=time(9, 0), end=time(21)))
 
+class LocationBasedDepartureTimes(BaseModel):
+    enabled: bool = Field(default=False, description="Whether to calculate and announce departure times for events with locations.")
+    api_key: str = Field(default="", description="Google Maps Platform API key")
+    origin_address: str = Field(default="", description="The address to calculate travel time from")
+    parking_minutes: int = Field(default=5, ge=0, description="Time to park and walk to the event location")
+    house_to_car_minutes: int = Field(default=5, ge=0, description="Time to collect belongings, walk out of the house and get into the car")
+    safety_factor: int = Field(default=10, ge=0, le=100, description="Percentage to pad the travel duration by because sometimes Google Maps is a bit optimistic")
+    recompute_interval_minutes: int = Field(default=20, ge=1, description="How often to re-calculate the travel time to ensure the most accurate results.")
+
+    @model_validator(mode="after")
+    def _require_api_key_and_origin_when_enabled(self) -> "LocationBasedDepartureTimes":
+        if self.enabled and not (self.api_key and self.origin_address):
+            raise ValueError("api_key and origin_address must be set when enabled is true")
+        return self
+
+class DepartureNotification(BaseModel):
+    location_based_departure_times: LocationBasedDepartureTimes = Field(default_factory=LocationBasedDepartureTimes, description="Calculate departure times based on the event's location")
+    heads_up_reminder_lead_time: int = Field(default=10, ge=0, description="Minutes before the walk-out time announcement that the heads-up reminder plays")
+
+    departure_time_rules: list[DepartureTimeRule] = Field(default_factory=list, description="Rules for calculating the departure time based on the summary")
+    notification_rules: list[DepartureNotificationRule] = Field(default_factory=list, description="Rules for creating departure notifications from event descriptions")
+
+
 class EventNotificationSettings(YAMLSettings):
     enabled: bool = Field(default=True, description="Enables/disables event and departure notifications")
     notification_rules: list[NotificationRule] = Field(default_factory=list, description="Rules for creating notifications from event descriptions")
@@ -207,6 +230,7 @@ class EventNotificationSettings(YAMLSettings):
     announcements: AnnouncementSettings = Field(default_factory=AnnouncementSettings)
     schedule: EventNotificationSchedule = Field(default_factory=EventNotificationSchedule)
     snooze_minutes: int = Field(default=10, ge=1, multiple_of=5, description="Minutes to wait before replaying a snoozed alarm or announcement")
+    departure_notifications: DepartureNotification = Field(default_factory=DepartureNotification, description="Departure notification settings")
 
     model_config = SettingsConfigDict(
         yaml_file=f"{CONFIG_DIR}/notifications.yaml"
@@ -214,7 +238,7 @@ class EventNotificationSettings(YAMLSettings):
 
     def _dump_for_save(self) -> dict:
         # label is a computed, read-only field for the UI - it shouldn't be persisted.
-        return self.model_dump(mode="json", exclude={"notification_rules": {"__all__": {"label"}}})
+        return self.model_dump(mode="json", exclude={"notification_rules": {"__all__": {"label"}}, "departure_notifications": {"notification_rules": {"__all__": {"label"}}}})
 
     def enabled_notification_rules(self) -> list[NotificationRule]:
         return [rule for rule in self.notification_rules if rule.enabled]
@@ -322,36 +346,6 @@ class HomeAssistantSettings(YAMLSettings):
         yaml_file=f"{CONFIG_DIR}/home_assistant.yaml"
     )
 
-class LocationBasedDepartureTimes(BaseModel):
-    enabled: bool = Field(default=False, description="Whether to calculate and announce departure times for events with locations.")
-    api_key: str = Field(default="", description="Google Maps Platform API key")
-    origin_address: str = Field(default="", description="The address to calculate travel time from")
-    parking_minutes: int = Field(default=5, ge=0, description="Time to park and walk to the event location")
-    house_to_car_minutes: int = Field(default=5, ge=0, description="Time to collect belongings, walk out of the house and get into the car")
-    safety_factor: int = Field(default=10, ge=0, le=100, description="Percentage to pad the travel duration by because sometimes Google Maps is a bit optimistic")
-    recompute_interval_minutes: int = Field(default=20, ge=1, description="How often to re-calculate the travel time to ensure the most accurate results.")
-
-
-class DepartureNotificationSettings(YAMLSettings):
-    location_based_departure_times: LocationBasedDepartureTimes = Field(default_factory=LocationBasedDepartureTimes, description="Calculate departure times based on the event's location")
-    heads_up_reminder_lead_time: int = Field(default=10, ge=0, description="Minutes before the walk-out time announcement that the heads-up reminder plays")
-
-    departure_time_rules: list[DepartureTimeRule] = Field(default_factory=list, description="Rules for calculating the departure time based on the summary")
-    notification_rules: list[DepartureNotificationRule] = Field(default_factory=list, description="Rules for creating departure notifications from event descriptions")
-
-    model_config = SettingsConfigDict(
-        yaml_file=f"{CONFIG_DIR}/departure_notifications.yaml"
-    )
-
-    def _dump_for_save(self) -> dict:
-        return self.model_dump(mode="json", exclude={"notification_rules": {"__all__": {"label"}}})
-
-    @model_validator(mode="after")
-    def _require_api_key_and_origin_when_enabled(self) -> "DepartureNotificationSettings":
-        if self.location_based_departure_times.enabled and not (self.location_based_departure_times.api_key and self.location_based_departure_times.origin_address):
-            raise ValueError("api_key and origin_address must be set when enabled is true")
-        return self
-
 class HousieTalkieSettings(YAMLSettings):
     target_integrated_loudness: float = Field(default=-19.0, description="Target integrated loudness in LUFS", le=0)
     target_true_peak: float = Field(default=-1.5, description="Target true peak ceiling in dBTP", le=0)
@@ -373,7 +367,6 @@ class GoogleTextToSpeechSettings(YAMLSettings):
 
 class AppSettings(BaseSettings):
     main_settings: MainSettings = Field(default_factory=MainSettings, description="Main settings")
-    departure_notification_settings: DepartureNotificationSettings = Field(default_factory=DepartureNotificationSettings, description="Travel time settings")
     event_notification_settings: EventNotificationSettings = Field(default_factory=EventNotificationSettings, description="Notification settings")
     google_calendar_settings: GoogleCalendarSettings = Field(default_factory=GoogleCalendarSettings, description="Google Calendar settings") # type: ignore
     google_text_to_speech_settings: GoogleTextToSpeechSettings = Field(default_factory=GoogleTextToSpeechSettings, description="Google Text to Speech settings")
@@ -396,4 +389,3 @@ class AppSettings(BaseSettings):
         self.school_announcements_settings.save()
         self.mpd_settings.save()
         self.snapcast_settings.save()
-        self.departure_notification_settings.save()
