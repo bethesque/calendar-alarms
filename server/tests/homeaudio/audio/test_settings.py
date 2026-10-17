@@ -10,7 +10,7 @@ from homeaudio.audio.settings import EventNotificationSettings, TimeRange, Notif
 def test_label_uses_summary_pattern_only():
     rule = NotificationRule(summary_pattern="gym", offset_minutes=75)
 
-    assert rule.label == "When 'gym' then alarm 75 minutes before event start time"
+    assert rule.label == "When 'gym' then announce 75 minutes before event start time"
 
 
 def test_label_joins_multiple_patterns_with_slash():
@@ -21,37 +21,37 @@ def test_label_joins_multiple_patterns_with_slash():
         offset_minutes=75,
     )
 
-    assert rule.label == "When 'gym/strength/Croydon' then alarm 75 minutes before event start time"
+    assert rule.label == "When 'gym/strength/Croydon' then announce 75 minutes before event start time"
 
 
 def test_label_falls_back_to_calendar_id_when_no_patterns_set():
     rule = NotificationRule(calendar_id="beth-calendar", offset_minutes=20)
 
-    assert rule.label == "When 'beth-calendar' then alarm 20 minutes before event start time"
+    assert rule.label == "When 'beth-calendar' then announce 20 minutes before event start time"
 
 
 def test_label_reflects_zero_offset():
     rule = NotificationRule(summary_pattern="gym", offset_minutes=0)
 
-    assert rule.label == "When 'gym' then alarm 0 minutes before event start time"
+    assert rule.label == "When 'gym' then announce 0 minutes before event start time"
 
 
 def test_departure_notification_rule_label_counts_down_to_departure():
     rule = NotificationRule(summary_pattern="gym", offset_minutes=10, notification_timing=NotificationTiming.DEPARTURE_TIME)
 
-    assert rule.label == "When 'gym' then alarm 10 minutes before departure time"
+    assert rule.label == "When 'gym' then announce 10 minutes before departure time"
 
 
 def test_label_includes_notification_type():
-    rule = NotificationRule(summary_pattern="gym", offset_minutes=10, notification_type="announce")
+    rule = NotificationRule(summary_pattern="gym", offset_minutes=10, notification_type="alarm")
 
-    assert rule.label == "When 'gym' then announce 10 minutes before event start time"
+    assert rule.label == "When 'gym' then alarm 10 minutes before event start time"
 
 
 def test_label_is_included_in_model_dump():
     rule = NotificationRule(summary_pattern="gym", offset_minutes=75)
 
-    assert rule.model_dump()["label"] == "When 'gym' then alarm 75 minutes before event start time"
+    assert rule.model_dump()["label"] == "When 'gym' then announce 75 minutes before event start time"
 
 
 def test_label_is_included_in_standard_model_dump_when_nested():
@@ -61,7 +61,7 @@ def test_label_is_included_in_standard_model_dump_when_nested():
 
     saved_rule = settings.model_dump()["notification_rules"][0]
 
-    assert saved_rule["label"] == "When 'gym' then alarm 75 minutes before event start time"
+    assert saved_rule["label"] == "When 'gym' then announce 75 minutes before event start time"
 
 
 def test_label_is_excluded_when_saving_to_file(tmp_path, monkeypatch):
