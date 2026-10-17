@@ -34,3 +34,47 @@ curl -X POST http://nas.dixon.net.au:1780/jsonrpc \
 # Test Snapserver without MPD
 aplay -D plughw:0,0,0 /usr/share/sounds/alsa/Front_Center.wav
 ```
+
+
+Sendspin on NAS
+
+sudo apt install build-essential cmake git pkg-config \
+  libasound2-dev portaudio19-dev libavahi-compat-libdnssd-dev
+
+git clone https://github.com/Sendspin/sendspin-cpp-cli.git
+cd sendspin-cpp-cli
+git checkout v0.3.0
+rm -rf build
+cmake -B build -DCMAKE_INSTALL_PREFIX=/usr/local
+
+
+cmake --build build -j2
+
+./build/sendspin-cli -o plughw:CARD=Device,DEV=0 \
+  --server ws://nas.dixon.net.au:8927/sendspin
+
+sudo cmake --install build --component sendspin-cli
+
+sudo cp /usr/local/share/doc/sendspin-cli/sendspin-cli.conf.example /etc/sendspin-cli.conf
+
+vi ~/.config/systemd/user/sendspin-cli.service
+```
+[Unit]
+Description=Sendspin Audio Player
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Service]
+ExecStart=/usr/local/bin/sendspin-cli --config /etc/sendspin-cli.conf
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target
+```
+
+# update values in sendspin-cli.conf
+
+systemctl --user daemon-reload
+systemctl --user enable --now sendspin-cli
+journalctl --user -u sendspin-cli -f

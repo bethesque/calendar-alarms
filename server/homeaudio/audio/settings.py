@@ -155,9 +155,9 @@ class NotificationRule(BaseModel):
     description_pattern: str | None = Field(default=None, description="The substring to match in the event description")
     location_pattern: str | None = Field(default=None, description="The substring to match in the location")
     calendar_id: str | None = Field(default=None, description="The ID of the calendar that must match for the rule to apply")
-    notification_type: Literal["alarm", "announce"] = Field(default="alarm", description="The notification type: alarm or announce")
-    notification_timing: NotificationTiming = Field(title="Notification timing", default=NotificationTiming.EVENT_START, description="Play notifications counting down to:")
+    notification_type: Literal["alarm", "announce"] = Field(default="announce", description="The notification type: alarm or announce")
     offset_minutes: int = Field(default=0, ge=0, description="Minutes before the event start or departure time")
+    notification_timing: NotificationTiming = Field(title="Notification timing", default=NotificationTiming.EVENT_START, description="Play notifications counting down to:")
     reminder: str | None = None
     replace: bool = Field(default=False, description="When true, the reminder replaces the announcement text, otherwise it is appended.")
     enabled: bool = Field(default=True, description="Set to false to disable this notification")
