@@ -60,7 +60,7 @@ To disable departure announcements for an event with a location, use `#nodepart`
 
 ### Departure notifications based on calculated travel time
 
-When departure notifications are enabled in the settings, any event that has a **location** gets a departure time calculated for it using Google Maps. The calculation allows time for getting from the house to the car, for parking, and a safety margin in case the estimate is optimistic, all of which are set by the user. The estimate is updated regularly as the event gets closer.
+When location based departure notifications are enabled in the settings, any event that has a **location** gets a departure time calculated for it using Google Maps. The calculation allows time for getting from the house to the car, for parking, and a safety margin in case the estimate is optimistic, all of which are set by the user. The estimate is updated regularly as the event gets closer.
 
 ### Departure time rules
 
