@@ -17,7 +17,7 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-from homeaudio.audio.settings import CalendarSetting, GoogleCalendarSettings
+from homeaudio.audio.settings import AvailableGoogleCalendars, CalendarSetting, GoogleCalendar, GoogleCalendarSettings
 from homeaudio.env import CALENDAR_DATA_DIRECTORY
 
 
@@ -34,11 +34,6 @@ class MissingCalendarDataException(Exception):
 
 class GoogleApiTokenNotFound(Exception):
     pass
-
-@dataclass
-class GoogleCalendar:
-    id: str
-    name: str
 
 @dataclass
 class CalendarEvent:
@@ -133,10 +128,15 @@ def list_google_calendars(creds):
     try:
         service = build("calendar", "v3", credentials=creds, cache_discovery=False)
         result = service.calendarList().list().execute()
-        return [GoogleCalendar(c["id"], c["summary"]) for c in result.get("items", [])]
+        return [GoogleCalendar(id=c["id"], name=c["summary"]) for c in result.get("items", [])]
     except HttpError as error:
         logger.error(f"An error occurred: {error}")
         return []
+
+
+def save_available_google_calendars(google_calendars: list[GoogleCalendar]):
+    if google_calendars:
+        AvailableGoogleCalendars(calendars=google_calendars).save()
 
 
 def list_google_events(creds, calendar_id, min, max):
@@ -235,8 +235,7 @@ def displayed_day_includes_event(displayed_calendar_day, event_dict):
     return displayed_calendar_day.date == start_date or ( start_date < displayed_calendar_day.date and displayed_calendar_day.date_time < end_date_time )
 
 
-def fetch_calendar_days_from_google(creds, calendars: list[CalendarSetting]) -> CalendarDayList:
-    google_calendars = list_google_calendars(creds)
+def fetch_calendar_days_from_google(creds, calendars: list[CalendarSetting], google_calendars: list[GoogleCalendar]) -> CalendarDayList:
     google_calendars_by_id = {calendar.id: calendar for calendar in google_calendars}
     start_of_today = datetime.datetime.combine(
         datetime.date.today(), datetime.time.min, tzinfo=ZoneInfo(TIMEZONE)
@@ -334,14 +333,14 @@ class CalendarSource:
     def creds_valid(self):
         return self.creds and self.creds.valid
 
-    def fetch_data(self, calendars: list[CalendarSetting], holiday_keywords: list[str]):
+    def fetch_data(self, calendars: list[CalendarSetting], holiday_keywords: list[str], google_calendars: list[GoogleCalendar]):
         existing_calendar_days = CalendarDayList()
         try:
             existing_calendar_days = self.load_data_from_file() if self.file_exists() else CalendarDayList()
         except:
             pass
 
-        self.calendar_days = fetch_calendar_days_from_google(self.creds, calendars)
+        self.calendar_days = fetch_calendar_days_from_google(self.creds, calendars, google_calendars)
         holiday_calendar_ids = [calendar.id for calendar in calendars if calendar.holiday]
         for day in self.calendar_days:
             day.holiday = is_school_holiday(day.all_events(), holiday_keywords, holiday_calendar_ids)
@@ -401,7 +400,9 @@ def refresh_calendar_data():
     token_info = settings.token_info()
     if token_info:
         calendar_source.load_creds(token_info)
-        calendar_source.fetch_data(settings.calendars, settings.holiday_keywords)
+        google_calendars = list_google_calendars(calendar_source.creds)
+        save_available_google_calendars(google_calendars)
+        calendar_source.fetch_data(settings.calendars, settings.holiday_keywords, google_calendars)
         calendar_source.save_data_to_file()
     else:
         raise GoogleApiTokenNotFound("Please set token.json in Google Calendar settings.")

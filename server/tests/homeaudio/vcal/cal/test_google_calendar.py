@@ -3,8 +3,8 @@ from datetime import date, datetime, timedelta
 import pytest
 
 import homeaudio.vcal.cal.google_calendar as google_calendar
-from homeaudio.audio.settings import CalendarSetting
-from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, CalendarSource, WholeDayEvent, GoogleCalendar, MissingCalendarDataException, WeatherForecast, add_events_to_calendars, copy_min_temperature_from_existing_day, fetch_calendar_days_from_google, is_school_holiday, load_calendar_days, load_data_from_any, load_google_creds, Event
+from homeaudio.audio.settings import AvailableGoogleCalendars, CalendarSetting
+from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, CalendarSource, WholeDayEvent, GoogleCalendar, MissingCalendarDataException, WeatherForecast, add_events_to_calendars, copy_min_temperature_from_existing_day, fetch_calendar_days_from_google, is_school_holiday, load_calendar_days, load_data_from_any, load_google_creds, save_available_google_calendars, Event
 
 DEFAULT_HOLIDAY_KEYWORDS = ["no school", "school holidays"]
 
@@ -64,9 +64,9 @@ def test_fetch_data_sets_holiday_on_days_with_a_holiday_calendar_event(monkeypat
         CalendarDay(date=date(2026, 4, 6), whole_day_events=[holiday_event]),
         CalendarDay(date=date(2026, 4, 7)),
     ])
-    monkeypatch.setattr(google_calendar, "fetch_calendar_days_from_google", lambda creds, calendars: days)
+    monkeypatch.setattr(google_calendar, "fetch_calendar_days_from_google", lambda creds, calendars, google_calendars: days)
 
-    calendar_days = CalendarSource(cache_file_path=str(tmp_path / "calendar.json")).fetch_data([CalendarSetting(id="holidays-id", name="Public Holidays", holiday=True)], DEFAULT_HOLIDAY_KEYWORDS)
+    calendar_days = CalendarSource(cache_file_path=str(tmp_path / "calendar.json")).fetch_data([CalendarSetting(id="holidays-id", name="Public Holidays", holiday=True)], DEFAULT_HOLIDAY_KEYWORDS, [])
 
     assert [day.holiday for day in calendar_days] == [True, False]
 
@@ -77,9 +77,9 @@ def test_fetch_data_sets_holiday_on_days_with_a_holiday_keyword_event(monkeypatc
         CalendarDay(date=date(2026, 4, 6), whole_day_events=[holiday_event]),
         CalendarDay(date=date(2026, 4, 7)),
     ])
-    monkeypatch.setattr(google_calendar, "fetch_calendar_days_from_google", lambda creds, calendars: days)
+    monkeypatch.setattr(google_calendar, "fetch_calendar_days_from_google", lambda creds, calendars, google_calendars: days)
 
-    calendar_days = CalendarSource(cache_file_path=str(tmp_path / "calendar.json")).fetch_data([], DEFAULT_HOLIDAY_KEYWORDS)
+    calendar_days = CalendarSource(cache_file_path=str(tmp_path / "calendar.json")).fetch_data([], DEFAULT_HOLIDAY_KEYWORDS, [])
 
     assert [day.holiday for day in calendar_days] == [True, False]
 
@@ -132,11 +132,10 @@ def test_fetch_calendar_days_from_google_uses_the_calendar_weather_setting(monke
         "weather-id": [{"summary": "Sunny", "start": {"date": today}, "end": {"date": tomorrow}}],
         "family-id": [{"summary": "Pupil free day", "start": {"date": today}, "end": {"date": tomorrow}}],
     }
-    monkeypatch.setattr(google_calendar, "list_google_calendars", lambda creds: [GoogleCalendar("weather-id", "Weather"), GoogleCalendar("family-id", "Family")])
     monkeypatch.setattr(google_calendar, "list_google_events", lambda creds, calendar_id, min, max: events_by_calendar[calendar_id])
     calendars = [CalendarSetting(id="weather-id", name="Weather", weather=True), CalendarSetting(id="family-id", name="Family")]
 
-    calendar_days = fetch_calendar_days_from_google(None, calendars)
+    calendar_days = fetch_calendar_days_from_google(None, calendars, [GoogleCalendar(id="weather-id", name="Weather"), GoogleCalendar(id="family-id", name="Family")])
 
     assert [event.summary for event in calendar_days[0].weather_forecasts] == ["Sunny"]
     assert [event.summary for event in calendar_days[0].whole_day_events] == ["Pupil free day"]
@@ -274,8 +273,8 @@ def _save_existing_weather_forecast(cache_file_path, day_date, summary):
 def _fetch_weather_forecast(monkeypatch, cache_file_path, day_date, summary):
     weather = WeatherForecast(owner="cal", summary=summary, description="", calendar_id="id")
     days = CalendarDayList([CalendarDay(date=day_date, weather_forecasts=[weather])])
-    monkeypatch.setattr(google_calendar, "fetch_calendar_days_from_google", lambda creds, calendars: days)
-    return CalendarSource(cache_file_path=cache_file_path).fetch_data([], DEFAULT_HOLIDAY_KEYWORDS)[0].weather_forecasts[0]
+    monkeypatch.setattr(google_calendar, "fetch_calendar_days_from_google", lambda creds, calendars, google_calendars: days)
+    return CalendarSource(cache_file_path=cache_file_path).fetch_data([], DEFAULT_HOLIDAY_KEYWORDS, [])[0].weather_forecasts[0]
 
 
 def test_fetch_data_copies_min_temperature_from_existing_day_when_forecast_has_none(monkeypatch, tmp_path):
@@ -349,3 +348,22 @@ def test_load_data_from_any_loads_whole_day_events_as_whole_day_events_and_timed
     assert type(calendar_days[0].whole_day_events[0]) is WholeDayEvent
     assert type(calendar_days[0].timed_events[0]) is Event
     assert calendar_days[0].timed_events[0].start_time == datetime.fromisoformat("2026-04-28T12:30:00+10:00")
+
+
+def test_save_available_google_calendars_writes_the_calendar_ids_and_names(monkeypatch, tmp_path):
+    yaml_file = tmp_path / "available_google_calendars.yaml"
+    monkeypatch.setitem(AvailableGoogleCalendars.model_config, "yaml_file", str(yaml_file))
+
+    save_available_google_calendars([GoogleCalendar(id="family-id", name="Family"), GoogleCalendar(id="weather-id", name="Weather")])
+
+    assert AvailableGoogleCalendars().calendars == [GoogleCalendar(id="family-id", name="Family"), GoogleCalendar(id="weather-id", name="Weather")]
+
+
+def test_save_available_google_calendars_does_not_overwrite_the_file_when_no_calendars_are_returned(monkeypatch, tmp_path):
+    yaml_file = tmp_path / "available_google_calendars.yaml"
+    yaml_file.write_text("calendars:\n- id: family-id\n  name: Family\n")
+    monkeypatch.setitem(AvailableGoogleCalendars.model_config, "yaml_file", str(yaml_file))
+
+    save_available_google_calendars([])
+
+    assert AvailableGoogleCalendars().calendars == [GoogleCalendar(id="family-id", name="Family")]

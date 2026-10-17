@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 import homeaudio.audio.admin_ui as admin_ui_module
 from homeaudio.audio.admin_ui import AdminRoutes
-from homeaudio.audio.settings import AppSettings
+from homeaudio.audio.settings import AppSettings, AvailableGoogleCalendars, CalendarSetting, GoogleCalendar, GoogleCalendarSettings
 
 
 def _unwrap_optional(annotation):
@@ -45,6 +45,7 @@ def test_attr_configs_keys_exist_on_app_settings():
     raising an error - so assert every key still resolves to a real AppSettings field."""
     admin_routes = AdminRoutes.__new__(AdminRoutes)
     admin_routes.calendar_select_props = {"options": []}
+    admin_routes.available_calendar_select_props = {"options": []}
     attr_configs = admin_routes.attr_configs(None)
 
     valid_paths = _all_field_paths(AppSettings)
@@ -89,3 +90,38 @@ def test_save_settings_validates_and_saves(monkeypatch):
 
     assert result is validated
     assert validated.saved is True
+
+
+def test_available_calendar_options_lists_the_available_google_calendars():
+    admin_routes = AdminRoutes.__new__(AdminRoutes)
+    available_calendars = AvailableGoogleCalendars.model_construct(calendars=[GoogleCalendar(id="family-id", name="Family"), GoogleCalendar(id="weather-id", name="Weather")])
+    google_calendar_settings = GoogleCalendarSettings.model_construct(calendars=[CalendarSetting(id="family-id", name="Our family")])
+
+    options = admin_routes._available_calendar_options(available_calendars, google_calendar_settings)
+
+    assert options == [{"value": "family-id", "label": "Family"}, {"value": "weather-id", "label": "Weather"}]
+
+
+def test_available_calendar_options_includes_configured_calendars_that_are_no_longer_available():
+    admin_routes = AdminRoutes.__new__(AdminRoutes)
+    available_calendars = AvailableGoogleCalendars.model_construct(calendars=[GoogleCalendar(id="family-id", name="Family")])
+    google_calendar_settings = GoogleCalendarSettings.model_construct(calendars=[CalendarSetting(id="old-id", name="Old")])
+
+    options = admin_routes._available_calendar_options(available_calendars, google_calendar_settings)
+
+    assert options == [{"value": "family-id", "label": "Family"}, {"value": "old-id", "label": "Old"}]
+
+
+def test_available_calendar_options_puts_calendars_with_matching_id_and_name_first_then_sorts_by_name():
+    admin_routes = AdminRoutes.__new__(AdminRoutes)
+    available_calendars = AvailableGoogleCalendars.model_construct(calendars=[
+        GoogleCalendar(id="weather-id", name="Weather"),
+        GoogleCalendar(id="zed@example.com", name="zed@example.com"),
+        GoogleCalendar(id="family-id", name="Family"),
+        GoogleCalendar(id="amy@example.com", name="amy@example.com"),
+    ])
+    google_calendar_settings = GoogleCalendarSettings.model_construct(calendars=[])
+
+    options = admin_routes._available_calendar_options(available_calendars, google_calendar_settings)
+
+    assert [option["value"] for option in options] == ["amy@example.com", "zed@example.com", "family-id", "weather-id"]

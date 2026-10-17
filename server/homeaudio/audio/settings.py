@@ -276,6 +276,17 @@ class GoogleCalendarSettings(YAMLSettings):
         yaml_file=f"{CONFIG_DIR}/google_calendar.yaml"
     )
 
+class GoogleCalendar(BaseModel):
+    id: str
+    name: str
+
+class AvailableGoogleCalendars(YAMLSettings):
+    calendars: list[GoogleCalendar] = Field(default_factory=list)
+
+    model_config = SettingsConfigDict(
+        yaml_file=f"{CONFIG_DIR}/available_google_calendars.yaml"
+    )
+
 class Option(BaseModel):
     text: str
     last_used: str | None = None

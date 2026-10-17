@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Request
-from homeaudio.audio.settings import AppSettings, GoogleCalendarSettings, NotificationTiming
+from homeaudio.audio.settings import AppSettings, AvailableGoogleCalendars, GoogleCalendarSettings, NotificationTiming
 from homeaudio.env import GOOGLE_TRANSLATE_TLD_OPTIONS, HOME_ASSISTANT_SUPPORTED, HOUSIE_TALKIE_ENABLED, SNAPCAST_ENABLED, WAKE_UP_ALARM_ENABLED
 from pydantic_ui import create_pydantic_ui, UIConfig, FieldConfig, DisplayConfig, Renderer, ActionButton
 
@@ -11,6 +11,7 @@ class AdminRoutes:
 
         settings = AppSettings()
         self.calendar_select_props = {"options": self._calendar_options(settings.google_calendar_settings)}
+        self.available_calendar_select_props = {"options": self._available_calendar_options(AvailableGoogleCalendars(), settings.google_calendar_settings)}
 
         self.ui_router = create_pydantic_ui(
             AppSettings,
@@ -40,10 +41,18 @@ class AdminRoutes:
     def _calendar_options(self, google_calendar_settings: GoogleCalendarSettings):
         return [ { "value": c.id, "label": c.name } for c in google_calendar_settings.calendars ]
 
+    def _available_calendar_options(self, available_calendars: AvailableGoogleCalendars, google_calendar_settings: GoogleCalendarSettings):
+        available_ids = {c.id for c in available_calendars.calendars}
+        missing_configured_calendars = [c for c in google_calendar_settings.calendars if c.id not in available_ids]
+        sorted_calendars = sorted(available_calendars.calendars, key=lambda c: (c.id != c.name, c.name.lower()))
+        return [ { "value": c.id, "label": c.name } for c in sorted_calendars + missing_configured_calendars ]
+
     def _refresh_calendar_options(self, request: Request):
         # The schema is rebuilt per request from these props, so updating them in place keeps the select current.
         if request.url.path.endswith("/api/schema"):
-            self.calendar_select_props["options"] = self._calendar_options(GoogleCalendarSettings())
+            google_calendar_settings = GoogleCalendarSettings()
+            self.calendar_select_props["options"] = self._calendar_options(google_calendar_settings)
+            self.available_calendar_select_props["options"] = self._available_calendar_options(AvailableGoogleCalendars(), google_calendar_settings)
 
     def attr_configs(self, settings: AppSettings):
 
@@ -55,6 +64,26 @@ class AdminRoutes:
                             title="{name}",
                             subtitle="{id}"
                         )
+                    ),
+                    "google_calendar_settings.calendars.[].id": FieldConfig(
+                        renderer=Renderer.SELECT,
+                        props=self.available_calendar_select_props,
+                        placeholder="Select calendar",
+                        display=DisplayConfig(
+                            title="Calendar",
+                        )
+                    ),
+                    "google_calendar_settings.calendars.[].name": FieldConfig(
+                        display=DisplayConfig(
+                            title="Owner's name",
+                            subtitle="Enter the name of the person to address for events in this calendar, or the calendar name if there is no owner",
+                        )
+                    ),
+                    "google_calendar_settings.calendars.[].owner_count": FieldConfig(
+                        display=DisplayConfig(
+                            subtitle="How many people does this calendar have events for?",
+                            help_text="This number ensures the announcement sentences use proper grammar. Enter 0 for a public calendar, 1 for a single person's calendar, 2 for a joint calendar, 3+ for a group calendar."
+                        ),
                     ),
                     "google_calendar_settings.token_file": FieldConfig(
                         renderer=Renderer.FILE_UPLOAD,
