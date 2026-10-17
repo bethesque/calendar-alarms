@@ -210,7 +210,7 @@ class LocationBasedDepartureTimes(BaseModel):
     parking_minutes: int = Field(default=5, ge=0, description="Time to park and walk to the event location")
     house_to_car_minutes: int = Field(default=5, ge=0, description="Time to collect belongings, walk out of the house and get into the car")
     safety_factor: int = Field(default=10, ge=0, le=100, description="Percentage to pad the travel duration by because sometimes Google Maps is a bit optimistic")
-    recompute_interval_minutes: int = Field(default=20, ge=1, description="How often to re-calculate the travel time to ensure the most accurate results.")
+    recompute_interval_minutes: int = Field(default=30, ge=20, description="How often to re-calculate the travel time to ensure the most accurate results.")
 
     @model_validator(mode="after")
     def _require_api_key_and_origin_when_enabled(self) -> "LocationBasedDepartureTimes":
