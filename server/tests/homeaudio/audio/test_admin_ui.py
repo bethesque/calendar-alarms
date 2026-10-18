@@ -92,6 +92,41 @@ def test_save_settings_validates_and_saves(monkeypatch):
     assert validated.saved is True
 
 
+def test_calendar_options_uses_the_available_calendar_name_as_the_label():
+    admin_routes = AdminRoutes.__new__(AdminRoutes)
+    available_calendars = AvailableGoogleCalendars.model_construct(calendars=[GoogleCalendar(id="family-id", name="Family")])
+    google_calendar_settings = GoogleCalendarSettings.model_construct(calendars=[CalendarSetting(id="family-id", name="Our family")])
+
+    options = admin_routes._calendar_options(available_calendars, google_calendar_settings)
+
+    assert options == [{"value": "family-id", "label": "Family"}]
+
+
+def test_calendar_options_falls_back_to_the_configured_calendar_name_when_not_available():
+    admin_routes = AdminRoutes.__new__(AdminRoutes)
+    available_calendars = AvailableGoogleCalendars.model_construct(calendars=[])
+    google_calendar_settings = GoogleCalendarSettings.model_construct(calendars=[CalendarSetting(id="old-id", name="Old")])
+
+    options = admin_routes._calendar_options(available_calendars, google_calendar_settings)
+
+    assert options == [{"value": "old-id", "label": "Old"}]
+
+
+def test_calendar_options_puts_calendars_with_matching_id_and_name_first_then_sorts_by_name():
+    admin_routes = AdminRoutes.__new__(AdminRoutes)
+    available_calendars = AvailableGoogleCalendars.model_construct(calendars=[GoogleCalendar(id="family-id", name="Family")])
+    google_calendar_settings = GoogleCalendarSettings.model_construct(calendars=[
+        CalendarSetting(id="weather-id", name="Weather"),
+        CalendarSetting(id="zed@example.com", name="zed@example.com"),
+        CalendarSetting(id="family-id", name="Our family"),
+        CalendarSetting(id="amy@example.com", name="amy@example.com"),
+    ])
+
+    options = admin_routes._calendar_options(available_calendars, google_calendar_settings)
+
+    assert [option["value"] for option in options] == ["amy@example.com", "zed@example.com", "family-id", "weather-id"]
+
+
 def test_available_calendar_options_lists_the_available_google_calendars():
     admin_routes = AdminRoutes.__new__(AdminRoutes)
     available_calendars = AvailableGoogleCalendars.model_construct(calendars=[GoogleCalendar(id="family-id", name="Family"), GoogleCalendar(id="weather-id", name="Weather")])

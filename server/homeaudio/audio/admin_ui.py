@@ -10,8 +10,9 @@ class AdminRoutes:
         self.router = APIRouter()
 
         settings = AppSettings()
-        self.calendar_select_props = {"options": self._calendar_options(settings.google_calendar_settings)}
-        self.available_calendar_select_props = {"options": self._available_calendar_options(AvailableGoogleCalendars(), settings.google_calendar_settings)}
+        available_calendars = AvailableGoogleCalendars()
+        self.calendar_select_props = {"options": self._calendar_options(available_calendars, settings.google_calendar_settings)}
+        self.available_calendar_select_props = {"options": self._available_calendar_options(available_calendars, settings.google_calendar_settings)}
 
         self.ui_router = create_pydantic_ui(
             AppSettings,
@@ -38,21 +39,27 @@ class AdminRoutes:
 
         self.router.include_router(self.ui_router, dependencies=[Depends(self._refresh_calendar_options)])
 
-    def _calendar_options(self, google_calendar_settings: GoogleCalendarSettings):
-        return [ { "value": c.id, "label": c.name } for c in google_calendar_settings.calendars ]
+    def _calendar_options(self, available_calendars: AvailableGoogleCalendars, google_calendar_settings: GoogleCalendarSettings):
+        available_names = {c.id: c.name for c in available_calendars.calendars}
+        options = [ { "value": c.id, "label": available_names.get(c.id, c.name) } for c in google_calendar_settings.calendars ]
+        return sorted(options, key=lambda o: self._calendar_sort_key(o["value"], o["label"]))
 
     def _available_calendar_options(self, available_calendars: AvailableGoogleCalendars, google_calendar_settings: GoogleCalendarSettings):
         available_ids = {c.id for c in available_calendars.calendars}
         missing_configured_calendars = [c for c in google_calendar_settings.calendars if c.id not in available_ids]
-        sorted_calendars = sorted(available_calendars.calendars, key=lambda c: (c.id != c.name, c.name.lower()))
+        sorted_calendars = sorted(available_calendars.calendars, key=lambda c: self._calendar_sort_key(c.id, c.name))
         return [ { "value": c.id, "label": c.name } for c in sorted_calendars + missing_configured_calendars ]
+
+    def _calendar_sort_key(self, id: str, name: str):
+        return (id != name, name.lower())
 
     def _refresh_calendar_options(self, request: Request):
         # The schema is rebuilt per request from these props, so updating them in place keeps the select current.
         if request.url.path.endswith("/api/schema"):
             google_calendar_settings = GoogleCalendarSettings()
-            self.calendar_select_props["options"] = self._calendar_options(google_calendar_settings)
-            self.available_calendar_select_props["options"] = self._available_calendar_options(AvailableGoogleCalendars(), google_calendar_settings)
+            available_calendars = AvailableGoogleCalendars()
+            self.calendar_select_props["options"] = self._calendar_options(available_calendars, google_calendar_settings)
+            self.available_calendar_select_props["options"] = self._available_calendar_options(available_calendars, google_calendar_settings)
 
     def attr_configs(self, settings: AppSettings):
 

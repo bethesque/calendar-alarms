@@ -5,7 +5,7 @@ import json
 import logging
 from pathlib import Path
 from typing import Literal
-from pydantic import BaseModel, Field, computed_field, model_validator
+from pydantic import BaseModel, Field, PrivateAttr, computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 import yaml
 from homeaudio.env import CONFIG_DIR, DEFAULT_GOOGLE_TRANSLATE_TLD
@@ -161,6 +161,7 @@ class NotificationRule(BaseModel):
     reminder: str | None = None
     replace: bool = Field(default=False, description="When true, the reminder replaces the announcement text, otherwise it is appended.")
     enabled: bool = Field(default=True, description="Set to false to disable this notification")
+    _calendar_name: str | None = PrivateAttr(default=None)
 
     @model_validator(mode="after")
     def _require_a_matcher(self) -> "NotificationRule":
@@ -174,7 +175,7 @@ class NotificationRule(BaseModel):
     @property
     def label(self) -> str:
         patterns = [p for p in [self.summary_pattern, self.description_pattern, self.location_pattern] if p]
-        return f"When '{("/".join(patterns) or self.calendar_id)}' then {self.notification_type} {self.offset_minutes} minutes before {self.notification_timing.label.lower()}"
+        return f"When '{("/".join(patterns) or self._calendar_name or self.calendar_id)}' then {self.notification_type} {self.offset_minutes} minutes before {self.notification_timing.label.lower()}"
 
 class DepartureTimeRule(BaseModel):
     summary_pattern: str = Field(description="The substring to match in the event summary")
@@ -241,6 +242,13 @@ class EventNotificationSettings(YAMLSettings):
     def _require_api_key_and_origin_when_enabled(self) -> "EventNotificationSettings":
         if self.location_based_departure_times.enabled and not (self.location_based_departure_times.api_key and self.location_based_departure_times.origin_address):
             raise ValueError("api_key and origin_address must be set when enabled is true")
+        return self
+
+    @model_validator(mode="after")
+    def _set_rule_calendar_names(self) -> "EventNotificationSettings":
+        names = {c.id: c.name for c in AvailableGoogleCalendars().calendars}
+        for rule in self.notification_rules:
+            rule._calendar_name = names.get(rule.calendar_id) if rule.calendar_id else None
         return self
 
     def enabled_notification_rules(self) -> list[NotificationRule]:

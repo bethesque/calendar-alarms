@@ -4,7 +4,7 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from homeaudio.audio.settings import EventNotificationSettings, TimeRange, NotificationRule, NotificationTiming, SnapcastSettings, SnapclientConfig, DepartureTimeRule, LocationBasedDepartureTimes, UploadedFile, GoogleCalendarSettings
+from homeaudio.audio.settings import EventNotificationSettings, TimeRange, NotificationRule, NotificationTiming, SnapcastSettings, SnapclientConfig, DepartureTimeRule, LocationBasedDepartureTimes, UploadedFile, GoogleCalendarSettings, AvailableGoogleCalendars, GoogleCalendar
 
 
 def test_label_uses_summary_pattern_only():
@@ -28,6 +28,29 @@ def test_label_falls_back_to_calendar_id_when_no_patterns_set():
     rule = NotificationRule(calendar_id="beth-calendar", offset_minutes=20)
 
     assert rule.label == "When 'beth-calendar' then announce 20 minutes before event start time"
+
+
+def test_label_uses_calendar_name_from_available_calendars(tmp_path, monkeypatch):
+    monkeypatch.setitem(EventNotificationSettings.model_config, "yaml_file", str(tmp_path / "notifications.yaml"))
+    monkeypatch.setitem(AvailableGoogleCalendars.model_config, "yaml_file", str(tmp_path / "available_google_calendars.yaml"))
+    AvailableGoogleCalendars(calendars=[GoogleCalendar(id="beth-calendar", name="Beth")]).save()
+
+    settings = EventNotificationSettings(
+        notification_rules=[NotificationRule(calendar_id="beth-calendar", offset_minutes=20)]
+    )
+
+    assert settings.notification_rules[0].label == "When 'Beth' then announce 20 minutes before event start time"
+
+
+def test_label_falls_back_to_calendar_id_when_calendar_not_available(tmp_path, monkeypatch):
+    monkeypatch.setitem(EventNotificationSettings.model_config, "yaml_file", str(tmp_path / "notifications.yaml"))
+    monkeypatch.setitem(AvailableGoogleCalendars.model_config, "yaml_file", str(tmp_path / "available_google_calendars.yaml"))
+
+    settings = EventNotificationSettings(
+        notification_rules=[NotificationRule(calendar_id="beth-calendar", offset_minutes=20)]
+    )
+
+    assert settings.notification_rules[0].label == "When 'beth-calendar' then announce 20 minutes before event start time"
 
 
 def test_label_reflects_zero_offset():
