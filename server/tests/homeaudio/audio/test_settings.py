@@ -148,7 +148,7 @@ def test_departure_notification_settings_defaults(tmp_path, monkeypatch):
     assert settings.location_based_departure_times.parking_minutes == 5
     assert settings.location_based_departure_times.house_to_car_minutes == 5
     assert settings.location_based_departure_times.safety_factor == 10
-    assert settings.location_based_departure_times.recompute_interval_minutes == 20
+    assert settings.location_based_departure_times.recompute_interval_minutes == 30
     assert settings.heads_up_reminder_lead_time == 10
 
 
