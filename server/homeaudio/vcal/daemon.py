@@ -6,31 +6,16 @@ The main calendar alarms process that checks for and plays notifications and ann
 import logging
 import signal
 import threading
-from datetime import date, datetime, time, timedelta
-from zoneinfo import ZoneInfo
+from datetime import datetime, timedelta
 
 from homeaudio.audio.log_config import setup_logging_for_alarms
 from homeaudio.audio.scene import scene_for_env
-from homeaudio.audio.settings import (
-    EventNotificationSchedule,
-    EventNotificationSettings,
-    MainSettings,
-    MorningAnnouncementsSchedule,
-    MorningAnnouncementsSettings,
-    SchoolAnnouncementsSchedule,
-    SchoolAnnouncementsSettings,
-)
-from homeaudio.env import TIMEZONE, LOG_LEVEL, NOTIFICATIONS_CHECK_INTERVAL_MINUTES, NOTIFICATIONS_PREPARATION_LEAD_TIME_SECONDS
-from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, CalendarSource, load_calendar_days
+from homeaudio.audio.settings import EventNotificationSettings, MainSettings
+from homeaudio.env import LOG_LEVEL, NOTIFICATIONS_CHECK_INTERVAL_MINUTES, NOTIFICATIONS_PREPARATION_LEAD_TIME_SECONDS
+from homeaudio.vcal.cal.google_calendar import CalendarSource
 from homeaudio.vcal.calendar_refresh import CalendarRefreshLoop
 from homeaudio.vcal.core import prepare_notification_files, NotificationFiles
 from homeaudio.vcal.core import play_notifications as _play_notifications
-from homeaudio.vcal.notification_schedule import (
-    announcement_times_for_day,
-    event_notification_time_range_for_day,
-    round_down_to_interval,
-    within_event_notification_operating_hours,
-)
 
 setup_logging_for_alarms(str(LOG_LEVEL))
 
@@ -43,90 +28,11 @@ CHECK_INTERVAL_MINUTES = NOTIFICATIONS_CHECK_INTERVAL_MINUTES
 # so playback can start exactly on the tick instead of after however long that build takes.
 EARLY_WAKE_SECONDS = NOTIFICATIONS_PREPARATION_LEAD_TIME_SECONDS
 
-# The longest next_boundary() will ever ask the daemon to sleep in one go, so a schedule
-# change saved through the admin UI mid-sleep is noticed within the hour instead of only once
-# a long, already-stale overnight wait finally ends.
-MAX_SLEEP_SECONDS = 60 * 60
 
-
-def _is_scheduled_announcement(
-    dt: datetime,
-    morning_schedule: MorningAnnouncementsSchedule,
-    school_schedule: SchoolAnnouncementsSchedule,
-    calendar_days: CalendarDayList,
-) -> bool:
-    return dt.time() in announcement_times_for_day(dt.date(), morning_schedule, school_schedule, calendar_days)
-
-
-def _wake_times_for_day(
-    day: date,
-    schedule: EventNotificationSchedule,
-    morning_schedule: MorningAnnouncementsSchedule,
-    school_schedule: SchoolAnnouncementsSchedule,
-    calendar_days: CalendarDayList,
-) -> list[time]:
-    """
-    The announcement times and the start of the event notification time range.
-    """
-    return [
-        event_notification_time_range_for_day(schedule, day, calendar_days, ZoneInfo(TIMEZONE), CHECK_INTERVAL_MINUTES).start.time(),
-        *announcement_times_for_day(day, morning_schedule, school_schedule, calendar_days),
-    ]
-
-
-def next_boundary(
-    now: datetime,
-    schedule: EventNotificationSchedule | None = None,
-    morning_schedule: MorningAnnouncementsSchedule | None = None,
-    school_schedule: SchoolAnnouncementsSchedule | None = None,
-    calendar_days: CalendarDayList | None = None,
-) -> datetime:
-    """The next CHECK_INTERVAL_MINUTES-aligned time at or after `now`, skipping forward over hours
-    outside EventNotificationSettings.schedule's weekdays/weekends window - except for any
-    MorningAnnouncementsSettings/SchoolAnnouncementsSettings scheduled time that falls in one of
-    those skipped hours, since those announcements are due regardless of that window.
-
-    Each schedule is read fresh from its settings by default (rather than as a mutable default
-    argument) so a change saved through the admin UI takes effect on the daemon's very next
-    wake-up, not just at process start.
-
-    The result is also capped to at most MAX_SLEEP_SECONDS after `now`, so a long gap outside
-    operating hours (overnight, or a weekend) doesn't leave the daemon asleep on a boundary
-    computed from settings that go on to change before it wakes - it re-derives the boundary
-    from whatever the settings currently are at least that often.
-    """
-    schedule = schedule or EventNotificationSettings().schedule
-    morning_schedule = morning_schedule or MorningAnnouncementsSettings().schedule
-    school_schedule = school_schedule or SchoolAnnouncementsSettings().schedule
-    calendar_days = load_calendar_days() if calendar_days is None else calendar_days
-
+def next_boundary(now: datetime) -> datetime:
+    """The next CHECK_INTERVAL_MINUTES-aligned time after `now`."""
     minute = (now.minute // CHECK_INTERVAL_MINUTES + 1) * CHECK_INTERVAL_MINUTES
-    # Wind back to the previous whole minute and add the CHECK_INTERVAL_MINUTES to it
-    candidate = now.replace(minute=0, second=0, microsecond=0) + timedelta(minutes=minute)
-
-    cap = round_down_to_interval(now + timedelta(seconds=MAX_SLEEP_SECONDS), CHECK_INTERVAL_MINUTES)
-
-    while candidate < cap and not within_event_notification_operating_hours(candidate, schedule, calendar_days, CHECK_INTERVAL_MINUTES) and not _is_scheduled_announcement(
-        candidate, morning_schedule, school_schedule, calendar_days
-    ):
-        # The next regular CHECK_INTERVAL_MINUTES is outside the normal event notification operating hours.
-        # Collect the future wake up times for today (the start of event notifications and the announcement times)
-        wake_times_today = [
-            wake_time
-            for wake_time in _wake_times_for_day(candidate.date(), schedule, morning_schedule, school_schedule, calendar_days)
-            if wake_time > candidate.time()
-        ]
-        # If there are future wake up times
-        if wake_times_today:
-            #... take the first one
-            candidate = datetime.combine(candidate.date(), min(wake_times_today), tzinfo=candidate.tzinfo)
-        else:
-            # ... else get the next wake up time for tomorrow
-            next_day = candidate.date() + timedelta(days=1)
-            next_wake_times = _wake_times_for_day(next_day, schedule, morning_schedule, school_schedule, calendar_days)
-            candidate = datetime.combine(next_day, min(next_wake_times), tzinfo=candidate.tzinfo)
-
-    return min(candidate, cap)
+    return now.replace(minute=0, second=0, microsecond=0) + timedelta(minutes=minute)
 
 
 def check_for_notifications(base_time: datetime) -> NotificationFiles | None:

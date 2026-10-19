@@ -79,8 +79,7 @@ def next_refresh_boundary(
     a couple of failed refresh attempts still leave time for one to land before whichever
     notification-loop tick reads calendar.json first.
 
-    Each schedule is read fresh from its settings by default, same as daemon.py's own
-    next_boundary(), so a change saved through the admin UI takes effect on this loop's very next
+    Each schedule is read fresh from its settings by default, so a change saved through the admin UI takes effect on this loop's very next
     wake-up. Also capped by MAX_SLEEP_SECONDS for the same reason: a schedule change saved
     mid-sleep is noticed within the hour rather than only once an already-stale overnight wait
     finally ends.

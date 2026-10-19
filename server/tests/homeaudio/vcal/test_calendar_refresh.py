@@ -118,7 +118,7 @@ def test_next_refresh_boundary_lands_exactly_on_the_offset_instant():
 
 def test_next_refresh_boundary_never_lands_on_the_notification_loops_own_tick_instants():
     # Regression test: the whole point of the offset is to avoid the :45 prepare / :00 play
-    # instants daemon.next_boundary() uses, since both loops share one CPU core on a Pi Zero W.
+    # instants the notification loop uses, since both loops share one CPU core on a Pi Zero W.
     now = datetime(2026, 4, 27, 7, 0, tzinfo=TIMEZONE)  # Monday
 
     boundary = next_refresh_boundary(now, SCHEDULE, NO_MORNING_SCHEDULE, NO_SCHOOL_SCHEDULE)
