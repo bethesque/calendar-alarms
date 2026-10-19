@@ -3,7 +3,8 @@
 git sparse-checkout add server
 git pull
 if [ "$1" = "-i" ]; then
-  python3 -m pip install -e "."
+  source .venv/bin/activate
+  python -m pip install -e "."
 fi
 systemctl --user restart calendar-alarms.service
 systemctl --user restart calendar-alarms-http.service
