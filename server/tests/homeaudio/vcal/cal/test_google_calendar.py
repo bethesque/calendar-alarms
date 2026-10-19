@@ -1,10 +1,11 @@
+import threading
 from datetime import date, datetime, timedelta
 
 import pytest
 
 import homeaudio.vcal.cal.google_calendar as google_calendar
 from homeaudio.audio.settings import AvailableGoogleCalendars, CalendarSetting
-from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, CalendarSource, WholeDayEvent, GoogleCalendar, MissingCalendarDataException, WeatherForecast, add_events_to_calendars, copy_min_temperature_from_existing_day, fetch_calendar_days_from_google, is_school_holiday, load_calendar_days, load_data_from_any, load_google_creds, save_available_google_calendars, Event
+from homeaudio.vcal.cal.google_calendar import CalendarDataLocked, calendar_data_lock, CalendarDay, CalendarDayList, CalendarSource, WholeDayEvent, GoogleCalendar, MissingCalendarDataException, WeatherForecast, add_events_to_calendars, copy_min_temperature_from_existing_day, fetch_calendar_days_from_google, is_school_holiday, load_calendar_days, load_data_from_any, load_google_creds, save_available_google_calendars, Event
 
 DEFAULT_HOLIDAY_KEYWORDS = ["no school", "school holidays"]
 
@@ -93,6 +94,85 @@ def test_holiday_round_trips_through_the_calendar_file(tmp_path):
     calendar_days = CalendarSource(cache_file_path=cache_file_path).load_data_from_file()
 
     assert [day.holiday for day in calendar_days] == [True, False]
+
+
+def test_save_data_to_file_replaces_the_file_without_leaving_temp_files(tmp_path):
+    cache_file_path = tmp_path / "calendar.json"
+    cache_file_path.write_text("old contents")
+    source = CalendarSource(cache_file_path=str(cache_file_path))
+    source.calendar_days = CalendarDayList([CalendarDay(date=date(2026, 4, 6))])
+    source.save_data_to_file()
+
+    assert [day.date for day in CalendarSource(cache_file_path=str(cache_file_path)).load_data_from_file()] == [date(2026, 4, 6)]
+    assert [path.name for path in tmp_path.iterdir()] == ["calendar.json"]
+
+
+def test_save_data_to_file_leaves_the_existing_file_intact_when_the_write_fails(monkeypatch, tmp_path):
+    cache_file_path = tmp_path / "calendar.json"
+    cache_file_path.write_text("old contents")
+    source = CalendarSource(cache_file_path=str(cache_file_path))
+    source.calendar_days = CalendarDayList([CalendarDay(date=date(2026, 4, 6))])
+
+    def failing_replace(src, dst):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(google_calendar.os, "replace", failing_replace)
+
+    with pytest.raises(OSError):
+        source.save_data_to_file()
+
+    assert cache_file_path.read_text() == "old contents"
+    assert [path.name for path in tmp_path.iterdir()] == ["calendar.json"]
+
+
+def test_calendar_data_lock_raises_when_already_held(tmp_path):
+    lock_file_path = str(tmp_path / "calendar.json.lock")
+
+    with calendar_data_lock(lock_file_path=lock_file_path):
+        with pytest.raises(CalendarDataLocked):
+            with calendar_data_lock(lock_file_path=lock_file_path):
+                pytest.fail("must not acquire a held lock")
+
+
+def test_calendar_data_lock_can_be_reacquired_after_release(tmp_path):
+    lock_file_path = str(tmp_path / "calendar.json.lock")
+
+    with calendar_data_lock(lock_file_path=lock_file_path):
+        pass
+    with calendar_data_lock(lock_file_path=lock_file_path):
+        pass
+
+
+def test_calendar_data_lock_is_released_when_the_body_raises(tmp_path):
+    lock_file_path = str(tmp_path / "calendar.json.lock")
+
+    with pytest.raises(RuntimeError):
+        with calendar_data_lock(lock_file_path=lock_file_path):
+            raise RuntimeError("boom")
+    with calendar_data_lock(lock_file_path=lock_file_path):
+        pass
+
+
+def test_calendar_data_lock_waits_for_the_lock_within_the_timeout(monkeypatch, tmp_path):
+    lock_file_path = str(tmp_path / "calendar.json.lock")
+    monkeypatch.setattr(google_calendar, "LOCK_POLL_SECONDS", 0.01)
+    acquired = threading.Event()
+    release = threading.Event()
+
+    def hold_lock():
+        with calendar_data_lock(lock_file_path=lock_file_path):
+            acquired.set()
+            release.wait(timeout=5)
+
+    holder = threading.Thread(target=hold_lock)
+    holder.start()
+    assert acquired.wait(timeout=5)
+    threading.Timer(0.1, release.set).start()
+
+    with calendar_data_lock(timeout_seconds=5, lock_file_path=lock_file_path):
+        pass
+
+    holder.join(timeout=5)
 
 
 def test_holiday_defaults_to_false_for_calendar_files_written_without_it():

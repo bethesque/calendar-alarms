@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 from homeaudio.env import NOTIFICATIONS_CHECK_INTERVAL_MINUTES, LOG_LEVEL, GOOGLE_TRANSLATE_TLD_OPTIONS
 from homeaudio.vcal import ALL_SENTENCES, snoozing_message
-from homeaudio.vcal.cal.google_calendar import CalendarSource, Event, refresh_calendar_data as do_refresh_calendar_data
+from homeaudio.vcal.cal.google_calendar import CalendarSource, Event, calendar_data_lock, refresh_calendar_data as do_refresh_calendar_data
 from homeaudio.audio.log_config import setup_logging_for_data_refresh, setup_logging
 from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file, TextToSpeechError, TextToSpeechRateLimitError
 from homeaudio.vcal.core import EventNotificationSettings
@@ -18,10 +18,17 @@ This script refreshes the calendar data and saves it to a local file.
 
 logger = logging.getLogger(__name__)
 
+CLI_LOCK_TIMEOUT_SECONDS = 30
+
 def refresh_calendar_data():
-    do_refresh_calendar_data()
+    with calendar_data_lock(timeout_seconds=CLI_LOCK_TIMEOUT_SECONDS):
+        do_refresh_calendar_data()
 
 def insert_test_event():
+    with calendar_data_lock(timeout_seconds=CLI_LOCK_TIMEOUT_SECONDS):
+        _insert_test_event()
+
+def _insert_test_event():
     calendar_source = CalendarSource()
     calendar_days = calendar_source.load_data_from_file()
     # find the calendar day for the current date

@@ -17,7 +17,7 @@ from homeaudio.audio.settings import (
     SchoolAnnouncementsSettings,
     TimeRange,
 )
-from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, load_calendar_days, refresh_calendar_data
+from homeaudio.vcal.cal.google_calendar import CalendarDataLocked, CalendarDay, CalendarDayList, calendar_data_lock, load_calendar_days, refresh_calendar_data
 from homeaudio.vcal.event_notifications.events import update_calendar_travel_times
 from homeaudio.vcal.notification_schedule import announcement_times_for_day, event_notification_time_range_for_day
 from homeaudio.env import TIMEZONE, NOTIFICATIONS_CHECK_INTERVAL_MINUTES, CALENDAR_DATA_REFRESH_INTERVAL_MINUTES, CALENDAR_DATA_REFRESH_OFFSET_SECONDS
@@ -40,6 +40,9 @@ REFRESH_OFFSET_SECONDS = CALENDAR_DATA_REFRESH_OFFSET_SECONDS
 # change saved through the admin UI mid-sleep is noticed within the hour instead of only once a
 # long, already-stale overnight wait finally ends.
 MAX_SLEEP_SECONDS = 60 * 60 # 1 hour
+
+# How long a refresh waits for another process's calendar.json update to finish before skipping.
+LOCK_TIMEOUT_SECONDS = 30
 
 
 def _wake_window_for_day(
@@ -112,6 +115,16 @@ def next_refresh_boundary(
 def refresh_calendar(base_time: datetime) -> None:
     """Fetches calendar data from Google and writes it to the cache file the notification
     loop reads from, then updates car_departure_time for today's located events"""
+    try:
+        with calendar_data_lock(timeout_seconds=LOCK_TIMEOUT_SECONDS):
+            _refresh_calendar_and_travel_times(base_time)
+    except CalendarDataLocked:
+        logger.warning("Skipping calendar refresh at %s, calendar data was still locked after %s seconds", base_time, LOCK_TIMEOUT_SECONDS)
+    except Exception:
+        logger.exception("Error locking calendar data at %s", base_time)
+
+
+def _refresh_calendar_and_travel_times(base_time: datetime) -> None:
     try:
         logger.info("Refreshing calendar data at %s", base_time)
         refresh_calendar_data()

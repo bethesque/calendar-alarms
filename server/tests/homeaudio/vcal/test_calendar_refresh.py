@@ -11,7 +11,8 @@ from homeaudio.audio.settings import (
     SchoolAnnouncementsSchedule,
     TimeRange,
 )
-from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList
+import homeaudio.vcal.cal.google_calendar as google_calendar
+from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, calendar_data_lock
 from homeaudio.vcal.calendar_refresh import (
     REFRESH_INTERVAL_MINUTES,
     REFRESH_OFFSET_SECONDS,
@@ -22,6 +23,11 @@ from homeaudio.vcal.calendar_refresh import (
 )
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
+
+
+@pytest.fixture(autouse=True)
+def calendar_lock_file(monkeypatch, tmp_path):
+    monkeypatch.setattr(google_calendar, "LOCK_FILE", str(tmp_path / "calendar.json.lock"))
 
 SCHEDULE = EventNotificationSchedule(
     weekdays=TimeRange(start=time(7, 0), end=time(21, 0)),
@@ -271,6 +277,37 @@ def test_refresh_calendar_fetches_and_saves(monkeypatch):
     refresh_calendar(datetime.now(TIMEZONE))
 
     assert calls == ["refreshed", "travel_times_updated"]
+
+
+def test_refresh_calendar_skips_the_refresh_when_the_calendar_data_stays_locked(monkeypatch):
+    monkeypatch.setattr("homeaudio.vcal.calendar_refresh.LOCK_TIMEOUT_SECONDS", 0)
+    monkeypatch.setattr("homeaudio.vcal.calendar_refresh.refresh_calendar_data", lambda: pytest.fail("must not refresh while locked"))
+    monkeypatch.setattr("homeaudio.vcal.calendar_refresh.update_calendar_travel_times", lambda: pytest.fail("must not update travel times while locked"))
+
+    with calendar_data_lock():
+        refresh_calendar(datetime.now(TIMEZONE))  # must not raise
+
+
+def test_refresh_calendar_holds_the_calendar_data_lock_across_the_refresh_and_travel_time_update(monkeypatch):
+    monkeypatch.setattr(
+        "homeaudio.vcal.calendar_refresh.EventNotificationSettings",
+        lambda: SimpleNamespace(location_based_departure_times=SimpleNamespace(enabled=True)),
+    )
+    locked_during = []
+
+    def is_locked():
+        try:
+            with calendar_data_lock():
+                return False
+        except google_calendar.CalendarDataLocked:
+            return True
+
+    monkeypatch.setattr("homeaudio.vcal.calendar_refresh.refresh_calendar_data", lambda: locked_during.append(is_locked()))
+    monkeypatch.setattr("homeaudio.vcal.calendar_refresh.update_calendar_travel_times", lambda: locked_during.append(is_locked()))
+
+    refresh_calendar(datetime.now(TIMEZONE))
+
+    assert locked_during == [True, True]
 
 
 def test_refresh_calendar_does_not_raise_when_fetching_fails(monkeypatch):

@@ -1,6 +1,10 @@
 from __future__ import print_function
 
 import datetime
+import fcntl
+import tempfile
+import time
+from contextlib import contextmanager
 
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -23,6 +27,8 @@ from homeaudio.env import CALENDAR_DATA_DIRECTORY
 
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
 DATA_FILE = CALENDAR_DATA_DIRECTORY + "/calendar.json"
+LOCK_FILE = DATA_FILE + ".lock"
+LOCK_POLL_SECONDS = 0.5
 DAYS_TO_FETCH = 7
 
 TIMEZONE = "Australia/Melbourne"
@@ -34,6 +40,28 @@ class MissingCalendarDataException(Exception):
 
 class GoogleApiTokenNotFound(Exception):
     pass
+
+class CalendarDataLocked(Exception):
+    pass
+
+@contextmanager
+def calendar_data_lock(timeout_seconds: float = 0, lock_file_path: str | None = None):
+    """Holds an exclusive cross-process lock for updating calendar.json, raising CalendarDataLocked if it can't be acquired within timeout_seconds."""
+    lock_file_path = lock_file_path or LOCK_FILE
+    deadline = time.monotonic() + timeout_seconds
+    with open(lock_file_path, "a") as lock_file:
+        while True:
+            try:
+                fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() >= deadline:
+                    raise CalendarDataLocked(f"Calendar data is locked by another update ({lock_file_path})")
+                time.sleep(LOCK_POLL_SECONDS)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock_file, fcntl.LOCK_UN)
 
 @dataclass
 class CalendarEvent:
@@ -375,8 +403,15 @@ class CalendarSource:
             "refreshed_at": self.refreshed_at,
         }
         data_json = json.dumps(data, sort_keys=True, default=json_default_encoder)
-        with open(self.cache_file_path, "w") as f:
-            f.write(data_json)
+        fd, tmp_file_path = tempfile.mkstemp(dir=os.path.dirname(self.cache_file_path) or ".", prefix=".calendar.", suffix=".tmp")
+        try:
+            os.fchmod(fd, 0o644)
+            with os.fdopen(fd, "w") as f:
+                f.write(data_json)
+            os.replace(tmp_file_path, self.cache_file_path)
+        except BaseException:
+            os.remove(tmp_file_path)
+            raise
 
     def file_exists(self) -> bool:
         return os.path.exists(self.cache_file_path)

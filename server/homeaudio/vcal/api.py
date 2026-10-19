@@ -15,7 +15,7 @@ from homeaudio.vcal.event_notifications.scheduled_announcements import scheduled
 from homeaudio.vcal.event_notifications.models import TestNotificationRequest, PlayScheduledAnnouncementRequest, EventSummaryResponse, NotificationResponseItem, NotificationsResponse
 from homeaudio.vcal.event_notifications.events import EventNotification, LeaveForEvent
 from homeaudio.audio.settings import SnapcastSettings, EventNotificationSettings
-from homeaudio.vcal.cal.google_calendar import refresh_calendar_data
+from homeaudio.vcal.cal.google_calendar import CalendarDataLocked, calendar_data_lock, refresh_calendar_data
 from homeaudio.audio.string_utils import json_default_encoder
 from homeaudio.env import APP_NAME
 
@@ -41,6 +41,9 @@ def format_scheduled_announcement_for_api(announcement: ScheduledAnnouncementNot
         play_datetime=announcement.due_datetime,
         duration_seconds=300,
     )
+
+def _calendar_data_locked_response() -> Response:
+    return Response(content="Calendar data is already being updated", status_code=409, media_type="text/plain")
 
 def _wants_json(request: Request) -> bool:
     return "application/json" in request.headers.get("accept", "")
@@ -107,12 +110,20 @@ class AlarmHandler:
         threading.Thread(target=play_school_announcements, args=(base_time,), daemon=True).start()
         return "Playing school announcements..."
 
-    def refresh_calendar_data(self) -> str:
-        refresh_calendar_data()
+    def refresh_calendar_data(self) -> str | None:
+        try:
+            with calendar_data_lock():
+                refresh_calendar_data()
+        except CalendarDataLocked:
+            return None
         return "Calendar data refreshed"
 
-    def recompute_departure_times(self) -> str:
-        update_calendar_travel_times()
+    def recompute_departure_times(self) -> str | None:
+        try:
+            with calendar_data_lock():
+                update_calendar_travel_times()
+        except CalendarDataLocked:
+            return None
         return "Departure times recalculated"
 
     def replay_last_notification(self) -> str:
@@ -247,14 +258,19 @@ class AlarmRoutes:
         message = self.alarm_handler.play_school_announcements(payload.base_time if payload else None)
         return Response(content=message, status_code=202, media_type="text/plain")
 
-    async def refresh_calendar_data_endpoint(self):
+    # Sync so FastAPI runs these in the threadpool instead of blocking the event loop.
+    def refresh_calendar_data_endpoint(self):
         message = self.alarm_handler.refresh_calendar_data()
+        if message is None:
+            return _calendar_data_locked_response()
         return Response(content=message, status_code=200, media_type="text/plain")
 
-    async def recompute_departure_times_endpoint(self):
+    def recompute_departure_times_endpoint(self):
         if not EventNotificationSettings().location_based_departure_times.enabled:
             return Response(content="Location based departure notifications are disabled", status_code=409, media_type="text/plain")
         message = self.alarm_handler.recompute_departure_times()
+        if message is None:
+            return _calendar_data_locked_response()
         return Response(content=message, status_code=200, media_type="text/plain")
 
     async def calendar_refreshed_at_endpoint(self):

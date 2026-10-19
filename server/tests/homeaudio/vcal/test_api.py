@@ -12,6 +12,15 @@ from homeaudio.vcal.event_notifications.events import EventNotification, EventNo
 from homeaudio.audio.settings import EventNotificationSchedule
 from homeaudio.vcal.event_notifications.scheduled_announcements import ScheduledAnnouncementType
 import homeaudio.vcal.api as api_module
+import homeaudio.vcal.cal.google_calendar as google_calendar
+from homeaudio.vcal.cal.google_calendar import calendar_data_lock
+
+
+@pytest.fixture(autouse=True)
+def calendar_lock_file(monkeypatch, tmp_path):
+    lock_file_path = str(tmp_path / "calendar.json.lock")
+    monkeypatch.setattr(google_calendar, "LOCK_FILE", lock_file_path)
+    return lock_file_path
 
 
 @pytest.fixture(autouse=True)
@@ -385,6 +394,17 @@ def test_recompute_departure_times_endpoint_recomputes_synchronously(monkeypatch
     assert calls == ["recalculated"]
 
 
+def test_recompute_departure_times_endpoint_returns_conflict_when_the_calendar_data_is_locked(monkeypatch):
+    monkeypatch.setattr(api_module, "EventNotificationSettings", lambda: SimpleNamespace(location_based_departure_times=SimpleNamespace(enabled=True)))
+    monkeypatch.setattr(api_module, "update_calendar_travel_times", lambda: pytest.fail("must not recompute while locked"))
+
+    with calendar_data_lock():
+        response = _client().post("/alarm/recompute-departure-times")
+
+    assert response.status_code == 409
+    assert response.text == "Calendar data is already being updated"
+
+
 def test_recompute_departure_times_endpoint_returns_conflict_when_departure_notifications_are_disabled(monkeypatch):
     monkeypatch.setattr(api_module, "EventNotificationSettings", lambda: SimpleNamespace(location_based_departure_times=SimpleNamespace(enabled=False)))
     monkeypatch.setattr(api_module, "update_calendar_travel_times", lambda: pytest.fail("must not recompute when disabled"))
@@ -393,6 +413,66 @@ def test_recompute_departure_times_endpoint_returns_conflict_when_departure_noti
 
     assert response.status_code == 409
     assert response.text == "Location based departure notifications are disabled"
+
+
+def test_refresh_calendar_data_endpoint_refreshes_synchronously(monkeypatch):
+    calls = []
+    monkeypatch.setattr(api_module, "refresh_calendar_data", lambda: calls.append("refreshed"))
+
+    response = _client().post("/alarm/refresh-calendar-data")
+
+    assert response.status_code == 200
+    assert response.text == "Calendar data refreshed"
+    assert calls == ["refreshed"]
+
+
+def test_refresh_calendar_data_endpoint_returns_conflict_when_a_refresh_is_already_in_progress(monkeypatch):
+    started = threading.Event()
+    release = threading.Event()
+    calls = []
+
+    def slow_refresh():
+        calls.append("refreshed")
+        started.set()
+        release.wait(timeout=5)
+
+    monkeypatch.setattr(api_module, "refresh_calendar_data", slow_refresh)
+    client = _client()
+    first = threading.Thread(target=lambda: client.post("/alarm/refresh-calendar-data"))
+    first.start()
+    assert started.wait(timeout=5)
+
+    try:
+        response = client.post("/alarm/refresh-calendar-data")
+    finally:
+        release.set()
+        first.join(timeout=5)
+
+    assert response.status_code == 409
+    assert response.text == "Calendar data is already being updated"
+    assert calls == ["refreshed"]
+
+
+def test_refresh_calendar_data_endpoint_returns_conflict_when_another_process_holds_the_calendar_data_lock(monkeypatch):
+    monkeypatch.setattr(api_module, "refresh_calendar_data", lambda: pytest.fail("must not refresh while locked"))
+
+    with calendar_data_lock():
+        response = _client().post("/alarm/refresh-calendar-data")
+
+    assert response.status_code == 409
+    assert response.text == "Calendar data is already being updated"
+
+
+def test_refresh_calendar_data_endpoint_releases_the_lock_when_the_refresh_fails(monkeypatch):
+    def failing_refresh():
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(api_module, "refresh_calendar_data", failing_refresh)
+    client = TestClient(_client().app, raise_server_exceptions=False)
+
+    assert client.post("/alarm/refresh-calendar-data").status_code == 500
+    monkeypatch.setattr(api_module, "refresh_calendar_data", lambda: None)
+    assert client.post("/alarm/refresh-calendar-data").status_code == 200
 
 
 def test_calendar_refreshed_at_endpoint_returns_the_refreshed_at_isoformat(monkeypatch):

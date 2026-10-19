@@ -228,8 +228,8 @@
             alert('Testing notification failed: ' + response.status + ' ' + response.statusText + '\n\n' + text);
           });
         })
-        .catch(function () {
-          alert('Testing notification failed (network error).');
+        .catch(function (e) {
+          alert('Testing notification failed (network error). ' + e);
         })
         .finally(function () {
           button.disabled = false;
@@ -254,8 +254,8 @@
             alert('Playing announcement failed: ' + response.status + ' ' + response.statusText + '\n\n' + text);
           });
         })
-        .catch(function () {
-          alert('Playing announcement failed (network error).');
+        .catch(function (e) {
+          alert('Playing announcement failed (network error). ' + e);
         })
         .finally(function () {
           button.disabled = false;
@@ -267,6 +267,9 @@
     const button = this;
     const path = "/alarm/refresh-calendar-data";
 
+    if (button.classList.contains('refreshing')) {
+      return;
+    }
     button.classList.add('refreshing');
     button.title = 'Refreshing calendar data...';
 
@@ -280,8 +283,8 @@
           alert('Calendar refresh failed: ' + response.status + ' ' + response.statusText + '\n\n' + text);
         });
       })
-      .catch(function () {
-        alert('Calendar refresh failed (network error).');
+      .catch(function (e) {
+        alert('Calendar refresh failed (network error). ' + e);
       })
       .finally(function () {
         button.classList.remove('refreshing');
@@ -291,6 +294,10 @@
 
   document.getElementById('recompute-departure-times').addEventListener('click', function () {
     const button = this;
+
+    if (button.classList.contains('refreshing')) {
+      return;
+    }
 
     button.classList.add('refreshing');
 
@@ -304,8 +311,8 @@
           alert('Recomputing departure times failed: ' + response.status + ' ' + response.statusText + '\n\n' + text);
         });
       })
-      .catch(function () {
-        alert('Recomputing departure times failed (network error).');
+      .catch(function (e) {
+        alert('Recomputing departure times failed (network error). ' + e);
       })
       .finally(function () {
         button.classList.remove('refreshing');
@@ -322,8 +329,8 @@
           alert('Stopping notification failed: ' + response.status + ' ' + response.statusText + '\n\n' + text);
         });
       })
-      .catch(function () {
-        alert('Stopping notification failed (network error).');
+      .catch(function (e) {
+        alert('Stopping notification failed (network error). ' + e);
       });
   });
 
