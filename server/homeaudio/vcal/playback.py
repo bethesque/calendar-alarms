@@ -6,7 +6,7 @@ from homeaudio.audio.mpd import fade_up, mpd_connection
 from homeaudio.audio.sound import track_length
 from homeaudio.audio.scene import SceneProtocol
 from homeaudio.audio.settings import SnapcastSettings, MpdSettings
-from homeaudio.audio.snapcast import snapserver_manager_for_env
+from homeaudio.audio.snapcast import snapserver_manager_for_env, PlayerScope
 
 logger = logging.getLogger(__name__)
 
@@ -43,8 +43,8 @@ Takes a list of CalenderDays and finds any alarms due within the given time wind
 def play_notifications(notification_files: NotificationFiles, scene: SceneProtocol):
     mpd_settings = MpdSettings()
     snapcast_settings = SnapcastSettings()
-    snapserver_manager = snapserver_manager_for_env(snapcast_settings, notification_files.targets())
-    areas = snapserver_manager.connected_player_areas()
+    snapserver_manager = snapserver_manager_for_env(snapcast_settings, PlayerScope.REQUESTED, notification_files.targets())
+    areas = snapserver_manager.scoped_player_areas()
     announcements_file = notification_files.event_announcements_file
     scheduled_announcements_files = notification_files.scheduled_announcements_files
     alarms_file = notification_files.event_alarms_file
@@ -89,9 +89,14 @@ def _play_event_alarm(alarms_file, mpd_settings: MpdSettings):
         mpd.play_file(alarms_file)
         fade_up([(mpd, mpd_settings.volumes.alarm_end)], fade_up_duration, 10)
 
-def play_file(file: str, mpd_settings: MpdSettings | None = None):
+def play_tts_file(file: str, mpd_settings: MpdSettings | None = None):
     mpd_settings = mpd_settings or MpdSettings()
+    snapcast_settings = SnapcastSettings()
+    snapserver_manager = snapserver_manager_for_env(snapcast_settings, PlayerScope.UNMUTED)
+    snapserver_manager.set_volumes("tts")
+
     with mpd_connection(mpd_settings) as mpd:
+        mpd.set_volume(mpd_settings.volumes.tts)
         logger.info(f"Playing {file}")
         mpd.play_file(file)
 

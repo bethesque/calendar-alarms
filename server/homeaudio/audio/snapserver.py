@@ -30,7 +30,6 @@ class Snapserver:
     def __init__(self, base_url: str):
         self.base_url = base_url.rstrip("/")
         self._rpc_id = 1
-        self._connected_clients = None
 
     # -------------------------
     # RPC
@@ -77,10 +76,37 @@ class Snapserver:
         return self._rpc("Server.GetStatus")
 
     def connected_clients(self) -> list[Client]:
-        if self._connected_clients is None:
-            self._connected_clients = self.get_clients(only_connected=True)
+        return self.get_clients(only_connected=True)
 
-        return self._connected_clients
+    def get_unmuted_connected_clients(self) -> list[Client]:
+        status = self._get_status()
+
+        clients: list[Client] = []
+
+        for group in status["server"]["groups"]:
+            for c in group.get("clients", []):
+                if c.get("connected") is not True:
+                    continue
+
+                if c.get("config", {}).get("volume", {}).get("muted", False):
+                    continue
+
+                if c.get("config", {}).get("volume", {}).get("percent", -1) == 0:
+                    continue
+
+                clients.append(self._build_client(c))
+
+        return self._most_recent_per_host(clients)
+
+    def _build_client(self, c):
+        return Client(
+                        id=c["id"],
+                        host_name=c["host"]["name"],
+                        config_name=c["config"]["name"],
+                        connected=c["connected"],
+                        last_seen=c["lastSeen"],
+                        latency=c["config"].get("latency"),
+                    )
 
     def get_clients(self, only_connected: bool = False) -> list[Client]:
         status = self._get_status()
@@ -92,16 +118,7 @@ class Snapserver:
                 if only_connected and c.get("connected") is not True:
                     continue
 
-                clients.append(
-                    Client(
-                        id=c["id"],
-                        host_name=c["host"]["name"],
-                        config_name=c["config"]["name"],
-                        connected=c["connected"],
-                        last_seen=c["lastSeen"],
-                        latency=c["config"].get("latency"),
-                    )
-                )
+                clients.append(self._build_client(c))
 
         return self._most_recent_per_host(clients)
 
@@ -119,23 +136,6 @@ class Snapserver:
     @staticmethod
     def _last_seen_key(client: Client) -> tuple[int, int]:
         return (client.last_seen.get("sec", 0), client.last_seen.get("usec", 0))
-
-    def connected_client_names(self) -> list[str]:
-        return [ client.name for client in self.connected_clients() ]
-
-    # def _clients_by_host(
-    #     self,
-    #     only_connected: bool = True,
-    # ) -> dict[str, list[str]]:
-    #     """
-    #     host -> list of client_ids
-    #     """
-    #     mapping: dict[str, list[str]] = {}
-
-    #     for client in self._clients(only_connected=only_connected):
-    #         mapping.setdefault(client.host, []).append(client.id)
-
-    #     return mapping
 
     # -------------------------
     # Control

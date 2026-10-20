@@ -16,7 +16,7 @@ from homeaudio.vcal.event_notifications.snooze import LastPlayedState, SnoozeSta
 from homeaudio.vcal.school_announcements import check_for_announcement as check_for_school_announcements
 from homeaudio.vcal.morning_announcements import check_for_announcement as check_for_morning_announcements
 from homeaudio.vcal.event_notifications.core import build_event_notification_files, check_for_event_notifications as check_for_event_notifications
-from homeaudio.vcal.playback import NotificationFiles, play_notifications, play_file
+from homeaudio.vcal.playback import NotificationFiles, play_notifications, play_tts_file
 from homeaudio.vcal.event_notifications.events import EventNotifications, NotificationPlaytimeScheduler, NotificationType
 from homeaudio.env import NOTIFICATIONS_CHECK_INTERVAL_MINUTES
 
@@ -51,14 +51,14 @@ def snooze_alarm(after_alarm_hook=None):
 
     last_played = LastPlayedState()
     if not last_played.fresh():
-        play_file(_build_one_off_announcement_file(NOTHING_TO_SNOOZE))
+        play_tts_file(_build_one_off_announcement_file(NOTHING_TO_SNOOZE))
         return
 
     event_notifications = last_played.load()
     base_time = last_played.load_base_time()
 
     if not event_notifications or not base_time:
-        play_file(_build_one_off_announcement_file(NOTHING_TO_SNOOZE))
+        play_tts_file(_build_one_off_announcement_file(NOTHING_TO_SNOOZE))
         return
 
     snooze_minutes = EventNotificationSettings().snooze_minutes
@@ -67,7 +67,7 @@ def snooze_alarm(after_alarm_hook=None):
     actual_snooze_minutes = int((replay_at - datetime.now().astimezone()).total_seconds() // 60)
     SnoozeState().save(event_notifications, replay_at, clear_at)
     logger.info(f"Snoozed last alarm for {actual_snooze_minutes} minutes until {replay_at}")
-    play_file(_build_one_off_announcement_file(snoozing_message(actual_snooze_minutes)))
+    play_tts_file(_build_one_off_announcement_file(snoozing_message(actual_snooze_minutes)))
 
     if after_alarm_hook:
         after_alarm_hook()

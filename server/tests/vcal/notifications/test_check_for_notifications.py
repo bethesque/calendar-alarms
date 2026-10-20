@@ -13,7 +13,7 @@ class StubSnapserverManager:
     def __init__(self, *args, **kwargs):
         pass
 
-    def connected_player_areas(self):
+    def scoped_player_areas(self):
         return set()
 
     def set_volumes(self, usecase):
