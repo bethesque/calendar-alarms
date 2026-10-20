@@ -124,6 +124,10 @@ class NotificationTextBuilder:
         if minutes_until_start > 0:
             minutes_text = "1 minute" if minutes_until_start == 1 else f"{minutes_until_start} minutes"
             return f"It will be time {self._to_or_for(summary)} {summary} in {minutes_text}."
+        elif -60 <= minutes_until_start < 0:
+            minutes_ago = -minutes_until_start
+            minutes_text = "1 minute" if minutes_ago == 1 else f"{minutes_ago} minutes"
+            return f"It was time {self._to_or_for(summary)} {summary} {minutes_text} ago."
         elif minutes_until_start < 0:
             start_text = f"{start_time.hour % 12 or 12}:{start_time.minute:02d}{'am' if start_time.hour < 12 else 'pm'}"
             return f"It was time {self._to_or_for(summary)} {summary} at {start_text}."

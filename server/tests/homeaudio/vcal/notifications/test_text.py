@@ -125,7 +125,22 @@ def test_notification_text_builder_says_it_was_time_for_an_event_that_already_st
     base_time = datetime.datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE)
     event_notification = _description_event_notification(offset=15, start_time=datetime.datetime(2026, 4, 28, 6, 45, tzinfo=TIMEZONE))
 
-    assert _bare_text(monkeypatch, [event_notification], base_time) == ["It was time for Gym session at 6:45am."]
+    assert _bare_text(monkeypatch, [event_notification], base_time) == ["It was time for Gym session 15 minutes ago."]
+
+
+@pytest.mark.parametrize(
+    "start_time, expected",
+    [
+        (datetime.datetime(2026, 4, 28, 6, 59, tzinfo=TIMEZONE), "It was time for Gym session 1 minute ago."),
+        (datetime.datetime(2026, 4, 28, 6, 0, tzinfo=TIMEZONE), "It was time for Gym session 60 minutes ago."),
+        (datetime.datetime(2026, 4, 28, 5, 59, tzinfo=TIMEZONE), "It was time for Gym session at 5:59am."),
+    ],
+)
+def test_notification_text_builder_says_minutes_ago_for_an_event_that_started_within_the_last_hour(monkeypatch, start_time, expected):
+    base_time = datetime.datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE)
+    event_notification = _description_event_notification(start_time=start_time)
+
+    assert _bare_text(monkeypatch, [event_notification], base_time) == [expected]
 
 
 @pytest.mark.parametrize(
@@ -134,7 +149,7 @@ def test_notification_text_builder_says_it_was_time_for_an_event_that_already_st
         ("Feed Miller", datetime.datetime(2026, 4, 28, 7, 10, tzinfo=TIMEZONE), "It was time to Feed Miller at 7:10am."),
         ("Gym session", datetime.datetime(2026, 4, 28, 0, 5, tzinfo=TIMEZONE), "It was time for Gym session at 12:05am."),
         ("Gym session", datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE), "It was time for Gym session at 12:00pm."),
-        ("Gym session", datetime.datetime(2026, 4, 28, 13, 30, tzinfo=TIMEZONE), "It was time for Gym session at 1:30pm."),
+        ("Gym session", datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE), "It was time for Gym session at 12:30pm."),
     ],
 )
 def test_notification_text_builder_says_the_start_time_for_an_event_that_already_started(monkeypatch, summary, start_time, expected):
@@ -152,7 +167,7 @@ def test_notification_text_builder_removes_repeated_sentences(monkeypatch):
         _description_event_notification(offset=5, start_time=start_time),
     ]
 
-    assert _bare_text(monkeypatch, event_notifications, base_time) == ["It was time for Gym session at 6:45am."]
+    assert _bare_text(monkeypatch, event_notifications, base_time) == ["It was time for Gym session 15 minutes ago."]
 
 
 def test_all_greeting_options_includes_time_of_day_and_owner_greetings():
