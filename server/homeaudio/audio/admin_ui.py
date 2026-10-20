@@ -190,6 +190,9 @@ class AdminRoutes:
                     "mpd_settings.volumes.voice": FieldConfig(
                         visible_when=f"{str(HOUSIE_TALKIE_ENABLED).lower()} == true"
                     ),
+                    "mpd_settings.volumes.amixer": FieldConfig(
+                        visible_when=f"{str(SNAPCAST_ENABLED).lower()} == false"
+                    ),
                     "google_text_to_speech_settings.default_tld": FieldConfig(
                         renderer=Renderer.SELECT,
                         props={
