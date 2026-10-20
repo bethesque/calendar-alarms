@@ -88,22 +88,41 @@ def test_last_played_state_save_load_clear(monkeypatch, tmp_path):
     state = LastPlayedState()
     assert state.load() == []
     assert state.load_base_time() is None
+    assert state.saved_at() is None
     assert state.fresh() is False
 
     event_notification = _event_notification()
     base_time = datetime(2026, 4, 28, 7, 30, tzinfo=TIMEZONE)
+    before_save = datetime.now().astimezone()
     state.save([event_notification], base_time)
 
     loaded = state.load()
     assert len(loaded) == 1
     assert loaded[0].event.summary == "Gym session"
     assert state.load_base_time() == base_time
+    assert before_save <= state.saved_at() <= datetime.now().astimezone()
     assert state.fresh() is True
 
     state.clear()
     assert state.load() == []
     assert state.load_base_time() is None
+    assert state.saved_at() is None
     assert state.fresh() is False
+
+
+def test_last_played_state_base_time_does_not_match_saved_time(monkeypatch, tmp_path):
+    _fresh_state_files(monkeypatch, tmp_path)
+    state = LastPlayedState()
+    assert state.base_time_does_not_match_saved_time() is False
+
+    base_time = datetime(2026, 4, 28, 7, 30, tzinfo=TIMEZONE)
+    state.save([_event_notification()], base_time)
+
+    monkeypatch.setattr(LastPlayedState, "saved_at", lambda self: base_time - timedelta(seconds=25))
+    assert state.base_time_does_not_match_saved_time() is False
+
+    monkeypatch.setattr(LastPlayedState, "saved_at", lambda self: base_time - timedelta(seconds=26))
+    assert state.base_time_does_not_match_saved_time() is True
 
 
 def test_snooze_state_due_event_notifications_only_returns_when_due(monkeypatch, tmp_path):

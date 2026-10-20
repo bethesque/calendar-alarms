@@ -55,22 +55,35 @@ def snooze_alarm(after_alarm_hook=None):
         return
 
     event_notifications = last_played.load()
-    base_time = last_played.load_base_time()
+    alarm_played_time = last_played.load_base_time()
 
-    if not event_notifications or not base_time:
+    if not event_notifications or not alarm_played_time:
         play_tts_file(_build_one_off_announcement_file(NOTHING_TO_SNOOZE))
         return
 
+    # Alarms played via the UI have a base_time unrelated to when they actually played,
+    # so used the saved_at time instead.
+    if last_played.base_time_does_not_match_saved_time():
+        alarm_played_time = _round_to_nearest_minute(last_played.saved_at())
+
     snooze_minutes = EventNotificationSettings().snooze_minutes
-    replay_at = base_time + timedelta(minutes=snooze_minutes)
-    clear_at = base_time + timedelta(minutes=2 * snooze_minutes)
-    actual_snooze_minutes = int((replay_at - datetime.now().astimezone()).total_seconds() // 60)
+    replay_at = alarm_played_time + timedelta(minutes=snooze_minutes)
+    clear_at = alarm_played_time + timedelta(minutes=2 * snooze_minutes)
     SnoozeState().save(event_notifications, replay_at, clear_at)
-    logger.info(f"Snoozed last alarm for {actual_snooze_minutes} minutes until {replay_at}")
-    play_tts_file(_build_one_off_announcement_file(snoozing_message(actual_snooze_minutes)))
+
+    snooze_minutes_to_announce = _round_down_to_nearest_minute(replay_at - datetime.now().astimezone())
+    logger.info(f"Snoozed last alarm for {snooze_minutes_to_announce} minutes until {replay_at}")
+    play_tts_file(_build_one_off_announcement_file(snoozing_message(snooze_minutes_to_announce)))
 
     if after_alarm_hook:
         after_alarm_hook()
+
+def _round_down_to_nearest_minute(time_diff: timedelta):
+    return int((time_diff).total_seconds() // 60)
+
+def _round_to_nearest_minute(dt: datetime):
+    return (dt + timedelta(seconds=30)).replace(second=0, microsecond=0)
+
 
 def _build_one_off_announcement_file(message: str):
     speech_file = text_to_voice_file(message)

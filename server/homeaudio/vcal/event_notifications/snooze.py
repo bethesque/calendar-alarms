@@ -2,12 +2,12 @@ import json
 import logging
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from homeaudio.audio.settings import NotificationRule
 from homeaudio.audio.string_utils import json_default_encoder
-from homeaudio.env import CACHE_DIRECTORY
+from homeaudio.env import CACHE_DIRECTORY, NOTIFICATIONS_PREPARATION_LEAD_TIME_SECONDS
 from homeaudio.vcal.cal.google_calendar import Event, load_timed_event
 from homeaudio.vcal.event_notifications.events import EventNotification, EventNotifications, NotificationSource, NotificationType
 
@@ -90,6 +90,26 @@ class LastPlayedState:
         if data is None:
             return None
         return datetime.fromisoformat(data["base_time"])
+
+    def saved_at(self) -> datetime | None:
+        try:
+            return datetime.fromtimestamp(os.path.getmtime(self.file_path)).astimezone()
+        except FileNotFoundError:
+            return None
+
+
+    def base_time_does_not_match_saved_time(self) -> bool:
+        """
+        If the base time is not within NOTIFICATIONS_PREPARATION_LEAD_TIME_SECONDS seconds of the
+        save time, then this tells us the last alarm was triggered via the UI.
+        Could probably have added a flag to the method to take the guess-work out of that, but
+        ah well.
+        """
+        base_time = self.load_base_time()
+        saved_at = self.saved_at()
+        if not base_time or not saved_at:
+            return False
+        return abs(saved_at - base_time) > timedelta(seconds=NOTIFICATIONS_PREPARATION_LEAD_TIME_SECONDS + 10)
 
     def fresh(self, max_age_mins: int = 5) -> bool:
         max_age_seconds = max_age_mins * 60

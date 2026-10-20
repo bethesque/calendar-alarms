@@ -97,6 +97,7 @@ def test_snooze_alarm_saves_snooze_state_and_confirms_via_tts(monkeypatch, tmp_p
     base_time = datetime(2026, 4, 28, 9, 0, tzinfo=TIMEZONE)
     event_notification = _event_notification()
     LastPlayedState().save([event_notification], base_time)
+    monkeypatch.setattr(LastPlayedState, "saved_at", lambda self: base_time - timedelta(seconds=10))
 
     hook_calls = []
     snooze_alarm(after_alarm_hook=lambda: hook_calls.append(1))
@@ -114,6 +115,27 @@ def test_snooze_alarm_saves_snooze_state_and_confirms_via_tts(monkeypatch, tmp_p
     assert due[0].event.summary == "Gym session"
 
     assert hook_calls == [1]
+
+
+def test_snooze_alarm_uses_saved_at_when_base_time_is_outside_the_check_interval(monkeypatch, tmp_path):
+    _stub_state_files(monkeypatch, tmp_path)
+    announcement_calls, _ = _stub_snooze_alarm_playback(monkeypatch)
+    monkeypatch.setattr(core_module, "stop_alarm", lambda hook=None: None)
+    monkeypatch.setattr(
+        core_module,
+        "EventNotificationSettings",
+        lambda: type("_S", (), {"snooze_minutes": 10})(),
+    )
+
+    base_time = datetime(2026, 4, 28, 9, 0, tzinfo=TIMEZONE)
+    LastPlayedState().save([_event_notification()], base_time)
+    monkeypatch.setattr(LastPlayedState, "saved_at", lambda self: datetime(2026, 4, 29, 7, 15, 40, tzinfo=TIMEZONE))
+
+    snooze_alarm()
+
+    assert SnoozeState().next_replay_at() == datetime(2026, 4, 29, 7, 26, tzinfo=TIMEZONE)
+    assert SnoozeState()._load_raw()["clear_at"] == datetime(2026, 4, 29, 7, 36, tzinfo=TIMEZONE).isoformat()
+    assert len(announcement_calls) == 1
 
 
 def _stub_test_notification_playback(monkeypatch):
