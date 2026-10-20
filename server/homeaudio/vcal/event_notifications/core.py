@@ -1,17 +1,19 @@
 from dataclasses import dataclass
+from datetime import datetime
 import logging
 from pathlib import Path
-from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList
-from homeaudio.vcal.event_notifications.events import EventNotification, NotificationPlaytimeScheduler, NotificationType
+from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, CalendarSource
+from homeaudio.vcal.event_notifications.events import EventNotification, EventNotifications, NotificationPlaytimeScheduler, NotificationType
 from homeaudio.housie_talkie.models import SoundEffectSelector
 from homeaudio.vcal.event_notifications.audio import AlarmAudio, AnnouncementAudio
 from homeaudio.vcal.event_notifications.text import NotificationTextBuilder
 from homeaudio.vcal.event_notifications.text_to_voice import gtts_tld
 from homeaudio.vcal.event_notifications import snooze
-from homeaudio.vcal.event_notifications.snooze import LastPlayedState
+from homeaudio.vcal.event_notifications.snooze import LastPlayedState, SnoozeState
 from homeaudio.vcal.event_notifications.events import get_event_notifications
 from homeaudio.audio.settings import EventNotificationSettings
 from homeaudio.audio.scene import SceneProtocol
+from homeaudio.env import NOTIFICATIONS_CHECK_INTERVAL_MINUTES
 from homeaudio.vcal.playback import NotificationFile, NotificationFiles, play_notifications
 
 # "It's time for an event to begin, however there was a problem creating the announcement. Please check the calendar."
@@ -39,7 +41,7 @@ def check_for_and_play_notifications(base_time, scheduler: NotificationPlaytimeS
 def find_due_event_notifications(base_time, scheduler: NotificationPlaytimeScheduler, calendar_days: CalendarDayList, event_notification_settings: EventNotificationSettings | None = None) -> list[EventNotification]:
     event_notification_settings = event_notification_settings or EventNotificationSettings()
     event_notifications = get_event_notifications(base_time, scheduler, calendar_days, event_notification_settings)
-    event_notifications = event_notifications + snooze.due_snoozed_event_notifications(base_time)
+    event_notifications = event_notifications + snooze.due_snoozed_event_notifications(base_time, scheduler)
     return event_notifications
 
 # Gathers what's due at base_time (calendar-driven notifications plus any due snoozes) and builds
@@ -69,8 +71,8 @@ def build_event_notification_files(event_notifications: list[EventNotification],
         announcement_event_notifications = [event for event in event_notifications if event.type == NotificationType.ANNOUNCE]
         alarm_event_notifications = [event for event in event_notifications if event.type == NotificationType.ALARM]
 
-        announcement_texts = NotificationTextBuilder(announcement_event_notifications, base_time).build()
-        alarm_texts = NotificationTextBuilder(alarm_event_notifications, base_time).build()
+        announcement_texts = NotificationTextBuilder(announcement_event_notifications, base_time, event_notification_settings.peoples_names).build()
+        alarm_texts = NotificationTextBuilder(alarm_event_notifications, base_time, event_notification_settings.peoples_names).build()
 
         announcements_file = None
         alarm_audio_file = None
@@ -93,3 +95,17 @@ def build_event_notification_files(event_notifications: list[EventNotification],
     except Exception:
         logger.exception("Error generating notification audio. Returning pre-generated notification file.")
         return (NotificationFile(path=ERROR_MESSAGE_AUDIO, targets=None), None)
+
+def get_all_event_notifications(event_notification_settings: EventNotificationSettings | None = None, calendar_source: CalendarSource = CalendarSource()):
+    event_notification_settings = event_notification_settings or EventNotificationSettings()
+    calendar_days = calendar_source.load_data_from_file()
+
+    scheduler = NotificationPlaytimeScheduler(datetime.now().astimezone().tzinfo, event_notification_settings.schedule, calendar_days, NOTIFICATIONS_CHECK_INTERVAL_MINUTES)
+    notifications = []
+    for day in calendar_days:
+        for event in day.timed_events:
+            notifications.extend(EventNotifications(event, scheduler).notifications(event_notification_settings))
+
+    notifications.extend(SnoozeState().pending_event_notifications(datetime.now().astimezone(), scheduler))
+
+    return notifications

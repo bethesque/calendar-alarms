@@ -9,7 +9,7 @@ from homeaudio.audio.settings import NotificationRule
 from homeaudio.audio.string_utils import json_default_encoder
 from homeaudio.env import CACHE_DIRECTORY, NOTIFICATIONS_PREPARATION_LEAD_TIME_SECONDS
 from homeaudio.vcal.cal.google_calendar import Event, load_timed_event
-from homeaudio.vcal.event_notifications.events import EventNotification, EventNotifications, NotificationSource, NotificationType
+from homeaudio.vcal.event_notifications.events import EventNotification, EventNotifications, NotificationPlaytimeScheduler, NotificationSource, NotificationType
 
 logger = logging.getLogger(__name__)
 
@@ -152,26 +152,47 @@ class SnoozeState:
             return None
         return datetime.fromisoformat(data["replay_at"])
 
-    def due_event_notifications(self, now: datetime) -> list[EventNotification]:
-        """Returns and clears the pending snooze if it's due at or before `now`, or just clears it if it's stale at `now`."""
+    def pending_event_notifications(self, now: datetime, scheduler: NotificationPlaytimeScheduler) -> list[EventNotification]:
+        """Returns the pending snoozed notifications with play_datetime scheduled from the replay time, without clearing them."""
         data = self._load_raw()
         if data is None:
             return []
 
-        if "clear_at" in data and now >= datetime.fromisoformat(data["clear_at"]):
-            self.clear()
+        if "clear_at" in data and self._after_clear_at(now, data):
             return []
 
         replay_at = datetime.fromisoformat(data["replay_at"])
-        if now < replay_at:
+        event_notifications = [_deserialize(item) for item in data["event_notifications"]]
+        for event_notification in event_notifications:
+            event_notification.play_datetime = scheduler.get_play_datetime(replay_at)
+        return event_notifications
+
+    def _after_clear_at(self, now, data):
+        return now >= datetime.fromisoformat(data["clear_at"])
+
+    def due_event_notifications(self, now: datetime, scheduler: NotificationPlaytimeScheduler) -> list[EventNotification]:
+        """Returns and clears the pending snooze if its scheduled play time is at or before `now`, or just clears it if it's stale at `now`."""
+        data = self._load_raw()
+        if data is None:
+            return []
+
+        if "clear_at" in data and self._after_clear_at(now, data):
+            self.clear()
+            return []
+
+        play_datetime = scheduler.get_play_datetime(datetime.fromisoformat(data["replay_at"]))
+        if now < play_datetime:
             return []
 
         self.clear()
-        return [_deserialize(item) for item in data["event_notifications"]]
+        event_notifications = [_deserialize(item) for item in data["event_notifications"]]
+        for event_notification in event_notifications:
+            event_notification.play_datetime = play_datetime
+        return event_notifications
 
     def clear(self) -> None:
         Path(self.file_path).unlink(missing_ok=True)
 
 
-def due_snoozed_event_notifications(now: datetime) -> list[EventNotification]:
-    return SnoozeState().due_event_notifications(now)
+def due_snoozed_event_notifications(now: datetime, scheduler: NotificationPlaytimeScheduler) -> list[EventNotification]:
+    return SnoozeState().due_event_notifications(now, scheduler)

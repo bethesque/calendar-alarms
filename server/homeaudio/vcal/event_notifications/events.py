@@ -7,7 +7,6 @@ from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, Cal
 from homeaudio.audio.settings import EventNotificationSchedule, EventNotificationSettings, DepartureTimeRule, NotificationRule
 from homeaudio.vcal.departure_time import TravelTimeCache, car_departure_time_for_event, relevant_dates
 from homeaudio.vcal.notification_schedule import round_down_to_interval, event_notification_time_range_for_day, within_event_notification_operating_hours
-from homeaudio.env import NOTIFICATIONS_CHECK_INTERVAL_MINUTES
 logger = logging.getLogger(__name__)
 
 @dataclass
@@ -322,18 +321,6 @@ def get_event_notifications(base_time, scheduler: NotificationPlaytimeScheduler,
     alarm_finder = NotificationFinder(calendar_data, base_time, scheduler, event_notification_settings)
     event_notifications = alarm_finder.find_notification_events()
     return event_notifications
-
-def get_all_event_notifications(event_notification_settings: EventNotificationSettings | None = None, calendar_source: CalendarSource = CalendarSource()):
-    event_notification_settings = event_notification_settings or EventNotificationSettings()
-    calendar_days = calendar_source.load_data_from_file()
-
-    scheduler = NotificationPlaytimeScheduler(datetime.now().astimezone().tzinfo, event_notification_settings.schedule, calendar_days, NOTIFICATIONS_CHECK_INTERVAL_MINUTES)
-    notifications = []
-    for day in calendar_days:
-        for event in day.timed_events:
-            notifications.extend(EventNotifications(event, scheduler).notifications(event_notification_settings))
-
-    return notifications
 
 def get_calendar_days(calendar_source: CalendarSource = CalendarSource()) -> CalendarDayList:
     return calendar_source.load_data_from_file()

@@ -1,9 +1,9 @@
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
-from homeaudio.audio.settings import NotificationRule
+from homeaudio.audio.settings import EventNotificationSchedule, NotificationRule, TimeRange
 from homeaudio.vcal.cal.google_calendar import Event
-from homeaudio.vcal.event_notifications.events import EventNotification, NotificationSource, NotificationType
+from homeaudio.vcal.event_notifications.events import EventNotification, NotificationPlaytimeScheduler, NotificationSource, NotificationType
 from homeaudio.vcal.event_notifications.snooze import LastPlayedState, SnoozeState, _deserialize, _serialize
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
@@ -125,7 +125,7 @@ def test_last_played_state_base_time_does_not_match_saved_time(monkeypatch, tmp_
     assert state.base_time_does_not_match_saved_time() is True
 
 
-def test_snooze_state_due_event_notifications_only_returns_when_due(monkeypatch, tmp_path):
+def test_snooze_state_due_event_notifications_only_returns_when_the_scheduled_play_time_is_due(monkeypatch, tmp_path):
     _fresh_state_files(monkeypatch, tmp_path)
 
     now = datetime(2026, 4, 28, 7, 30, tzinfo=TIMEZONE)
@@ -135,16 +135,17 @@ def test_snooze_state_due_event_notifications_only_returns_when_due(monkeypatch,
     state.save([_event_notification()], replay_at, now + timedelta(minutes=18))
 
     assert state.next_replay_at() == replay_at
-    assert state.due_event_notifications(now) == []  # not due yet, and not cleared
+    assert state.due_event_notifications(datetime(2026, 4, 28, 7, 34, tzinfo=TIMEZONE), _scheduler()) == []  # not due yet, and not cleared
     assert state.next_replay_at() == replay_at  # still pending
 
-    due = state.due_event_notifications(replay_at)
+    due = state.due_event_notifications(datetime(2026, 4, 28, 7, 35, tzinfo=TIMEZONE), _scheduler())
     assert len(due) == 1
     assert due[0].event.summary == "Gym session"
+    assert due[0].play_datetime == datetime(2026, 4, 28, 7, 35, tzinfo=TIMEZONE)
 
     # Cleared once returned.
     assert state.next_replay_at() is None
-    assert state.due_event_notifications(replay_at) == []
+    assert state.due_event_notifications(replay_at, _scheduler()) == []
 
 
 def test_snooze_state_next_replay_at_is_none_when_nothing_pending(monkeypatch, tmp_path):
@@ -161,7 +162,7 @@ def test_snooze_state_due_event_notifications_clears_a_stale_snooze_without_retu
     state = SnoozeState()
     state.save([_event_notification()], replay_at, clear_at)
 
-    assert state.due_event_notifications(clear_at) == []
+    assert state.due_event_notifications(clear_at, _scheduler()) == []
     assert state.next_replay_at() is None
 
 
@@ -173,4 +174,42 @@ def test_snooze_state_due_event_notifications_returns_a_snooze_just_before_clear
     state = SnoozeState()
     state.save([_event_notification()], replay_at, clear_at)
 
-    assert len(state.due_event_notifications(datetime(2026, 4, 28, 21, 12, tzinfo=TIMEZONE))) == 1
+    assert len(state.due_event_notifications(datetime(2026, 4, 28, 21, 12, tzinfo=TIMEZONE), _scheduler())) == 1
+
+
+def _scheduler(start=time(7, 0), end=time(21, 0)):
+    time_range = TimeRange(start=start, end=end)
+    schedule = EventNotificationSchedule(weekdays=time_range, weekends=time_range, holidays=time_range)
+    return NotificationPlaytimeScheduler(TIMEZONE, schedule, [], 5)
+
+
+def test_snooze_state_pending_event_notifications_returns_them_with_scheduled_play_datetime_without_clearing(monkeypatch, tmp_path):
+    _fresh_state_files(monkeypatch, tmp_path)
+
+    now = datetime(2026, 4, 28, 7, 30, tzinfo=TIMEZONE)
+    replay_at = now + timedelta(minutes=9)
+    state = SnoozeState()
+    state.save([_event_notification()], replay_at, now + timedelta(minutes=18))
+
+    pending = state.pending_event_notifications(now, _scheduler())
+
+    assert len(pending) == 1
+    assert pending[0].event.summary == "Gym session"
+    assert pending[0].play_datetime == datetime(2026, 4, 28, 7, 35, tzinfo=TIMEZONE)
+    assert state.next_replay_at() == replay_at
+
+
+def test_snooze_state_pending_event_notifications_ignores_a_stale_snooze(monkeypatch, tmp_path):
+    _fresh_state_files(monkeypatch, tmp_path)
+
+    replay_at = datetime(2026, 4, 28, 21, 4, tzinfo=TIMEZONE)
+    clear_at = datetime(2026, 4, 28, 21, 13, tzinfo=TIMEZONE)
+    SnoozeState().save([_event_notification()], replay_at, clear_at)
+
+    assert SnoozeState().pending_event_notifications(clear_at, _scheduler()) == []
+
+
+def test_snooze_state_pending_event_notifications_is_empty_when_nothing_pending(monkeypatch, tmp_path):
+    _fresh_state_files(monkeypatch, tmp_path)
+
+    assert SnoozeState().pending_event_notifications(datetime(2026, 4, 28, 7, 30, tzinfo=TIMEZONE), _scheduler()) == []

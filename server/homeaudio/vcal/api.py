@@ -10,7 +10,8 @@ from homeaudio.vcal.morning_announcements import play_morning_announcements
 from homeaudio.vcal.school_announcements import play_school_announcements
 from homeaudio.audio.scene import scene_for_env
 from homeaudio.vcal.core import stop_alarm, test_alarm, test_announcement, test_notification, mute_alarm_for_area_of_player, replay_last_notification, snooze_alarm
-from homeaudio.vcal.event_notifications.events import get_all_event_notifications, get_calendar_days, get_calendar_refreshed_at, update_calendar_travel_times
+from homeaudio.vcal.event_notifications.core import get_all_event_notifications
+from homeaudio.vcal.event_notifications.events import get_calendar_days, get_calendar_refreshed_at, update_calendar_travel_times
 from homeaudio.vcal.event_notifications.scheduled_announcements import scheduled_announcement_notifications, ScheduledAnnouncementNotification, ScheduledAnnouncementType
 from homeaudio.vcal.event_notifications.models import TestNotificationRequest, PlayScheduledAnnouncementRequest, EventSummaryResponse, NotificationResponseItem, NotificationsResponse
 from homeaudio.vcal.event_notifications.events import EventNotification, LeaveForEvent

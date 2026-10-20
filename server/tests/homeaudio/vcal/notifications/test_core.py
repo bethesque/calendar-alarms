@@ -3,7 +3,7 @@ from zoneinfo import ZoneInfo
 
 from homeaudio.audio.settings import EventNotificationSchedule, EventNotificationSettings, TimeRange
 from homeaudio.vcal.cal.google_calendar import Event
-from homeaudio.vcal.event_notifications.events import EventNotification, NotificationSource, NotificationType
+from homeaudio.vcal.event_notifications.events import EventNotification, NotificationPlaytimeScheduler, NotificationSource, NotificationType
 import homeaudio.vcal.core as core_module
 from homeaudio.vcal.core import snooze_alarm
 from homeaudio.vcal.event_notifications.snooze import LastPlayedState, SnoozeState
@@ -110,7 +110,8 @@ def test_snooze_alarm_saves_snooze_state_and_confirms_via_tts(monkeypatch, tmp_p
     replay_at = base_time + timedelta(minutes=10)
     assert SnoozeState().next_replay_at() == replay_at
     assert SnoozeState()._load_raw()["clear_at"] == (base_time + timedelta(minutes=20)).isoformat()
-    due = SnoozeState().due_event_notifications(replay_at)
+    scheduler = NotificationPlaytimeScheduler(TIMEZONE, EventNotificationSchedule(), [], 5)
+    due = SnoozeState().due_event_notifications(replay_at, scheduler)
     assert len(due) == 1
     assert due[0].event.summary == "Gym session"
 

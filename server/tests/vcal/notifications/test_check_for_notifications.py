@@ -115,7 +115,7 @@ def test_check_for_notifications_plays_due_snoozed_notification_with_nothing_els
     snoozed_notification = EventNotification(event=snoozed_event, type=NotificationType.ANNOUNCE, offset=0, source=NotificationSource.ANNOUNCE_DESCRIPTION_TAG)
     monkeypatch.setattr(
         "homeaudio.vcal.event_notifications.snooze.due_snoozed_event_notifications",
-        lambda now: [snoozed_notification],
+        lambda now, scheduler: [snoozed_notification],
     )
 
     mpd_player = _stub_playback(monkeypatch)

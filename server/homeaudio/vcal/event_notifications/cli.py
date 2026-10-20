@@ -12,8 +12,8 @@ from homeaudio.audio.scene import scene_for_env
 from homeaudio.audio.settings import EventNotificationSettings, MainSettings
 
 from homeaudio.env import CALENDAR_DATA_DIRECTORY, HOME_ASSISTANT_SUPPORTED
-from homeaudio.vcal.event_notifications.core import check_for_and_play_notifications
-from homeaudio.vcal.event_notifications.events import NotificationPlaytimeScheduler, get_all_event_notifications
+from homeaudio.vcal.event_notifications.core import check_for_and_play_notifications, get_all_event_notifications
+from homeaudio.vcal.event_notifications.events import NotificationPlaytimeScheduler
 from homeaudio.vcal.notification_schedule import round_down_to_interval
 
 setup_logging_for_alarms(str(LOG_LEVEL))

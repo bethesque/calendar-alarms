@@ -1,11 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
-from homeaudio.audio.settings import EventNotificationSettings
-from homeaudio.vcal.cal.google_calendar import CalendarSource, Event
-from homeaudio.vcal.event_notifications.events import EventNotification, NotificationSource, NotificationType
-from homeaudio.vcal.event_notifications.core import ERROR_MESSAGE_AUDIO, build_event_notification_files, check_for_event_notifications
-from homeaudio.vcal.event_notifications.snooze import LastPlayedState
+from homeaudio.audio.settings import EventNotificationSchedule, EventNotificationSettings
+from homeaudio.vcal.cal.google_calendar import CalendarDayList, CalendarSource, Event
+from homeaudio.vcal.event_notifications.events import EventNotification, NotificationPlaytimeScheduler, NotificationSource, NotificationType
+from homeaudio.vcal.event_notifications.core import ERROR_MESSAGE_AUDIO, build_event_notification_files, check_for_event_notifications, get_all_event_notifications
+from homeaudio.vcal.event_notifications.snooze import LastPlayedState, SnoozeState
 from homeaudio.vcal.playback import NotificationFile
 
 
@@ -52,6 +52,7 @@ def test_error_message_audio_file_exists():
 
 def test_check_for_event_notifications_returns_error_message_audio_on_exception(monkeypatch, tmp_path):
     monkeypatch.setattr(LastPlayedState, "file_path", str(tmp_path / "last_played.json"))
+    monkeypatch.setattr(SnoozeState, "file_path", str(tmp_path / "snoozed.json"))
     base_time = datetime.fromisoformat("2026-04-06T08:00:00+10:00")
     calendar_data = CalendarSource(cache_file_path="").load_data_from_any([])  # not used, since get_event_notifications is stubbed below
 
@@ -77,7 +78,7 @@ def test_check_for_event_notifications_returns_error_message_audio_on_exception(
 
     result = check_for_event_notifications(
         base_time,
-        (0, 5),
+        NotificationPlaytimeScheduler(base_time.tzinfo, EventNotificationSchedule(), calendar_data, 5),
         calendar_data,
         "com",
         EventNotificationSettings(notification_rules=[]),
@@ -144,3 +145,22 @@ def test_build_event_notification_files_returns_none_target_when_no_notification
 
     assert announcements_file.targets is None
     assert alarm_audio_file.targets is None
+
+
+def test_get_all_event_notifications_includes_pending_snoozed_notifications(monkeypatch, tmp_path):
+    monkeypatch.setattr(SnoozeState, "file_path", str(tmp_path / "snooze.json"))
+    monkeypatch.setattr(NotificationPlaytimeScheduler, "get_play_datetime", lambda self, notification_time: notification_time + timedelta(minutes=1))
+    cache_file = str(tmp_path / "calendar.json")
+    CalendarSource(cache_file_path=cache_file, calendar_days=CalendarDayList()).save_data_to_file()
+
+    now = datetime.now().astimezone()
+    replay_at = now + timedelta(minutes=9)
+    event = Event(owner="Beth", calendar_id="id", summary="Gym", description="#alarm", start_time=now - timedelta(minutes=1))
+    snoozed = EventNotification(event=event, type=NotificationType.ALARM, offset=0, source=NotificationSource.ALARM_DESCRIPTION_TAG)
+    SnoozeState().save([snoozed], replay_at, now + timedelta(minutes=18))
+
+    notifications = get_all_event_notifications(EventNotificationSettings(), CalendarSource(cache_file_path=cache_file))
+
+    assert len(notifications) == 1
+    assert notifications[0].event.summary == "Gym"
+    assert notifications[0].play_datetime == replay_at + timedelta(minutes=1)
