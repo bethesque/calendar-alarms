@@ -119,7 +119,7 @@ class AdminRoutes:
                     ),
                     "event_notification_settings.departure_time_rules.[]": FieldConfig(
                         display=DisplayConfig(
-                            title="When '{summary_pattern}' then depart {departure_minutes} minutes before event start time",
+                            title="{label}",
                             subtitle=" ",
                         )
                     ),

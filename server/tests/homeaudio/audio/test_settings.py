@@ -213,8 +213,14 @@ def test_departure_time_rules_save_and_reload_from_yaml(tmp_path, monkeypatch):
 
     EventNotificationSettings(departure_time_rules=[DepartureTimeRule(summary_pattern="Gym", departure_minutes=11)]).save()
 
-    assert yaml.safe_load(yaml_file.read_text())["departure_time_rules"] == [{"summary_pattern": "Gym", "departure_minutes": 11}]
+    assert yaml.safe_load(yaml_file.read_text())["departure_time_rules"] == [{"summary_pattern": "Gym", "location_pattern": None, "departure_minutes": 11, "override_calculated_departure_time": False}]
     assert EventNotificationSettings().departure_time_rules == [DepartureTimeRule(summary_pattern="Gym", departure_minutes=11)]
+
+
+def test_departure_time_rule_label_includes_summary_and_location_patterns():
+    rule = DepartureTimeRule(summary_pattern="Gym", location_pattern="Croydon", departure_minutes=10)
+
+    assert rule.label == "When 'Gym/Croydon' then depart 10 minutes before event start time"
 
 
 def test_departure_notification_settings_allows_disabled_with_no_api_key_or_origin_address():

@@ -508,6 +508,28 @@ def test_departure_time_rule_that_does_not_match_adds_no_notifications():
     assert EventNotifications(event, SCHEDULER).notifications(event_notification_settings=settings) == []
 
 
+@pytest.mark.parametrize("location, expected_count", [
+    ("Croydon Leisure Centre", 2),
+    ("Ringwood Aquatic Centre", 0),
+    (None, 0),
+])
+def test_departure_time_rule_with_location_pattern_matches_on_event_location(location, expected_count):
+    event = Event(
+        calendar_id="id",
+        owner="Beth",
+        summary="Swim session",
+        description="",
+        location=location,
+        start_time=datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE),
+    )
+    settings = _event_notification_settings(departure_time_rules=[DepartureTimeRule(summary_pattern="swim", location_pattern="croydon", departure_minutes=15)])
+
+    notifications = EventNotifications(event, SCHEDULER).notifications(event_notification_settings=settings)
+
+    assert len(notifications) == expected_count
+    assert all(n.event.start_time == datetime.datetime(2026, 4, 28, 12, 15, tzinfo=TIMEZONE) for n in notifications)
+
+
 def test_multiple_matching_departure_time_rules_use_the_earliest_walk_out_time(caplog):
     event = Event(
         calendar_id="id",
@@ -543,6 +565,26 @@ def test_computed_car_departure_time_takes_precedence_over_departure_time_rule()
 
     assert len(notifications) == 2
     assert all(n.event.start_time == datetime.datetime(2026, 4, 28, 11, 55, tzinfo=TIMEZONE) for n in notifications)
+
+
+def test_departure_time_rule_that_overrides_calculated_departure_time_takes_precedence_over_computed_car_departure_time():
+    event = Event(
+        calendar_id="id",
+        owner="Beth",
+        summary="Gym session",
+        description="",
+        start_time=datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE),
+        car_departure_time=datetime.datetime(2026, 4, 28, 12, 0, tzinfo=TIMEZONE),
+    )
+    settings = _event_notification_settings(house_to_car_minutes=5, departure_time_rules=[
+        DepartureTimeRule(summary_pattern="gym", departure_minutes=15, override_calculated_departure_time=True)
+    ])
+
+    notifications = EventNotifications(event, SCHEDULER).notifications(event_notification_settings=settings)
+
+    assert len(notifications) == 2
+    assert all(n.event.start_time == datetime.datetime(2026, 4, 28, 12, 15, tzinfo=TIMEZONE) for n in notifications)
+    assert [n.source for n in notifications] == [NotificationSource.DEPARTURE_TIME_RULE.with_heads_up_reminder(), NotificationSource.DEPARTURE_TIME_RULE]
 
 
 def test_numbered_depart_tag_takes_precedence_over_departure_time_rule():

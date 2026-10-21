@@ -179,7 +179,15 @@ class NotificationRule(BaseModel):
 
 class DepartureTimeRule(BaseModel):
     summary_pattern: str = Field(description="The substring to match in the event summary")
+    location_pattern: str | None = Field(default=None, description="The substring to match in the location (optional)")
     departure_minutes: int = Field(description="The number of minutes before the event start to play the departure notification")
+    override_calculated_departure_time: bool = Field(default=False, description="When true, this rule takes precedence over the departure time calculated from the event's location")
+
+    @computed_field
+    @property
+    def label(self) -> str:
+        patterns = [p for p in [self.summary_pattern, self.location_pattern] if p]
+        return f"When '{"/".join(patterns)}' then depart {self.departure_minutes} minutes before event start time"
 
 class AlarmSettings(BaseModel):
     gentle_alarm_duration: int = Field(default=120, description="The number of seconds to play the gentle alarm", ge=0)
@@ -225,7 +233,7 @@ class EventNotificationSettings(YAMLSettings):
     heads_up_reminder_lead_time: int = Field(default=10, ge=0, title="Departure heads-up notification lead time", description="Number of minutes before the departure time announcement that the heads-up reminder plays")
     household_names: list[str] = Field(default_factory=list, title="Household names", description="Names of the people in the household")
     notification_rules: list[NotificationRule] = Field(default_factory=list, description="Rules for creating notifications from event descriptions")
-    departure_time_rules: list[DepartureTimeRule] = Field(default_factory=list, description="Rules for calculating the departure time based on the summary")
+    departure_time_rules: list[DepartureTimeRule] = Field(default_factory=list, description="Rules for calculating the departure time based on the summary or location")
     alarms: AlarmSettings = Field(default_factory=AlarmSettings)
     announcements: AnnouncementSettings = Field(default_factory=AnnouncementSettings)
     location_based_departure_times: LocationBasedDepartureTimes = Field(default_factory=LocationBasedDepartureTimes, description="Calculate departure times based on the event's location")
@@ -242,7 +250,7 @@ class EventNotificationSettings(YAMLSettings):
 
     def _dump_for_save(self) -> dict:
         # label is a computed, read-only field for the UI - it shouldn't be persisted.
-        return self.model_dump(mode="json", exclude={"notification_rules": {"__all__": {"label"}}})
+        return self.model_dump(mode="json", exclude={"notification_rules": {"__all__": {"label"}}, "departure_time_rules": {"__all__": {"label"}}})
 
     @model_validator(mode="after")
     def _require_api_key_and_origin_when_enabled(self) -> "EventNotificationSettings":

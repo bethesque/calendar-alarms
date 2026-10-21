@@ -135,6 +135,8 @@ def notification_rule_matches_event(event: "Event", rule: NotificationRule) -> b
 def departure_time_rule_matches_event(event: "Event", rule: DepartureTimeRule) -> bool:
     if not _pattern_matches(rule.summary_pattern, event.summary):
         return False
+    if not _pattern_matches(rule.location_pattern, event.location):
+        return False
     return True
 
 
@@ -195,12 +197,17 @@ class EventNotifications:
             self._add_departure_notifications(notifications, walk_out_time, event_notification_settings, NotificationSource.DEPART_DESCRIPTION_TAG)
             return
 
+        walk_out_time = self._get_walk_out_time_from_departure_rules([r for r in event_notification_settings.departure_time_rules if r.override_calculated_departure_time])
+        if walk_out_time:
+            self._add_departure_notifications(notifications, walk_out_time, event_notification_settings, NotificationSource.DEPARTURE_TIME_RULE)
+            return
+
         if self.event.car_departure_time:
             walk_out_time = round_to_nearest_minute(self.event.car_departure_time - timedelta(minutes=event_notification_settings.location_based_departure_times.house_to_car_minutes))
             self._add_departure_notifications(notifications, walk_out_time, event_notification_settings, NotificationSource.LOCATION)
             return
 
-        walk_out_time = self._get_walk_out_time_from_departure_rules(event_notification_settings.departure_time_rules)
+        walk_out_time = self._get_walk_out_time_from_departure_rules([r for r in event_notification_settings.departure_time_rules if not r.override_calculated_departure_time])
         if walk_out_time:
             self._add_departure_notifications(notifications, walk_out_time, event_notification_settings, NotificationSource.DEPARTURE_TIME_RULE)
 
