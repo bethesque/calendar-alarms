@@ -52,3 +52,6 @@ ALL_SENTENCES = [
 
 def snoozing_message(minutes: int) -> str:
     return f"Snoozing for {minutes} minutes"
+
+def drink_bottle_message(degrees: int) -> str:
+    return f"You may wish to pack a drink bottle as it's going to be {degrees} degrees today."

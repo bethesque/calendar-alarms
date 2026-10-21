@@ -6,7 +6,7 @@ from homeaudio.audio.settings import SchoolAnnouncementsSchedule, SchoolAnnounce
 from homeaudio.audio.sound import join_mp3s_to_wav
 from homeaudio.vcal.cal.google_calendar import CalendarEvent, WeatherForecast, MissingCalendarDataException, CalendarSource, CalendarDay, CalendarDayList
 from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file, TextToSpeechError
-from homeaudio.vcal import TIME_TO_LEAVE_FOR_SCHOOL, PACK_AN_UMBRELLA, TODAYS_SCHOOL_EVENTS_ARE, HAVE_A_NICE_DAY, IF_YOU_WANT, NOT_THE_BOSS, NO_CALENDAR_DATA, FIX_AUTHENTICATION
+from homeaudio.vcal import TIME_TO_LEAVE_FOR_SCHOOL, PACK_AN_UMBRELLA, TODAYS_SCHOOL_EVENTS_ARE, HAVE_A_NICE_DAY, IF_YOU_WANT, NOT_THE_BOSS, NO_CALENDAR_DATA, FIX_AUTHENTICATION, drink_bottle_message
 from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, POST_ANNOUNCEMENT_SILENCE
 from homeaudio.env import CALENDAR_DATA_DIRECTORY
 from homeaudio.vcal.playback import NotificationFile, NotificationFiles, play_notifications
@@ -16,6 +16,7 @@ from homeaudio.audio.scene import SceneProtocol, scene_for_env
 CHANCE_OF_I_AM_NOT_THE_BOSS = 1/5
 # gtts-cli  "An error occurred generating the school announcements. Some of the notifications may have been missing. Please check the calendar for today's events." > audio_resources/school_announcements_error_message.mp3
 ERROR_MESSAGE_AUDIO = "audio_resources/school_announcements_error_message.mp3"
+WATER_BOTTLE_MIN_DEGREES = 26
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,14 @@ def build_text(school_events: list[CalendarEvent], weather_forecasts: list[Weath
 
     if any(keyword in forecast.summary.lower() for forecast in weather_forecasts or [] for keyword in ("rain", "showers")):
         sentences.append(PACK_AN_UMBRELLA)
+
+
+    max_temps =[ t for t in [f.max_temperature() for f in weather_forecasts or []] if not t is None]
+
+    if max_temps:
+        max_temp = max(max_temps)
+        if max_temp >= WATER_BOTTLE_MIN_DEGREES:
+            sentences.append(drink_bottle_message(max_temp))
 
     if school_events:
         sentences.append(TODAYS_SCHOOL_EVENTS_ARE)

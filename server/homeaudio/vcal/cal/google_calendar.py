@@ -91,6 +91,10 @@ class WeatherForecast(WholeDayEvent):
         match = re.search(r"\bmin\s+(-?\d+)", self.summary or "", re.IGNORECASE)
         return int(match.group(1)) if match else None
 
+    def max_temperature(self) -> int | None:
+        match = re.search(r"\bmax\s+(-?\d+)", self.summary or "", re.IGNORECASE)
+        return int(match.group(1)) if match else None
+
     def add_min_temperature(self, temperature: int):
         self.summary = f"Min {temperature}, {self.summary}"
 

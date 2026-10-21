@@ -194,6 +194,58 @@ def test_build_text_omits_umbrella_reminder_when_forecasts_empty():
     assert build_text([], [], rand=rand_false) == ["It's time to leave for school.", "Have a nice day."]
 
 
+def test_build_text_adds_drink_bottle_reminder_when_max_temperature_is_hot():
+    weather_forecasts = [WeatherForecast(owner="cal", summary="Min 18, Max 30, Sunny", description="", calendar_id="id")]
+
+    assert build_text([], weather_forecasts, rand=rand_false) == [
+        "It's time to leave for school.",
+        "You may wish to pack a drink bottle as it's going to be 30 degrees today.",
+        "Have a nice day.",
+    ]
+
+
+def test_build_text_adds_drink_bottle_reminder_at_threshold_temperature():
+    weather_forecasts = [WeatherForecast(owner="cal", summary="Max 26", description="", calendar_id="id")]
+
+    assert "You may wish to pack a drink bottle as it's going to be 26 degrees today." in build_text([], weather_forecasts, rand=rand_false)
+
+
+def test_build_text_omits_drink_bottle_reminder_below_threshold_temperature():
+    weather_forecasts = [WeatherForecast(owner="cal", summary="Min 12, Max 25, Sunny", description="", calendar_id="id")]
+
+    assert build_text([], weather_forecasts, rand=rand_false) == ["It's time to leave for school.", "Have a nice day."]
+
+
+def test_build_text_omits_drink_bottle_reminder_when_forecast_has_no_max_temperature():
+    weather_forecasts = [WeatherForecast(owner="cal", summary="Min 28, Sunny", description="", calendar_id="id")]
+
+    assert build_text([], weather_forecasts, rand=rand_false) == ["It's time to leave for school.", "Have a nice day."]
+
+
+def test_build_text_uses_highest_max_temperature_across_forecasts():
+    weather_forecasts = [
+        WeatherForecast(owner="cal", summary="Max 22", description="", calendar_id="id"),
+        WeatherForecast(owner="cal", summary="Sunny", description="", calendar_id="id"),
+        WeatherForecast(owner="cal", summary="Max 33", description="", calendar_id="id"),
+    ]
+
+    assert "You may wish to pack a drink bottle as it's going to be 33 degrees today." in build_text([], weather_forecasts, rand=rand_false)
+
+
+def test_build_text_puts_drink_bottle_reminder_after_umbrella_and_before_school_events():
+    school_events = [WholeDayEvent(owner="cal", summary="School excursion", description="", calendar_id="id")]
+    weather_forecasts = [WeatherForecast(owner="cal", summary="Max 31, Afternoon showers", description="", calendar_id="id")]
+
+    assert build_text(school_events, weather_forecasts, rand=rand_false) == [
+        "It's time to leave for school.",
+        "You may wish to pack an umbrella as there is rain forecast.",
+        "You may wish to pack a drink bottle as it's going to be 31 degrees today.",
+        "Today's school events are:",
+        "School excursion.",
+        "Have a nice day.",
+    ]
+
+
 def test_get_school_events_matches_summary_case_insensitively():
     events = [
         WholeDayEvent(owner="cal", summary="SCHOOL Assembly", description="", calendar_id="id"),

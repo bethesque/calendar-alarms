@@ -246,6 +246,18 @@ def test_weather_forecast_min_temperature_returns_none_when_missing():
     assert WeatherForecast(owner="cal", summary="Max 25", description="", calendar_id="id").min_temperature() is None
 
 
+def test_weather_forecast_max_temperature():
+    assert WeatherForecast(owner="cal", summary="Min 11, Max 25", description="", calendar_id="id").max_temperature() == 25
+
+
+def test_weather_forecast_max_temperature_when_negative():
+    assert WeatherForecast(owner="cal", summary="Min -8, Max -2", description="", calendar_id="id").max_temperature() == -2
+
+
+def test_weather_forecast_max_temperature_returns_none_when_missing():
+    assert WeatherForecast(owner="cal", summary="Min 11", description="", calendar_id="id").max_temperature() is None
+
+
 def test_weather_forecast_add_min_temperature():
     forecast = WeatherForecast(owner="cal", summary="Max 25", description="", calendar_id="id")
 
