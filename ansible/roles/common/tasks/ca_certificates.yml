@@ -1,0 +1,13 @@
+- name: Check if ca-certificates is older than 20250419+deb13u1
+  ansible.builtin.shell: dpkg --compare-versions "$(dpkg-query -W -f='${Version}' ca-certificates)" lt 20250419+deb13u1
+  register: ca_certificates_outdated
+  changed_when: false
+  failed_when: false
+
+- name: Update ca-certificates
+  ansible.builtin.apt:
+    name: ca-certificates
+    state: latest
+    update_cache: true
+  when: ca_certificates_outdated.rc == 0
+  become: true

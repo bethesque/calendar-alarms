@@ -71,8 +71,8 @@ def build_event_notification_files(event_notifications: list[EventNotification],
         announcement_event_notifications = [event for event in event_notifications if event.type == NotificationType.ANNOUNCE]
         alarm_event_notifications = [event for event in event_notifications if event.type == NotificationType.ALARM]
 
-        announcement_texts = NotificationTextBuilder(announcement_event_notifications, base_time, event_notification_settings.peoples_names).build()
-        alarm_texts = NotificationTextBuilder(alarm_event_notifications, base_time, event_notification_settings.peoples_names).build()
+        announcement_texts = NotificationTextBuilder(announcement_event_notifications, base_time, event_notification_settings.household_names).build()
+        alarm_texts = NotificationTextBuilder(alarm_event_notifications, base_time, event_notification_settings.household_names).build()
 
         announcements_file = None
         alarm_audio_file = None

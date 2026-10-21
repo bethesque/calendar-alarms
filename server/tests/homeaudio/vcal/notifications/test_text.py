@@ -170,6 +170,26 @@ def test_notification_text_builder_removes_repeated_sentences(monkeypatch):
     assert _bare_text(monkeypatch, event_notifications, base_time) == ["It was time for Gym session 15 minutes ago."]
 
 
+@pytest.mark.parametrize(
+    "summary, start_time, expected",
+    [
+        ("Beth feed Miller", datetime.datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE), "It's time for Beth to feed Miller."),
+        ("beth feed Miller", datetime.datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE), "It's time for beth to feed Miller."),
+        ("Beth feed Miller", datetime.datetime(2026, 4, 28, 7, 5, tzinfo=TIMEZONE), "It will be time for Beth to feed Miller in 5 minutes."),
+        ("Beth feed Miller", datetime.datetime(2026, 4, 28, 6, 50, tzinfo=TIMEZONE), "It was time for Beth to feed Miller 10 minutes ago."),
+        ("Beth feed Miller", datetime.datetime(2026, 4, 28, 5, 30, tzinfo=TIMEZONE), "It was time for Beth to feed Miller at 5:30am."),
+        ("Beth gym session", datetime.datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE), "It's time for Beth gym session."),
+        ("Bethany feed Miller", datetime.datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE), "It's time for Bethany feed Miller."),
+    ],
+)
+def test_notification_text_builder_puts_a_persons_name_before_the_verb(monkeypatch, summary, start_time, expected):
+    base_time = datetime.datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE)
+    event_notification = _description_event_notification(summary=summary, start_time=start_time)
+    monkeypatch.setattr("homeaudio.vcal.event_notifications.text.random.random", lambda: 0.999)
+
+    assert NotificationTextBuilder([event_notification], base_time, ["Beth"]).build() == [expected]
+
+
 def test_all_greeting_options_includes_time_of_day_and_owner_greetings():
     options = all_greeting_options(["Beth"])
 
@@ -181,3 +201,40 @@ def test_all_greeting_options_includes_time_of_day_and_owner_greetings():
     assert "Attention Beth" in options
     assert all(greeting in options for greeting in GREETINGS)
     assert len(options) == len(set(options))
+
+
+@pytest.mark.parametrize(
+    "summaries, expected",
+    [
+        (["Gym session", "Beth feed Miller"], True),
+        (["beth gym session"], True),
+        (["Gym session", "Bethany feed Miller"], False),
+        ([], False),
+    ],
+)
+def test_any_summary_starts_with_persons_name(summaries, expected):
+    base_time = datetime.datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE)
+    event_notifications = [_description_event_notification(summary=summary) for summary in summaries]
+
+    assert NotificationTextBuilder(event_notifications, base_time, ["Beth"])._any_summary_starts_with_persons_name() is expected
+
+
+@pytest.mark.parametrize(
+    "summaries, includes_owner_greetings",
+    [
+        (["Gym session"], True),
+        (["Beth feed Miller"], False),
+        (["Gym session", "Beth feed Miller"], False),
+        (["Bethany feed Miller"], True),
+    ],
+)
+def test_greeting_omits_owner_when_a_summary_starts_with_a_persons_name(monkeypatch, summaries, includes_owner_greetings):
+    base_time = datetime.datetime(2026, 4, 28, 7, 0, tzinfo=TIMEZONE)
+    event_notifications = [_description_event_notification(summary=summary) for summary in summaries]
+    for event_notification in event_notifications:
+        event_notification.event.owner_count = 1
+    monkeypatch.setattr("homeaudio.vcal.event_notifications.text.random.choice", lambda seq: seq)
+
+    options = NotificationTextBuilder(event_notifications, base_time, ["Beth"])._greeting(event_notifications[0])
+
+    assert ("Hi Beth" in options) is includes_owner_greetings

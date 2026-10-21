@@ -88,6 +88,12 @@
 #    job: "/sbin/reboot"
 #  when: is_pi == true
 
+- name: Update ca-certificates
+  ansible.builtin.import_tasks: ca_certificates.yml
+  when: is_pi == true
+  tags:
+    - ca_certificates
+
 - name: Allow unprivileged processes to bind ports >= 80
   lineinfile:
     path: /etc/sysctl.d/99-unprivileged-ports.conf

@@ -102,6 +102,21 @@ def test_label_is_excluded_when_saving_to_file(tmp_path, monkeypatch):
     assert saved_rule["summary_pattern"] == "gym"
 
 
+def test_household_names_are_sorted_ignoring_case():
+    settings = EventNotificationSettings(household_names=["dwain", "Beth", "alex", "Cam"])
+
+    assert settings.household_names == ["alex", "Beth", "Cam", "dwain"]
+
+
+def test_household_names_are_sorted_ignoring_case_when_saving_to_file(tmp_path, monkeypatch):
+    yaml_file = tmp_path / "notifications.yaml"
+    monkeypatch.setitem(EventNotificationSettings.model_config, "yaml_file", str(yaml_file))
+
+    EventNotificationSettings(household_names=["dwain", "Beth", "alex", "Cam"]).save()
+
+    assert yaml.safe_load(yaml_file.read_text())["household_names"] == ["alex", "Beth", "Cam", "dwain"]
+
+
 def test_departure_time_notification_rule_saves_and_reloads_from_yaml(tmp_path, monkeypatch):
     yaml_file = tmp_path / "notifications.yaml"
     monkeypatch.setitem(EventNotificationSettings.model_config, "yaml_file", str(yaml_file))

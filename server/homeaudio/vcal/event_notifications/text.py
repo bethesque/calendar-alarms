@@ -47,9 +47,10 @@ class NotificationTextBuilder:
 
     CHANCE_OF_ANNOUNCEMENT_WITH_EXTRAS = 3/4
 
-    def __init__(self, event_notifications: list[EventNotification], base_time):
+    def __init__(self, event_notifications: list[EventNotification], base_time, household_names: list[str] | None = None):
         self.event_notifications = event_notifications
         self.base_time = base_time
+        self.household_names = household_names or []
         self.verb_identifier = VerbIdentifier(str(Path(__file__).resolve().parent.joinpath("verbs.txt")))
 
     def build(self) -> list[str]:
@@ -108,7 +109,7 @@ class NotificationTextBuilder:
     def _select_type_of_extra(self, event_notification):
         extras: list[str|None] = [None]
         # Only do encouragement for individuals and groups
-        if event_notification.event.owner_count > 0:
+        if event_notification.event.owner_count > 0 and not self._any_summary_starts_with_persons_name():
             extras.append("compliment")
             extras.append("encouragement")
         # 1/3 of the time, do a compliment
@@ -123,20 +124,20 @@ class NotificationTextBuilder:
         minutes_until_start = int((start_time - self.base_time).total_seconds() / 60)
         if minutes_until_start > 0:
             minutes_text = "1 minute" if minutes_until_start == 1 else f"{minutes_until_start} minutes"
-            return f"It will be time {self._to_or_for(summary)} {summary} in {minutes_text}."
+            return f"It will be time {self._purpose(summary)} in {minutes_text}."
         elif -60 <= minutes_until_start < 0:
             minutes_ago = -minutes_until_start
             minutes_text = "1 minute" if minutes_ago == 1 else f"{minutes_ago} minutes"
-            return f"It was time {self._to_or_for(summary)} {summary} {minutes_text} ago."
+            return f"It was time {self._purpose(summary)} {minutes_text} ago."
         elif minutes_until_start < 0:
             start_text = f"{start_time.hour % 12 or 12}:{start_time.minute:02d}{'am' if start_time.hour < 12 else 'pm'}"
-            return f"It was time {self._to_or_for(summary)} {summary} at {start_text}."
+            return f"It was time {self._purpose(summary)} at {start_text}."
         else:
-            return f"It's time {self._to_or_for(summary)} {summary}."
+            return f"It's time {self._purpose(summary)}."
 
     def _greeting(self, event_notification: EventNotification):
         good_greeting = GOOD_MORNING if self.base_time.hour < 12 else GOOD_AFTERNOON if self.base_time.hour < 17 else GOOD_EVENING
-        owner = event_notification.event.owner if event_notification.event.owner_count > 0 else None
+        owner = event_notification.event.owner if event_notification.event.owner_count > 0 and not self._any_summary_starts_with_persons_name() else None
         return random.choice(greeting_options(good_greeting, owner))
 
     def _compliment(self, owner_count: int) -> str | None:
@@ -149,6 +150,22 @@ class NotificationTextBuilder:
 
     def _encouragement(self) -> str:
         return random.choice(ENCOURAGEMENTS)
+
+    def _any_summary_starts_with_persons_name(self) -> bool:
+        return any(
+            event_notification.event.summary.lower().startswith(f"{name} ".lower())
+            for event_notification in self.event_notifications
+            for name in self.household_names
+        )
+
+    def _purpose(self, summary: str) -> str:
+        for name in self.household_names:
+            prefix = f"{name} "
+            if summary.lower().startswith(prefix.lower()):
+                rest = summary[len(prefix):].lstrip()
+                if rest and self._to_or_for(rest) == "to":
+                    return f"for {summary[:len(name)]} to {rest}"
+        return f"{self._to_or_for(summary)} {summary}"
 
     def _to_or_for(self, event_summary):
         first_word = re.sub(r"[^\w]", "", event_summary.split()[0]).lower()

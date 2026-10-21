@@ -5,7 +5,7 @@ import json
 import logging
 from pathlib import Path
 from typing import Literal
-from pydantic import BaseModel, Field, PrivateAttr, computed_field, model_validator
+from pydantic import BaseModel, Field, PrivateAttr, computed_field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 import yaml
 from homeaudio.env import CONFIG_DIR, DEFAULT_GOOGLE_TRANSLATE_TLD
@@ -223,6 +223,7 @@ class EventNotificationSettings(YAMLSettings):
     enabled: bool = Field(default=True, description="Enables/disables event and departure notifications")
     snooze_minutes: int = Field(default=10, ge=1, multiple_of=5, description="Number of minutes to wait before replaying a snoozed alarm or announcement")
     heads_up_reminder_lead_time: int = Field(default=10, ge=0, title="Departure heads-up notification lead time", description="Number of minutes before the departure time announcement that the heads-up reminder plays")
+    household_names: list[str] = Field(default_factory=list, title="Household names", description="Names of the people in the household")
     notification_rules: list[NotificationRule] = Field(default_factory=list, description="Rules for creating notifications from event descriptions")
     departure_time_rules: list[DepartureTimeRule] = Field(default_factory=list, description="Rules for calculating the departure time based on the summary")
     alarms: AlarmSettings = Field(default_factory=AlarmSettings)
@@ -233,6 +234,11 @@ class EventNotificationSettings(YAMLSettings):
     model_config = SettingsConfigDict(
         yaml_file=f"{CONFIG_DIR}/notifications.yaml"
     )
+
+    @field_validator("household_names")
+    @classmethod
+    def _sort_household_names(cls, names: list[str]) -> list[str]:
+        return sorted(names, key=str.casefold)
 
     def _dump_for_save(self) -> dict:
         # label is a computed, read-only field for the UI - it shouldn't be persisted.
