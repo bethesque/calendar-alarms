@@ -49,14 +49,21 @@ There are 3 ways to get departure notifications.
 
 1. Add a `#depart` tag with a number (eg. `#depart20`) in the event *description*.
 2. Enter an address into the *location* of an event and the Calendar App will calculate the departure time automatically.
-3. Create a Departure Rule based on the *summary* (eg. for all "Gym" events, set departure time to 10 minutes before the event start)
+3. Create a Departure Rule based on the *summary* and optionally, the *location* (eg. for all "Gym" events, set departure time to 10 minutes before the event start)
 
 For each event with a departure notification you get two announcements:
 
 - A **heads-up** a few minutes before you need to leave (you can configure how far ahead this happens in the settings)
 - A **time to leave** announcement - this is the time you need to *walk out your door*.
 
-To disable departure announcements for an event with a location, use `#nodepart` in the description. If there are multiple depature time sources (eg. a location and a tag ) then the first one in the list above will be used (tag with number trumps other sources, then location, then depature rule)
+To disable departure announcements for an event with a location, use `#nodepart` in the description.
+
+If there are multiple departure time sources (eg. a location, and/or a tag and/or a rule ) then the first one in this list will be used:
+
+1. The `#depart`tag with a number.
+2. A Departure Time Rule with "Override Calculated Departure Time" checked.
+3. The calculated departure time based on the location.
+4. A Departure Time Rule with "Override Calculated Departure Time" *not* checked.
 
 ### Departure notifications based on calculated travel time
 
