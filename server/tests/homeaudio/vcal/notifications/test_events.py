@@ -12,6 +12,7 @@ from homeaudio.vcal.event_notifications.events import (
     NotificationFinder,
     NotificationPlaytimeScheduler,
     get_event_notifications,
+    notifications_from_rules,
     update_calendar_travel_times,
 )
 from homeaudio.vcal.departure_time import TravelTimeCache
@@ -50,6 +51,33 @@ def test_get_event_notifications_ignores_disabled_rules():
 
     assert len(notifications) == 1
     assert notifications[0].notification_rule is enabled_rule
+
+
+def test_notifications_from_rules_merges_the_rule_players_with_the_description_targets():
+    event = Event(summary="Gym", start_time=datetime(2026, 4, 6, 9, tzinfo=TIMEZONE), description="@beth", owner="Beth", calendar_id="id")
+    rule = NotificationRule(summary_pattern="Gym", players=["kaypi", "officepi"])
+
+    notifications = notifications_from_rules(event, [rule])
+
+    assert notifications[0].targets == {"kaypi", "officepi", "beth"}
+
+
+def test_notifications_from_rules_uses_the_description_targets_when_the_rule_has_no_players():
+    event = Event(summary="Gym", start_time=datetime(2026, 4, 6, 9, tzinfo=TIMEZONE), description="@beth", owner="Beth", calendar_id="id")
+    rule = NotificationRule(summary_pattern="Gym")
+
+    notifications = notifications_from_rules(event, [rule])
+
+    assert notifications[0].targets == {"beth"}
+
+
+def test_notifications_from_rules_has_no_targets_when_neither_the_rule_nor_the_description_has_any():
+    event = Event(summary="Gym", start_time=datetime(2026, 4, 6, 9, tzinfo=TIMEZONE), description="", owner="Beth", calendar_id="id")
+    rule = NotificationRule(summary_pattern="Gym")
+
+    notifications = notifications_from_rules(event, [rule])
+
+    assert notifications[0].targets is None
 
 
 def test_get_calendar_days_returns_the_days_from_the_file(tmp_path):

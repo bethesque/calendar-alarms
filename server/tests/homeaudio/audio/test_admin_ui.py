@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 import homeaudio.audio.admin_ui as admin_ui_module
 from homeaudio.audio.admin_ui import AdminRoutes
-from homeaudio.audio.settings import AppSettings, AvailableGoogleCalendars, CalendarSetting, GoogleCalendar, GoogleCalendarSettings
+from homeaudio.audio.settings import AppSettings, AvailableGoogleCalendars, CalendarSetting, GoogleCalendar, GoogleCalendarSettings, SnapcastSettings, SnapclientConfig
 
 
 def _unwrap_optional(annotation):
@@ -46,6 +46,7 @@ def test_attr_configs_keys_exist_on_app_settings():
     admin_routes = AdminRoutes.__new__(AdminRoutes)
     admin_routes.calendar_select_props = {"options": []}
     admin_routes.available_calendar_select_props = {"options": []}
+    admin_routes.player_select_props = {"options": []}
     attr_configs = admin_routes.attr_configs(None)
 
     valid_paths = _all_field_paths(AppSettings)
@@ -160,3 +161,15 @@ def test_available_calendar_options_puts_calendars_with_matching_id_and_name_fir
     options = admin_routes._available_calendar_options(available_calendars, google_calendar_settings)
 
     assert [option["value"] for option in options] == ["amy@example.com", "zed@example.com", "family-id", "weather-id"]
+
+
+def test_player_options_lists_all_snapclients_including_disabled_ones():
+    admin_routes = AdminRoutes.__new__(AdminRoutes)
+    snapcast_settings = SnapcastSettings.model_construct(snapclients=[
+        SnapclientConfig(name="kaypi", display_name="Kay's room"),
+        SnapclientConfig(name="officepi", display_name="Office", enabled=False),
+    ])
+
+    options = admin_routes._player_options(snapcast_settings)
+
+    assert options == [{"value": "kaypi", "label": "Kay's room"}, {"value": "officepi", "label": "Office"}]

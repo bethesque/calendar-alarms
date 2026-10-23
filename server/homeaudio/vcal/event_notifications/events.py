@@ -116,7 +116,7 @@ def notifications_from_rules(event_to_match: "Event", rules: list[NotificationRu
             type=NotificationType[rule.notification_type.upper()],
             offset=rule.offset_minutes,
             notification_rule = rule,
-            targets=_targets_from_description(event_for_notification.description),
+            targets=frozenset(rule.players) | (_targets_from_description(event_for_notification.description) or frozenset()) or None,
             source= source.with_notification_rule() if source else NotificationSource.NOTIFICATION_RULE
         ))
     return notifications

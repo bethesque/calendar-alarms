@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Request
-from homeaudio.audio.settings import AppSettings, AvailableGoogleCalendars, GoogleCalendarSettings, NotificationTiming
+from homeaudio.audio.settings import AppSettings, AvailableGoogleCalendars, GoogleCalendarSettings, NotificationTiming, SnapcastSettings
 from homeaudio.env import GOOGLE_TRANSLATE_TLD_OPTIONS, HOME_ASSISTANT_SUPPORTED, HOUSIE_TALKIE_ENABLED, SNAPCAST_ENABLED, WAKE_UP_ALARM_ENABLED
 from pydantic_ui import create_pydantic_ui, UIConfig, FieldConfig, DisplayConfig, Renderer, ActionButton
 
@@ -13,6 +13,7 @@ class AdminRoutes:
         available_calendars = AvailableGoogleCalendars()
         self.calendar_select_props = {"options": self._calendar_options(available_calendars, settings.google_calendar_settings)}
         self.available_calendar_select_props = {"options": self._available_calendar_options(available_calendars, settings.google_calendar_settings)}
+        self.player_select_props = {"options": self._player_options(settings.snapcast_settings)}
 
         self.ui_router = create_pydantic_ui(
             AppSettings,
@@ -50,6 +51,9 @@ class AdminRoutes:
         sorted_calendars = sorted(available_calendars.calendars, key=lambda c: self._calendar_sort_key(c.id, c.name))
         return [ { "value": c.id, "label": c.name } for c in sorted_calendars + missing_configured_calendars ]
 
+    def _player_options(self, snapcast_settings: SnapcastSettings):
+        return [ { "value": c.name, "label": c.display_name } for c in snapcast_settings.snapclients ]
+
     def _calendar_sort_key(self, id: str, name: str):
         return (id != name, name.lower())
 
@@ -60,6 +64,7 @@ class AdminRoutes:
             available_calendars = AvailableGoogleCalendars()
             self.calendar_select_props["options"] = self._calendar_options(available_calendars, google_calendar_settings)
             self.available_calendar_select_props["options"] = self._available_calendar_options(available_calendars, google_calendar_settings)
+            self.player_select_props["options"] = self._player_options(SnapcastSettings())
 
     def attr_configs(self, settings: AppSettings):
 
@@ -116,6 +121,14 @@ class AdminRoutes:
                         props={
                             "options": [{ "value": NotificationTiming.EVENT_START.value, "label": NotificationTiming.EVENT_START.label}, { "value": NotificationTiming.DEPARTURE_TIME.value, "label": NotificationTiming.DEPARTURE_TIME.label} ]
                         }
+                    ),
+                    "event_notification_settings.notification_rules.[].players": FieldConfig(
+                        display=DisplayConfig(
+                            subtitle="Only play on these players, or all players when none are selected",
+                        ),
+                        renderer=Renderer.CHECKLIST,
+                        props=self.player_select_props,
+                        visible_when=f"{str(SNAPCAST_ENABLED).lower()} == true"
                     ),
                     "event_notification_settings.departure_time_rules.[]": FieldConfig(
                         display=DisplayConfig(

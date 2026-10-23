@@ -160,6 +160,7 @@ class NotificationRule(BaseModel):
     notification_timing: NotificationTiming = Field(title="Notification timing", default=NotificationTiming.EVENT_START, description="Play notifications counting down to:")
     reminder: str | None = None
     replace: bool = Field(default=False, description="When true, the reminder replaces the announcement text, otherwise it is appended.")
+    players: list[str] = Field(default_factory=list, description="The players to play this notification on, or all players when none are selected")
     enabled: bool = Field(default=True, description="Set to false to disable this notification")
     _calendar_name: str | None = PrivateAttr(default=None)
 
@@ -231,9 +232,9 @@ class EventNotificationSettings(YAMLSettings):
     enabled: bool = Field(default=True, description="Enables/disables event and departure notifications")
     snooze_minutes: int = Field(default=10, ge=1, multiple_of=5, description="Number of minutes to wait before replaying a snoozed alarm or announcement")
     heads_up_reminder_lead_time: int = Field(default=10, ge=0, title="Departure heads-up notification lead time", description="Number of minutes before the departure time announcement that the heads-up reminder plays")
-    household_names: list[str] = Field(default_factory=list, title="Household names", description="Names of the people in the household")
     notification_rules: list[NotificationRule] = Field(default_factory=list, description="Rules for creating notifications from event descriptions")
     departure_time_rules: list[DepartureTimeRule] = Field(default_factory=list, description="Rules for calculating the departure time based on the summary or location")
+    household_names: list[str] = Field(default_factory=list, title="Household names", description="Names of the people in the household")
     alarms: AlarmSettings = Field(default_factory=AlarmSettings)
     announcements: AnnouncementSettings = Field(default_factory=AnnouncementSettings)
     location_based_departure_times: LocationBasedDepartureTimes = Field(default_factory=LocationBasedDepartureTimes, description="Calculate departure times based on the event's location")
