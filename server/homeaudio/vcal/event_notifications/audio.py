@@ -53,6 +53,7 @@ class AlarmAudio:
             files_to_loop.append(loud_noise_warning_file)
             files_to_loop.append(SILENCE_HALF_SEC)
             files_to_loop.append(aggressive_audio_file)
+            files_to_loop.append(SILENCE_HALF_SEC)
 
         all_files = files_to_loop * self.alarm_settings.full_loops
         alarm_file = f"{OUTPUT_AUDIO_DIRECTORY}/alarm.wav"
