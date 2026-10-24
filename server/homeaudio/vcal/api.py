@@ -5,11 +5,13 @@ from pathlib import Path
 import threading
 from queue import Queue
 from fastapi import APIRouter, Request, Response
+from fastapi.responses import FileResponse
 from fastapi.templating import Jinja2Templates
 from homeaudio.vcal.morning_announcements import play_morning_announcements
 from homeaudio.vcal.school_announcements import play_school_announcements
 from homeaudio.audio.scene import scene_for_env
 from homeaudio.vcal.core import stop_alarm, test_alarm, test_announcement, test_notification, mute_alarm_for_area_of_player, replay_last_notification, snooze_alarm
+from homeaudio.vcal.event_notifications import AUDIO_DIRECTORY
 from homeaudio.vcal.event_notifications.core import get_all_event_notifications
 from homeaudio.vcal.event_notifications.events import get_calendar_days, get_calendar_refreshed_at, update_calendar_travel_times
 from homeaudio.vcal.event_notifications.scheduled_announcements import scheduled_announcement_notifications, ScheduledAnnouncementNotification, ScheduledAnnouncementType
@@ -24,7 +26,13 @@ logger = logging.getLogger(__name__)
 
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
 
-def format_notification_for_api(notification: EventNotification) -> NotificationResponseItem:
+# Spike: each notification type serves a hardcoded file until per-notification audio is available.
+SPIKE_NOTIFICATION_AUDIO_FILES = {
+    "alarm": AUDIO_DIRECTORY / "alarms_gentle" / "EarlyRiser.mp3",
+    "announce": AUDIO_DIRECTORY / "default_announcement.mp3",
+}
+
+def format_notification_for_api(notification: EventNotification, audio_file_url: str | None = None) -> NotificationResponseItem:
     notification_type = notification.type.name.lower()
     return NotificationResponseItem(
         event=EventSummaryResponse(summary=notification.event.summary),
@@ -32,15 +40,17 @@ def format_notification_for_api(notification: EventNotification) -> Notification
         due_datetime=notification.notification_time,
         play_datetime=notification.play_datetime,
         duration_seconds=60 if notification_type == "announce" else 300,
+        audio_file_url=audio_file_url,
     )
 
-def format_scheduled_announcement_for_api(announcement: ScheduledAnnouncementNotification) -> NotificationResponseItem:
+def format_scheduled_announcement_for_api(announcement: ScheduledAnnouncementNotification, audio_file_url: str | None = None) -> NotificationResponseItem:
     return NotificationResponseItem(
         event=EventSummaryResponse(summary=announcement.summary),
         type="announce",
         due_datetime=announcement.due_datetime,
         play_datetime=announcement.due_datetime,
         duration_seconds=300,
+        audio_file_url=audio_file_url,
     )
 
 def _calendar_data_locked_response() -> Response:
@@ -209,6 +219,13 @@ class AlarmRoutes:
         )
 
         self.router.add_api_route(
+            "/notifications/audio/{notification_type}.mp3",
+            self.notification_audio_file,
+            methods=["GET"],
+            name="notification_audio_file",
+        )
+
+        self.router.add_api_route(
             "/replay",
             self.replay_last_notification,
             methods=["POST"],
@@ -282,9 +299,12 @@ class AlarmRoutes:
         event_notifications = sorted(get_all_event_notifications(), key=lambda notification: notification.notification_time)
 
         if _wants_json(request):
+            def audio_file_url(notification_type: str) -> str:
+                return str(request.url_for("notification_audio_file", notification_type=notification_type))
+
             notifications = sorted(
-                [format_notification_for_api(n) for n in event_notifications]
-                + [format_scheduled_announcement_for_api(n) for n in scheduled_announcement_notifications()],
+                [format_notification_for_api(n, audio_file_url(n.type.name.lower())) for n in event_notifications]
+                + [format_scheduled_announcement_for_api(n, audio_file_url("announce")) for n in scheduled_announcement_notifications()],
                 key=lambda notification: notification.due_datetime,
             )
             return NotificationsResponse(notifications=notifications)
@@ -316,6 +336,12 @@ class AlarmRoutes:
                 },
             },
         )
+
+    async def notification_audio_file(self, notification_type: str):
+        audio_file = SPIKE_NOTIFICATION_AUDIO_FILES.get(notification_type)
+        if audio_file is None:
+            return Response(content="Unknown notification type", status_code=404, media_type="text/plain")
+        return FileResponse(audio_file, media_type="audio/mpeg")
 
     async def replay_last_notification(self):
         message = self.alarm_handler.replay_last_notification()
