@@ -90,14 +90,27 @@ class SnapclientConfig(BaseModel):
     volumes: VolumeConfig = Field(default_factory=VolumeConfig)
     enabled: bool = Field(default=True, description="Set to false to exclude this Snapclient from playback and keep it muted")
 
+class PlayerGroup(BaseModel):
+    name: str
+    player_names: list[str] = Field(default_factory=list)
+
 class SnapcastSettings(YAMLSettings):
     snapserver: str = Field(default="http://localhost:1780")
     snapclients: list[SnapclientConfig] = Field(default_factory=list)
+    player_groups: list[PlayerGroup] = Field(default_factory=list)
     default_volumes: VolumeConfig = Field(default_factory=VolumeConfig)
 
     model_config = SettingsConfigDict(
         yaml_file=f"{CONFIG_DIR}/snapcast.yaml"
     )
+
+    @model_validator(mode="after")
+    def _player_group_names_differ_from_snapclient_names(self) -> "SnapcastSettings":
+        snapclient_names = {client.name for client in self.snapclients}
+        clashing_names = [group.name for group in self.player_groups if group.name in snapclient_names]
+        if clashing_names:
+            raise ValueError(f"Player group name cannot be the same as a Snapclient name: {', '.join(clashing_names)}")
+        return self
 
     @property
     def snapserver_rpc_url(self):

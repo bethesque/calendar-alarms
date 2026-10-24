@@ -4,7 +4,7 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from homeaudio.audio.settings import EventNotificationSettings, TimeRange, NotificationRule, NotificationTiming, SnapcastSettings, SnapclientConfig, DepartureTimeRule, LocationBasedDepartureTimes, UploadedFile, GoogleCalendarSettings, AvailableGoogleCalendars, GoogleCalendar
+from homeaudio.audio.settings import EventNotificationSettings, TimeRange, NotificationRule, NotificationTiming, SnapcastSettings, SnapclientConfig, PlayerGroup, DepartureTimeRule, LocationBasedDepartureTimes, UploadedFile, GoogleCalendarSettings, AvailableGoogleCalendars, GoogleCalendar
 
 
 def test_label_uses_summary_pattern_only():
@@ -173,6 +173,23 @@ def test_disabled_snapclient_names_returns_only_disabled_clients():
     settings = SnapcastSettings(snapclients=[enabled_client, disabled_client])
 
     assert settings.disabled_snapclient_names == {"patpi"}
+
+
+def test_snapcast_settings_rejects_player_group_with_same_name_as_snapclient():
+    with pytest.raises(ValidationError, match="kaypi"):
+        SnapcastSettings(
+            snapclients=[SnapclientConfig(name="kaypi", display_name="KayPi")],
+            player_groups=[PlayerGroup(name="kaypi", player_names=["kaypi"])],
+        )
+
+
+def test_snapcast_settings_allows_player_group_with_different_name_to_snapclients():
+    settings = SnapcastSettings(
+        snapclients=[SnapclientConfig(name="kaypi", display_name="KayPi")],
+        player_groups=[PlayerGroup(name="upstairs", player_names=["kaypi"])],
+    )
+
+    assert settings.player_groups[0].name == "upstairs"
 
 
 def test_departure_notification_settings_defaults(tmp_path, monkeypatch):

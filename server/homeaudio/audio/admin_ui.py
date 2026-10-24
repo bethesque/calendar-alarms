@@ -52,7 +52,8 @@ class AdminRoutes:
         return [ { "value": c.id, "label": c.name } for c in sorted_calendars + missing_configured_calendars ]
 
     def _player_options(self, snapcast_settings: SnapcastSettings):
-        return [ { "value": c.name, "label": c.display_name } for c in snapcast_settings.snapclients ]
+        options = [ { "value": c.name, "label": c.display_name } for c in snapcast_settings.snapclients ]
+        return sorted(options, key=lambda o: o["label"].lower())
 
     def _calendar_sort_key(self, id: str, name: str):
         return (id != name, name.lower())
@@ -144,6 +145,15 @@ class AdminRoutes:
                             title="{display_name}",
                             subtitle="{area}",
                         ),
+                    ),
+                    "snapcast_settings.player_groups.[]": FieldConfig(
+                        display=DisplayConfig(
+                            title="{name}",
+                        ),
+                    ),
+                    "snapcast_settings.player_groups.[].player_names": FieldConfig(
+                        renderer=Renderer.CHECKLIST,
+                        props=self.player_select_props,
                     ),
                     "home_assistant_settings": FieldConfig(
                         visible_when=f"{str(HOME_ASSISTANT_SUPPORTED).lower()} == true"
