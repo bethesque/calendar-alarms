@@ -3,12 +3,13 @@ import os
 import logging
 import time
 from gtts import gTTS, gTTSError
-from homeaudio.env import CACHE_DIRECTORY, GOOGLE_TRANSLATE_LANG, DEFAULT_GOOGLE_TRANSLATE_TLD
+from homeaudio.env import GOOGLE_TRANSLATE_LANG, DEFAULT_GOOGLE_TRANSLATE_TLD
 from homeaudio.audio.random_text import select_option_pseudorandomly, ListOptionsSource
 from homeaudio.audio.settings import GoogleTextToSpeechSettings
+from homeaudio.vcal.event_notifications import AUDIO_CACHE_DIR
 
 DEFAULT_ANNOUCEMENT_FILE = "audio_resources/default_announcement.mp3"
-AUDIO_CACHE_DIR = os.path.join(CACHE_DIRECTORY, "audio")
+
 MORNING_ANNOUNCEMENT_FILE = "/tmp/morning_announcement.wav"
 TTS_RETRY_DELAY_SECONDS = 2
 TTS_MAX_ATTEMPTS = 3

@@ -3,54 +3,84 @@ import logging
 import subprocess
 import tempfile
 import os
-from homeaudio.vcal.event_notifications import SAMPLE_RATE
+from homeaudio.vcal.event_notifications import SAMPLE_RATE, AUDIO_CACHE_DIR
 
 logger = logging.getLogger(__name__)
+
+import os
+import subprocess
+
+SPEECH_GAIN = 0.98  # was volume=1.8 * amix weight 1.2/2.2
+ALARM_GAIN = 0.23   # was volume=0.5 * amix weight 1/2.2
+
+
+def _normalized_copy(src: str) -> str:
+    """Convert src to mono s16 WAV at SAMPLE_RATE once, and reuse it on later runs."""
+    parent = os.path.basename(os.path.dirname(os.path.abspath(src)))
+    stem = os.path.splitext(os.path.basename(src))[0]
+    dst = os.path.join(AUDIO_CACHE_DIR, parent, f"{stem}.{SAMPLE_RATE}.mono.wav")
+    if os.path.exists(dst) and os.path.getmtime(dst) >= os.path.getmtime(src):
+        return dst
+
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    tmp = dst + ".tmp"
+    subprocess.run(
+        [
+            "ffmpeg", "-loglevel", "warning", "-i", src,
+            "-ac", "1", "-ar", str(SAMPLE_RATE), "-c:a", "pcm_s16le",
+            "-f", "wav", "-y", tmp,
+        ],
+        check=True,
+    )
+    os.replace(tmp, dst)
+    return dst
+
 
 def build_alarm_audio(
     speech_file: str,
     alarm_file: str,
     output_file: str,
-    duration: int = 300
+    duration: int = 300,
+    use_limiter: bool = False,
 ):
+    # Pre-converted once; later runs skip decoding/resampling of the alarm entirely
+    alarm_file = _normalized_copy(alarm_file)
 
     # Not quite right because we add silence at the beginning and between loops, but it's good enough
-    # The overall file will be concatenated at <duration> seconds
     announcement_loops = num_loops(duration, speech_file)
-    alarm_loops = num_loops(duration, alarm_file)
 
-    logger.debug(f"Building alarm audio with announcement_file={speech_file}, alarm_file={alarm_file}, output_file={output_file}, duration={duration}")
+    logger.debug(
+        f"Building alarm audio with announcement_file={speech_file}, "
+        f"alarm_file={alarm_file}, output_file={output_file}, duration={duration}"
+    )
+
+    fmt = f"aformat=sample_fmts=s16:sample_rates={SAMPLE_RATE}:channel_layouts=mono"
+
     filter_complex = (
-        # 1) Force format INCLUDING sample format
-        f"[0:a]aformat=sample_fmts=s16:sample_rates={SAMPLE_RATE}:channel_layouts=mono[s0];"
-        f"[1:a]aformat=sample_fmts=s16:sample_rates={SAMPLE_RATE}:channel_layouts=mono,volume=1.8[s1];"
+        # 1) Force format on silence + speech (alarm is already mono s16 at SAMPLE_RATE)
+        f"[0:a]{fmt}[s0];"
+        f"[1:a]{fmt},volume={SPEECH_GAIN}[s1];"
 
-        # 2) Build ONE cycle: silence → announcement
+        # 2) One cycle: silence -> announcement, then loop it
         "[s0][s1]concat=n=2:v=0:a=1[ann_once];"
-
-        # 3) Loop announcement cycle
         f"[ann_once]aloop=loop={announcement_loops}:size=2e+09[ann];"
 
-        # 4) Prepare alarm
-        f"[2:a]aformat=sample_fmts=s16:sample_rates={SAMPLE_RATE}:channel_layouts=mono,"
-        f"volume=0.5,aloop=loop={alarm_loops}:size=2e+09[alarm];"
+        # 3) Alarm: looped by -stream_loop on the input, so just apply gain
+        f"[2:a]volume={ALARM_GAIN}[alarm];"
 
-        # 5) Mix
-        "[alarm][ann]amix=inputs=2:duration=longest:weights='1 1.2',"
+        # 4) Mix with fixed gains (no auto-normalisation), then fades
+        "[alarm][ann]amix=inputs=2:duration=longest:normalize=0,"
+        f"afade=t=in:st=0:d=4,afade=t=out:st={duration - 2}:d=2"
 
-        # ✅ 6) Fade in
-        f"afade=t=in:st=0:d=4,afade=t=out:st={duration-2}:d=2,"
-
-        # 7) Final limiter + trim
-        f"alimiter=limit=0.9,atrim=duration={duration}"
-
+        # 5) Optional limiter
+        + (",alimiter=limit=0.9" if use_limiter else "")
     )
 
     cmd = [
         "ffmpeg",
         "-loglevel", "warning",
         "-f", "lavfi",
-        "-t", "5", # 5 seconds of silence before and between announcements
+        "-t", "5",  # 5 seconds of silence before and between announcements
         "-i", f"anullsrc=r={SAMPLE_RATE}:cl=mono",
         "-i", speech_file,
         "-stream_loop", "-1",
@@ -61,6 +91,7 @@ def build_alarm_audio(
         "-ar", f"{SAMPLE_RATE}",
         "-ac", "2",
 
+        "-t", str(duration),  # stop reading once we have enough (replaces atrim)
         "-y",
         output_file,
     ]
@@ -68,62 +99,80 @@ def build_alarm_audio(
     logger.debug(f"Running FFmpeg command: {' '.join(cmd)}")
 
     result = subprocess.run(
-                cmd,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.PIPE,
-                text=True)
+        cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
     logger.debug(f"FFmpeg output: {result.stderr}")
 
+import os
+import subprocess
+
 def build_aggressive_alarm_audio(
-        announcement_file: str,
-        alarm_file: str,
-        output_file: str,
-        loops: int
-):
+    announcement_file: str,
+    alarm_file: str,
+    output_file: str,
+    loops: int,
+    timeout: float = 300,
+) -> None:
     """
-        Join the alarm file and the announcement file, loop them
-        and save the file into output_file
+    Write `loops` repetitions of (alarm, announcement) to output_file
+    as mono 16-bit PCM WAV at SAMPLE_RATE. The file is written atomically.
     """
+    if loops < 1:
+        raise ValueError(f"loops must be >= 1, got {loops}")
+    for path in (announcement_file, alarm_file):
+        if not os.path.isfile(path):
+            raise FileNotFoundError(path)
 
-    # Normalize both inputs to mono once, then split each into `loops` copies
-    # so each copy can be fed into the concat filter separately (a filtergraph
-    # label can only be consumed once, so [a0]/[a1] can't be reused directly).
-    a0_labels = [f"a0_{i}" for i in range(loops)]
-    a1_labels = [f"a1_{i}" for i in range(loops)]
-    normalize = (
-        f"[0:a]aformat=channel_layouts=mono,asplit={loops}"
-        + "".join(f"[{label}]" for label in a0_labels) + ";"
-        f"[1:a]aformat=channel_layouts=mono,asplit={loops}"
-        + "".join(f"[{label}]" for label in a1_labels) + ";"
+    fmt = f"aformat=sample_fmts=s16:sample_rates={SAMPLE_RATE}:channel_layouts=mono"
+    filter_complex = (
+        f"[0:a]{fmt}[alarm];"
+        f"[1:a]{fmt}[ann];"
+        # One cycle: alarm -> announcement, then repeat it (loop=N plays N+1 times)
+        "[alarm][ann]concat=n=2:v=0:a=1,"
+        f"aloop=loop={loops - 1}:size=2e+09[out]"
     )
-    concat_inputs = "".join(f"[{a0}][{a1}]" for a0, a1 in zip(a0_labels, a1_labels))
-    filter_complex = f"{normalize}{concat_inputs}concat=n={loops * 2}:v=0:a=1[out]"
 
+    tmp_path = f"{output_file}.tmp"
     cmd = [
         "ffmpeg",
+        "-nostdin",
         "-y",
         "-loglevel", "warning",
         "-i", alarm_file,
         "-i", announcement_file,
         "-filter_complex", filter_complex,
         "-map", "[out]",
+        "-c:a", "pcm_s16le",
+        "-ar", str(SAMPLE_RATE),
         "-ac", "1",
-        output_file,
+        "-f", "wav",
+        tmp_path,
     ]
 
     logger.debug(f"Running FFmpeg command: {' '.join(cmd)}")
 
-    result = subprocess.run(
-                cmd,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.PIPE,
-                text=True)
-    logger.debug(f"FFmpeg output: {result.stderr}")
-
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"ffmpeg failed (exit code {result.returncode}):\n{result.stderr}"
+    try:
+        result = subprocess.run(
+            cmd,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=timeout,
         )
+        logger.debug(f"FFmpeg output: {result.stderr}")
+
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"ffmpeg failed (exit code {result.returncode}):\n{result.stderr}"
+            )
+        os.replace(tmp_path, output_file)
+    finally:
+        # Clean up on failure or timeout; no-op after a successful replace
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
 
 
 
