@@ -5,10 +5,11 @@ import threading
 from homeaudio.audio.snapcast import snapserver_manager_for_env
 from homeaudio.audio.mpd import mpd_connection
 from homeaudio.audio.settings import MpdSettings, SnapcastSettings
+from homeaudio.vcal.event_notifications import AUDIO_DIRECTORY
 
 logger = logging.getLogger(__name__)
 
-METRONOME_FILE = str(Path("audio_resources/reycophoto-metronome-1-164214.mp3").absolute())
+METRONOME_FILE = str(AUDIO_DIRECTORY.joinpath("BigSoundBank_metronome_60bpm_4-10_wood_sub1_accent_44100Hz_16bit.wav").absolute())
 
 def _play_metronome_via_mpd(audio_file, mpd_settings: MpdSettings):
     snapserver_manager = snapserver_manager_for_env(SnapcastSettings())
