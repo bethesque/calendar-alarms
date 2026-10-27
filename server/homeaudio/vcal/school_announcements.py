@@ -2,10 +2,10 @@ import logging
 import os
 import random
 from datetime import datetime, timedelta
-from homeaudio.audio.settings import SchoolAnnouncementsSchedule, SchoolAnnouncementsSettings
-from homeaudio.audio.sound import join_mp3s_to_wav
+from homeaudio.audio.settings import GoogleTextToSpeechSettings, SchoolAnnouncementsSchedule, SchoolAnnouncementsSettings
+from homeaudio.audio.sound import join_mixed_files_to_wav
 from homeaudio.vcal.cal.google_calendar import CalendarEvent, WeatherForecast, MissingCalendarDataException, CalendarSource, CalendarDay, CalendarDayList
-from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file, TextToSpeechError
+from homeaudio.audio.text_to_voice import text_to_voice_file, TextToSpeechError
 from homeaudio.vcal import TIME_TO_LEAVE_FOR_SCHOOL, PACK_AN_UMBRELLA, TODAYS_SCHOOL_EVENTS_ARE, HAVE_A_NICE_DAY, IF_YOU_WANT, NOT_THE_BOSS, NO_CALENDAR_DATA, FIX_AUTHENTICATION, drink_bottle_message
 from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, POST_ANNOUNCEMENT_SILENCE
 from homeaudio.env import CALENDAR_DATA_DIRECTORY
@@ -65,19 +65,19 @@ def _datestamp() -> str:
     now = datetime.now()
     return f"{now.strftime('%y%m%d%H%M%S')}{now.microsecond // 1000:03d}"
 
-def build_audio_file(sentences: list[str], tld: str) -> str:
-    speech_files = _collect_speech_files(sentences, tld)
+def build_audio_file(sentences: list[str], tld: str, speed: float) -> str:
+    speech_files = _collect_speech_files(sentences, tld, speed)
 
     output_file = f"{OUTPUT_AUDIO_DIRECTORY}/school_announcement_{_datestamp()}.wav"
-    join_mp3s_to_wav([PRE_ANNOUNCEMENT_BELL] + speech_files + [POST_ANNOUNCEMENT_SILENCE], output_file)
+    join_mixed_files_to_wav([PRE_ANNOUNCEMENT_BELL] + speech_files + [POST_ANNOUNCEMENT_SILENCE], output_file)
     return output_file
 
-def _collect_speech_files(sentences: list[str], tld: str) -> list[str]:
+def _collect_speech_files(sentences: list[str], tld: str, speed: float) -> list[str]:
     speech_files = []
     error = False
     for sentence in sentences:
         try:
-            speech_files.append(text_to_voice_file(sentence, tld))
+            speech_files.append(text_to_voice_file(sentence, tld, speed))
         except TextToSpeechError:
             if not error:
                 speech_files.append(ERROR_MESSAGE_AUDIO)
@@ -85,8 +85,8 @@ def _collect_speech_files(sentences: list[str], tld: str) -> list[str]:
     return speech_files
 
 # TODO prebuild this
-def _missing_calendar_data_response(tld: str):
-    return build_audio_file([TIME_TO_LEAVE_FOR_SCHOOL, NO_CALENDAR_DATA, FIX_AUTHENTICATION], tld)
+def _missing_calendar_data_response(tld: str, speed: float):
+    return build_audio_file([TIME_TO_LEAVE_FOR_SCHOOL, NO_CALENDAR_DATA, FIX_AUTHENTICATION], tld, speed)
 
 def _announcement_due(base_time: datetime, window: int, schedule: SchoolAnnouncementsSchedule) -> bool:
     if base_time.weekday() >= 5 or schedule.weekdays is None:
@@ -95,11 +95,11 @@ def _announcement_due(base_time: datetime, window: int, schedule: SchoolAnnounce
     scheduled_time = datetime.combine(base_time.date(), schedule.weekdays, tzinfo=base_time.tzinfo)
     return base_time <= scheduled_time < base_time + timedelta(minutes=window)
 
-def _create_audio_file_for_calendar_days(base_time: datetime, events: list[CalendarEvent], weather_forecasts: list[WeatherForecast], tld: str, settings: SchoolAnnouncementsSettings | None = None) -> str | None:
+def _create_audio_file_for_calendar_days(base_time: datetime, events: list[CalendarEvent], weather_forecasts: list[WeatherForecast], tld: str, speed: float, settings: SchoolAnnouncementsSettings | None = None) -> str | None:
     settings = settings or SchoolAnnouncementsSettings()
     school_events = get_school_events(events, settings.school_event_keywords)
     sentences = build_text(school_events, weather_forecasts)
-    return build_audio_file(sentences, tld)
+    return build_audio_file(sentences, tld, speed)
 
 """
 Top level entry point. Announce today's school events, or skip entirely if school is cancelled.
@@ -109,6 +109,7 @@ def check_for_announcement(
         window: int,
         calendar_days: CalendarDayList,
         tld: str,
+        speed: float,
         settings: SchoolAnnouncementsSettings | None = None
     ) -> NotificationFile | None:
     settings = settings or SchoolAnnouncementsSettings()
@@ -125,13 +126,13 @@ def check_for_announcement(
         calendar_day = calendar_days.get_calendar_day_for_date(base_time)
     except MissingCalendarDataException:
         logger.info(f"No calendar data found for today's date ({base_time}), playing missing calendar data message.")
-        return NotificationFile(path=_missing_calendar_data_response(tld))
+        return NotificationFile(path=_missing_calendar_data_response(tld, speed))
 
     if calendar_day.holiday:
         logger.info("Today is a school holiday; skipping school announcement.")
         return None
 
-    path = _create_audio_file_for_calendar_days(base_time, calendar_day.all_events(), calendar_day.weather_forecasts, tld, settings)
+    path = _create_audio_file_for_calendar_days(base_time, calendar_day.all_events(), calendar_day.weather_forecasts, tld, speed, settings)
     return NotificationFile(path=path) if path else None
 
 """
@@ -153,9 +154,9 @@ def play_school_announcements(
         calendar_day = calendar_days.get_calendar_day_for_date(base_time)
     except MissingCalendarDataException:
         logger.info(f"No calendar data found for today's date ({base_time}), playing missing calendar data message.")
-        return NotificationFile(path=_missing_calendar_data_response(DEFAULT_GOOGLE_TRANSLATE_TLD))
+        return NotificationFile(path=_missing_calendar_data_response(DEFAULT_GOOGLE_TRANSLATE_TLD, GoogleTextToSpeechSettings().default_speed))
 
-    file = _create_audio_file_for_calendar_days(base_time, calendar_day.all_events(), calendar_day.weather_forecasts, DEFAULT_GOOGLE_TRANSLATE_TLD, settings)
+    file = _create_audio_file_for_calendar_days(base_time, calendar_day.all_events(), calendar_day.weather_forecasts, DEFAULT_GOOGLE_TRANSLATE_TLD, GoogleTextToSpeechSettings().default_speed, settings)
     if file:
         notification_files = NotificationFiles(scheduled_announcements_files=[NotificationFile(file)])
         play_notifications(notification_files, scene)

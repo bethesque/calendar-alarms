@@ -19,7 +19,7 @@ from homeaudio.vcal.morning_announcements import (
     ERROR_MESSAGE_AUDIO,
 )
 from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, WholeDayEvent, WeatherForecast, MissingCalendarDataException
-from homeaudio.vcal.event_notifications.text_to_voice import TextToSpeechError
+from homeaudio.audio.text_to_voice import TextToSpeechError
 from homeaudio.vcal import MORNING_GREETING, NO_EVENTS_TODAY, HAVE_A_LOVELY_DAY
 from homeaudio.audio.settings import CalendarSetting, GoogleCalendarSettings, MorningAnnouncementsSchedule, MorningAnnouncementsSettings
 from homeaudio.audio.scene import NullScene
@@ -211,7 +211,7 @@ def test_check_for_announcement_returns_none_at_the_weekday_time_on_a_holiday():
     settings = MorningAnnouncementsSettings(enabled=True, schedule=schedule)
     calendar_days = CalendarDayList([CalendarDay(date=MONDAY_7_17.date(), holiday=True)])
 
-    assert check_for_announcement(MONDAY_7_17, 1, calendar_days, "com", settings) is None
+    assert check_for_announcement(MONDAY_7_17, 1, calendar_days, "com", 1.25, settings) is None
 
 
 def test_announcement_due_false_when_weekends_schedule_unset_on_a_weekend():
@@ -223,14 +223,14 @@ def test_announcement_due_false_when_weekends_schedule_unset_on_a_weekend():
 def test_check_for_announcement_returns_none_when_settings_disabled():
     settings = MorningAnnouncementsSettings(enabled=False, schedule=DEFAULT_SCHEDULE)
 
-    assert check_for_announcement(MONDAY_7_17, 1, CalendarDayList(), "com", settings) is None
+    assert check_for_announcement(MONDAY_7_17, 1, CalendarDayList(), "com", 1.25, settings) is None
 
 
 def test_check_for_announcement_returns_none_when_not_due():
     settings = MorningAnnouncementsSettings(enabled=True, schedule=DEFAULT_SCHEDULE)
     base_time = datetime(2026, 4, 27, 7, 0, 0)  # Monday, well before 7:17
 
-    assert check_for_announcement(base_time, 1, CalendarDayList(), "com", settings) is None
+    assert check_for_announcement(base_time, 1, CalendarDayList(), "com", 1.25, settings) is None
 
 
 def test_check_for_announcement_builds_the_audio_file_when_due(monkeypatch):
@@ -240,18 +240,18 @@ def test_check_for_announcement_builds_the_audio_file_when_due(monkeypatch):
 
     seen = {}
 
-    def fake_create_audio_file(base_time, calendar_days, tld, s, c):
-        seen["args"] = (base_time, calendar_days, tld, s, c)
+    def fake_create_audio_file(base_time, calendar_days, tld, speed, s, c):
+        seen["args"] = (base_time, calendar_days, tld, speed, s, c)
         return "morning_announcement.wav"
 
     monkeypatch.setattr(morning_announcements_core, "_create_audio_file_for_calendar_days", fake_create_audio_file)
 
     calendar_days = CalendarDayList([CalendarDay(date=MONDAY_7_17.date())])
 
-    result = check_for_announcement(MONDAY_7_17, 1, calendar_days, "com", settings, google_calendar_settings)
+    result = check_for_announcement(MONDAY_7_17, 1, calendar_days, "com", 1.25, settings, google_calendar_settings)
 
     assert result == NotificationFile(path="morning_announcement.wav")
-    assert seen["args"] == (MONDAY_7_17, calendar_days, "com", settings, calendars)
+    assert seen["args"] == (MONDAY_7_17, calendar_days, "com", 1.25, settings, calendars)
 
 
 def _fake_settings():
@@ -280,13 +280,13 @@ def test_create_audio_file_for_calendar_days_builds_the_audio_file(monkeypatch):
 
     seen = {}
 
-    def fake_build_audio_file(sentences, tld, music_file):
+    def fake_build_audio_file(sentences, tld, speed, music_file):
         seen["args"] = (sentences, music_file)
         return "built.wav"
 
     monkeypatch.setattr(morning_announcements_core, "build_audio_file", fake_build_audio_file)
 
-    assert _create_audio_file_for_calendar_days(MONDAY_7_17, calendar_days, "com", _fake_settings()) == "built.wav"
+    assert _create_audio_file_for_calendar_days(MONDAY_7_17, calendar_days, "com", 1.25, _fake_settings()) == "built.wav"
     sentences, music_file = seen["args"]
     assert music_file == "music.mp3"
     assert "Meeting" in sentences
@@ -309,13 +309,13 @@ def test_create_audio_file_for_calendar_days_excludes_events_from_calendars_not_
 
     seen = {}
 
-    def fake_build_audio_file(sentences, tld, music_file):
+    def fake_build_audio_file(sentences, tld, speed, music_file):
         seen["sentences"] = sentences
         return "built.wav"
 
     monkeypatch.setattr(morning_announcements_core, "build_audio_file", fake_build_audio_file)
 
-    _create_audio_file_for_calendar_days(MONDAY_7_17, calendar_days, "com", _fake_settings(), calendars)
+    _create_audio_file_for_calendar_days(MONDAY_7_17, calendar_days, "com", 1.25, _fake_settings(), calendars)
 
     assert "Meeting" in seen["sentences"]
     assert "Bin night" not in seen["sentences"]
@@ -326,13 +326,13 @@ def test_create_audio_file_for_calendar_days_proceeds_with_no_events_when_calend
 
     seen = {}
 
-    def fake_build_audio_file(sentences, tld, music_file):
+    def fake_build_audio_file(sentences, tld, speed, music_file):
         seen["args"] = (sentences, music_file)
         return "fallback.wav"
 
     monkeypatch.setattr(morning_announcements_core, "build_audio_file", fake_build_audio_file)
 
-    assert _create_audio_file_for_calendar_days(MONDAY_7_17, CalendarDayList(), "com", _fake_settings()) == "fallback.wav"
+    assert _create_audio_file_for_calendar_days(MONDAY_7_17, CalendarDayList(), "com", 1.25, _fake_settings()) == "fallback.wav"
     sentences, music_file = seen["args"]
     assert music_file == "music.mp3"
     assert "There are no events scheduled for today." in sentences
@@ -356,7 +356,7 @@ def test_play_morning_announcements_builds_and_plays_the_audio_file(monkeypatch)
 
     seen = {}
 
-    def fake_create_audio_file(base_time, calendar_days, tld, s, c):
+    def fake_create_audio_file(base_time, calendar_days, tld, speed, s, c):
         seen["args"] = (base_time, calendar_days, s, c)
         return "built.wav"
 
@@ -377,13 +377,13 @@ def test_play_morning_announcements_builds_and_plays_the_audio_file(monkeypatch)
 
 def test_collect_speech_files_uses_error_message_audio_in_place_of_first_failed_sentence(monkeypatch):
 
-    def fake_text_to_voice_file(sentence, tld):
+    def fake_text_to_voice_file(sentence, tld, speed):
         if sentence in ("Sentence one.", "Sentence three."):
             raise TextToSpeechError(sentence)
         return "speech2.mp3"
 
     monkeypatch.setattr(morning_announcements_core, "text_to_voice_file", fake_text_to_voice_file)
 
-    speech_files = _collect_speech_files(["Sentence one.", "Sentence two.", "Sentence three."], "com")
+    speech_files = _collect_speech_files(["Sentence one.", "Sentence two.", "Sentence three."], "com", 1.25)
 
     assert speech_files == [ERROR_MESSAGE_AUDIO, "speech2.mp3"]

@@ -1,7 +1,9 @@
 import glob
 import random
-from homeaudio.audio.sound import build_alarm_audio, join_mp3s_to_wav, build_aggressive_alarm_audio, join_mixed_files_to_wav
-from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file
+from pathlib import Path
+from homeaudio.audio.sound import build_alarm_audio, join_mixed_files_to_wav, build_aggressive_alarm_audio, join_mixed_files_to_wav, change_speed
+from homeaudio.audio.filepath import insert_path_part, modify_path
+from homeaudio.audio.text_to_voice import text_to_voice_file
 from homeaudio.vcal import LOUD_NOISE_WARNING
 from homeaudio.audio.select_item import select_item_by_date
 from homeaudio.vcal.event_notifications import GENTLE_ALARMS_DIRECTORY, AGGRESSIVE_ALARMS_DIRECTORY, PRE_ANNOUNCEMENT_BELL, OUTPUT_AUDIO_DIRECTORY, SILENCE_HALF_SEC
@@ -14,16 +16,17 @@ Builds the alarm audio by using TTS to read out the event descriptions, and
 mixing in background alarm music.
 """
 class AlarmAudio:
-    def __init__(self, notification_texts: list[str], tld: str, alarm_settings: AlarmSettings, base_time):
+    def __init__(self, notification_texts: list[str], tld: str, speed: float, alarm_settings: AlarmSettings, base_time):
         self.notification_texts = notification_texts
         self.base_time = base_time
         self.tld = tld
+        self.speed = speed
         self.alarm_settings = alarm_settings
 
 
     def build_alarm_file(self):
         joined_announcement_file = f"{OUTPUT_AUDIO_DIRECTORY}/alarm.wav"
-        join_mp3s_to_wav(self._announcement_files_for_events(), joined_announcement_file)
+        join_mixed_files_to_wav(self._announcement_files_for_events(), joined_announcement_file)
 
         gentle_audio_file = f"{OUTPUT_AUDIO_DIRECTORY}/alarm_mixed.wav"
 
@@ -39,7 +42,7 @@ class AlarmAudio:
         files_to_loop = [gentle_audio_file]
 
         if self.alarm_settings.aggressive_alarm_loops > 0:
-            loud_noise_warning_file = text_to_voice_file(LOUD_NOISE_WARNING, self.tld)
+            loud_noise_warning_file = text_to_voice_file(LOUD_NOISE_WARNING, self.tld, self.speed)
 
             aggressive_audio_file = f"{OUTPUT_AUDIO_DIRECTORY}/alarm_aggressive.wav"
 
@@ -63,7 +66,7 @@ class AlarmAudio:
         return alarm_file
 
     def _announcement_files_for_events(self):
-        return [text_to_voice_file(text, self.tld) for text in self.notification_texts]
+        return [text_to_voice_file(text, self.tld, self.speed) for text in self.notification_texts]
 
     def _get_alarm_file(self):
         alarm_files = self._get_alarm_background_files()
@@ -95,21 +98,22 @@ Builds the alarm audio by using TTS to read out the event descriptions, and
 mixing in background alarm music.
 """
 class AnnouncementAudio:
-    def __init__(self, notification_texts: list[str], base_time, tld: str, sound_effect_selector: SoundEffectSelector):
+    def __init__(self, notification_texts: list[str], base_time, tld: str, speed: float, sound_effect_selector: SoundEffectSelector):
         self.notification_texts = notification_texts
         self.base_time = base_time
         self.tld = tld
+        self.speed = speed
         self.sound_effect_selector = sound_effect_selector
 
     def build_announcement_file(self):
         joined_announcement_file = f"{OUTPUT_AUDIO_DIRECTORY}/announcement.wav"
         files = self.preannouncement_files() + self._announcement_files_for_events() + [SILENCE_HALF_SEC]
-        join_mp3s_to_wav(files, joined_announcement_file)
+        join_mixed_files_to_wav(files, joined_announcement_file)
 
         return joined_announcement_file
 
     def _announcement_files_for_events(self):
-        return [text_to_voice_file(text, self.tld) for text in self.notification_texts]
+        return [text_to_voice_file(text, self.tld, self.speed) for text in self.notification_texts]
 
     def preannouncement_files(self) -> list[str]:
         file = self.sound_effect_selector.get_random_sound_effect_file()
@@ -117,3 +121,4 @@ class AnnouncementAudio:
             return [PRE_ANNOUNCEMENT_BELL, file]
         else:
             return [PRE_ANNOUNCEMENT_BELL]
+

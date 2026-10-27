@@ -35,7 +35,7 @@ def _stub_playback(monkeypatch) -> StubMpdPlayer:
     # Avoid hitting gTTS/ffmpeg to build real audio - the content of the
     # generated files isn't what these tests are checking.
     monkeypatch.setattr("homeaudio.vcal.event_notifications.audio.text_to_voice_file", lambda text: "fake_speech.mp3")
-    monkeypatch.setattr("homeaudio.vcal.event_notifications.audio.join_mp3s_to_wav", lambda files, output: None)
+    monkeypatch.setattr("homeaudio.vcal.event_notifications.audio.join_mixed_files_to_wav", lambda files, output: None)
     monkeypatch.setattr("homeaudio.vcal.playback.track_length", lambda path: 0)
 
     # Stub Snapcast so no real network calls are made to the Snapserver.

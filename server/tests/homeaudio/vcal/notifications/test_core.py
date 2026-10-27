@@ -142,10 +142,11 @@ def test_snooze_alarm_uses_saved_at_when_base_time_is_outside_the_check_interval
 def _stub_test_notification_playback(monkeypatch):
     calls = {}
     monkeypatch.setattr(core_module, "gtts_tld", lambda: "com")
+    monkeypatch.setattr(core_module, "gtts_speed", lambda: 1.25)
     monkeypatch.setattr(
         core_module,
         "build_event_notification_files",
-        lambda notifications, base_time, tld, settings: calls.update(notifications=notifications, base_time=base_time) or ("announce.wav", "alarm.wav"),
+        lambda notifications, base_time, tld, speed, settings: calls.update(notifications=notifications, base_time=base_time) or ("announce.wav", "alarm.wav"),
     )
     monkeypatch.setattr(core_module, "play_notifications", lambda files, scene: calls.update(files=files, scene=scene))
     monkeypatch.setattr(core_module, "scene_for_env", lambda: "the-scene")
@@ -192,6 +193,7 @@ def test_test_notification_plays_nothing_when_the_requested_notification_is_not_
 def test_prepare_notification_files_passes_a_scheduler_to_event_notifications_and_the_check_interval_to_announcements(monkeypatch):
     calls = {}
     monkeypatch.setattr(core_module, "gtts_tld", lambda: "com")
+    monkeypatch.setattr(core_module, "gtts_speed", lambda: 1.25)
     monkeypatch.setattr(
         core_module,
         "check_for_event_notifications",

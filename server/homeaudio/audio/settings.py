@@ -4,7 +4,7 @@ from enum import Enum
 import json
 import logging
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 from pydantic import BaseModel, Field, PrivateAttr, computed_field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 import yaml
@@ -415,7 +415,10 @@ class HousieTalkieSettings(YAMLSettings):
 class GoogleTextToSpeechSettings(YAMLSettings):
     default_tld: str = Field(default=DEFAULT_GOOGLE_TRANSLATE_TLD, title="Default TLD", description="The default TLD (accent) to use")
     alternative_tlds: list[str] = Field(default_factory=list, title="Alternative TLDs", description="Alternative TLDs (accents) to use just to keep things interesting")
-    alternative_tld_probability: float = Field(default=0.3, title="Alternative TLD probability", description="The probability that an alternative TLD will be used ", ge=0, le=1)
+    alternative_tld_probability: float = Field(default=0.3, title="Alternative TLD probability", description="The probability that an alternative TLD will be used (0=never, 1=always)", ge=0, le=1)
+    default_speed: float = Field(default=1.0, description="Default speed at which to play text-to-speech audio", ge=0.5, le=2.0)
+    alternative_speeds: list[Annotated[float, Field(ge=0.5, le=2.0)]] = Field(default_factory=list, description="Alternative speeds at which to play text-to-speech audio")
+    alternative_speed_probability: float = Field(default=0.3, title="Alternative speed probability", description="The probability that an alternative speed will be used (0=never, 1=always)", ge=0, le=1)
 
     model_config = SettingsConfigDict(
         yaml_file=f"{CONFIG_DIR}/text_to_speech.yaml"

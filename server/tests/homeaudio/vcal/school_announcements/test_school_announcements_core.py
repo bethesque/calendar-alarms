@@ -14,7 +14,7 @@ from homeaudio.vcal.school_announcements import (
     ERROR_MESSAGE_AUDIO,
 )
 from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, WholeDayEvent, WeatherForecast
-from homeaudio.vcal.event_notifications.text_to_voice import TextToSpeechError
+from homeaudio.audio.text_to_voice import TextToSpeechError
 from homeaudio.audio.settings import SchoolAnnouncementsSchedule, SchoolAnnouncementsSettings
 from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, POST_ANNOUNCEMENT_SILENCE
 from homeaudio.vcal.playback import NotificationFile, NotificationFiles
@@ -280,7 +280,7 @@ def test_build_audio_file_joins_bell_and_speech_files(monkeypatch):
     }
     monkeypatch.setattr(
         "homeaudio.vcal.school_announcements.text_to_voice_file",
-        lambda sentence, tld: speech_files_by_sentence[sentence],
+        lambda sentence, tld, speed: speech_files_by_sentence[sentence],
     )
 
     joined = {}
@@ -289,9 +289,9 @@ def test_build_audio_file_joins_bell_and_speech_files(monkeypatch):
         joined["mp3_files"] = mp3_files
         joined["output_file"] = output_file
 
-    monkeypatch.setattr("homeaudio.vcal.school_announcements.join_mp3s_to_wav", fake_join)
+    monkeypatch.setattr("homeaudio.vcal.school_announcements.join_mixed_files_to_wav", fake_join)
 
-    output_file = build_audio_file(["Sentence one.", "Sentence two."], "com")
+    output_file = build_audio_file(["Sentence one.", "Sentence two."], "com", 1.25)
 
     assert joined["mp3_files"] == [PRE_ANNOUNCEMENT_BELL, "speech1.mp3", "speech2.mp3", POST_ANNOUNCEMENT_SILENCE]
     assert output_file == joined["output_file"]
@@ -301,7 +301,7 @@ def test_build_audio_file_joins_bell_and_speech_files(monkeypatch):
 
 def test_collect_speech_files_uses_error_message_audio_in_place_of_first_failed_sentence(monkeypatch):
 
-    def fake_text_to_voice_file(sentence, tld):
+    def fake_text_to_voice_file(sentence, tld, speed):
         if sentence in ("Sentence one.", "Sentence three."):
             raise TextToSpeechError(sentence)
         return "speech2.mp3"
@@ -311,7 +311,7 @@ def test_collect_speech_files_uses_error_message_audio_in_place_of_first_failed_
         fake_text_to_voice_file,
     )
 
-    speech_files = _collect_speech_files(["Sentence one.", "Sentence two.", "Sentence three."], "com")
+    speech_files = _collect_speech_files(["Sentence one.", "Sentence two.", "Sentence three."], "com", 1.25)
 
     assert speech_files == [ERROR_MESSAGE_AUDIO, "speech2.mp3"]
 
@@ -321,14 +321,14 @@ def test_error_message_audio_file_exists():
 def test_check_for_announcement_returns_none_when_settings_disabled():
     settings = SchoolAnnouncementsSettings(enabled=False, schedule=SchoolAnnouncementsSchedule(weekdays=time(8, 30, 0)))
 
-    assert check_for_announcement(MONDAY_8_30, 1, CalendarDayList(), "com", settings) is None
+    assert check_for_announcement(MONDAY_8_30, 1, CalendarDayList(), "com", 1.25, settings) is None
 
 
 def test_check_for_announcement_returns_none_when_not_due():
     settings = SchoolAnnouncementsSettings(enabled=True, schedule=SchoolAnnouncementsSchedule(weekdays=time(8, 30, 0)))
     base_time = datetime(2026, 4, 27, 8, 0, 0)  # Monday, well before 8:30
 
-    assert check_for_announcement(base_time, 1, CalendarDayList(), "com", settings) is None
+    assert check_for_announcement(base_time, 1, CalendarDayList(), "com", 1.25, settings) is None
 
 
 def test_check_for_announcement_builds_the_audio_file_when_due(monkeypatch):
@@ -340,16 +340,16 @@ def test_check_for_announcement_builds_the_audio_file_when_due(monkeypatch):
     weather_forecasts = [WeatherForecast(owner="cal", summary="Min 10 Max 20", description="", calendar_id="id")]
     calendar_days = CalendarDayList([CalendarDay(date=MONDAY_8_30.date(), whole_day_events=events, weather_forecasts=weather_forecasts)])
 
-    def fake_create_audio_file(base_time, events, weather_forecasts, tld, s):
-        seen["args"] = (base_time, events, weather_forecasts, tld, s)
+    def fake_create_audio_file(base_time, events, weather_forecasts, tld, speed, s):
+        seen["args"] = (base_time, events, weather_forecasts, tld, speed, s)
         return "school_announcement.wav"
 
     monkeypatch.setattr(school_announcements_core, "_create_audio_file_for_calendar_days", fake_create_audio_file)
 
-    result = check_for_announcement(MONDAY_8_30, 1, calendar_days, "com", settings)
+    result = check_for_announcement(MONDAY_8_30, 1, calendar_days, "com", 1.25, settings)
 
     assert result == NotificationFile(path="school_announcement.wav")
-    assert seen["args"] == (MONDAY_8_30, events, weather_forecasts, "com", settings)
+    assert seen["args"] == (MONDAY_8_30, events, weather_forecasts, "com", 1.25, settings)
 
 
 def test_check_for_announcement_returns_none_when_the_day_is_a_holiday():
@@ -358,7 +358,7 @@ def test_check_for_announcement_returns_none_when_the_day_is_a_holiday():
 
     settings = SchoolAnnouncementsSettings(enabled=True, schedule=SchoolAnnouncementsSchedule(weekdays=time(8, 30, 0)), school_event_keywords=DEFAULT_SCHOOL_EVENT_KEYWORDS)
 
-    assert check_for_announcement(MONDAY_8_30, 1, calendar_days, "com", settings) is None
+    assert check_for_announcement(MONDAY_8_30, 1, calendar_days, "com", 1.25, settings) is None
 
 
 def test_create_audio_file_for_calendar_days_builds_audio_when_not_a_holiday(monkeypatch):
@@ -371,7 +371,7 @@ def test_create_audio_file_for_calendar_days_builds_audio_when_not_a_holiday(mon
 
     seen_sentences = {}
 
-    def fake_build_audio_file(sentences, tld):
+    def fake_build_audio_file(sentences, tld, speed):
         seen_sentences["sentences"] = sentences
         return "built.wav"
 
@@ -379,16 +379,16 @@ def test_create_audio_file_for_calendar_days_builds_audio_when_not_a_holiday(mon
 
     settings = SchoolAnnouncementsSettings(school_event_keywords=DEFAULT_SCHOOL_EVENT_KEYWORDS)
 
-    assert _create_audio_file_for_calendar_days(MONDAY_8_30, events, [], "com", settings) == "built.wav"
+    assert _create_audio_file_for_calendar_days(MONDAY_8_30, events, [], "com", 1.25, settings) == "built.wav"
     assert seen_sentences["sentences"] == build_text(events, rand=rand_false)
 
 
 def test_create_audio_file_for_calendar_days_falls_back_when_calendar_data_missing(monkeypatch):
-    monkeypatch.setattr(school_announcements_core, "build_audio_file", lambda sentences, tld: "fallback.wav")
+    monkeypatch.setattr(school_announcements_core, "build_audio_file", lambda sentences, tld, speed: "fallback.wav")
 
     settings = SchoolAnnouncementsSettings(enabled=True, schedule=SchoolAnnouncementsSchedule(weekdays=time(8, 30, 0)), school_event_keywords=DEFAULT_SCHOOL_EVENT_KEYWORDS)
 
-    assert check_for_announcement(MONDAY_8_30, 1, CalendarDayList(), "com", settings) == NotificationFile(path="fallback.wav")
+    assert check_for_announcement(MONDAY_8_30, 1, CalendarDayList(), "com", 1.25, settings) == NotificationFile(path="fallback.wav")
 
 
 def test_play_school_announcements_builds_and_plays_the_audio_file(monkeypatch):
@@ -408,7 +408,7 @@ def test_play_school_announcements_builds_and_plays_the_audio_file(monkeypatch):
 
     seen = {}
 
-    def fake_create_audio_file(base_time, events, weather_forecasts, tld, s):
+    def fake_create_audio_file(base_time, events, weather_forecasts, tld, speed, s):
         seen["args"] = (base_time, events, weather_forecasts, s)
         return "built.wav"
 

@@ -5,8 +5,8 @@ from datetime import datetime
 from pathlib import Path
 from dataclasses import dataclass
 from homeaudio.audio.scene import SceneProtocol
-from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file
-from homeaudio.audio.sound import join_mp3s_to_wav, join_mixed_files_to_wav
+from homeaudio.audio.text_to_voice import text_to_voice_file
+from homeaudio.audio.sound import join_mixed_files_to_wav
 from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, PRE_ANNOUNCEMENT_BELL, POST_ANNOUNCEMENT_SILENCE, SILENCE_HALF_SEC
 from homeaudio.audio.sound_effects import SoundEffectSelector
 
@@ -70,7 +70,7 @@ class PlayableRequestBuilder:
         speech_file = text_to_voice_file(message)
         announcement_file = f"{OUTPUT_AUDIO_DIRECTORY}/tts_{self._datestamp()}.wav"
         mp3_files = self.get_pre_announcement_files(sound_effect) + [speech_file, POST_ANNOUNCEMENT_SILENCE]
-        join_mp3s_to_wav(mp3_files, announcement_file)
+        join_mixed_files_to_wav(mp3_files, announcement_file)
         return announcement_file
 
     def get_pre_announcement_files(self, sound_effect: str | None)-> list[str]:

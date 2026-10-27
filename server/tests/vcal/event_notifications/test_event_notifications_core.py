@@ -81,6 +81,7 @@ def test_check_for_event_notifications_returns_error_message_audio_on_exception(
         NotificationPlaytimeScheduler(base_time.tzinfo, EventNotificationSchedule(), calendar_data, 5),
         calendar_data,
         "com",
+        1.25,
         EventNotificationSettings(notification_rules=[]),
     )
 
@@ -96,7 +97,7 @@ def test_build_event_notification_files_uses_shared_target_when_all_notification
     alarm_notification = _event_notification(monkeypatch, tmp_path, base_time, type=NotificationType.ALARM, targets=targets)
 
     announcements_file, alarm_audio_file = build_event_notification_files(
-        [announcement_notification, alarm_notification], base_time, "com", EventNotificationSettings()
+        [announcement_notification, alarm_notification], base_time, "com", 1.25, EventNotificationSettings()
     )
 
     assert announcements_file.targets == targets
@@ -111,7 +112,7 @@ def test_build_event_notification_files_returns_none_target_when_notifications_d
     bedroom_notification = _event_notification(monkeypatch, tmp_path, base_time, type=NotificationType.ALARM, targets=frozenset({"bedroom"}))
 
     announcements_file, alarm_audio_file = build_event_notification_files(
-        [kitchen_notification, bedroom_notification], base_time, "com", EventNotificationSettings()
+        [kitchen_notification, bedroom_notification], base_time, "com", 1.25, EventNotificationSettings()
     )
 
     assert announcements_file.targets is None
@@ -126,7 +127,7 @@ def test_build_event_notification_files_returns_none_target_when_one_notificatio
     untargeted_notification = _event_notification(monkeypatch, tmp_path, base_time, type=NotificationType.ANNOUNCE, targets=None)
 
     announcements_file, _ = build_event_notification_files(
-        [kitchen_notification, untargeted_notification], base_time, "com", EventNotificationSettings()
+        [kitchen_notification, untargeted_notification], base_time, "com", 1.25, EventNotificationSettings()
     )
 
     assert announcements_file.targets is None
@@ -140,7 +141,7 @@ def test_build_event_notification_files_returns_none_target_when_no_notification
     second_notification = _event_notification(monkeypatch, tmp_path, base_time, type=NotificationType.ALARM, targets=None)
 
     announcements_file, alarm_audio_file = build_event_notification_files(
-        [first_notification, second_notification], base_time, "com", EventNotificationSettings()
+        [first_notification, second_notification], base_time, "com", 1.25, EventNotificationSettings()
     )
 
     assert announcements_file.targets is None

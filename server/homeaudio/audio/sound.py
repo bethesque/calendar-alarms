@@ -261,30 +261,6 @@ def track_length(path: str)  -> float:
     except Exception as e:
         raise RuntimeError(f"Failed to get duration: {e}")
 
-
-def join_mp3s_to_wav(mp3_files: list, output_wav: str):
-    with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
-        for mp3 in mp3_files:
-            f.write(f"file '{os.path.abspath(mp3)}'\n")
-        list_file = f.name
-
-    try:
-        subprocess.run([
-            "ffmpeg",
-            "-y",
-            "-f", "concat",
-            "-safe", "0",
-            "-i", list_file,
-            "-vn",
-            "-acodec", "pcm_s16le",
-            output_wav
-        ], check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
-        )
-    finally:
-        os.remove(list_file)
-
 def join_mixed_files_to_wav(files: list, output_wav: str):
     """
     Join an arbitrary list of audio files (mixed formats/codecs allowed,
@@ -335,3 +311,42 @@ def join_mixed_files_to_wav(files: list, output_wav: str):
         )
 
     return output_wav
+
+
+
+def change_speed(input_file: str, output_file: str, speed: float = 1.1) -> str:
+    """Speed up speech by `speed` without changing pitch."""
+    tmp_path = f"{output_file}.tmp"
+    cmd = [
+        "ffmpeg",
+        "-nostdin",
+        "-y",
+        "-loglevel", "warning",
+        "-i", input_file,
+        "-filter:a", f"atempo={speed}",
+        "-c:a", "pcm_s16le",
+        "-ar", str(SAMPLE_RATE),
+        "-ac", "1",
+        "-f", "wav",
+        tmp_path,
+    ]
+
+    logger.debug(f"Running FFmpeg command: {' '.join(cmd)}")
+
+    try:
+        result = subprocess.run(
+            cmd,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"ffmpeg failed (exit code {result.returncode}):\n{result.stderr}"
+            )
+        os.replace(tmp_path, output_file)
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+    return output_file

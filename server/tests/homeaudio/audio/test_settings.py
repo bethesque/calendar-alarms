@@ -4,7 +4,7 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from homeaudio.audio.settings import EventNotificationSettings, TimeRange, NotificationRule, NotificationTiming, SnapcastSettings, SnapclientConfig, PlayerGroup, DepartureTimeRule, LocationBasedDepartureTimes, UploadedFile, GoogleCalendarSettings, AvailableGoogleCalendars, GoogleCalendar
+from homeaudio.audio.settings import EventNotificationSettings, TimeRange, NotificationRule, NotificationTiming, SnapcastSettings, SnapclientConfig, PlayerGroup, DepartureTimeRule, LocationBasedDepartureTimes, UploadedFile, GoogleCalendarSettings, AvailableGoogleCalendars, GoogleCalendar, GoogleTextToSpeechSettings
 
 
 def test_label_uses_summary_pattern_only():
@@ -296,3 +296,26 @@ def test_time_range_rejects_end_equal_to_start():
 def test_time_range_rejects_end_before_start():
     with pytest.raises(ValidationError):
         TimeRange(start=time(21, 0), end=time(7, 0))
+
+
+def test_google_text_to_speech_settings_allows_alternative_speeds_between_half_and_double():
+    settings = GoogleTextToSpeechSettings(alternative_speeds=[0.5, 1.25, 2.0])
+
+    assert settings.alternative_speeds == [0.5, 1.25, 2.0]
+
+
+@pytest.mark.parametrize("speed", [0.4, 2.1])
+def test_google_text_to_speech_settings_rejects_alternative_speeds_out_of_range(speed):
+    with pytest.raises(ValidationError):
+        GoogleTextToSpeechSettings(alternative_speeds=[1.0, speed])
+
+
+@pytest.mark.parametrize("speed", [0.5, 2.0])
+def test_google_text_to_speech_settings_allows_default_speed_between_half_and_double(speed):
+    assert GoogleTextToSpeechSettings(default_speed=speed).default_speed == speed
+
+
+@pytest.mark.parametrize("speed", [0.4, 2.1])
+def test_google_text_to_speech_settings_rejects_default_speed_out_of_range(speed):
+    with pytest.raises(ValidationError):
+        GoogleTextToSpeechSettings(default_speed=speed)

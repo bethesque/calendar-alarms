@@ -7,6 +7,8 @@ from homeaudio.env import GOOGLE_TRANSLATE_LANG, DEFAULT_GOOGLE_TRANSLATE_TLD
 from homeaudio.audio.random_text import select_option_pseudorandomly, ListOptionsSource
 from homeaudio.audio.settings import GoogleTextToSpeechSettings
 from homeaudio.vcal.event_notifications import AUDIO_CACHE_DIR
+from homeaudio.audio.filepath import modify_path
+from homeaudio.audio.sound import change_speed
 
 DEFAULT_ANNOUCEMENT_FILE = "audio_resources/default_announcement.mp3"
 
@@ -29,8 +31,9 @@ class TextToSpeechRateLimitError(TextToSpeechError):
 Converts text to a voice file and saves it to the cache directory.
 Returns the path to the saved audio file.
 """
-def text_to_voice_file(text, tld: str| None = None, word_limit=1000, audio_cache_directory=AUDIO_CACHE_DIR):
+def text_to_voice_file(text, tld: str| None = None, speed: float | None = None, word_limit=1000, audio_cache_directory=AUDIO_CACHE_DIR):
     tld = tld or gtts_tld()
+    speed = speed or gtts_speed()
     logger.debug(f"Converting text to speech with TLD {tld}: {text}")
 
     if word_limit is not None:
@@ -40,11 +43,30 @@ def text_to_voice_file(text, tld: str| None = None, word_limit=1000, audio_cache
         text_to_say = text
 
     audio_file_path = _get_file_path_for_text(text_to_say, tld, audio_cache_directory)
-    # if the file already exists and isn't a leftover empty/corrupt write, return it
-    if os.path.exists(audio_file_path) and os.path.getsize(audio_file_path) > 0:
-        logger.debug("Audio file already exists for text: %s, returning existing file: %s", text_to_say, audio_file_path)
-        return audio_file_path
+    speed_changed_audio_file_path = modify_path(audio_file_path, part=f"speed_{str(speed).replace('.', '_')}", suffix="wav") if not speed == 1.0 else audio_file_path
 
+    # if the file already exists and isn't a leftover empty/corrupt write, return it
+    if os.path.exists(speed_changed_audio_file_path) and os.path.getsize(speed_changed_audio_file_path) > 0:
+        logger.debug("Audio file already exists for text: %s, returning existing file: %s", text_to_say, speed_changed_audio_file_path)
+        return speed_changed_audio_file_path
+
+    # if the file already exists and isn't a leftover empty/corrupt write, use it
+    if os.path.exists(audio_file_path) and os.path.getsize(audio_file_path) > 0:
+        logger.debug("Audio file already exists for text: %s, using existing file: %s", text_to_say, audio_file_path)
+    else:
+        _download_tts_file(tld, text_to_say, audio_file_path)
+
+    if not speed == 1.0:
+        try:
+            change_speed(audio_file_path, speed_changed_audio_file_path, speed)
+        except Exception as e:
+            logger.error("Failed to change speed of %s, using original file. Error: %s", audio_file_path, e)
+            return audio_file_path
+
+    return speed_changed_audio_file_path
+
+
+def _download_tts_file(tld, text_to_say, audio_file_path):
     tmp_file_path = audio_file_path + ".tmp"
     max_attempts = TTS_MAX_ATTEMPTS
     last_error = None
@@ -84,6 +106,12 @@ def gtts_tld(settings: GoogleTextToSpeechSettings | None = None) -> str:
     settings = settings or GoogleTextToSpeechSettings()
     options = ListOptionsSource("alternative_tlds", settings.alternative_tlds)
     return select_option_pseudorandomly(settings.default_tld,  settings.alternative_tld_probability, options) or DEFAULT_GOOGLE_TRANSLATE_TLD
+
+def gtts_speed(settings: GoogleTextToSpeechSettings | None = None) -> float:
+    settings = settings or GoogleTextToSpeechSettings()
+    options = ListOptionsSource("alternative_speeds", [str(speed) for speed in settings.alternative_speeds])
+    speed = select_option_pseudorandomly(str(settings.default_speed), settings.alternative_speed_probability, options)
+    return float(speed) if speed else settings.default_speed
 
 if __name__ == "__main__":
     test_text = "This is a test event. Don't do anything."

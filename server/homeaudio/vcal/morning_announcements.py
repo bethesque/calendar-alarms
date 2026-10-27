@@ -2,11 +2,11 @@ import logging
 import glob
 from datetime import datetime, timedelta
 from typing import Callable
-from homeaudio.audio.settings import CalendarSetting, GoogleCalendarSettings, MorningAnnouncementsSchedule, MorningAnnouncementsSettings, MpdSettings, SnapcastSettings
+from homeaudio.audio.settings import CalendarSetting, GoogleCalendarSettings, GoogleTextToSpeechSettings, MorningAnnouncementsSchedule, MorningAnnouncementsSettings, MpdSettings, SnapcastSettings
 from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, CalendarEvent, WeatherForecast, MissingCalendarDataException, CalendarSource, DATA_FILE
-from homeaudio.vcal.event_notifications.text_to_voice import gtts_tld, text_to_voice_file, TextToSpeechError
+from homeaudio.audio.text_to_voice import gtts_tld, text_to_voice_file, TextToSpeechError
 from homeaudio.vcal import NO_CALENDAR_DATA, MORNING_GREETING, TODAYS_EVENTS_ARE, FUN_FACT_FOR_TODAY, NO_EVENTS_TODAY, HAVE_A_LOVELY_DAY
-from homeaudio.audio.sound import join_mp3s_to_wav, mix_announcement_audio
+from homeaudio.audio.sound import join_mixed_files_to_wav, mix_announcement_audio
 from homeaudio.audio.select_item import select_item_by_date, select_option
 from homeaudio.env import DEFAULT_GOOGLE_TRANSLATE_TLD
 from homeaudio.vcal.event_notifications import BACKGROUND_MUSIC_DIRECTORY, OUTPUT_AUDIO_DIRECTORY, POST_ANNOUNCEMENT_SILENCE
@@ -128,11 +128,11 @@ class BackgroundMusicSelector:
         return background_music_files
 
 
-def build_audio_file(sentences: list[str], tld: str, music_file: str) -> str:
+def build_audio_file(sentences: list[str], tld: str, speed: float, music_file: str) -> str:
     datestr = _datestamp()
-    speech_files = _collect_speech_files(sentences, tld)
+    speech_files = _collect_speech_files(sentences, tld, speed)
     joined_speech_file = f"{OUTPUT_AUDIO_DIRECTORY}/morning_announcements_speech_{datestr}.wav"
-    join_mp3s_to_wav(speech_files + [POST_ANNOUNCEMENT_SILENCE], joined_speech_file)
+    join_mixed_files_to_wav(speech_files + [POST_ANNOUNCEMENT_SILENCE], joined_speech_file)
 
     output_file = f"{OUTPUT_AUDIO_DIRECTORY}/morning_announcements_{datestr}.wav"
 
@@ -143,12 +143,12 @@ def build_audio_file(sentences: list[str], tld: str, music_file: str) -> str:
     )
     return output_file
 
-def _collect_speech_files(sentences: list[str], tld: str) -> list[str]:
+def _collect_speech_files(sentences: list[str], tld: str, speed: float) -> list[str]:
     speech_files = []
     error = False
     for sentence in sentences:
         try:
-            speech_files.append(text_to_voice_file(sentence, tld))
+            speech_files.append(text_to_voice_file(sentence, tld, speed))
         except TextToSpeechError:
             if not error:
                 speech_files.append(ERROR_MESSAGE_AUDIO)
@@ -170,7 +170,7 @@ def _announcement_due(base_time: datetime, window: int, schedule: MorningAnnounc
 def _excluded_calendar_ids(calendars: list[CalendarSetting]) -> set[str]:
     return {calendar.id for calendar in calendars if not calendar.include_in_morning_announcements}
 
-def _create_audio_file_for_calendar_days(base_time: datetime, calendar_days: CalendarDayList, tld: str, settings: MorningAnnouncementsSettings | None = None, calendars: list[CalendarSetting] | None = None) -> str:
+def _create_audio_file_for_calendar_days(base_time: datetime, calendar_days: CalendarDayList, tld: str, speed: float, settings: MorningAnnouncementsSettings | None = None, calendars: list[CalendarSetting] | None = None) -> str:
     settings = settings or MorningAnnouncementsSettings()
     calendars = GoogleCalendarSettings().calendars if calendars is None else calendars
     excluded_calendar_ids = _excluded_calendar_ids(calendars)
@@ -185,7 +185,7 @@ def _create_audio_file_for_calendar_days(base_time: datetime, calendar_days: Cal
 
     text_builder = TextBuilder(events, weather_forecasts, settings)
     bg_music_selector = BackgroundMusicSelector(base_time)
-    return build_audio_file(text_builder.get_morning_announcements_text(), tld, bg_music_selector.get_background_music_file())
+    return build_audio_file(text_builder.get_morning_announcements_text(), tld, speed, bg_music_selector.get_background_music_file())
 
 """
 Called by the notifications daemon on every tick (homeaudio/vcal/notifications/core.py). Returns
@@ -196,6 +196,7 @@ def check_for_announcement(
         window: int,
         calendar_days: CalendarDayList,
         tld: str,
+        speed: float,
         settings: MorningAnnouncementsSettings | None = None,
         google_calendar_settings: GoogleCalendarSettings | None = None
     ) -> NotificationFile | None:
@@ -210,7 +211,7 @@ def check_for_announcement(
         logger.debug(f"Morning announcements not due")
         return None
 
-    return NotificationFile(path=_create_audio_file_for_calendar_days(base_time, calendar_days, tld, settings, google_calendar_settings.calendars))
+    return NotificationFile(path=_create_audio_file_for_calendar_days(base_time, calendar_days, tld, speed, settings, google_calendar_settings.calendars))
 
 """
 Entry point for UI. Generate a summary of today's events, convert them to voice, and play them.
@@ -229,7 +230,7 @@ def play_morning_announcements(
     scene = scene or scene_for_env()
 
     calendar_days = CalendarSource(cache_file_path=calendar_file).load_data_from_file()
-    output_file = _create_audio_file_for_calendar_days(base_time, calendar_days, DEFAULT_GOOGLE_TRANSLATE_TLD, settings, google_calendar_settings.calendars)
+    output_file = _create_audio_file_for_calendar_days(base_time, calendar_days, DEFAULT_GOOGLE_TRANSLATE_TLD, GoogleTextToSpeechSettings().default_speed, settings, google_calendar_settings.calendars)
 
     notification_files = NotificationFiles(scheduled_announcements_files=[NotificationFile(output_file)])
     play_notifications(notification_files, scene)

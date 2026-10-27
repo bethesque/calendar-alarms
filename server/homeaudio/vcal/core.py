@@ -2,9 +2,9 @@
 import logging
 from datetime import datetime, timedelta
 from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, CalendarSource
-from homeaudio.audio.sound import join_mp3s_to_wav
-from homeaudio.vcal.event_notifications.text_to_voice import gtts_tld
-from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file
+from homeaudio.audio.sound import join_mixed_files_to_wav
+from homeaudio.audio.text_to_voice import gtts_speed, gtts_tld
+from homeaudio.audio.text_to_voice import text_to_voice_file
 from homeaudio.vcal import NOTHING_TO_SNOOZE, snoozing_message
 from homeaudio.audio.mpd import mpd_connection
 from homeaudio.vcal.event_notifications import OUTPUT_AUDIO_DIRECTORY, POST_ANNOUNCEMENT_SILENCE
@@ -88,7 +88,7 @@ def _round_to_nearest_minute(dt: datetime):
 def _build_one_off_announcement_file(message: str):
     speech_file = text_to_voice_file(message)
     announcement_file = f"{OUTPUT_AUDIO_DIRECTORY}/tts_{_datestamp()}.wav"
-    join_mp3s_to_wav([speech_file, POST_ANNOUNCEMENT_SILENCE], announcement_file)
+    join_mixed_files_to_wav([speech_file, POST_ANNOUNCEMENT_SILENCE], announcement_file)
     return announcement_file
 
 def _datestamp() -> str:
@@ -143,7 +143,7 @@ def test_alarm():
     calendar_data = CalendarSource(cache_file_path="").load_data_from_any(days)
 
     scheduler = NotificationPlaytimeScheduler(now.tzinfo, EventNotificationSettings().schedule, calendar_data, NOTIFICATIONS_CHECK_INTERVAL_MINUTES)
-    announcements_file, alarm_audio_file = check_for_event_notifications(scheduler.get_play_datetime(now), scheduler, calendar_data, gtts_tld(), EventNotificationSettings())
+    announcements_file, alarm_audio_file = check_for_event_notifications(scheduler.get_play_datetime(now), scheduler, calendar_data, gtts_tld(), gtts_speed(), EventNotificationSettings())
     notification_files = NotificationFiles(event_alarms_file=alarm_audio_file, event_announcements_file=announcements_file)
     play_notifications(notification_files, scene_for_env())
 
@@ -171,7 +171,7 @@ def test_announcement():
     calendar_data = CalendarSource(cache_file_path="").load_data_from_any(days)
 
     scheduler = NotificationPlaytimeScheduler(now.tzinfo, EventNotificationSettings().schedule, calendar_data, NOTIFICATIONS_CHECK_INTERVAL_MINUTES)
-    announcements_file, alarm_audio_file = check_for_event_notifications(scheduler.get_play_datetime(now), scheduler, calendar_data, gtts_tld(), EventNotificationSettings())
+    announcements_file, alarm_audio_file = check_for_event_notifications(scheduler.get_play_datetime(now), scheduler, calendar_data, gtts_tld(), gtts_speed(), EventNotificationSettings())
     notification_files = NotificationFiles(event_alarms_file=alarm_audio_file, event_announcements_file=announcements_file)
     play_notifications(notification_files, scene_for_env())
 
@@ -200,7 +200,7 @@ def test_notification(event: dict, play_datetime: datetime, notification_time: d
         logger.warning(f"No {notification_type} notification found at {notification_time} for {event.get('summary')}")
         return
 
-    announcements_file, alarm_audio_file = build_event_notification_files(notifications, play_datetime, gtts_tld(), event_notification_settings)
+    announcements_file, alarm_audio_file = build_event_notification_files(notifications, play_datetime, gtts_tld(), gtts_speed(), event_notification_settings)
     play_notifications(NotificationFiles(event_alarms_file=alarm_audio_file, event_announcements_file=announcements_file), scene_for_env())
 
 # Gathers what's due at base_time (calendar-driven notifications plus any due snoozes) and builds
@@ -211,15 +211,16 @@ def prepare_notification_files(base_time, calendar_days: CalendarDayList, check_
     event_notification_settings = event_notification_settings or EventNotificationSettings()
 
     tld = gtts_tld()
+    speed = gtts_speed()
 
     scheduler = NotificationPlaytimeScheduler(base_time.tzinfo, event_notification_settings.schedule, calendar_days, check_interval_minutes)
-    announcements_file, alarm_audio_file = check_for_event_notifications(base_time, scheduler, calendar_days, tld, event_notification_settings)
+    announcements_file, alarm_audio_file = check_for_event_notifications(base_time, scheduler, calendar_days, tld, speed, event_notification_settings)
 
     window = scheduler.window
     scheduled_announcements_files = []
-    if file := check_for_morning_announcements(base_time, window, calendar_days, tld, MorningAnnouncementsSettings(), GoogleCalendarSettings()):
+    if file := check_for_morning_announcements(base_time, window, calendar_days, tld, speed, MorningAnnouncementsSettings(), GoogleCalendarSettings()):
         scheduled_announcements_files.append(file)
-    if file := check_for_school_announcements(base_time, window, calendar_days, tld, SchoolAnnouncementsSettings()):
+    if file := check_for_school_announcements(base_time, window, calendar_days, tld, speed, SchoolAnnouncementsSettings()):
         scheduled_announcements_files.append(file)
 
     if alarm_audio_file or announcements_file or scheduled_announcements_files:

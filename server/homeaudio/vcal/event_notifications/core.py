@@ -7,7 +7,7 @@ from homeaudio.vcal.event_notifications.events import EventNotification, EventNo
 from homeaudio.housie_talkie.models import SoundEffectSelector
 from homeaudio.vcal.event_notifications.audio import AlarmAudio, AnnouncementAudio
 from homeaudio.vcal.event_notifications.text import NotificationTextBuilder
-from homeaudio.vcal.event_notifications.text_to_voice import gtts_tld
+from homeaudio.audio.text_to_voice import gtts_speed, gtts_tld
 from homeaudio.vcal.event_notifications import snooze
 from homeaudio.vcal.event_notifications.snooze import LastPlayedState, SnoozeState
 from homeaudio.vcal.event_notifications.events import get_event_notifications
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 # due at base_time. Used by the cron-invoked cal-alarm-check entry point (event_notifications/cli.py).
 def check_for_and_play_notifications(base_time, scheduler: NotificationPlaytimeScheduler, calendar_days: CalendarDayList, scene: SceneProtocol, event_notification_settings: EventNotificationSettings | None = None) -> None:
     event_notification_settings = event_notification_settings or EventNotificationSettings()
-    announcements_file, alarm_audio_file = check_for_event_notifications(base_time, scheduler, calendar_days, gtts_tld(), event_notification_settings)
+    announcements_file, alarm_audio_file = check_for_event_notifications(base_time, scheduler, calendar_days, gtts_tld(), gtts_speed(), event_notification_settings)
     if announcements_file or alarm_audio_file:
         play_notifications(
             NotificationFiles(event_alarms_file=alarm_audio_file, event_announcements_file=announcements_file),
@@ -48,15 +48,15 @@ def find_due_event_notifications(base_time, scheduler: NotificationPlaytimeSched
 # their announcement/alarm audio files, without playing them. Used by the daemon's early wake-up
 # (homeaudio/vcal/daemon.py) so it can build audio ahead of a scheduled tick and play right on time;
 # check_for_notifications above uses it too, just followed immediately by playing.
-def check_for_event_notifications(base_time, scheduler: NotificationPlaytimeScheduler, calendar_days: CalendarDayList, tld: str, event_notification_settings: EventNotificationSettings | None = None) -> tuple[NotificationFile | None, NotificationFile | None]:
+def check_for_event_notifications(base_time, scheduler: NotificationPlaytimeScheduler, calendar_days: CalendarDayList, tld: str, speed: float, event_notification_settings: EventNotificationSettings | None = None) -> tuple[NotificationFile | None, NotificationFile | None]:
     event_notifications = find_due_event_notifications(base_time, scheduler, calendar_days, event_notification_settings)
     if not event_notifications:
         return (None, None)
 
-    return build_event_notification_files(event_notifications, base_time, tld, event_notification_settings)
+    return build_event_notification_files(event_notifications, base_time, tld, speed, event_notification_settings)
 
 
-def build_event_notification_files(event_notifications: list[EventNotification], base_time, tld: str, event_notification_settings: EventNotificationSettings | None = None) -> tuple[NotificationFile | None, NotificationFile | None]:
+def build_event_notification_files(event_notifications: list[EventNotification], base_time, tld: str, speed: float, event_notification_settings: EventNotificationSettings | None = None) -> tuple[NotificationFile | None, NotificationFile | None]:
     try:
 
         event_notification_settings = event_notification_settings or EventNotificationSettings()
@@ -80,14 +80,14 @@ def build_event_notification_files(event_notifications: list[EventNotification],
         if announcement_event_notifications:
             logger.info(f"Building audio for announcements: {announcement_texts}")
             announcements_file = NotificationFile(
-                path=AnnouncementAudio(announcement_texts, base_time, tld, SoundEffectSelector(event_notification_settings.announcements.sound_effect_probability)).build_announcement_file(),
+                path=AnnouncementAudio(announcement_texts, base_time, tld, speed, SoundEffectSelector(event_notification_settings.announcements.sound_effect_probability)).build_announcement_file(),
                 targets=targets
             )
 
         if alarm_event_notifications:
             logger.info(f"Building audio for alarms: {alarm_texts}")
             alarm_audio_file = NotificationFile(
-                path=AlarmAudio(alarm_texts, tld, event_notification_settings.alarms, base_time).build_alarm_file(),
+                path=AlarmAudio(alarm_texts, tld, speed, event_notification_settings.alarms, base_time).build_alarm_file(),
                 targets=targets
             )
 
