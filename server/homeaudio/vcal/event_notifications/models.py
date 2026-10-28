@@ -19,7 +19,6 @@ class NotificationResponseItem(BaseModel):
     due_datetime: datetime
     play_datetime: datetime
     duration_seconds: int
-    audio_file_url: str | None = None
 
 class NotificationsResponse(BaseModel):
     notifications: list[NotificationResponseItem]
