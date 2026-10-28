@@ -1,3 +1,4 @@
+import argparse
 import logging
 import os
 import time
@@ -7,7 +8,7 @@ from homeaudio.env import NOTIFICATIONS_CHECK_INTERVAL_MINUTES, LOG_LEVEL, GOOGL
 from homeaudio.vcal import ALL_SENTENCES, snoozing_message
 from homeaudio.vcal.cal.google_calendar import CalendarSource, Event, calendar_data_lock, refresh_calendar_data as do_refresh_calendar_data
 from homeaudio.audio.log_config import setup_logging_for_data_refresh, setup_logging
-from homeaudio.vcal.event_notifications.text_to_voice import text_to_voice_file, TextToSpeechError, TextToSpeechRateLimitError
+from homeaudio.audio.text_to_voice import text_to_voice_file, TextToSpeechError, TextToSpeechRateLimitError
 from homeaudio.vcal.core import EventNotificationSettings
 from homeaudio.vcal.event_notifications.text import all_greeting_options
 from homeaudio.audio.settings import GoogleCalendarSettings
@@ -25,18 +26,22 @@ def refresh_calendar_data():
         do_refresh_calendar_data()
 
 def insert_test_event():
+    parser = argparse.ArgumentParser(description="Insert a test event into the cached calendar data")
+    parser.add_argument("--alarm", action="store_true", help="Create an alarm instead of an announcement")
+    parser.add_argument("--start", type=int, default=NOTIFICATIONS_CHECK_INTERVAL_MINUTES + 1, metavar="MINS", help="Minutes from now that the event starts")
+    args = parser.parse_args()
     with calendar_data_lock(timeout_seconds=CLI_LOCK_TIMEOUT_SECONDS):
-        _insert_test_event()
+        _insert_test_event(alarm=args.alarm, start_minutes=args.start)
 
-def _insert_test_event():
+def _insert_test_event(alarm: bool = False, start_minutes: int = NOTIFICATIONS_CHECK_INTERVAL_MINUTES + 1):
     calendar_source = CalendarSource()
     calendar_days = calendar_source.load_data_from_file()
     # find the calendar day for the current date
     today = next(day for day in calendar_days if day.date == datetime.now().date())
-    start_time = datetime.now().astimezone() + timedelta(minutes=NOTIFICATIONS_CHECK_INTERVAL_MINUTES + 1)
+    start_time = datetime.now().astimezone() + timedelta(minutes=start_minutes)
     event = Event(
-        summary="A dynamically inserted test event",
-        description="#announce",
+        summary="Test event",
+        description="#alarm" if alarm else "#announce",
         calendar_id="1",
         start_time=start_time,
         recurring=False,
@@ -44,6 +49,7 @@ def _insert_test_event():
         owner="Beth",
         owner_count=1,
     )
+    print(event)
     today.timed_events.append(event)
     calendar_source.save_data_to_file()
 
