@@ -34,6 +34,15 @@ def all_greeting_options(owners: list[str]) -> list[str]:
         for option in greeting_options(good_greeting, owner)
     ))
 
+class VerbIdentifier:
+    def __init__(self, verb_file: str | None = None):
+        verb_file = verb_file or str(Path(__file__).resolve().parent.joinpath("verbs.txt"))
+        with open(verb_file, encoding="utf-8") as f:
+            self.verbs = set({line.strip() for line in f if line.strip()})
+
+    def is_verb(self, word: str):
+        return word.lower() in self.verbs
+
 def _to_or_for(event_summary, verb_identifier: VerbIdentifier):
     first_word = re.sub(r"[^\w]", "", event_summary.split()[0]).lower()
     return "to" if verb_identifier.is_verb(first_word) else "for"
@@ -46,16 +55,6 @@ def what_it_is_time_for_or_to(summary: str, household_names: list[str], verb_ide
             if rest and _to_or_for(rest, verb_identifier) == "to":
                 return f"for {summary[:len(name)]} to {rest}"
     return f"{_to_or_for(summary, verb_identifier)} {summary}"
-
-
-class VerbIdentifier:
-    def __init__(self, verb_file: str | None = None):
-        verb_file = verb_file or str(Path(__file__).resolve().parent.joinpath("verbs.txt"))
-        with open(verb_file, encoding="utf-8") as f:
-            self.verbs = set({line.strip() for line in f if line.strip()})
-
-    def is_verb(self, word: str):
-        return word.lower() in self.verbs
 
 @dataclass
 class TemplateOption:
@@ -162,6 +161,7 @@ class NotificationTextBuilder:
         extra = random.choice(extras)
         return extra
 
+    # TODO add reminder
     def _it_will_be_time_for_summary(self, event_notification: EventNotification):
         minutes_until_start = int((event_notification.event.start_time - self.base_time).total_seconds() / 60)
         options = get_template_options(event_notification, self.household_names, self.verb_identifier)
