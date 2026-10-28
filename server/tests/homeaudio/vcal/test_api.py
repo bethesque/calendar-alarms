@@ -11,6 +11,7 @@ from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, Who
 from homeaudio.vcal.event_notifications.events import EventNotification, EventNotifications, NotificationPlaytimeScheduler, NotificationSource, NotificationType
 from homeaudio.audio.settings import EventNotificationSchedule
 from homeaudio.vcal.event_notifications.scheduled_announcements import ScheduledAnnouncementType
+from homeaudio.vcal.event_notifications.text import VerbIdentifier
 import homeaudio.vcal.api as api_module
 import homeaudio.vcal.cal.google_calendar as google_calendar
 from homeaudio.vcal.cal.google_calendar import calendar_data_lock
@@ -228,7 +229,7 @@ def test_format_notification_for_api_maps_fields_and_uses_the_notifications_play
     notification = EventNotification(event=event, type=NotificationType.ALARM, offset=0, source=NotificationSource.ALARM_DESCRIPTION_TAG)
     notification.play_datetime = datetime(2026, 4, 28, 9, 5, tzinfo=timezone.utc)
 
-    result = api_module.format_notification_for_api(notification)
+    result = api_module.format_notification_for_api(notification, [], VerbIdentifier())
 
     assert result.event.summary == "Gym session"
     assert result.type == "alarm"
@@ -249,7 +250,7 @@ def test_format_notification_for_api_shows_the_leave_for_event_summary():
     notification = EventNotification(event=leave_event, type=NotificationType.ANNOUNCE, offset=0, source=NotificationSource.DEPART_DESCRIPTION_TAG)
     notification.play_datetime = datetime(2026, 4, 28, 8, 40, tzinfo=timezone.utc)
 
-    result = api_module.format_notification_for_api(notification)
+    result = api_module.format_notification_for_api(notification, [], VerbIdentifier())
 
     assert result.event.summary == "Leave for Dentist"
 
@@ -266,6 +267,7 @@ def test_notifications_endpoint_returns_json_when_accept_header_requests_it(monk
     notification.play_datetime = datetime(2026, 4, 28, 9, 5, tzinfo=timezone.utc)
     monkeypatch.setattr(api_module, "get_all_event_notifications", lambda: [notification])
     monkeypatch.setattr(api_module, "scheduled_announcement_notifications", lambda: [])
+    monkeypatch.setattr(api_module, "EventNotificationSettings", lambda: SimpleNamespace(household_names=[]))
 
     response = _client().get("/alarm/notifications", headers={"Accept": "application/json"})
 
@@ -278,6 +280,14 @@ def test_notifications_endpoint_returns_json_when_accept_header_requests_it(monk
                 "due_datetime": "2026-04-28T09:07:30Z",
                 "play_datetime": "2026-04-28T09:05:00Z",
                 "duration_seconds": 300,
+                "template_options": [
+                    {"template": "It was time for Gym session at 9:07am.", "min": None, "max": -60},
+                    {"template": "It was time for Gym session {mins} minutes ago.", "min": -60, "max": -1},
+                    {"template": "It was time for Gym session {mins} minute ago.", "min": -1, "max": 0},
+                    {"template": "It's time for Gym session.", "min": 0, "max": 1},
+                    {"template": "It will be time for Gym session in {mins} minute.", "min": 1, "max": 2},
+                    {"template": "It will be time for Gym session in {mins} minutes.", "min": 2, "max": None},
+                ],
             }
         ]
     }
@@ -313,6 +323,7 @@ def test_notifications_endpoint_includes_morning_and_school_announcements(monkey
                 "due_datetime": "2026-04-28T07:17:00Z",
                 "play_datetime": "2026-04-28T07:17:00Z",
                 "duration_seconds": 300,
+                "template_options": [],
             },
             {
                 "event": {"summary": "School announcements"},
@@ -320,6 +331,7 @@ def test_notifications_endpoint_includes_morning_and_school_announcements(monkey
                 "due_datetime": "2026-04-28T08:30:00Z",
                 "play_datetime": "2026-04-28T08:30:00Z",
                 "duration_seconds": 300,
+                "template_options": [],
             },
         ]
     }

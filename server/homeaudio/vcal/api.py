@@ -16,6 +16,7 @@ from homeaudio.vcal.event_notifications.events import get_calendar_days, get_cal
 from homeaudio.vcal.event_notifications.scheduled_announcements import scheduled_announcement_notifications, ScheduledAnnouncementNotification, ScheduledAnnouncementType
 from homeaudio.vcal.event_notifications.models import TestNotificationRequest, PlayScheduledAnnouncementRequest, EventSummaryResponse, NotificationResponseItem, NotificationsResponse
 from homeaudio.vcal.event_notifications.events import EventNotification, LeaveForEvent
+from homeaudio.vcal.event_notifications.text import VerbIdentifier, get_template_options
 from homeaudio.audio.settings import SnapcastSettings, EventNotificationSettings
 from homeaudio.vcal.cal.google_calendar import CalendarDataLocked, calendar_data_lock, refresh_calendar_data
 from homeaudio.audio.string_utils import json_default_encoder
@@ -25,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
 
-def format_notification_for_api(notification: EventNotification) -> NotificationResponseItem:
+def format_notification_for_api(notification: EventNotification, household_names: list[str], verb_identifier: VerbIdentifier) -> NotificationResponseItem:
     notification_type = notification.type.name.lower()
     return NotificationResponseItem(
         event=EventSummaryResponse(summary=notification.event.summary),
@@ -33,6 +34,7 @@ def format_notification_for_api(notification: EventNotification) -> Notification
         due_datetime=notification.notification_time,
         play_datetime=notification.play_datetime,
         duration_seconds=60 if notification_type == "announce" else 300,
+        template_options=get_template_options(notification, household_names, verb_identifier)
     )
 
 def format_scheduled_announcement_for_api(announcement: ScheduledAnnouncementNotification) -> NotificationResponseItem:
@@ -42,6 +44,7 @@ def format_scheduled_announcement_for_api(announcement: ScheduledAnnouncementNot
         due_datetime=announcement.due_datetime,
         play_datetime=announcement.due_datetime,
         duration_seconds=300,
+        template_options=[]
     )
 
 def _calendar_data_locked_response() -> Response:
@@ -294,8 +297,11 @@ class AlarmRoutes:
         event_notifications = sorted(get_all_event_notifications(), key=lambda notification: notification.notification_time)
 
         if _wants_json(request):
+            verb_identifier = VerbIdentifier()
+            household_names = EventNotificationSettings().household_names
+
             notifications = sorted(
-                [format_notification_for_api(n) for n in event_notifications]
+                [format_notification_for_api(n, household_names, verb_identifier) for n in event_notifications]
                 + [format_scheduled_announcement_for_api(n) for n in scheduled_announcement_notifications()],
                 key=lambda notification: notification.due_datetime,
             )

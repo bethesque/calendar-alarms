@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+from datetime import datetime
 import logging
 import re
 import random
@@ -32,13 +34,55 @@ def all_greeting_options(owners: list[str]) -> list[str]:
         for option in greeting_options(good_greeting, owner)
     ))
 
+def _to_or_for(event_summary, verb_identifier: VerbIdentifier):
+    first_word = re.sub(r"[^\w]", "", event_summary.split()[0]).lower()
+    return "to" if verb_identifier.is_verb(first_word) else "for"
+
+def what_it_is_time_for_or_to(summary: str, household_names: list[str], verb_identifier: VerbIdentifier) -> str:
+    for name in household_names:
+        prefix = f"{name} "
+        if summary.lower().startswith(prefix.lower()):
+            rest = summary[len(prefix):].lstrip()
+            if rest and _to_or_for(rest, verb_identifier) == "to":
+                return f"for {summary[:len(name)]} to {rest}"
+    return f"{_to_or_for(summary, verb_identifier)} {summary}"
+
+
 class VerbIdentifier:
-    def __init__(self, verb_file: str):
+    def __init__(self, verb_file: str | None = None):
+        verb_file = verb_file or str(Path(__file__).resolve().parent.joinpath("verbs.txt"))
         with open(verb_file, encoding="utf-8") as f:
             self.verbs = set({line.strip() for line in f if line.strip()})
 
     def is_verb(self, word: str):
         return word.lower() in self.verbs
+
+@dataclass
+class TemplateOption:
+    template: str
+    min: int | None = None
+    max: int | None = None
+
+    def matches(self, minutes):
+        return (self.min is None or self.min <= minutes) and (self.max is None or minutes < self.max)
+
+def get_template_options(event_notification: EventNotification, household_names: list[str], verb_identifier: VerbIdentifier):
+    summary = event_notification.event.summary
+    start_time = event_notification.event.start_time
+    thing_it_is_time_for = what_it_is_time_for_or_to(summary, household_names, verb_identifier)
+
+    options = []
+
+    start_text = f"{start_time.hour % 12 or 12}:{start_time.minute:02d}{'am' if start_time.hour < 12 else 'pm'}"
+
+    options.append(TemplateOption(min=None, max=-60, template=f"It was time {thing_it_is_time_for} at {start_text}."))
+    options.append(TemplateOption(min=-60, max=-1, template=f"It was time {thing_it_is_time_for} {{mins}} minutes ago."))
+    options.append(TemplateOption(min=-1, max=0, template=f"It was time {thing_it_is_time_for} {{mins}} minute ago."))
+    options.append(TemplateOption(min=0, max=1, template=f"It's time {thing_it_is_time_for}."))
+    options.append(TemplateOption(min=1, max=2, template=f"It will be time {thing_it_is_time_for} in {{mins}} minute."))
+    options.append(TemplateOption(min=2, max=None, template=f"It will be time {thing_it_is_time_for} in {{mins}} minutes."))
+    return options
+
 
 class NotificationTextBuilder:
     COMPLIMENTS_FOR_1 = ListOptionsSource("compliments_for_1", COMPLIMENTS_FOR_1)
@@ -51,7 +95,7 @@ class NotificationTextBuilder:
         self.event_notifications = event_notifications
         self.base_time = base_time
         self.household_names = household_names or []
-        self.verb_identifier = VerbIdentifier(str(Path(__file__).resolve().parent.joinpath("verbs.txt")))
+        self.verb_identifier = VerbIdentifier()
 
     def build(self) -> list[str]:
         if not self.event_notifications:
@@ -119,21 +163,10 @@ class NotificationTextBuilder:
         return extra
 
     def _it_will_be_time_for_summary(self, event_notification: EventNotification):
-        summary = event_notification.event.summary
-        start_time = event_notification.event.start_time
-        minutes_until_start = int((start_time - self.base_time).total_seconds() / 60)
-        if minutes_until_start > 0:
-            minutes_text = "1 minute" if minutes_until_start == 1 else f"{minutes_until_start} minutes"
-            return f"It will be time {self._purpose(summary)} in {minutes_text}."
-        elif -60 <= minutes_until_start < 0:
-            minutes_ago = -minutes_until_start
-            minutes_text = "1 minute" if minutes_ago == 1 else f"{minutes_ago} minutes"
-            return f"It was time {self._purpose(summary)} {minutes_text} ago."
-        elif minutes_until_start < 0:
-            start_text = f"{start_time.hour % 12 or 12}:{start_time.minute:02d}{'am' if start_time.hour < 12 else 'pm'}"
-            return f"It was time {self._purpose(summary)} at {start_text}."
-        else:
-            return f"It's time {self._purpose(summary)}."
+        minutes_until_start = int((event_notification.event.start_time - self.base_time).total_seconds() / 60)
+        options = get_template_options(event_notification, self.household_names, self.verb_identifier)
+        option = next(option for option in options if option.matches(minutes_until_start))
+        return option.template.replace("{mins}", str(abs(minutes_until_start)))
 
     def _greeting(self, event_notification: EventNotification):
         good_greeting = GOOD_MORNING if self.base_time.hour < 12 else GOOD_AFTERNOON if self.base_time.hour < 17 else GOOD_EVENING
@@ -158,15 +191,4 @@ class NotificationTextBuilder:
             for name in self.household_names
         )
 
-    def _purpose(self, summary: str) -> str:
-        for name in self.household_names:
-            prefix = f"{name} "
-            if summary.lower().startswith(prefix.lower()):
-                rest = summary[len(prefix):].lstrip()
-                if rest and self._to_or_for(rest) == "to":
-                    return f"for {summary[:len(name)]} to {rest}"
-        return f"{self._to_or_for(summary)} {summary}"
 
-    def _to_or_for(self, event_summary):
-        first_word = re.sub(r"[^\w]", "", event_summary.split()[0]).lower()
-        return "to" if self.verb_identifier.is_verb(first_word) else "for"
