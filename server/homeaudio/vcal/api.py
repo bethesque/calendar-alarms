@@ -29,7 +29,7 @@ templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "tem
 def format_notification_for_api(notification: EventNotification, household_names: list[str], verb_identifier: VerbIdentifier) -> NotificationResponseItem:
     notification_type = notification.type.name.lower()
     return NotificationResponseItem(
-        event=EventSummaryResponse(summary=notification.event.summary),
+        event=EventSummaryResponse(summary=notification.event.summary, start_time=notification.event.start_time),
         type=notification_type,
         due_datetime=notification.notification_time,
         play_datetime=notification.play_datetime,
@@ -39,7 +39,7 @@ def format_notification_for_api(notification: EventNotification, household_names
 
 def format_scheduled_announcement_for_api(announcement: ScheduledAnnouncementNotification) -> NotificationResponseItem:
     return NotificationResponseItem(
-        event=EventSummaryResponse(summary=announcement.summary),
+        event=EventSummaryResponse(summary=announcement.summary, start_time=announcement.due_datetime),
         type="announce",
         due_datetime=announcement.due_datetime,
         play_datetime=announcement.due_datetime,

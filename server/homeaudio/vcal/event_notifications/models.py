@@ -13,6 +13,7 @@ class PlayScheduledAnnouncementRequest(BaseModel):
 
 class EventSummaryResponse(BaseModel):
     summary: str
+    start_time: datetime | None
 
 class NotificationResponseItem(BaseModel):
     event: EventSummaryResponse
