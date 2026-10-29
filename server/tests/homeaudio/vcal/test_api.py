@@ -280,7 +280,7 @@ def test_notifications_endpoint_returns_json_when_accept_header_requests_it(monk
                 "due_datetime": "2026-04-28T09:07:30Z",
                 "play_datetime": "2026-04-28T09:05:00Z",
                 "duration_seconds": 300,
-                "template_options": [
+                "templated_sentences": [
                     {"template": "It was time for Gym session at 9:07am.", "min": None, "max": -60},
                     {"template": "It was time for Gym session {mins} minutes ago.", "min": -60, "max": -1},
                     {"template": "It was time for Gym session {mins} minute ago.", "min": -1, "max": 0},
@@ -323,7 +323,7 @@ def test_notifications_endpoint_includes_morning_and_school_announcements(monkey
                 "due_datetime": "2026-04-28T07:17:00Z",
                 "play_datetime": "2026-04-28T07:17:00Z",
                 "duration_seconds": 300,
-                "template_options": [],
+                "templated_sentences": [],
             },
             {
                 "event": {"summary": "School announcements", "start_time": "2026-04-28T08:30:00Z"},
@@ -331,7 +331,7 @@ def test_notifications_endpoint_includes_morning_and_school_announcements(monkey
                 "due_datetime": "2026-04-28T08:30:00Z",
                 "play_datetime": "2026-04-28T08:30:00Z",
                 "duration_seconds": 300,
-                "template_options": [],
+                "templated_sentences": [],
             },
         ]
     }

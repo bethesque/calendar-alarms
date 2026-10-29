@@ -1,6 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel
-from homeaudio.vcal.event_notifications.text import TemplateOption
+from homeaudio.vcal.event_notifications.text import TemplatedSentence
 
 class TestNotificationRequest(BaseModel):
     event: dict
@@ -21,7 +21,7 @@ class NotificationResponseItem(BaseModel):
     due_datetime: datetime
     play_datetime: datetime
     duration_seconds: int
-    template_options: list[TemplateOption]
+    templated_sentences: list[TemplatedSentence]
 
 class NotificationsResponse(BaseModel):
     notifications: list[NotificationResponseItem]

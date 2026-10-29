@@ -57,7 +57,13 @@ def what_it_is_time_for_or_to(summary: str, household_names: list[str], verb_ide
     return f"{_to_or_for(summary, verb_identifier)} {summary}"
 
 @dataclass
-class TemplateOption:
+class TemplatedSentence:
+    """
+        Use min/max to determine which variation of the sentence to use, based on the number of
+        minutes between the notification play time and the event start time.
+        These templates are sent to the mobile app so that it knows how to phrase notifications
+        for events that are in the past when a notification is snoozed.
+    """
     template: str
     min: int | None = None
     max: int | None = None
@@ -65,7 +71,10 @@ class TemplateOption:
     def matches(self, minutes):
         return (self.min is None or self.min <= minutes) and (self.max is None or minutes < self.max)
 
-def get_template_options(event_notification: EventNotification, household_names: list[str], verb_identifier: VerbIdentifier):
+def get_templated_sentences(event_notification: EventNotification, household_names: list[str], verb_identifier: VerbIdentifier):
+    if event_notification.notification_rule and event_notification.notification_rule.replace and event_notification.notification_rule.reminder:
+        return [TemplatedSentence(template=event_notification.notification_rule.reminder)]
+
     summary = event_notification.event.summary
     start_time = event_notification.event.start_time
     thing_it_is_time_for = what_it_is_time_for_or_to(summary, household_names, verb_identifier)
@@ -74,12 +83,16 @@ def get_template_options(event_notification: EventNotification, household_names:
 
     start_text = f"{start_time.hour % 12 or 12}:{start_time.minute:02d}{'am' if start_time.hour < 12 else 'pm'}"
 
-    options.append(TemplateOption(min=None, max=-60, template=f"It was time {thing_it_is_time_for} at {start_text}."))
-    options.append(TemplateOption(min=-60, max=-1, template=f"It was time {thing_it_is_time_for} {{mins}} minutes ago."))
-    options.append(TemplateOption(min=-1, max=0, template=f"It was time {thing_it_is_time_for} {{mins}} minute ago."))
-    options.append(TemplateOption(min=0, max=1, template=f"It's time {thing_it_is_time_for}."))
-    options.append(TemplateOption(min=1, max=2, template=f"It will be time {thing_it_is_time_for} in {{mins}} minute."))
-    options.append(TemplateOption(min=2, max=None, template=f"It will be time {thing_it_is_time_for} in {{mins}} minutes."))
+    options.append(TemplatedSentence(min=None, max=-60, template=f"It was time {thing_it_is_time_for} at {start_text}."))
+    options.append(TemplatedSentence(min=-60, max=-1, template=f"It was time {thing_it_is_time_for} {{mins}} minutes ago."))
+    options.append(TemplatedSentence(min=-1, max=0, template=f"It was time {thing_it_is_time_for} {{mins}} minute ago."))
+    options.append(TemplatedSentence(min=0, max=1, template=f"It's time {thing_it_is_time_for}."))
+    options.append(TemplatedSentence(min=1, max=2, template=f"It will be time {thing_it_is_time_for} in {{mins}} minute."))
+    options.append(TemplatedSentence(min=2, max=None, template=f"It will be time {thing_it_is_time_for} in {{mins}} minutes."))
+
+    if event_notification.notification_rule and event_notification.notification_rule.reminder:
+        options.append(TemplatedSentence(template=event_notification.notification_rule.reminder))
+
     return options
 
 
@@ -136,16 +149,8 @@ class NotificationTextBuilder:
         return random.random() < self.CHANCE_OF_ANNOUNCEMENT_WITH_EXTRAS
 
     def _add_core_notification_text(self, event_notification: EventNotification, announcement: list[str]):
-        if event_notification.notification_rule and event_notification.notification_rule.replace and event_notification.notification_rule.reminder:
-            # Append the reminder only, no summary
-            announcement.append(event_notification.notification_rule.reminder)
-        else:
-            # Append "it will be time..."
-            announcement.append(self._it_will_be_time_for_summary(event_notification))
 
-            if event_notification.notification_rule and event_notification.notification_rule.reminder:
-                # Append the reminder
-                announcement.append(event_notification.notification_rule.reminder)
+        announcement.extend(self._it_will_be_time_for_summary(event_notification))
 
 
     # Add a compliment, an encouragement, or nothing
@@ -161,12 +166,11 @@ class NotificationTextBuilder:
         extra = random.choice(extras)
         return extra
 
-    # TODO add reminder
-    def _it_will_be_time_for_summary(self, event_notification: EventNotification):
+    def _it_will_be_time_for_summary(self, event_notification: EventNotification) -> list[str]:
         minutes_until_start = int((event_notification.event.start_time - self.base_time).total_seconds() / 60)
-        options = get_template_options(event_notification, self.household_names, self.verb_identifier)
-        option = next(option for option in options if option.matches(minutes_until_start))
-        return option.template.replace("{mins}", str(abs(minutes_until_start)))
+        options = get_templated_sentences(event_notification, self.household_names, self.verb_identifier)
+        options = [option for option in options if option.matches(minutes_until_start)]
+        return [option.template.replace("{mins}", str(abs(minutes_until_start))) for option in options]
 
     def _greeting(self, event_notification: EventNotification):
         good_greeting = GOOD_MORNING if self.base_time.hour < 12 else GOOD_AFTERNOON if self.base_time.hour < 17 else GOOD_EVENING

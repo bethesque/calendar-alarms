@@ -16,7 +16,7 @@ from homeaudio.vcal.event_notifications.events import get_calendar_days, get_cal
 from homeaudio.vcal.event_notifications.scheduled_announcements import scheduled_announcement_notifications, ScheduledAnnouncementNotification, ScheduledAnnouncementType
 from homeaudio.vcal.event_notifications.models import TestNotificationRequest, PlayScheduledAnnouncementRequest, EventSummaryResponse, NotificationResponseItem, NotificationsResponse
 from homeaudio.vcal.event_notifications.events import EventNotification, LeaveForEvent
-from homeaudio.vcal.event_notifications.text import VerbIdentifier, get_template_options
+from homeaudio.vcal.event_notifications.text import VerbIdentifier, get_templated_sentences
 from homeaudio.audio.settings import SnapcastSettings, EventNotificationSettings
 from homeaudio.vcal.cal.google_calendar import CalendarDataLocked, calendar_data_lock, refresh_calendar_data
 from homeaudio.audio.string_utils import json_default_encoder
@@ -34,7 +34,7 @@ def format_notification_for_api(notification: EventNotification, household_names
         due_datetime=notification.notification_time,
         play_datetime=notification.play_datetime,
         duration_seconds=60 if notification_type == "announce" else 300,
-        template_options=get_template_options(notification, household_names, verb_identifier)
+        templated_sentences=get_templated_sentences(notification, household_names, verb_identifier)
     )
 
 def format_scheduled_announcement_for_api(announcement: ScheduledAnnouncementNotification) -> NotificationResponseItem:
@@ -44,7 +44,7 @@ def format_scheduled_announcement_for_api(announcement: ScheduledAnnouncementNot
         due_datetime=announcement.due_datetime,
         play_datetime=announcement.due_datetime,
         duration_seconds=300,
-        template_options=[]
+        templated_sentences=[]
     )
 
 def _calendar_data_locked_response() -> Response:

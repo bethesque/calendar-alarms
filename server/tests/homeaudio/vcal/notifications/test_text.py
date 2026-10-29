@@ -87,6 +87,16 @@ def test_notification_text_builder_skips_bare_summary_when_notification_rule_pre
     assert announcement_texts == ["Good afternoon", "It's time for Gym session."]
 
 
+def test_notification_text_builder_uses_only_the_reminder_when_notification_rule_replaces_it(monkeypatch):
+    base_time = datetime.datetime(2026, 4, 28, 12, 10, tzinfo=TIMEZONE)
+    event_notification = _description_event_notification()
+    event_notification.notification_rule = NotificationRule(summary_pattern="Gym", offset_minutes=0, reminder="Grab your water bottle.", replace=True)
+
+    announcement_texts = _bare_text(monkeypatch, [event_notification], base_time)
+
+    assert announcement_texts == ["Grab your water bottle."]
+
+
 def test_notification_text_builder_skips_bare_summary_when_offset_is_nonzero(monkeypatch):
     base_time = datetime.datetime(2026, 4, 28, 12, 10, tzinfo=TIMEZONE)
     event_notification = _description_event_notification(offset=20, start_time=datetime.datetime(2026, 4, 28, 12, 30, tzinfo=TIMEZONE))
