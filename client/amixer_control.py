@@ -115,7 +115,8 @@ class VolumeController:
         sleep_time = duration_seconds / steps
 
         logging.info(
-            "Gradually restoring amixer volume over %s seconds in %s steps",
+            "Gradually restoring amixer volume to %s over %s seconds in %s steps",
+            target_volume,
             duration_seconds,
             steps,
         )
