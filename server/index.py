@@ -4,9 +4,9 @@ from string import Template
 import logging
 import yaml
 import uvicorn
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from pydantic_settings import BaseSettings
 from homeaudio.audio.log_config import setup_logging_for_http_server
 from homeaudio.housie_talkie.tts_api import TtsRoutes
@@ -20,7 +20,7 @@ from homeaudio.audio.logs_ui import CalendarAlarmsStatusRoutes, JournalctlRoutes
 from homeaudio.vcal.wake_up_alarm.api import WakeUpAlarmRoutes
 from homeaudio.housie_talkie.ui import UserInterfaceRoutes
 from homeaudio.audio.settings import SnapcastSettings
-from homeaudio.env import APP_NAME, HOUSIE_TALKIE_ENABLED, WAKE_UP_ALARM_ENABLED, SNAPCAST_ENABLED
+from homeaudio.env import APP_NAME, RESOURCES_DIRECTORY, HOUSIE_TALKIE_ENABLED, WAKE_UP_ALARM_ENABLED, SNAPCAST_ENABLED
 
 setup_logging_for_http_server(logging.INFO)
 
@@ -54,12 +54,33 @@ def index(request: Request):
     </html>
     """
 
+def _android_app_apk() -> Path | None:
+    apks = sorted((Path(RESOURCES_DIRECTORY) / "android_app").glob("*.apk"), key=lambda p: p.stat().st_mtime, reverse=True)
+    return apks[0] if apks else None
+
+@app.get("/admin/android-app", response_class=HTMLResponse)
+def android_app():
+    apk = _android_app_apk()
+    if apk is None:
+        raise HTTPException(status_code=404, detail="No Android app available")
+    return Template((Path(__file__).resolve().parent / "android_app.html").read_text()).substitute(
+        app_name=APP_NAME, apk_name=apk.name
+    )
+
+@app.get("/admin/android-app/download")
+def download_android_app():
+    apk = _android_app_apk()
+    if apk is None:
+        raise HTTPException(status_code=404, detail="No Android app available")
+    return FileResponse(apk, media_type="application/vnd.android.package-archive", filename=apk.name)
+
 @app.get("/admin", response_class=HTMLResponse)
 def admin(request: Request):
     snapclient_settings = SnapcastSettings()
+    android_app_link = """<ul class="buttons"><li><a href="/admin/android-app" class="button"><span class="emoji">📱</span><span>Download Android App</span></a></li></ul>""" if _android_app_apk() else ""
     snapweb_link = f"""<ul class="buttons"><li><a href="{snapclient_settings.snapserver}" class="button"><span class="emoji">🔊</span><span>Snapweb</span></a></li><li><a href="/admin/snapclients" class="button"><span class="emoji">📻</span><span>Snapclients</span></a></li></ul>""" if SNAPCAST_ENABLED else ""
     return Template((Path(__file__).resolve().parent / "admin.html").read_text()).substitute(
-        app_name=APP_NAME, snapweb_link=snapweb_link
+        app_name=APP_NAME, snapweb_link=snapweb_link, android_app_link=android_app_link
     )
 
 app.include_router(TtsRoutes().router, prefix="/announce")
