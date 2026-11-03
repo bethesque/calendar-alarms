@@ -8,7 +8,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic_settings import BaseSettings
-from homeaudio.audio.log_config import setup_logging_for_http_server
+from homeaudio.audio.log_config import setup_logging
 from homeaudio.housie_talkie.tts_api import TtsRoutes
 from homeaudio.housie_talkie.voice_api import VoiceRoutes
 from homeaudio.audio.admin_ui import AdminRoutes
@@ -20,9 +20,9 @@ from homeaudio.audio.logs_ui import CalendarAlarmsStatusRoutes, JournalctlRoutes
 from homeaudio.vcal.wake_up_alarm.api import WakeUpAlarmRoutes
 from homeaudio.housie_talkie.ui import UserInterfaceRoutes
 from homeaudio.audio.settings import SnapcastSettings
-from homeaudio.env import APP_NAME, RESOURCES_DIRECTORY, HOUSIE_TALKIE_ENABLED, WAKE_UP_ALARM_ENABLED, SNAPCAST_ENABLED
+from homeaudio.env import APP_NAME, RESOURCES_DIRECTORY, HOUSIE_TALKIE_ENABLED, WAKE_UP_ALARM_ENABLED, SNAPCAST_ENABLED, LOG_LEVEL
 
-setup_logging_for_http_server(logging.INFO)
+setup_logging(str(LOG_LEVEL)) # type: ignore
 
 logger = logging.getLogger(__name__)
 
