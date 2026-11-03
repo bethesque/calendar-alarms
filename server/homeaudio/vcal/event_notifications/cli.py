@@ -6,7 +6,7 @@ import yaml
 from datetime import datetime
 from homeaudio.env import LOG_LEVEL
 from homeaudio.audio.mpd import fade_out, fade_up, mpd_connection
-from homeaudio.audio.log_config import setup_logging_for_alarms
+from homeaudio.audio.log_config import setup_logging
 from homeaudio.vcal.cal.google_calendar import CalendarSource, CalendarDay, CalendarDayList
 from homeaudio.audio.scene import scene_for_env
 from homeaudio.audio.settings import EventNotificationSettings, MainSettings
@@ -16,7 +16,7 @@ from homeaudio.vcal.event_notifications.core import check_for_and_play_notificat
 from homeaudio.vcal.event_notifications.events import NotificationPlaytimeScheduler
 from homeaudio.vcal.notification_schedule import round_down_to_interval
 
-setup_logging_for_alarms(str(LOG_LEVEL))
+setup_logging(str(LOG_LEVEL))
 
 logger = logging.getLogger(__name__)
 

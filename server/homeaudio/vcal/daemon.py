@@ -8,7 +8,7 @@ import signal
 import threading
 from datetime import datetime, timedelta
 
-from homeaudio.audio.log_config import setup_logging_for_alarms
+from homeaudio.audio.log_config import setup_logging
 from homeaudio.audio.scene import scene_for_env
 from homeaudio.audio.settings import EventNotificationSettings, MainSettings
 from homeaudio.env import LOG_LEVEL, NOTIFICATIONS_CHECK_INTERVAL_MINUTES, NOTIFICATIONS_PREPARATION_LEAD_TIME_SECONDS
@@ -17,7 +17,7 @@ from homeaudio.vcal.calendar_refresh import CalendarRefreshLoop
 from homeaudio.vcal.core import prepare_notification_files, NotificationFiles
 from homeaudio.vcal.core import play_notifications as _play_notifications
 
-setup_logging_for_alarms(str(LOG_LEVEL))
+setup_logging(str(LOG_LEVEL)) # type: ignore
 
 logger = logging.getLogger(__name__)
 

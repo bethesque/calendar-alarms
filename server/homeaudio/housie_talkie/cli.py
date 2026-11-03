@@ -1,11 +1,11 @@
 import logging
 import argparse
 from homeaudio.env import LOG_LEVEL
-from homeaudio.audio.log_config import setup_logging_for_announcements
+from homeaudio.audio.log_config import setup_logging
 from homeaudio.audio.scene import scene_for_env
 from homeaudio.housie_talkie.core import play_tts_announcement as play_announcement_func, TtsAnnouncementRequest
 
-setup_logging_for_announcements(str(LOG_LEVEL))
+setup_logging(str(LOG_LEVEL))
 
 logger = logging.getLogger(__name__)
 
