@@ -10,5 +10,5 @@ systemctl --user restart calendar-alarms.service
 systemctl --user restart calendar-alarms-http.service
 echo "Waiting 10 seconds for restart..."
 sleep 10
-systemctl --user status calendar-alarms.service
-systemctl --user status calendar-alarms-http.service
+systemctl --user status calendar-alarms.service --no-pager
+systemctl --user status calendar-alarms-http.service --no-pager
