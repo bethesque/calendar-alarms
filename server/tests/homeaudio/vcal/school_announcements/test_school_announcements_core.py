@@ -7,12 +7,16 @@ from homeaudio.vcal.school_announcements import (
     build_audio_file,
     get_school_events,
     _announcement_due,
+    _build_school_announcements_text,
     _create_audio_file_for_calendar_days,
     _collect_speech_files,
     check_for_announcement,
+    get_school_announcement_sentences_for_api,
     play_school_announcements,
     ERROR_MESSAGE_AUDIO,
+    CHANCE_OF_I_AM_NOT_THE_BOSS,
 )
+from homeaudio.vcal import TIME_TO_LEAVE_FOR_SCHOOL, PACK_AN_UMBRELLA, NO_CALENDAR_DATA, FIX_AUTHENTICATION
 from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, WholeDayEvent, WeatherForecast
 from homeaudio.audio.text_to_voice import TextToSpeechError
 from homeaudio.audio.settings import SchoolAnnouncementsSchedule, SchoolAnnouncementsSettings
@@ -361,26 +365,84 @@ def test_check_for_announcement_returns_none_when_the_day_is_a_holiday():
     assert check_for_announcement(MONDAY_8_30, 1, calendar_days, "com", 1.25, settings) is None
 
 
-def test_create_audio_file_for_calendar_days_builds_audio_when_not_a_holiday(monkeypatch):
+def test_create_audio_file_for_calendar_days_builds_the_audio_file_from_the_announcement_text(monkeypatch):
     events = [WholeDayEvent(owner="cal", summary="School excursion", description="", calendar_id="id")]
-    monkeypatch.setattr(
-        school_announcements_core,
-        "build_text",
-        lambda school_events, weather_forecasts=None: build_text(school_events, weather_forecasts, rand=rand_false),
-    )
+    weather_forecasts = [WeatherForecast(owner="cal", summary="Min 10 Max 20", description="", calendar_id="id")]
+    settings = SchoolAnnouncementsSettings(school_event_keywords=DEFAULT_SCHOOL_EVENT_KEYWORDS)
+    seen = {}
 
-    seen_sentences = {}
+    def fake_build_school_announcements_text(events, weather_forecasts, settings):
+        seen["text_args"] = (events, weather_forecasts, settings)
+        return ["It's time to leave for school."]
 
     def fake_build_audio_file(sentences, tld, speed):
-        seen_sentences["sentences"] = sentences
+        seen["audio_args"] = (sentences, tld, speed)
         return "built.wav"
 
+    monkeypatch.setattr(school_announcements_core, "_build_school_announcements_text", fake_build_school_announcements_text)
     monkeypatch.setattr(school_announcements_core, "build_audio_file", fake_build_audio_file)
 
+    assert _create_audio_file_for_calendar_days(MONDAY_8_30, events, weather_forecasts, "com", 1.25, settings) == "built.wav"
+    assert seen["text_args"] == (events, weather_forecasts, settings)
+    assert seen["audio_args"] == (["It's time to leave for school."], "com", 1.25)
+
+
+def test_build_school_announcements_text_only_includes_school_events():
+    school_event = WholeDayEvent(owner="cal", summary="School excursion", description="", calendar_id="id")
+    other_event = WholeDayEvent(owner="cal", summary="Bin night", description="", calendar_id="id")
     settings = SchoolAnnouncementsSettings(school_event_keywords=DEFAULT_SCHOOL_EVENT_KEYWORDS)
 
-    assert _create_audio_file_for_calendar_days(MONDAY_8_30, events, [], "com", 1.25, settings) == "built.wav"
-    assert seen_sentences["sentences"] == build_text(events, rand=rand_false)
+    sentences = _build_school_announcements_text([school_event, other_event], [], settings, rand=rand_false)
+
+    assert sentences == build_text([school_event], [], rand=rand_false)
+    assert "Bin night." not in sentences
+
+
+def test_build_school_announcements_text_includes_weather_reminders():
+    weather_forecasts = [WeatherForecast(owner="cal", summary="Showers. Min 10 Max 20", description="", calendar_id="id")]
+    settings = SchoolAnnouncementsSettings(school_event_keywords=DEFAULT_SCHOOL_EVENT_KEYWORDS)
+
+    sentences = _build_school_announcements_text([], weather_forecasts, settings, rand=rand_false)
+
+    assert PACK_AN_UMBRELLA in sentences
+
+
+def test_get_school_announcement_sentences_for_api_builds_text_without_the_random_not_the_boss_sentences(monkeypatch):
+    calendar_day = CalendarDay(
+        date=MONDAY_8_30.date(),
+        whole_day_events=[WholeDayEvent(owner="cal", summary="School excursion", description="", calendar_id="id")],
+        weather_forecasts=[WeatherForecast(owner="cal", summary="Min 10 Max 20", description="", calendar_id="id")],
+    )
+    settings = SchoolAnnouncementsSettings(school_event_keywords=DEFAULT_SCHOOL_EVENT_KEYWORDS)
+    seen = {}
+
+    def fake_build_school_announcements_text(events, weather_forecasts, settings, rand):
+        seen["args"] = (events, weather_forecasts, settings, rand)
+        return ["It's time to leave for school."]
+
+    monkeypatch.setattr(school_announcements_core, "_build_school_announcements_text", fake_build_school_announcements_text)
+
+    assert get_school_announcement_sentences_for_api(MONDAY_8_30, CalendarDayList([calendar_day]), settings) == ["It's time to leave for school."]
+    events, weather_forecasts, passed_settings, rand = seen["args"]
+    assert events == calendar_day.all_events()
+    assert weather_forecasts == calendar_day.weather_forecasts
+    assert passed_settings is settings
+    assert rand() >= CHANCE_OF_I_AM_NOT_THE_BOSS
+
+
+def test_get_school_announcement_sentences_for_api_returns_missing_calendar_data_sentences_when_no_calendar_day():
+    assert get_school_announcement_sentences_for_api(MONDAY_8_30, CalendarDayList()) == [TIME_TO_LEAVE_FOR_SCHOOL, NO_CALENDAR_DATA, FIX_AUTHENTICATION]
+
+
+def test_get_school_announcement_sentences_for_api_adds_a_full_stop_to_sentences_without_ending_punctuation_or_a_colon(monkeypatch):
+    calendar_days = CalendarDayList([CalendarDay(date=MONDAY_8_30.date())])
+    monkeypatch.setattr(
+        school_announcements_core,
+        "_build_school_announcements_text",
+        lambda events, weather_forecasts, settings, rand: ["Today's school events are:", "Excursion", "Done.", "Ready?", "Hooray!"],
+    )
+
+    assert get_school_announcement_sentences_for_api(MONDAY_8_30, calendar_days) == ["Today's school events are:", "Excursion.", "Done.", "Ready?", "Hooray!"]
 
 
 def test_create_audio_file_for_calendar_days_falls_back_when_calendar_data_missing(monkeypatch):

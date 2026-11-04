@@ -12,11 +12,13 @@ from homeaudio.env import CALENDAR_DATA_DIRECTORY
 from homeaudio.vcal.playback import NotificationFile, NotificationFiles, play_notifications
 from homeaudio.env import DEFAULT_GOOGLE_TRANSLATE_TLD
 from homeaudio.audio.scene import SceneProtocol, scene_for_env
+from homeaudio.audio.string_utils import add_missing_full_stops
 
 CHANCE_OF_I_AM_NOT_THE_BOSS = 1/5
 # gtts-cli  "An error occurred generating the school announcements. Some of the notifications may have been missing. Please check the calendar for today's events." > audio_resources/school_announcements_error_message.mp3
 ERROR_MESSAGE_AUDIO = "audio_resources/school_announcements_error_message.mp3"
 WATER_BOTTLE_MIN_DEGREES = 26
+MISSING_CALENDAR_DATA_SENTENCES = [TIME_TO_LEAVE_FOR_SCHOOL, NO_CALENDAR_DATA, FIX_AUTHENTICATION]
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +88,7 @@ def _collect_speech_files(sentences: list[str], tld: str, speed: float) -> list[
 
 # TODO prebuild this
 def _missing_calendar_data_response(tld: str, speed: float):
-    return build_audio_file([TIME_TO_LEAVE_FOR_SCHOOL, NO_CALENDAR_DATA, FIX_AUTHENTICATION], tld, speed)
+    return build_audio_file(MISSING_CALENDAR_DATA_SENTENCES, tld, speed)
 
 def _announcement_due(base_time: datetime, window: int, schedule: SchoolAnnouncementsSchedule) -> bool:
     if base_time.weekday() >= 5 or schedule.weekdays is None:
@@ -96,10 +98,21 @@ def _announcement_due(base_time: datetime, window: int, schedule: SchoolAnnounce
     return base_time <= scheduled_time < base_time + timedelta(minutes=window)
 
 def _create_audio_file_for_calendar_days(base_time: datetime, events: list[CalendarEvent], weather_forecasts: list[WeatherForecast], tld: str, speed: float, settings: SchoolAnnouncementsSettings | None = None) -> str | None:
+    sentences = _build_school_announcements_text(events, weather_forecasts, settings)
+    return build_audio_file(sentences, tld, speed)
+
+def _build_school_announcements_text(events: list[CalendarEvent], weather_forecasts: list[WeatherForecast], settings: SchoolAnnouncementsSettings | None = None, rand = random.random) -> list[str]:
     settings = settings or SchoolAnnouncementsSettings()
     school_events = get_school_events(events, settings.school_event_keywords)
-    sentences = build_text(school_events, weather_forecasts)
-    return build_audio_file(sentences, tld, speed)
+    return build_text(school_events, weather_forecasts, rand)
+
+def get_school_announcement_sentences_for_api(base_time: datetime, calendar_days: CalendarDayList, settings: SchoolAnnouncementsSettings | None = None) -> list[str]:
+    try:
+        calendar_day = calendar_days.get_calendar_day_for_date(base_time)
+        sentences = _build_school_announcements_text(calendar_day.all_events(), calendar_day.weather_forecasts, settings, rand=lambda: 1)
+    except MissingCalendarDataException:
+        sentences = MISSING_CALENDAR_DATA_SENTENCES
+    return add_missing_full_stops(sentences)
 
 """
 Top level entry point. Announce today's school events, or skip entirely if school is cancelled.

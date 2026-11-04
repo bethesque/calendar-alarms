@@ -8,14 +8,19 @@ from homeaudio.audio.settings import (
     SchoolAnnouncementsSettings,
 )
 from homeaudio.vcal.cal.google_calendar import CalendarDay, CalendarDayList, CalendarSource, WholeDayEvent
+from homeaudio.vcal.event_notifications import scheduled_announcements
 from homeaudio.vcal.event_notifications.scheduled_announcements import ScheduledAnnouncementNotification, ScheduledAnnouncementType, scheduled_announcement_notifications
 
 TIMEZONE = ZoneInfo("Australia/Melbourne")
+SENTENCES = ["Good morning!"]
+SCHOOL_SENTENCES = ["It's time to leave for school."]
 
 
 def _calendar_source_for(calendar_days, monkeypatch):
     calendar_source = CalendarSource(cache_file_path="")
-    monkeypatch.setattr(calendar_source, "load_data_from_file", lambda: calendar_days)
+    monkeypatch.setattr(calendar_source, "load_data_from_file", lambda: CalendarDayList(calendar_days))
+    monkeypatch.setattr(scheduled_announcements, "get_morning_announcement_sentences_for_api", lambda base_time, calendar_days: SENTENCES)
+    monkeypatch.setattr(scheduled_announcements, "get_school_announcement_sentences_for_api", lambda base_time, calendar_days, settings: SCHOOL_SENTENCES)
     return calendar_source
 
 
@@ -29,8 +34,8 @@ def test_scheduled_announcement_notifications_includes_morning_and_school_on_a_w
     )
 
     assert notifications == [
-        ScheduledAnnouncementNotification(summary="Morning announcements", type=ScheduledAnnouncementType.MORNING_ANNOUNCEMENTS, due_datetime=datetime(2026, 4, 6, 7, 17, tzinfo=TIMEZONE)),
-        ScheduledAnnouncementNotification(summary="School announcements", type=ScheduledAnnouncementType.SCHOOL_ANNOUNCEMENTS, due_datetime=datetime(2026, 4, 6, 8, 30, tzinfo=TIMEZONE)),
+        ScheduledAnnouncementNotification(summary="Morning announcements", type=ScheduledAnnouncementType.MORNING_ANNOUNCEMENTS, due_datetime=datetime(2026, 4, 6, 7, 17, tzinfo=TIMEZONE), sentences=SENTENCES),
+        ScheduledAnnouncementNotification(summary="School announcements", type=ScheduledAnnouncementType.SCHOOL_ANNOUNCEMENTS, due_datetime=datetime(2026, 4, 6, 8, 30, tzinfo=TIMEZONE), sentences=SCHOOL_SENTENCES),
     ]
 
 
@@ -44,7 +49,7 @@ def test_scheduled_announcement_notifications_uses_weekend_morning_schedule_and_
     )
 
     assert notifications == [
-        ScheduledAnnouncementNotification(summary="Morning announcements", type=ScheduledAnnouncementType.MORNING_ANNOUNCEMENTS, due_datetime=datetime(2026, 4, 11, 9, 57, tzinfo=TIMEZONE)),
+        ScheduledAnnouncementNotification(summary="Morning announcements", type=ScheduledAnnouncementType.MORNING_ANNOUNCEMENTS, due_datetime=datetime(2026, 4, 11, 9, 57, tzinfo=TIMEZONE), sentences=SENTENCES),
     ]
 
 
@@ -71,7 +76,7 @@ def test_scheduled_announcement_notifications_uses_holiday_morning_schedule_and_
     )
 
     assert notifications == [
-        ScheduledAnnouncementNotification(summary="Morning announcements", type=ScheduledAnnouncementType.MORNING_ANNOUNCEMENTS, due_datetime=datetime(2026, 4, 6, 8, 45, tzinfo=TIMEZONE)),
+        ScheduledAnnouncementNotification(summary="Morning announcements", type=ScheduledAnnouncementType.MORNING_ANNOUNCEMENTS, due_datetime=datetime(2026, 4, 6, 8, 45, tzinfo=TIMEZONE), sentences=SENTENCES),
     ]
 
 
@@ -85,5 +90,5 @@ def test_scheduled_announcement_notifications_uses_weekend_morning_schedule_on_a
     )
 
     assert notifications == [
-        ScheduledAnnouncementNotification(summary="Morning announcements", type=ScheduledAnnouncementType.MORNING_ANNOUNCEMENTS, due_datetime=datetime(2026, 4, 11, 9, 57, tzinfo=TIMEZONE)),
+        ScheduledAnnouncementNotification(summary="Morning announcements", type=ScheduledAnnouncementType.MORNING_ANNOUNCEMENTS, due_datetime=datetime(2026, 4, 11, 9, 57, tzinfo=TIMEZONE), sentences=SENTENCES),
     ]

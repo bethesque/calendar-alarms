@@ -12,9 +12,11 @@ import homeaudio.vcal.morning_announcements as morning_announcements_core
 from homeaudio.vcal.morning_announcements import (
     TextBuilder,
     _announcement_due,
+    _build_morning_announcements_text,
     _collect_speech_files,
     _create_audio_file_for_calendar_days,
     check_for_announcement,
+    get_morning_announcement_sentences_for_api,
     play_morning_announcements,
     ERROR_MESSAGE_AUDIO,
 )
@@ -262,38 +264,36 @@ def _fake_settings():
     return settings
 
 
-class _FakeBackgroundMusicSelector:
-    def __init__(self, base_time):
-        self.base_time = base_time
+def test_create_audio_file_for_calendar_days_builds_the_audio_file_from_the_announcement_text(monkeypatch):
+    monkeypatch.setattr(morning_announcements_core, "_get_background_music_file", lambda base_time: "music.mp3")
+    monkeypatch.setattr(morning_announcements_core, "_build_morning_announcements_text", lambda base_time, calendar_days, settings, calendars: ["Good morning!"])
 
-    def get_background_music_file(self):
-        return "music.mp3"
+    seen = {}
+
+    def fake_build_audio_file(sentences, tld, speed, music_file):
+        seen["args"] = (sentences, tld, speed, music_file)
+        return "built.wav"
+
+    monkeypatch.setattr(morning_announcements_core, "build_audio_file", fake_build_audio_file)
+
+    assert _create_audio_file_for_calendar_days(MONDAY_7_17, CalendarDayList(), "com", 1.25, _fake_settings()) == "built.wav"
+    assert seen["args"] == (["Good morning!"], "com", 1.25, "music.mp3")
 
 
-def test_create_audio_file_for_calendar_days_builds_the_audio_file(monkeypatch):
+def test_build_morning_announcements_text_includes_events_and_weather():
     calendar_days = CalendarDayList([CalendarDay(
         date=MONDAY_7_17.date(),
         whole_day_events=[WholeDayEvent(owner="cal", summary="Meeting", description="", calendar_id="id")],
         weather_forecasts=[WeatherForecast(owner="cal", summary="Min 10 Max 20", description="", calendar_id="id")],
     )])
-    monkeypatch.setattr(morning_announcements_core, "BackgroundMusicSelector", _FakeBackgroundMusicSelector)
 
-    seen = {}
+    sentences = _build_morning_announcements_text(MONDAY_7_17, calendar_days, _fake_settings(), [])
 
-    def fake_build_audio_file(sentences, tld, speed, music_file):
-        seen["args"] = (sentences, music_file)
-        return "built.wav"
-
-    monkeypatch.setattr(morning_announcements_core, "build_audio_file", fake_build_audio_file)
-
-    assert _create_audio_file_for_calendar_days(MONDAY_7_17, calendar_days, "com", 1.25, _fake_settings()) == "built.wav"
-    sentences, music_file = seen["args"]
-    assert music_file == "music.mp3"
     assert "Meeting" in sentences
     assert "The weather forecast for today is: Min 10 Max 20." in sentences
 
 
-def test_create_audio_file_for_calendar_days_excludes_events_from_calendars_not_included_in_morning_announcements(monkeypatch):
+def test_build_morning_announcements_text_excludes_events_from_calendars_not_included_in_morning_announcements():
     calendar_days = CalendarDayList([CalendarDay(
         date=MONDAY_7_17.date(),
         whole_day_events=[
@@ -305,37 +305,51 @@ def test_create_audio_file_for_calendar_days_excludes_events_from_calendars_not_
         CalendarSetting(id="included", name="Included"),
         CalendarSetting(id="excluded", name="Excluded", include_in_morning_announcements=False),
     ]
-    monkeypatch.setattr(morning_announcements_core, "BackgroundMusicSelector", _FakeBackgroundMusicSelector)
 
-    seen = {}
+    sentences = _build_morning_announcements_text(MONDAY_7_17, calendar_days, _fake_settings(), calendars)
 
-    def fake_build_audio_file(sentences, tld, speed, music_file):
-        seen["sentences"] = sentences
-        return "built.wav"
-
-    monkeypatch.setattr(morning_announcements_core, "build_audio_file", fake_build_audio_file)
-
-    _create_audio_file_for_calendar_days(MONDAY_7_17, calendar_days, "com", 1.25, _fake_settings(), calendars)
-
-    assert "Meeting" in seen["sentences"]
-    assert "Bin night" not in seen["sentences"]
+    assert "Meeting" in sentences
+    assert "Bin night" not in sentences
 
 
-def test_create_audio_file_for_calendar_days_proceeds_with_no_events_when_calendar_data_missing(monkeypatch):
-    monkeypatch.setattr(morning_announcements_core, "BackgroundMusicSelector", _FakeBackgroundMusicSelector)
+def test_build_morning_announcements_text_proceeds_with_no_events_when_calendar_data_missing():
+    sentences = _build_morning_announcements_text(MONDAY_7_17, CalendarDayList(), _fake_settings(), [])
 
-    seen = {}
-
-    def fake_build_audio_file(sentences, tld, speed, music_file):
-        seen["args"] = (sentences, music_file)
-        return "fallback.wav"
-
-    monkeypatch.setattr(morning_announcements_core, "build_audio_file", fake_build_audio_file)
-
-    assert _create_audio_file_for_calendar_days(MONDAY_7_17, CalendarDayList(), "com", 1.25, _fake_settings()) == "fallback.wav"
-    sentences, music_file = seen["args"]
-    assert music_file == "music.mp3"
     assert "There are no events scheduled for today." in sentences
+
+
+def test_get_morning_announcement_sentences_for_api_builds_text_without_preludes_or_facts(monkeypatch):
+    calendar_days = CalendarDayList()
+    calendars = [CalendarSetting(id="id", name="Calendar")]
+    monkeypatch.setattr(morning_announcements_core, "GoogleCalendarSettings", lambda: Mock(calendars=calendars))
+
+    seen = {}
+
+    def fake_build_morning_announcements_text(base_time, calendar_days, settings, calendars):
+        seen["args"] = (base_time, calendar_days, settings, calendars)
+        return ["Good morning."]
+
+    monkeypatch.setattr(morning_announcements_core, "_build_morning_announcements_text", fake_build_morning_announcements_text)
+
+    assert get_morning_announcement_sentences_for_api(MONDAY_7_17, calendar_days) == ["Good morning."]
+    base_time, passed_calendar_days, settings, passed_calendars = seen["args"]
+    assert base_time == MONDAY_7_17
+    assert passed_calendar_days is calendar_days
+    assert passed_calendars == calendars
+    assert settings.prelude_probability == 0
+    assert settings.prelude_options == []
+    assert settings.facts == []
+
+
+def test_get_morning_announcement_sentences_for_api_adds_a_full_stop_to_sentences_without_ending_punctuation_or_a_colon(monkeypatch):
+    monkeypatch.setattr(morning_announcements_core, "GoogleCalendarSettings", lambda: Mock(calendars=[]))
+    monkeypatch.setattr(
+        morning_announcements_core,
+        "_build_morning_announcements_text",
+        lambda base_time, calendar_days, settings, calendars: ["Todays events are:", "Meeting", "Done.", "Ready?", "Hooray!"],
+    )
+
+    assert get_morning_announcement_sentences_for_api(MONDAY_7_17, CalendarDayList()) == ["Todays events are:", "Meeting.", "Done.", "Ready?", "Hooray!"]
 
 
 class _FakeCalendarSource:

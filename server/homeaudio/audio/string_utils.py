@@ -22,6 +22,9 @@ def strip_ansi(text):
     ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
     return ansi_escape.sub('', text)
 
+def add_missing_full_stops(sentences: list[str]) -> list[str]:
+    return [sentence if sentence.endswith((".", "?", "!", ":")) else f"{sentence}." for sentence in sentences]
+
 def json_default_encoder(o):
     if isinstance(o, (date, datetime)):
         return o.isoformat()

@@ -13,6 +13,7 @@ from homeaudio.vcal.event_notifications import BACKGROUND_MUSIC_DIRECTORY, OUTPU
 from homeaudio.vcal.playback import NotificationFile, NotificationFiles, play_notifications
 from homeaudio.vcal.notification_schedule import morning_announcement_time_for_day
 from homeaudio.audio.scene import SceneProtocol, scene_for_env
+from homeaudio.audio.string_utils import add_missing_full_stops
 
 logger = logging.getLogger(__name__)
 
@@ -111,21 +112,16 @@ class TextBuilder:
             logger.debug("All facts have been used.")
             return []
 
-class BackgroundMusicSelector:
-    def __init__(self, base_time):
-        self.base_time = base_time
+def _get_background_music_file(base_time: datetime) -> str:
+    background_music_files = _get_background_music_file_options()
+    # New background music every 14 days
+    return select_item_by_date(sorted(background_music_files), base_time.date(), 14)
 
-    def get_background_music_file(self) -> str:
-        background_music_files = self._get_background_music_files()
-        # New background music every 14 days
-        return select_item_by_date(sorted(background_music_files), self.base_time.date(), 14)
-
-    def _get_background_music_files(self):
-        # Get all mp3 files in the BACKGROUND_MUSIC_DIRECTORY
-        background_music_files = glob.glob(f"{BACKGROUND_MUSIC_DIRECTORY}/*.mp3")
-        if not background_music_files:
-            raise FileNotFoundError(f"No background music files found in {BACKGROUND_MUSIC_DIRECTORY}")
-        return background_music_files
+def _get_background_music_file_options() -> list[str]:
+    background_music_files = glob.glob(f"{BACKGROUND_MUSIC_DIRECTORY}/*.mp3")
+    if not background_music_files:
+        raise FileNotFoundError(f"No background music files found in {BACKGROUND_MUSIC_DIRECTORY}")
+    return background_music_files
 
 
 def build_audio_file(sentences: list[str], tld: str, speed: float, music_file: str) -> str:
@@ -171,6 +167,10 @@ def _excluded_calendar_ids(calendars: list[CalendarSetting]) -> set[str]:
     return {calendar.id for calendar in calendars if not calendar.include_in_morning_announcements}
 
 def _create_audio_file_for_calendar_days(base_time: datetime, calendar_days: CalendarDayList, tld: str, speed: float, settings: MorningAnnouncementsSettings | None = None, calendars: list[CalendarSetting] | None = None) -> str:
+    text = _build_morning_announcements_text(base_time, calendar_days, settings, calendars)
+    return build_audio_file(text, tld, speed, _get_background_music_file(base_time))
+
+def _build_morning_announcements_text(base_time, calendar_days, settings, calendars) -> list[str]:
     settings = settings or MorningAnnouncementsSettings()
     calendars = GoogleCalendarSettings().calendars if calendars is None else calendars
     excluded_calendar_ids = _excluded_calendar_ids(calendars)
@@ -183,9 +183,16 @@ def _create_audio_file_for_calendar_days(base_time: datetime, calendar_days: Cal
         events = []
         weather_forecasts = []
 
-    text_builder = TextBuilder(events, weather_forecasts, settings)
-    bg_music_selector = BackgroundMusicSelector(base_time)
-    return build_audio_file(text_builder.get_morning_announcements_text(), tld, speed, bg_music_selector.get_background_music_file())
+    return TextBuilder(events, weather_forecasts, settings).get_morning_announcements_text()
+
+def get_morning_announcement_sentences_for_api(base_time: datetime, calendar_days: CalendarDayList):
+    settings = MorningAnnouncementsSettings(enabled=True, prelude_probability=0, prelude_options=[], facts=[], schedule=MorningAnnouncementsSchedule())
+    sentences = _build_morning_announcements_text(base_time, calendar_days, settings, GoogleCalendarSettings().calendars)
+    """
+        The phone concatenates the sentences before turning them into speech, so we need to make sure that each list item ends with a sentence
+        ending punctuation so the intonation is correct.
+    """
+    return add_missing_full_stops(sentences)
 
 """
 Called by the notifications daemon on every tick (homeaudio/vcal/notifications/core.py). Returns
