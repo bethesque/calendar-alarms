@@ -6,6 +6,7 @@ The main calendar alarms process that checks for and plays notifications and ann
 import logging
 import signal
 import threading
+import time
 from datetime import datetime, timedelta
 
 from homeaudio.audio.log_config import setup_logging
@@ -52,9 +53,12 @@ def check_for_notifications(base_time: datetime) -> NotificationFiles | None:
         logger.info("Checking for notifications due at %s", base_time)
         calendar_source = CalendarSource()
         if calendar_source.file_exists():
+            start = time.monotonic()
             logger.debug(f"Loading calendar data from {calendar_source.cache_file_path}")
             calendar_days = calendar_source.load_data_from_file()
-            return prepare_notification_files(base_time, calendar_days, CHECK_INTERVAL_MINUTES, event_notification_settings)
+            notification_files = prepare_notification_files(base_time, calendar_days, CHECK_INTERVAL_MINUTES, event_notification_settings)
+            logger.debug(f"prepare_notification_files took {time.monotonic() - start:.2f} seconds")
+            return notification_files
         else:
             logger.info(f"No calendar file found at {calendar_source.cache_file_path}, no notifications this tick")
 
