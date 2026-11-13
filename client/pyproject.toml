@@ -23,6 +23,11 @@ dependencies = [
     "requests==2.31.0",
     "fastapi==0.139.2",
     "uvicorn==0.51.0",
+    # Pinned to a version that has pydantic-core pre-built
+    # in https://www.piwheels.org/project/pydantic-core/
+    # because otherwise it tries to compile from source and runs out
+    # of space in /tmp on the pi
+    "pydantic==2.14.1",
     "pydantic-settings==2.14.2",
     "pydantic-settings[yaml]"
 ]
