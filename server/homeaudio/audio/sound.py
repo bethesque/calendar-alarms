@@ -1,8 +1,8 @@
 import subprocess
 import logging
 import subprocess
-import tempfile
 import os
+import subprocess
 from homeaudio.vcal.event_notifications import SAMPLE_RATE, AUDIO_CACHE_DIR
 
 logger = logging.getLogger(__name__)
@@ -106,8 +106,6 @@ def build_alarm_audio(
     )
     logger.debug(f"FFmpeg output: {result.stderr}")
 
-import os
-import subprocess
 
 def build_aggressive_alarm_audio(
     announcement_file: str,
