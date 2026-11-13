@@ -1,3 +1,5 @@
+# Common tasks for server and clients
+
 - name: Ensure bash functions directory exists
   ansible.builtin.file:
     path: "{{ bash_functions_dir }}"
@@ -48,13 +50,6 @@
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0755"
-
-- name: Configure sound
-  ansible.builtin.import_tasks: sound.yml
-  when: is_pi
-  tags:
-    - sound
-    - sendspin
 
 # ssh keys to allow Home Assistant to get the sevice status
 - name: Add travnas public SSH key to remote authorized_keys

@@ -31,6 +31,7 @@
 
   roles:
     - common
+    - common_client
     - calendar_alarms_client
     - music_assistant_client
 

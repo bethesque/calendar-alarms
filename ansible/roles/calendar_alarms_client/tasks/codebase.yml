@@ -28,6 +28,7 @@
   notify: restart audio-client-http.service
 
 
+# nohup .venv/bin/python -m pip install . > pip.log 2>&1 &
 - name: Pip install
   ansible.builtin.shell: |
     {{ ansible_python_interpreter }} -m venv .venv

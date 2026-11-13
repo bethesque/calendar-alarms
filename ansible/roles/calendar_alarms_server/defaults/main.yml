@@ -1,7 +1,12 @@
 mpd_fifo_path: /run/snapserver/snapfifo
 mpd_user: mpd
 mpd_bind_address: "/run/mpd/socket"
-audio_format: "{{ sample_rate }}:16:2"
+# device derived from
+# the first Loopback device in `aplay -l` when mpd -> snapcast,
+# or the first USB device when mpd -> speakers
+# first number is the card number, second is the
+mpd_audio_device: "hw:0,0"
+mpd_audio_format: "{{ sample_rate }}:16:2"
 
 music_directory: /var/lib/mpd/music
 playlist_directory: /var/lib/mpd/playlists

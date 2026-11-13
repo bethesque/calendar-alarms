@@ -13,9 +13,8 @@ bind_to_address         "{{ mpd_bind_address }}"
 audio_output {
     type            "alsa"
     name            "snapcast"
-    # device derived from the first Loopback device in `aplay -l`
-    device          "hw:0,0"
-    format          "{{ audio_format }}"
+    device          "{{ mpd_audio_device }}"
+    format          "{{ mpd_audio_format }}"
     mixer_type      "software"
 }
 

@@ -1,15 +1,14 @@
-# Logs can be viewed with `journalctl -u set-amixer-volume`
-- name: Install set-amixer-volume systemd service
+- name: Set default amixer volume
+  ansible.builtin.command: "amixer -c Device set Speaker {{ default_amixer_volume }}"
+  changed_when: true
+  when:
+    - not is_bluetooth_audio
+    - is_pi == true
+
+- name: Save ALSA state
   become: true
-  ansible.builtin.template:
-    src: set-amixer-volume.service.j2
-    dest: /etc/systemd/system/set-amixer-volume.service
-    owner: root
-    group: root
-    mode: "0644"
-  notify:
-    - reload system systemd daemon
-    - enable and start set-amixer-volume service
-  when: is_pi == true
-  tags:
-    - set-amixer-volume
+  ansible.builtin.command: alsactl store Device
+  changed_when: true
+  when:
+    - not is_bluetooth_audio
+    - is_pi == true

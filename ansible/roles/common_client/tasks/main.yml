@@ -1,0 +1,8 @@
+# Common tasks for audio clients
+
+- name: Configure sound
+  ansible.builtin.import_tasks: sound.yml
+  when: is_pi
+  tags:
+    - sound
+    - sendspin
