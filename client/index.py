@@ -194,6 +194,9 @@ def _get_status_body(audio_config: dict) -> dict:
         "sendspin-armv6.service": {
             "status": system(["systemctl", "--user", "is-active", "sendspin-armv6.service"])
         },
+        "wispd.service": {
+            "status": system(["systemctl", "--user", "is-active", "wispd.service"])
+        },
         "amixer": {"volume": amixer_volume}
     }
 

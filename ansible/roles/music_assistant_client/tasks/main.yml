@@ -1,4 +1,4 @@
-- name: Install sendspin-armv6
+- name: Install sendspin
   ansible.builtin.import_tasks: sendspin.yml
   tags:
     - sendspin

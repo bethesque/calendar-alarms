@@ -7,6 +7,6 @@
 - name: Restart sendspin
   ansible.builtin.systemd:
     scope: user
-    name: "{{ sendspin_service }}"
+    name: "{{ sendspin_user_service }}"
     state: restarted
   become_user: "{{ sendspin_user }}"

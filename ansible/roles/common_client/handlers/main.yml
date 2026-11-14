@@ -7,5 +7,5 @@
 - name: restart music assistant service
   ansible.builtin.systemd:
     scope: user
-    name: sendspin-armv6
+    name: "{{ sendspin_user_service }}"
     state: restarted

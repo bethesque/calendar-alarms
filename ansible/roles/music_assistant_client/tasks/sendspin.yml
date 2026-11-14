@@ -1,6 +1,6 @@
 - name: Ensure sendspin version directory exists
   ansible.builtin.file:
-    path: /var/lib/sendspin
+    path: "{{ sendspin_version_file | dirname }}"
     state: directory
     owner: root
     group: root
@@ -54,8 +54,8 @@
 
     - name: Install binary
       ansible.builtin.copy:
-        src: "{{ sendspin_tmpdir.path }}/sendspin-armv6"
-        dest: "{{ sendspin_binary }}"
+        src: "{{ sendspin_tmpdir.path }}/{{ sendspin_binary }}"
+        dest: "{{ sendspin_binary_full_path }}"
         owner: root
         group: root
         mode: "0755"
@@ -79,7 +79,7 @@
 
 - name: Install sendspin config file
   ansible.builtin.template:
-    src: sendspin-armv6.conf.j2
+    src: wispd.conf.j2
     dest: "{{ sendspin_config }}"
     owner: root
     group: root
@@ -97,8 +97,8 @@
 # Use a user service because of bluetooth audio.
 - name: Install sendspin user service
   ansible.builtin.template:
-    src: sendspin-armv6.service.j2
-    dest: "/home/{{ sendspin_user }}/.config/systemd/user/sendspin-armv6.service"
+    src: wispd.service.j2
+    dest: "/home/{{ sendspin_user }}/.config/systemd/user/{{ sendspin_user_service }}"
     owner: "{{ sendspin_user }}"
     group: "{{ sendspin_user }}"
     mode: "0644"
@@ -123,9 +123,9 @@
   tags:
     - cron
 
-- name: Create restart script for sendspin-armv6
+- name: Create restart script for sendspin
   ansible.builtin.copy:
-    dest: "/home/{{ sendspin_user }}/bin/sendspin-armv6-restart-if-active.sh"
+    dest: "/home/{{ sendspin_user }}/bin/{{ sendspin_binary }}-restart-if-active.sh"
     owner: "{{ sendspin_user }}"
     group: "{{ sendspin_user }}"
     mode: "0755"
@@ -133,22 +133,22 @@
       #!/bin/bash
       export XDG_RUNTIME_DIR=/run/user/$(id -u {{ sendspin_user }})
 
-      if systemctl --user is-active --quiet sendspin-armv6; then
-        systemctl --user stop sendspin-armv6
+      if systemctl --user is-active --quiet {{ sendspin_user_service }}; then
+        systemctl --user stop {{ sendspin_user_service }}
         sleep 30
-        systemctl --user start sendspin-armv6
+        systemctl --user start {{ sendspin_user_service }}
       fi
   tags:
     - cron
 
-- name: Schedule daily restart of sendspin-armv6
+- name: Schedule daily restart of sendspin
   ansible.builtin.cron:
-    name: "daily restart of sendspin-armv6"
-    cron_file: sendspin-armv6
+    name: "daily restart of {{ sendspin_user_service }}"
+    cron_file: "{{ sendspin_binary }}"
     user: "{{ sendspin_user }}"
     hour: "5"
     minute: "56"
-    job: "/home/{{ sendspin_user }}/bin/sendspin-armv6-restart-if-active.sh"
+    job: "/home/{{ sendspin_user }}/bin/{{ sendspin_binary }}-restart-if-active.sh"
   become: true
   tags:
     - cron

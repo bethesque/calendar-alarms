@@ -1,5 +1,5 @@
 [Unit]
-Description=Sendspin ARMv6 Audio Player
+Description=Sendspin Audio Player
 After=network-online.target time-sync.target
 Wants=network-online.target time-sync.target
 
@@ -7,8 +7,8 @@ StartLimitIntervalSec=120
 StartLimitBurst=5
 
 [Service]
-# Logs at journalctl SYSLOG_IDENTIFIER=sendspin-armv6
-ExecStart=/usr/local/bin/sendspin-armv6
+# Logs at journalctl SYSLOG_IDENTIFIER={{ sendspin_binary }}
+ExecStart={{ sendspin_binary_full_path }}
 Restart=on-failure
 RestartSec=10
 Nice=-10

@@ -314,8 +314,9 @@ def test_get_status_body_builds_expected_dict(monkeypatch):
     def fake_run(command, capture_output, text):
         outputs = {
             ("amixer",): "Simple mixer control 'Speaker',0\n  Front Left: Playback 80 [80%] [on]\n",
-            ("systemctl", "is-active", "calendar-alarms-snapclient.service"): "active\n",
-            ("systemctl", "is-active", "sendspin-armv6.service"): "inactive\n",
+            ("systemctl", "--user", "is-active", "calendar-alarms-snapclient.service"): "active\n",
+            ("systemctl", "--user", "is-active", "sendspin-armv6.service"): "inactive\n",
+            ("systemctl", "--user", "is-active", "wispd.service"): "active\n",
         }
         return type("Result", (), {"stdout": outputs[tuple(command)]})()
 
@@ -327,6 +328,7 @@ def test_get_status_body_builds_expected_dict(monkeypatch):
     assert body["amixer"]["volume"] == "80 (80%)"
     assert body["calendar-alarms-snapclient.service"]["status"] == "active"
     assert body["sendspin-armv6.service"]["status"] == "inactive"
+    assert body["wispd.service"]["status"] == "active"
     assert body["calendar-alarms-snapclient-status"] == {"connected": True}
 
 
