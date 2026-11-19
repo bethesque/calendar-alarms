@@ -14,6 +14,8 @@ env.py
 client_secret.json
 token.json
 calendar.json
+calendar.json.lock
+.calendar.*.tmp
 /server/cache
 resources
 secrets.yml
