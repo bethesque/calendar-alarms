@@ -4,7 +4,7 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from homeaudio.audio.settings import EventNotificationSettings, TimeRange, NotificationRule, NotificationTiming, SnapcastSettings, SnapclientConfig, PlayerGroup, DepartureTimeRule, LocationBasedDepartureTimes, UploadedFile, GoogleCalendarSettings, AvailableGoogleCalendars, GoogleCalendar, GoogleTextToSpeechSettings
+from homeaudio.audio.settings import EventNotificationSettings, TimeRange, NotificationRule, NotificationTiming, SnapcastSettings, SnapclientConfig, PlayerGroup, DepartureTimeRule, LocationBasedDepartureTimes, UploadedFile, GoogleCalendarSettings, AvailableGoogleCalendars, GoogleCalendar, GoogleTextToSpeechSettings, MutePeriod, Feature
 
 
 def test_label_uses_summary_pattern_only():
@@ -319,3 +319,38 @@ def test_google_text_to_speech_settings_allows_default_speed_between_half_and_do
 def test_google_text_to_speech_settings_rejects_default_speed_out_of_range(speed):
     with pytest.raises(ValidationError):
         GoogleTextToSpeechSettings(default_speed=speed)
+
+
+def test_mute_period_label_lists_snapclients_and_days_in_order():
+    mute_period = MutePeriod(start=time(22, 0), end=time(23, 30), days_of_week=[5, 0, 1], snapclients=["kaypi"])
+
+    assert mute_period.label == "kaypi 10:00pm - 11:30pm on Sunday, Monday, Friday"
+
+
+def test_mute_period_rejects_no_days():
+    with pytest.raises(ValidationError, match="At least one day of the week must be selected"):
+        MutePeriod(start=time(7, 0), end=time(8, 0), snapclients=["kaypi"])
+
+
+def test_mute_period_rejects_no_snapclients():
+    with pytest.raises(ValidationError, match="At least one Snapclient must be selected to mute"):
+        MutePeriod(start=time(7, 0), end=time(8, 0), days_of_week=[1], snapclients=[])
+
+
+def test_scheduled_mute_periods_save_without_label(tmp_path, monkeypatch):
+    yaml_file = tmp_path / "snapcast.yaml"
+    monkeypatch.setitem(SnapcastSettings.model_config, "yaml_file", str(yaml_file))
+    mute_period = MutePeriod(start=time(22, 0), end=time(23, 0), days_of_week=[1], snapclients=["kaypi"], allowed_features=[Feature.DOORBELL])
+
+    SnapcastSettings(scheduled_mute_periods=[mute_period]).save()
+
+    saved = yaml.safe_load(yaml_file.read_text())
+    assert saved["scheduled_mute_periods"] == [{"start": "22:00:00", "end": "23:00:00", "days_of_week": [1], "snapclients": ["kaypi"], "allowed_features": ["doorbell"]}]
+    assert SnapcastSettings().scheduled_mute_periods == [mute_period]
+
+
+def test_mute_period_label_shows_morning_times_as_am():
+    mute_period = MutePeriod(start=time(7, 5), end=time(12, 0), days_of_week=[1], snapclients=["kaypi"])
+
+    assert mute_period.label == "kaypi 07:05am - 12:00pm on Monday"
+

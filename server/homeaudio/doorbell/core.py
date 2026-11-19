@@ -6,12 +6,12 @@ from homeaudio.doorbell import DOORBELLS_DIRECTORY, DOORBELLS_ALLOWED_EXTENSIONS
 from homeaudio.audio.snapcast import snapserver_manager_for_env
 from homeaudio.audio.mpd import mpd_connection
 from homeaudio.audio.random_text import FileListOptionsSource, select_option_pseudorandomly
-from homeaudio.audio.settings import MpdSettings, SnapcastSettings
+from homeaudio.audio.settings import Feature, MpdSettings, SnapcastSettings
 
 logger = logging.getLogger(__name__)
 
 def _play_wake_up_alarm_via_mpd(doorbell_file, mpd_settings: MpdSettings):
-    snapserver_manager = snapserver_manager_for_env(SnapcastSettings())
+    snapserver_manager = snapserver_manager_for_env(SnapcastSettings(), Feature.DOORBELL)
     snapserver_manager.set_volumes("doorbell")
 
     with mpd_connection(mpd_settings) as mpd:

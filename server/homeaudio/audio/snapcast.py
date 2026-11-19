@@ -1,9 +1,10 @@
 import logging
 from typing import Protocol
 from homeaudio.audio.snapserver import Snapserver
-from homeaudio.audio.settings import SnapcastSettings
+from homeaudio.audio.settings import Feature, SnapcastSettings
 from homeaudio.env import SNAPCAST_ENABLED
 from enum import Enum
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -35,12 +36,14 @@ class PlayerScope(Enum):
 
 
 class SnapserverManager:
-    def __init__(self, snapcast_settings: SnapcastSettings, scope: PlayerScope, requested_player_names: list[str] | None = None):
+    def __init__(self, snapcast_settings: SnapcastSettings, feature: Feature, scope: PlayerScope, requested_player_names: list[str] | None = None, now: datetime | None = None):
         self.snapcast_settings = snapcast_settings
+        self.feature = feature
         self.snapserver = Snapserver(snapcast_settings.snapserver_rpc_url)
         self.scope = scope
         self.requested_player_names = requested_player_names
         self._scoped_player_names: list[str] | None = None
+        self.now = now or datetime.now()
 
     def scoped_player_names(self) -> list[str]:
         if self._scoped_player_names is None:
@@ -59,9 +62,26 @@ class SnapserverManager:
             else:
                 names = set([c.name for c in self.snapserver.connected_clients()])
 
-            self._scoped_player_names = list(names - self.snapcast_settings.disabled_snapclient_names)
+            self._scoped_player_names = list(names - self._disabled_player_names() - self._scheduled_muted_player_names())
 
         return self._scoped_player_names
+
+    def _disabled_player_names(self):
+        disabled = self.snapcast_settings.disabled_snapclient_names
+        if disabled:
+            logger.debug(f"The following players are muted as they are disabled: {disabled}")
+        return disabled
+
+    def _scheduled_muted_player_names(self) -> set[str]:
+        day_of_week = self.now.isoweekday() % 7
+        current_time = self.now.time().replace(tzinfo=None)
+        names: set[str] = set()
+        for period in self.snapcast_settings.scheduled_mute_periods:
+            if day_of_week in period.days_of_week and period.start <= current_time < period.end and self.feature not in period.allowed_features:
+                names.update(period.snapclients)
+        if names:
+            logger.debug(f"The following players are muted due to a scheduled mute period: {names}")
+        return names
 
     def scoped_player_areas(self) -> set[str]:
         conn_player_names = self.scoped_player_names()
@@ -81,5 +101,5 @@ class SnapserverManager:
 
         return self.scoped_player_areas()
 
-def snapserver_manager_for_env(snapcast_settings: SnapcastSettings, scope: PlayerScope = PlayerScope.CONNECTED, requested_player_names: list[str] | None = None) -> SnapserverManagerProtocol:
-    return SnapserverManager(snapcast_settings, scope, requested_player_names) if SNAPCAST_ENABLED else NullSnapserverManager()
+def snapserver_manager_for_env(snapcast_settings: SnapcastSettings, feature: Feature, scope: PlayerScope = PlayerScope.CONNECTED, requested_player_names: list[str] | None = None, now: datetime | None = None) -> SnapserverManagerProtocol:
+    return SnapserverManager(snapcast_settings, feature, scope, requested_player_names, now) if SNAPCAST_ENABLED else NullSnapserverManager()

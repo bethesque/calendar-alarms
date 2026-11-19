@@ -173,3 +173,23 @@ def test_player_options_lists_all_snapclients_including_disabled_ones():
     options = admin_routes._player_options(snapcast_settings)
 
     assert options == [{"value": "kaypi", "label": "Kay's room"}, {"value": "officepi", "label": "Office"}]
+
+
+def test_allowed_feature_options_lists_all_features_when_enabled(monkeypatch):
+    monkeypatch.setattr(admin_ui_module, "HOUSIE_TALKIE_ENABLED", True)
+    monkeypatch.setattr(admin_ui_module, "WAKE_UP_ALARM_ENABLED", True)
+    monkeypatch.setattr(admin_ui_module, "DOORBELL_ENABLED", True)
+
+    options = AdminRoutes.__new__(AdminRoutes)._allowed_feature_options()
+
+    assert [option["value"] for option in options] == ["calendar_alarms", "housie_talkie", "wake_up_alarm", "doorbell"]
+
+
+def test_allowed_feature_options_always_includes_calendar_alarms_and_excludes_disabled_features(monkeypatch):
+    monkeypatch.setattr(admin_ui_module, "HOUSIE_TALKIE_ENABLED", False)
+    monkeypatch.setattr(admin_ui_module, "WAKE_UP_ALARM_ENABLED", True)
+    monkeypatch.setattr(admin_ui_module, "DOORBELL_ENABLED", False)
+
+    options = AdminRoutes.__new__(AdminRoutes)._allowed_feature_options()
+
+    assert options == [{"value": "calendar_alarms", "label": "Calendar alarms"}, {"value": "wake_up_alarm", "label": "Wake up alarm"}]

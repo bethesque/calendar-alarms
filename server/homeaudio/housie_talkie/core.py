@@ -4,7 +4,7 @@ import time
 
 from homeaudio.audio.sound import track_length
 from homeaudio.audio.mpd import mpd_connection
-from homeaudio.audio.settings import HousieTalkieSettings, SnapcastSettings, MpdSettings
+from homeaudio.audio.settings import Feature, HousieTalkieSettings, SnapcastSettings, MpdSettings
 from homeaudio.audio.snapcast import snapserver_manager_for_env, PlayerScope
 from homeaudio.audio.sound_effects import SoundEffectSelector
 from homeaudio.housie_talkie.models import *
@@ -23,7 +23,7 @@ def play_voice_announcement(request: VoiceAnnouncementRequest):
     _play_audio_files(playable_request)
 
 def _play_audio_files(request: PlayableRequest):
-    snapserver_manager = snapserver_manager_for_env(SnapcastSettings(), PlayerScope.REQUESTED, request.player_names)
+    snapserver_manager = snapserver_manager_for_env(SnapcastSettings(), Feature.HOUSIE_TALKIE, PlayerScope.REQUESTED, request.player_names)
     snapserver_manager.set_volumes(request.usecase.name.lower())
 
     def play():

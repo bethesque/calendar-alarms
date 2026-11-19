@@ -14,6 +14,23 @@ from homeaudio.env import CONFIG_DIR, DEFAULT_GOOGLE_TRANSLATE_TLD
 
 logger = logging.getLogger(__name__)
 
+class Feature(Enum):
+    CALENDAR_ALARMS = "calendar_alarms"
+    HOUSIE_TALKIE = "housie_talkie"
+    WAKE_UP_ALARM = "wake_up_alarm"
+    DOORBELL = "doorbell"
+
+    @property
+    def label(self) -> str:
+        if self.value == "calendar_alarms":
+            return "Calendar alarms"
+        elif self.value == "housie_talkie":
+            return "Housie Talkie"
+        elif self.value == "wake_up_alarm":
+            return "Wake up alarm"
+        else:
+            return "Doorbell"
+
 class YAMLSettings(BaseSettings):
     @classmethod
     def settings_customise_sources(
@@ -35,7 +52,7 @@ class YAMLSettings(BaseSettings):
     def _dump_for_save(self) -> dict:
         # mode="json" so types yaml.safe_dump can't represent directly (time, datetime, Enum, ...)
         # are serialized to plain strings first, instead of being dumped as raw Python objects.
-        return self.model_dump(mode="json")
+        return self.model_dump(mode="json", round_trip=True)
 
     def save(self) -> None:
         path = Path(self.model_config["yaml_file"]) # pyright: ignore[reportArgumentType, reportTypedDictNotRequiredAccess]
@@ -85,6 +102,42 @@ class VolumeConfig(BaseModel):
     def __getitem__(self, key: str) -> int:
         return getattr(self, key)
 
+class TimeRange(BaseModel):
+    start: time = Field(description="The start time is inclusive (ie. notifications due at this time WILL be played)")
+    end: time = Field(description="The end time is exclusive (ie. notifications due at this time will NOT be played)")
+
+    @model_validator(mode="after")
+    def _require_end_after_start(self) -> "TimeRange":
+        if self.end <= self.start:
+            raise ValueError("End time must be after start time")
+        return self
+
+class MutePeriod(TimeRange):
+    days_of_week: list[int] = Field(description="Days of the week", default_factory=list)
+    snapclients: list[str] = Field(description="Which Snapclients to mute during this period")
+    allowed_features: list[Feature] = Field(description="Which audio features are allowed to play during the mute period", default=[])
+
+    @model_validator(mode="after")
+    def _require_at_least_one_snapclient(self) -> "MutePeriod":
+        if not self.snapclients:
+            raise ValueError("At least one Snapclient must be selected to mute")
+        return self
+
+    @model_validator(mode="after")
+    def _require_at_least_one_day(self) -> "MutePeriod":
+        if not self.days_of_week:
+            raise ValueError("At least one day of the week must be selected")
+        return self
+
+    @computed_field
+    @property
+    def label(self) -> str:
+        snapclients = ", ".join(self.snapclients)
+        day_names = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+        days = ", ".join(day_names[d] for d in sorted(self.days_of_week))
+        return f"{snapclients} {self.start.strftime('%I:%M%p').lower()} - {self.end.strftime('%I:%M%p').lower()} on {days}"
+
+
 class SnapclientConfig(BaseModel):
     name: str = Field(description="The config name or host name of the Snapclient")
     display_name: str = Field(description="The display name of the Snapclient")
@@ -101,6 +154,7 @@ class SnapcastSettings(YAMLSettings):
     snapclients: list[SnapclientConfig] = Field(default_factory=list)
     player_groups: list[PlayerGroup] = Field(default_factory=list)
     default_volumes: VolumeConfig = Field(default_factory=VolumeConfig)
+    scheduled_mute_periods: list[MutePeriod] = Field(description="Periods during which to mute this player", default_factory=list)
 
     model_config = SettingsConfigDict(
         yaml_file=f"{CONFIG_DIR}/snapcast.yaml"
@@ -213,16 +267,6 @@ class AlarmSettings(BaseModel):
 class AnnouncementSettings(BaseModel):
     sound_effect_probability: float = Field(default=0.25, description="Probability of a sound effect being played before an event announcement (0=never, 1=always)")
 
-class TimeRange(BaseModel):
-    start: time = Field(description="The start time is inclusive (ie. notifications due at this time WILL be played)")
-    end: time = Field(description="The end time is exclusive (ie. notifications due at this time will NOT be played)")
-
-    @model_validator(mode="after")
-    def _require_end_after_start(self) -> "TimeRange":
-        if self.end <= self.start:
-            raise ValueError("End time must be after start time")
-        return self
-
 class EventNotificationSchedule(BaseModel):
     weekdays: TimeRange = Field(default=TimeRange(start=time(7, 0), end=time(21)))
     weekends: TimeRange = Field(default=TimeRange(start=time(9, 0), end=time(21)))
@@ -263,10 +307,6 @@ class EventNotificationSettings(YAMLSettings):
     @classmethod
     def _sort_household_names(cls, names: list[str]) -> list[str]:
         return sorted(names, key=str.casefold)
-
-    def _dump_for_save(self) -> dict:
-        # label is a computed, read-only field for the UI - it shouldn't be persisted.
-        return self.model_dump(mode="json", exclude={"notification_rules": {"__all__": {"label"}}, "departure_time_rules": {"__all__": {"label"}}})
 
     @model_validator(mode="after")
     def _require_api_key_and_origin_when_enabled(self) -> "EventNotificationSettings":

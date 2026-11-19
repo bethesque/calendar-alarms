@@ -6,7 +6,7 @@ from homeaudio.audio import WAKE_UP_ALARMS_ALLOWED_EXTENSIONS
 from homeaudio.audio.snapcast import snapserver_manager_for_env
 from homeaudio.audio.mpd import fade_up, mpd_connection
 from homeaudio.audio.random_text import FileListOptionsSource, select_option_pseudorandomly
-from homeaudio.audio.settings import MpdSettings, SnapcastSettings
+from homeaudio.audio.settings import Feature, MpdSettings, SnapcastSettings
 from homeaudio.env import WAKE_UP_ALARMS_DIRECTORY
 
 logger = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ def _play_wake_up_alarm_via_mpd(alarm_file, mpd_settings: MpdSettings):
     alarm_end_volume = mpd_settings.volumes.wake_up_alarm_end
     steps = 10
 
-    snapserver_manager = snapserver_manager_for_env(SnapcastSettings())
+    snapserver_manager = snapserver_manager_for_env(SnapcastSettings(), Feature.WAKE_UP_ALARM)
     snapserver_manager.set_volumes("alarm")
 
     with mpd_connection(mpd_settings) as mpd:

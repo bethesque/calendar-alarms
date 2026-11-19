@@ -4,7 +4,7 @@ import threading
 
 from homeaudio.audio.snapcast import snapserver_manager_for_env
 from homeaudio.audio.mpd import mpd_connection
-from homeaudio.audio.settings import MpdSettings, SnapcastSettings
+from homeaudio.audio.settings import Feature, MpdSettings, SnapcastSettings
 from homeaudio.vcal.event_notifications import AUDIO_DIRECTORY
 
 logger = logging.getLogger(__name__)
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 METRONOME_FILE = str(AUDIO_DIRECTORY.joinpath("metronome.mp3").absolute())
 
 def _play_metronome_via_mpd(audio_file, mpd_settings: MpdSettings):
-    snapserver_manager = snapserver_manager_for_env(SnapcastSettings())
+    snapserver_manager = snapserver_manager_for_env(SnapcastSettings(), Feature.CALENDAR_ALARMS)
     snapserver_manager.set_volumes("alarm")
 
     with mpd_connection(mpd_settings) as mpd:

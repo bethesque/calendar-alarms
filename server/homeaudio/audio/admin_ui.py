@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Request
-from homeaudio.audio.settings import AppSettings, AvailableGoogleCalendars, GoogleCalendarSettings, NotificationTiming, SnapcastSettings
+from homeaudio.audio.settings import AppSettings, AvailableGoogleCalendars, GoogleCalendarSettings, NotificationTiming, SnapcastSettings, Feature
 from homeaudio.env import GOOGLE_TRANSLATE_TLD_OPTIONS, HOME_ASSISTANT_SUPPORTED, HOUSIE_TALKIE_ENABLED, SNAPCAST_ENABLED, WAKE_UP_ALARM_ENABLED, DOORBELL_ENABLED
 from pydantic_ui import create_pydantic_ui, UIConfig, FieldConfig, DisplayConfig, Renderer, ActionButton
 
@@ -54,6 +54,15 @@ class AdminRoutes:
     def _player_options(self, snapcast_settings: SnapcastSettings):
         options = [ { "value": c.name, "label": c.display_name } for c in snapcast_settings.snapclients ]
         return sorted(options, key=lambda o: o["label"].lower())
+
+    def _allowed_feature_options(self):
+        enabled = {
+            Feature.CALENDAR_ALARMS: True,
+            Feature.HOUSIE_TALKIE: HOUSIE_TALKIE_ENABLED,
+            Feature.WAKE_UP_ALARM: WAKE_UP_ALARM_ENABLED,
+            Feature.DOORBELL: DOORBELL_ENABLED,
+        }
+        return [ { "value": f.value, "label": f.label } for f in Feature if enabled[f] ]
 
     def _calendar_sort_key(self, id: str, name: str):
         return (id != name, name.lower())
@@ -160,6 +169,34 @@ class AdminRoutes:
                     ),
                     "snapcast_settings.snapclients.[].volumes.voice": FieldConfig(
                         visible_when=f"{str(HOUSIE_TALKIE_ENABLED).lower()} == false"
+                    ),
+                    "snapcast_settings.scheduled_mute_periods.[]": FieldConfig(
+                        display=DisplayConfig(
+                            title="{label}",
+                            subtitle=" "
+                        )
+                    ),
+                    "snapcast_settings.scheduled_mute_periods.[].days_of_week": FieldConfig(
+                        renderer=Renderer.MULTI_SELECT,
+                        props={
+                            "options": [
+                                { "value": "0", "label": "Sunday"},
+                                { "value": "1", "label": "Monday"},
+                                { "value": "2", "label": "Tuesday"},
+                                { "value": "3", "label": "Wednesday"},
+                                { "value": "4", "label": "Thursday"},
+                                { "value": "5", "label": "Friday"},
+                                { "value": "6", "label": "Saturday"},
+                            ]
+                        }
+                    ),
+                    "snapcast_settings.scheduled_mute_periods.[].snapclients": FieldConfig(
+                        renderer=Renderer.MULTI_SELECT,
+                        props=self.player_select_props,
+                    ),
+                    "snapcast_settings.scheduled_mute_periods.[].allowed_features": FieldConfig(
+                        renderer=Renderer.MULTI_SELECT,
+                        props={"options": self._allowed_feature_options()}
                     ),
                     "home_assistant_settings": FieldConfig(
                         visible_when=f"{str(HOME_ASSISTANT_SUPPORTED).lower()} == true"
