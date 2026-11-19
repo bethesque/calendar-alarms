@@ -41,11 +41,14 @@
   tags:
     - snapclient_conf
 
-- name: Setup start/stop timers for officepi
-  ansible.builtin.import_tasks: snapclient_officepi.yml
-  tags:
-    - officepi
-  when: inventory_hostname == 'officepi'
+# Commenting this out because of the MutePeriod support supersedes this
+# systemctl --user disable calendar-alarms-snapclient-stop.timer
+# systemctl --user disable calendar-alarms-snapclient-start.timer
+#- name: Setup start/stop timers for officepi
+#  ansible.builtin.import_tasks: snapclient_officepi.yml
+#  tags:
+#    - officepi
+#  when: inventory_hostname == 'officepi'
 
 # Cron to restart once a day
 # - name: Create bin directory for snapclient user
