@@ -18,9 +18,10 @@ from homeaudio.audio.audio_files_ui import AudioFilesRoutes
 from homeaudio.audio.help_ui import HelpRoutes
 from homeaudio.audio.logs_ui import CalendarAlarmsStatusRoutes, JournalctlRoutes, LogRoutes
 from homeaudio.vcal.wake_up_alarm.api import WakeUpAlarmRoutes
+from homeaudio.doorbell.api import DoorbellRoutes
 from homeaudio.housie_talkie.ui import UserInterfaceRoutes
 from homeaudio.audio.settings import SnapcastSettings
-from homeaudio.env import APP_NAME, RESOURCES_DIRECTORY, HOUSIE_TALKIE_ENABLED, WAKE_UP_ALARM_ENABLED, SNAPCAST_ENABLED, LOG_LEVEL
+from homeaudio.env import APP_NAME, RESOURCES_DIRECTORY, HOUSIE_TALKIE_ENABLED, WAKE_UP_ALARM_ENABLED, SNAPCAST_ENABLED, LOG_LEVEL, DOORBELL_ENABLED
 
 setup_logging(str(LOG_LEVEL)) # type: ignore
 
@@ -32,6 +33,7 @@ app = FastAPI()
 def index(request: Request):
     housie_talkie_link = """<li><a href="/housie-talkie" class="button"><span class="emoji">🎤</span><span>Housie Talkie</span></a></li>""" if HOUSIE_TALKIE_ENABLED else ""
     wake_up_alarm_link = """<li><a href="/wake-up-alarm" class="button"><span class="emoji">⏰</span><span>Wake up alarm</a></span></li>""" if WAKE_UP_ALARM_ENABLED else ""
+    doorbell_link = """<li><a href="/doorbell" class="button"><span class="emoji">🔔</span><span>Doorbell</a></span></li>""" if DOORBELL_ENABLED else ""
     return f"""
     <html>
         <head>
@@ -46,6 +48,7 @@ def index(request: Request):
                 <li><a href="/alarm" class="button"><span class="emoji">📅</span><span>Calendar notifications<span></a></li>
                 {housie_talkie_link}
                 {wake_up_alarm_link}
+                {doorbell_link}
             </ul>
             <ul class="buttons">
                 <li><a href="/settings" class="button"><span class="emoji">⚙️</span><span>Settings</span></a></li>
@@ -88,6 +91,7 @@ app.include_router(VoiceRoutes().router, prefix="/talkie")
 app.include_router(UserInterfaceRoutes().router, prefix="/housie-talkie")
 app.include_router(AlarmRoutes().router, prefix="/alarm")
 app.include_router(WakeUpAlarmRoutes().router, prefix="/wake-up-alarm")
+app.include_router(DoorbellRoutes().router, prefix="/doorbell")
 app.include_router(AdminRoutes().router, prefix="/settings")
 app.include_router(SnapclientsRoutes().router, prefix="/admin")
 app.include_router(AudioFilesRoutes().router, prefix="/admin")

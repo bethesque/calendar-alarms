@@ -2,7 +2,8 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 from homeaudio.audio import SOUND_EFFECTS_ALLOWED_EXTENSIONS, WAKE_UP_ALARMS_ALLOWED_EXTENSIONS
-from homeaudio.env import SOUND_EFFECTS_DIRECTORY, WAKE_UP_ALARM_ENABLED, WAKE_UP_ALARMS_DIRECTORY
+from homeaudio.env import SOUND_EFFECTS_DIRECTORY, WAKE_UP_ALARM_ENABLED, WAKE_UP_ALARMS_DIRECTORY, DOORBELL_ENABLED
+from homeaudio.doorbell import DOORBELLS_DIRECTORY, DOORBELLS_ALLOWED_EXTENSIONS
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,8 @@ def default_libraries() -> list[AudioLibrary]:
     libraries = [AudioLibrary("sound-effects", "Sound effects", SOUND_EFFECTS_DIRECTORY, SOUND_EFFECTS_ALLOWED_EXTENSIONS)]
     if WAKE_UP_ALARM_ENABLED:
         libraries.append(AudioLibrary("wake-up-alarms", "Wake up alarms", WAKE_UP_ALARMS_DIRECTORY, WAKE_UP_ALARMS_ALLOWED_EXTENSIONS))
+    if DOORBELL_ENABLED:
+        libraries.append(AudioLibrary("doorbells", "Doorbells", DOORBELLS_DIRECTORY, DOORBELLS_ALLOWED_EXTENSIONS))
     return libraries
 
 def safe_file_name(file_name: str | None, allowed_extensions: set[str]) -> str:

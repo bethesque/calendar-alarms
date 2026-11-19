@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Doorbell</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="header">
+    <a href="/" class="back">⬅️</a>
+    <h1>Doorbell</h1>
+  </div>
+  <ul class="buttons">
+    <li><a class="button" id="toggle-btn"><span class="emoji">▶️</span><span>Play</span></a></li>
+    <li><a class="button" id="stop-btn"><span class="emoji">⏹️</span><span>Stop</span></a></li>
+  </ul>
+  <div id="result">No request sent yet.</div>
+
+<script>
+  function callEndpoint(path, method) {
+    const resultEl = document.getElementById('result');
+    resultEl.textContent = 'Sending request to ' + path + '...';
+
+    const xhr = new XMLHttpRequest();
+    xhr.open(method || 'POST', path, true);
+
+    xhr.onload = function () {
+      resultEl.textContent = 'Status: ' + xhr.status + ' ' + xhr.statusText + '\n\n' + xhr.responseText;
+    };
+
+    xhr.onerror = function () {
+      resultEl.textContent = 'Request failed (network error).';
+    };
+
+    xhr.send();
+  }
+
+  document.getElementById('toggle-btn').addEventListener('click', function () {
+    callEndpoint(window.location.href);
+  });
+
+  document.getElementById('stop-btn').addEventListener('click', function () {
+    callEndpoint(window.location.href.replace(/\/$/,'') + "/stop");
+  });
+</script>
+</body>
+</html>

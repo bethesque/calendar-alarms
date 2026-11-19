@@ -62,6 +62,7 @@ class MpdVolumeConfig(BaseModel):
     alarm_end: int = Field(default=100, ge=0, le=100, title="Event alarm end volume")
     wake_up_alarm_end: int = Field(default=60, ge=0, le=100, title="Wake up alarm end volume")
     amixer: int | None = Field(default=None, ge=0, le=30, title="Raspberry Pi volume", description="If not using Snapcast, the volume for the Raspberry Pi speaker. Range is 0-30.")
+    doorbell: int = Field(default=100, ge=0, le=100, title="Doorbell volume", description="Doorbell volume")
 
     def __getitem__(self, key: str) -> int:
         return getattr(self, key)
@@ -79,6 +80,7 @@ class VolumeConfig(BaseModel):
     tts: int = Field(default=80, ge=0, le=100, title="TTS volume")
     voice: int = Field(default=80, ge=0, le=100, title="Voice recording volume")
     alarm: int = Field(default=100, ge=0, le=100, title="Alarm end volume")
+    doorbell: int = Field(default=100, ge=0, le=100, title="Doorbell volume")
 
     def __getitem__(self, key: str) -> int:
         return getattr(self, key)
