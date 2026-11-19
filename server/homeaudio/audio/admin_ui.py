@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Request
 from homeaudio.audio.settings import AppSettings, AvailableGoogleCalendars, GoogleCalendarSettings, NotificationTiming, SnapcastSettings
-from homeaudio.env import GOOGLE_TRANSLATE_TLD_OPTIONS, HOME_ASSISTANT_SUPPORTED, HOUSIE_TALKIE_ENABLED, SNAPCAST_ENABLED, WAKE_UP_ALARM_ENABLED
+from homeaudio.env import GOOGLE_TRANSLATE_TLD_OPTIONS, HOME_ASSISTANT_SUPPORTED, HOUSIE_TALKIE_ENABLED, SNAPCAST_ENABLED, WAKE_UP_ALARM_ENABLED, DOORBELL_ENABLED
 from pydantic_ui import create_pydantic_ui, UIConfig, FieldConfig, DisplayConfig, Renderer, ActionButton
 
 from homeaudio.env import APP_NAME
@@ -155,6 +155,12 @@ class AdminRoutes:
                         renderer=Renderer.CHECKLIST,
                         props=self.player_select_props,
                     ),
+                    "snapcast_settings.snapclients.[].volumes.doorbell": FieldConfig(
+                        visible_when=f"{str(DOORBELL_ENABLED).lower()} == false"
+                    ),
+                    "snapcast_settings.snapclients.[].volumes.voice": FieldConfig(
+                        visible_when=f"{str(HOUSIE_TALKIE_ENABLED).lower()} == false"
+                    ),
                     "home_assistant_settings": FieldConfig(
                         visible_when=f"{str(HOME_ASSISTANT_SUPPORTED).lower()} == true"
                     ),
@@ -215,6 +221,9 @@ class AdminRoutes:
                     ),
                     "mpd_settings.volumes.amixer": FieldConfig(
                         visible_when=f"{str(SNAPCAST_ENABLED).lower()} == false"
+                    ),
+                    "mpd_settings.volumes.doorbell": FieldConfig(
+                        visible_when=f"{str(DOORBELL_ENABLED).lower()} == false"
                     ),
                     "google_text_to_speech_settings.default_tld": FieldConfig(
                         renderer=Renderer.SELECT,
