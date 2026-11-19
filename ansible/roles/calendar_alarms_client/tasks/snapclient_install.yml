@@ -2,31 +2,29 @@
 # Can't use the package manager version because it's too old to work with Home Assistant,
 # so we have to download and install the .deb from the releases page on GitHub.
 
+- name: Remove Snapclient built from source
+  ansible.builtin.file:
+    path: /usr/local/bin/snapclient
+    state: absent
+  become: true
+
 - name: Get installed Snapclient version
-  ansible.builtin.command: dpkg-query -W -f='${Version}' snapclient
+  ansible.builtin.command: dpkg-query -W -f='${Version} ${Architecture}' snapclient
   register: snapclient_version_raw
   failed_when: false
   changed_when: false
 
-- name: debug raw installed version
-  ansible.builtin.debug:
-    msg: "Installed: {{ snapclient_version_raw.stdout }}"
-
-- name: Set installed version without trailing revision
+- name: Set installed version
   ansible.builtin.set_fact:
     installed_snapclient_version: "{{ snapclient_version_raw.stdout }}"
-      # {{
-      #   snapclient_version_raw.stdout | default('')
-      #   | regex_replace('-[0-9]+$', '')
-      # }}
 
 - name: Debug installed version
   ansible.builtin.debug:
-    msg: "Installed: {{ installed_snapclient_version | default('none') }} | Desired: {{ snapclient_version_release }}"
+    msg: "Installed: {{ installed_snapclient_version | default('none', true) }} | Desired: {{ snapclient_version_release }} {{ snapclient_arch }}"
 
 - name: Decide if install/upgrade is needed
   ansible.builtin.set_fact:
-    snapclient_needs_install: "{{ installed_snapclient_version != snapclient_version_release }}"
+    snapclient_needs_install: "{{ installed_snapclient_version != snapclient_version_release ~ ' ' ~ snapclient_arch }}"
 
 - name: Download Snapclient .deb if version mismatch
   ansible.builtin.get_url:
@@ -41,4 +39,3 @@
     state: present
   when: snapclient_needs_install
   become: true
-

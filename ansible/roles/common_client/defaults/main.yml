@@ -1,1 +1,4 @@
 snapclient_user: "{{ ansible_user }}"
+project_root: "/home/{{ snapclient_user }}/calendar-alarms"
+client_root: "{{ project_root }}/client"
+http_index_file: "{{ client_root }}/index.py"

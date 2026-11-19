@@ -11,7 +11,7 @@
   file:
     path: /run/snapserver
     state: directory
-    owner: _snapserver
+    owner: "{{ snapserver_user }}"
     group: audio
     mode: "0755"
   become: true
@@ -33,9 +33,10 @@
 
 - name: Ensure snapserver user is in audio group
   ansible.builtin.user:
-    name: _snapserver
+    name: "{{ snapserver_user }}"
     groups: audio
     append: yes
+  become: true
 
 - name: Configure Snapserver
   template:
@@ -55,3 +56,4 @@
   copy:
     src: "{{ playbook_dir }}/../snapweb/"
     dest: "{{ snapweb_doc_root }}"
+  become: true

@@ -25,8 +25,8 @@
     - calendar_alarms_http_conf
 
 # Not actually needed any more because we don't need https
-- name: Configure ngnix
-  ansible.builtin.import_tasks: nginx.yml
-  tags:
-    - http
-    - nginx
+# - name: Configure ngnix
+#   ansible.builtin.import_tasks: nginx.yml
+#   tags:
+#     - http
+#     - nginx

@@ -9,3 +9,12 @@
     scope: user
     name: "{{ sendspin_user_service }}"
     state: restarted
+
+- name: restart audio-client-http.service
+  systemd:
+    name: audio-client-http
+    scope: user
+    state: restarted
+
+- name: reload user systemd daemon
+  ansible.builtin.command: systemctl --user daemon-reload

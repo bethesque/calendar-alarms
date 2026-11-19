@@ -8,20 +8,31 @@ mpd_bind_address: "/run/mpd/socket"
 mpd_audio_device: "hw:0,0"
 mpd_audio_format: "{{ sample_rate }}:16:2"
 
+# Capture side of the loopback that mpd plays into (travnas has the loopback set up manually)
+snapserver_alsa_device: "hw:0,1,0"
+snd_aloop_enabled: false
+snd_aloop_index: 10
+
 music_directory: /var/lib/mpd/music
 playlist_directory: /var/lib/mpd/playlists
 db_file: /var/lib/mpd/tag_cache
 state_file: /var/lib/mpd/state
 sticker_file: /var/lib/mpd/sticker.sql
 
+# "source" builds on the host (travnas), "deb" installs the upstream release package
+snapserver_install_method: source
+# The upstream .deb creates "snapserver", the source build on travnas uses "_snapserver"
+snapserver_user: "{{ 'snapserver' if snapserver_install_method == 'deb' else '_snapserver' }}"
 snapserver_version: "0.35.0"
-snapserver_arch: "amd64" # move this to host file
-snapserver_deb: "snapserver_{{ snapserver_version }}-1_{{ snapserver_arch }}_bullseye.deb"
+snapserver_release: "1"
+snapserver_version_release: "{{ snapserver_version }}-{{ snapserver_release }}"
+snapserver_arch: "{{ deb_arch }}"
+snapserver_deb: "snapserver_{{ snapserver_version_release }}_{{ snapserver_arch }}_{{ host_distro }}.deb"
 snapserver_url: "https://github.com/snapcast/snapcast/releases/download/v{{ snapserver_version }}/{{ snapserver_deb }}"
 snapserver_tmp: "/tmp/{{ snapserver_deb }}"
 
 snapcast_repo: https://github.com/snapcast/snapcast.git
-snapcast_version: v0.35.0
+snapcast_version: "v{{ snapserver_version }}"
 snapcast_src_dir: /opt/snapcast
 
 snapweb_doc_root: /usr/share/snapserver/snapweb

@@ -43,6 +43,7 @@
     state: present
     update_cache: yes
   when: build_snapcast
+  become: yes
 
 - name: Clone Snapcast repo
   ansible.builtin.git:

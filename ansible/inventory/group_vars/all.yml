@@ -1,4 +1,12 @@
 host_distro: "{{ ansible_facts['distribution_release'] | lower }}"
+# Architecture names used in the upstream Snapcast .deb file names (Pi Zero W armv6l runs the armhf build)
+deb_arch: >-
+  {{
+    'armhf' if ansible_facts['architecture'] in ['armv6l', 'armv7l']
+    else 'arm64' if ansible_facts['architecture'] == 'aarch64'
+    else 'amd64' if ansible_facts['architecture'] in ['x86_64', 'amd64']
+    else ansible_facts['architecture']
+  }}
 
 ca_snapserver_stream_port: 1704
 ca_snapserver_tcp_port: 1705

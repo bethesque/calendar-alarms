@@ -6,12 +6,6 @@
   tags:
     - hosts
 
-- name: Checkout code
-  ansible.builtin.import_tasks: codebase.yml
-  tags:
-    - codebase
-    - http
-
 - name: Install bash functions
   ansible.builtin.import_tasks: bash_functions.yml
   tags:
@@ -47,25 +41,12 @@
     - audio
     - default_volume
 
-- name: Install HTTP service
-  ansible.builtin.import_tasks: http.yml
-  tags:
-    - http
-
 - name: Check if calendar-alarms-snapclient.service is active
   ansible.builtin.command:
     cmd: systemctl --user is-active calendar-alarms-snapclient.service
   register: script_result
   changed_when: false
   failed_when: "'active' not in script_result.stdout"
-
-- name: Check if audio-client-http.service is active
-  ansible.builtin.command:
-    cmd: systemctl --user is-active audio-client-http.service
-  changed_when: false
-  register: script_result
-  failed_when: "'active' not in script_result.stdout"
-  tags: http
 
 - name: Test audio
   ansible.builtin.shell: |

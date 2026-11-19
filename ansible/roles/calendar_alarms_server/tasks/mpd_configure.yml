@@ -22,6 +22,7 @@
     owner: "{{ mpd_user }}"
     group: audio
     mode: "0755"
+  become: true
 
 - name: Ensure mpd data directory exists
   file:
@@ -30,6 +31,7 @@
     owner: "{{ mpd_user }}"
     group: audio
     mode: "0755"
+  become: true
 
 - name: Configure MPD
   template:
@@ -65,11 +67,12 @@
 
 # Needs both mpd and snapserver installed
 # Must restart mpd after this change
-- name: Add mpd user to _snapserver group
+- name: Add mpd user to snapserver group
   ansible.builtin.user:
     name: mpd
-    groups: _snapserver
+    groups: "{{ snapserver_user }}"
     append: true
+  become: true
   tags:
     - snapserver
   when: snapcast_enabled == true

@@ -38,14 +38,3 @@
     chdir: "{{ client_root }}"
   tags:
     - slow
-
-- name: Add config file
-  ansible.builtin.template:
-    src: config.yaml.j2
-    dest: "{{ client_root }}/config.yaml"
-    owner: "{{ snapclient_user }}"
-    group: "{{ snapclient_user }}"
-    mode: "0755"
-  tags:
-    - config
-  notify: restart audio-client-http.service

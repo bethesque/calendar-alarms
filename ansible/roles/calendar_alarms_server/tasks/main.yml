@@ -19,11 +19,25 @@
     - codebase
     - sample_rate
 
-- name: Install Snapserver
-  ansible.builtin.import_tasks: snapserver_install.yml
+- name: Install Snapserver from source
+  ansible.builtin.import_tasks: snapserver_install_source.yml
   tags:
     - snapserver
-  when: snapcast_enabled == true
+  when: snapcast_enabled == true and snapserver_install_method == 'source'
+
+- name: Install Snapserver from .deb
+  ansible.builtin.import_tasks: snapserver_install_deb.yml
+  tags:
+    - snapserver
+  when: snapcast_enabled == true and snapserver_install_method == 'deb'
+
+# (only needed for pi server - travnas already has one)
+- name: Configure ALSA loopback
+  ansible.builtin.import_tasks: alsa.yml
+  tags:
+    - snapserver
+    - alsa
+  when: snapcast_enabled == true and snd_aloop_enabled
 
 - name: Configure Snapserver
   ansible.builtin.import_tasks: snapserver_configure.yml

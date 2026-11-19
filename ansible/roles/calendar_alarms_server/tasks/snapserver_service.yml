@@ -14,7 +14,7 @@
       [Service]
       RuntimeDirectory=snapserver
       RuntimeDirectoryMode=0755
-      User=_snapserver
+      User={{ snapserver_user }}
       Group=audio
 
   become: true

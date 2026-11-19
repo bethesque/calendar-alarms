@@ -1,0 +1,38 @@
+# Installs the upstream Snapserver .deb from GitHub releases (the apt version is too old for Home Assistant).
+
+- name: Remove Snapserver built from source
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /usr/local/bin/snapserver
+    - "{{ snapcast_src_dir }}"
+  become: true
+
+- name: Get installed Snapserver version
+  ansible.builtin.command: dpkg-query -W -f='${Version} ${Architecture}' snapserver
+  register: snapserver_installed_raw
+  failed_when: false
+  changed_when: false
+
+- name: Decide if Snapserver install/upgrade is needed
+  ansible.builtin.set_fact:
+    snapserver_needs_install: "{{ snapserver_installed_raw.stdout != snapserver_version_release ~ ' ' ~ snapserver_arch }}"
+
+- name: Debug Snapserver install decision
+  ansible.builtin.debug:
+    msg: "Installed: {{ snapserver_installed_raw.stdout | default('none', true) }} | Desired: {{ snapserver_version_release }} {{ snapserver_arch }}"
+
+- name: Download Snapserver .deb
+  ansible.builtin.get_url:
+    url: "{{ snapserver_url }}"
+    dest: "{{ snapserver_tmp }}"
+    mode: "0644"
+  when: snapserver_needs_install
+
+- name: Install/upgrade Snapserver .deb
+  ansible.builtin.apt:
+    deb: "{{ snapserver_tmp }}"
+    state: present
+  when: snapserver_needs_install
+  become: true

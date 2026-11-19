@@ -2,7 +2,7 @@ all:
   children:
     audio_host:
       hosts:
-        morepi:
+        bigpi:
           ansible_user: pi
           ansible_ssh_private_key_file: ~/.ssh/id_ed25519
           ansible_python_interpreter: /usr/bin/python
@@ -14,15 +14,52 @@ all:
           home_assistant_supported: false
           housie_talkie_enabled: false
           wake_up_alarm_enabled: false
-          snapcast_enabled: false
-          mpd_audio_device: "hw:1,0" # aplay -l, and find first USB Audio Device
+          snapcast_enabled: true
+          snapserver_install_method: deb
+          snd_aloop_enabled: true
+          # mpd plays into the loopback, snapserver captures from the other side
+          mpd_audio_device: "hw:Loopback,0,0"
+          snapserver_alsa_device: "hw:Loopback,1,0"
 
-          notifications_check_interval_minutes: 5
+          notifications_check_interval_minutes: 1
           # 2 minutes before play time
-          notifications_preparation_lead_time_seconds: 120
+          notifications_preparation_lead_time_seconds: 15
 
           calendar_data_refresh_interval_minutes: 5
           # 2 minutes 15 seconds after the 5 minute block
           calendar_data_refresh_offset_seconds: "{{ 2 * 60 + 15 }}"
 
           calendar_alarms_http_port: 80
+    audio_clients:
+      hosts:
+        bigpi:
+          ansible_user: pi
+          ansible_ssh_private_key_file: ~/.ssh/id_ed25519
+          ansible_python_interpreter: /usr/bin/python
+          ca_snapclient_host_id: bigpi
+          ma_snapclient_host_id: ma_bigpi
+          hass_player_entity_id: media_player.bigpi
+          ca_snapclient_latency: 100
+          ma_snapclient_latency: 100
+          ma_sendspin_initial_delay: 0
+          is_pi: true
+          is_bluetooth_audio: false
+          ansible_become_pass: "{{ pi_pass }}"
+          speaker_display_name: MorePi speaker
+          ca_snapserver_host:  bigpi
+
+        dwainpi:
+          ansible_user: pi
+          ansible_ssh_private_key_file: ~/.ssh/id_ed25519
+          ansible_python_interpreter: /usr/bin/python
+          ca_snapclient_host_id: dwainpi
+          ma_snapclient_host_id: ma_dwainpi
+          hass_player_entity_id: media_player.dwainpi
+          ca_snapclient_latency: 100
+          ma_snapclient_latency: 100
+          ma_sendspin_initial_delay: 0
+          is_pi: true
+          is_bluetooth_audio: false
+          ansible_become_pass: "{{ pi_pass }}"
+          speaker_display_name: DwainPi speaker
+          ca_snapserver_host:  bigpi

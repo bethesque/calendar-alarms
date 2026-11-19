@@ -1,0 +1,20 @@
+- name: Load ALSA loopback module on boot
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/snd-aloop.conf
+    content: "snd-aloop\n"
+    mode: "0644"
+  become: true
+
+# Pinned to a high card index so loading it doesn't renumber the real sound cards
+- name: Set ALSA loopback card index
+  ansible.builtin.copy:
+    dest: /etc/modprobe.d/snd-aloop.conf
+    content: "options snd-aloop index={{ snd_aloop_index }}\n"
+    mode: "0644"
+  become: true
+
+- name: Load ALSA loopback module now
+  community.general.modprobe:
+    name: snd-aloop
+    state: present
+  become: true

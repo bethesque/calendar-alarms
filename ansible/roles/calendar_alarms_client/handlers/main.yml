@@ -6,12 +6,6 @@
     name: snapclient
     state: restarted
 
-- name: restart audio-client-http.service
-  systemd:
-    name: audio-client-http
-    scope: user
-    state: restarted
-
 - name: restart calendar-alarms-snapclient.service
   ansible.builtin.systemd:
     name: calendar-alarms-snapclient.service

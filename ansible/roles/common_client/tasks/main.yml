@@ -6,3 +6,14 @@
   tags:
     - sound
     - sendspin
+
+- name: Checkout code
+  ansible.builtin.import_tasks: codebase.yml
+  tags:
+    - codebase
+    - http
+
+- name: Install HTTP service
+  ansible.builtin.import_tasks: http.yml
+  tags:
+    - http
