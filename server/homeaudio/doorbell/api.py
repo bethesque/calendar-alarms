@@ -15,8 +15,8 @@ class DoorbellRoutes:
         self._register_routes()
 
     def _register_routes(self):
-        self.router.add_api_route("/", self.index, methods=["GET"])
-        self.router.add_api_route("/", self.play_doorbell, methods=["POST"])
+        self.router.add_api_route("", self.index, methods=["GET"])
+        self.router.add_api_route("", self.play_doorbell, methods=["POST"])
         self.router.add_api_route("/stop", self.stop_doorbell, methods=["POST"])
 
     async def index(self):
