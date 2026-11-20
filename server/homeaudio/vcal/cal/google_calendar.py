@@ -19,7 +19,6 @@ from homeaudio.audio.string_utils import json_default_encoder
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
 
 from homeaudio.audio.settings import AvailableGoogleCalendars, CalendarSetting, GoogleCalendar, GoogleCalendarSettings
 from homeaudio.env import CALENDAR_DATA_DIRECTORY
@@ -157,13 +156,9 @@ def load_google_creds(token_info: dict | None):
 
 
 def list_google_calendars(creds):
-    try:
-        service = build("calendar", "v3", credentials=creds, cache_discovery=False)
-        result = service.calendarList().list().execute()
-        return [GoogleCalendar(id=c["id"], name=c["summary"]) for c in result.get("items", [])]
-    except HttpError as error:
-        logger.error(f"An error occurred: {error}")
-        return []
+    service = build("calendar", "v3", credentials=creds, cache_discovery=False)
+    result = service.calendarList().list().execute()
+    return [GoogleCalendar(id=c["id"], name=c["summary"]) for c in result.get("items", [])]
 
 
 def save_available_google_calendars(google_calendars: list[GoogleCalendar]):
@@ -172,25 +167,20 @@ def save_available_google_calendars(google_calendars: list[GoogleCalendar]):
 
 
 def list_google_events(creds, calendar_id, min, max):
-    try:
-        service = build("calendar", "v3", credentials=creds, cache_discovery=False)
-        events_result = (
-            service.events()
-            .list(
-                calendarId=calendar_id,
-                timeMin=min.isoformat(),
-                timeMax=max.isoformat(),
-                singleEvents=True,
-                orderBy="startTime",
-            )
-            .execute()
+    service = build("calendar", "v3", credentials=creds, cache_discovery=False)
+    events_result = (
+        service.events()
+        .list(
+            calendarId=calendar_id,
+            timeMin=min.isoformat(),
+            timeMax=max.isoformat(),
+            singleEvents=True,
+            orderBy="startTime",
         )
-        events = events_result.get("items", [])
-        return [e for e in events if e.get("visibility") != "private"]
-
-    except HttpError as error:
-        logger.info("An error occurred: %s" % error)
-        return []
+        .execute()
+    )
+    events = events_result.get("items", [])
+    return [e for e in events if e.get("visibility") != "private"]
 
 
 def add_events_to_calendars(events_from_google, calendar_id, calendar_name, displayed_calendar_days, owner_count, weather=False):

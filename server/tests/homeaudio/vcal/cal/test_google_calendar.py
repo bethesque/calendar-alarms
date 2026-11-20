@@ -459,3 +459,49 @@ def test_save_available_google_calendars_does_not_overwrite_the_file_when_no_cal
     save_available_google_calendars([])
 
     assert AvailableGoogleCalendars().calendars == [GoogleCalendar(id="family-id", name="Family")]
+
+
+def _http_error():
+    from googleapiclient.errors import HttpError
+    from httplib2 import Response
+    return HttpError(Response({"status": 503}), b"Backend Error")
+
+
+def _setup_refresh_with_existing_file(monkeypatch, tmp_path):
+    cache_file_path = tmp_path / "calendar.json"
+    cache_file_path.write_text('{"events": [], "refreshed_at": "2026-11-21T08:00:00+11:00", "marker": "existing"}')
+    monkeypatch.setattr(google_calendar.CalendarSource, "cache_file_path", str(cache_file_path))
+    settings = type("Settings", (), {"token_info": lambda self: {"token": "t"}, "calendars": [CalendarSetting(id="family-id", name="Family")], "holiday_keywords": []})()
+    monkeypatch.setattr(google_calendar, "GoogleCalendarSettings", lambda: settings)
+    monkeypatch.setattr(google_calendar, "load_google_creds", lambda token_info: object())
+    return cache_file_path
+
+
+def test_refresh_calendar_data_keeps_existing_file_when_listing_calendars_fails(monkeypatch, tmp_path):
+    cache_file_path = _setup_refresh_with_existing_file(monkeypatch, tmp_path)
+    original = cache_file_path.read_text()
+
+    def fail(creds):
+        raise _http_error()
+    monkeypatch.setattr(google_calendar, "list_google_calendars", fail)
+
+    with pytest.raises(Exception):
+        google_calendar.refresh_calendar_data()
+
+    assert cache_file_path.read_text() == original
+
+
+def test_refresh_calendar_data_keeps_existing_file_when_listing_events_fails(monkeypatch, tmp_path):
+    cache_file_path = _setup_refresh_with_existing_file(monkeypatch, tmp_path)
+    original = cache_file_path.read_text()
+    monkeypatch.setattr(google_calendar, "list_google_calendars", lambda creds: [GoogleCalendar(id="family-id", name="Family")])
+    monkeypatch.setattr(google_calendar, "save_available_google_calendars", lambda calendars: None)
+
+    def fail(creds, calendar_id, min, max):
+        raise _http_error()
+    monkeypatch.setattr(google_calendar, "list_google_events", fail)
+
+    with pytest.raises(Exception):
+        google_calendar.refresh_calendar_data()
+
+    assert cache_file_path.read_text() == original
