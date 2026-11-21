@@ -42,8 +42,8 @@ class NullScene:
 
 class HomeAssistantScene:
 
-    def __init__(self) -> None:
-        pass
+    def __init__(self, settings: HomeAssistantSettings | None = None) -> None:
+        self._settings = settings or HomeAssistantSettings()
 
     def prepare_for_alarm(self, areas: set[str] | None = None):
         try:
@@ -95,13 +95,12 @@ class HomeAssistantScene:
         self.restore_after_announcement()
 
     def _build_ma(self, areas: set[str] | None = None):
-        settings = HomeAssistantSettings()
-        player_names_to_dip = [player.name for player in settings.players if areas is None or player.area in areas]
+        player_names_to_dip = [player.name for player in self._settings.players if areas is None or player.area in areas]
         self._ma = MusicAssistant.build_for_players_with_names(
             player_names_to_dip,
-            settings.hass_url,
-            settings.hass_token,
-            settings.announcements
+            self._settings.hass_url,
+            self._settings.hass_token,
+            self._settings.announcements
         )
         self._ma.fetch_current_state()
 
@@ -115,5 +114,5 @@ class HomeAssistantScene:
         except Exception:
             logger.exception(f"Exception determining or saving Music Assistant state")
 
-def scene_for_env() -> SceneProtocol:
-    return HomeAssistantScene() if HOME_ASSISTANT_SUPPORTED else NullScene()
+def scene_for_env(settings: HomeAssistantSettings | None = None) -> SceneProtocol:
+    return HomeAssistantScene(settings) if HOME_ASSISTANT_SUPPORTED else NullScene()

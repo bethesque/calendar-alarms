@@ -115,10 +115,7 @@ class PlayerFadeOut:
             return [target_volume]
 
         step = (current_volume - target_volume) / num_steps
-        volumes = [current_volume - i * step for i in range(num_steps)]
-        if not volumes or volumes[-1] != target_volume:
-            volumes.append(target_volume)
-        return volumes
+        return [current_volume - i * step for i in range(1, num_steps)] + [target_volume]
 
     def step(self) -> bool:
         """Execute one step of the fade out. Returns True when complete."""
@@ -146,10 +143,10 @@ class PlayerFadeOut:
 class PlayerFadeUp:
     """Gradually fade up volume over multiple steps."""
 
-    def __init__(self, ma_player: MusicAssistantPlayer, target_volume: float = 1.0, num_steps: int = 10):
+    def __init__(self, ma_player: MusicAssistantPlayer, initial_volume: float = 0, target_volume: float = 1.0, num_steps: int = 10):
         self.ma_player = ma_player
         self.target_volume = target_volume
-        self.last_known_volume = ma_player.get_volume() or 0
+        self.last_known_volume = initial_volume
         self.volumes = PlayerFadeUp.calculate_volume_steps(num_steps, self.last_known_volume, target_volume)
         self.current_step = 0
 
@@ -166,14 +163,16 @@ class PlayerFadeUp:
 
     # Returns True when completed, either because the target volume has been reached
     # or because someone has altered the volume via another input.
+    # Have found that for short announcements, HA doesn't get the updated volume
+    # quick enough, so there's no point checking the current volume.
     def step(self) -> bool:
         """Execute one step of the fade up. Returns True when complete."""
         if self.current_step == 0:
-            if self.last_known_volume >= self.target_volume:
-                logger.info(f"Current volume {self.last_known_volume} is already at or above target volume {self.target_volume} for Music Assistant player, skipping fade up")
-                return True
-            else:
-                logger.info(f"Starting fade up of {self.ma_player.name} from {self.volumes[0]} to {self.volumes[-1]}")
+            #if self.last_known_volume >= self.target_volume:
+            #    logger.info(f"Current volume {self.last_known_volume} is already at or above target volume {self.target_volume} for Music Assistant player, skipping fade up")
+            #    return True
+            #else:
+            logger.info(f"Starting fade up of {self.ma_player.name} from {self.volumes[0]} to {self.volumes[-1]}")
         if self.current_step < len(self.volumes):
             # if the current volume has changed since the last step, return True to indicate we're done,
             # as something else has changed the volume
@@ -235,7 +234,7 @@ def fade_out(ma_players: List[MusicAssistantPlayer], duration: float, target_vol
     return faded_players
 
 
-def fade_up(players_and_target_volumes: List[Tuple[MusicAssistantPlayer, float]], duration: float, step_time: float = 0.20):
+def fade_up(players_and_target_volumes: List[Tuple[MusicAssistantPlayer, float, float]], duration: float, step_time: float = 0.20):
     """Gradually fade up the volume of the given Music Assistant players over the specified duration.
 
     Args:
@@ -245,9 +244,11 @@ def fade_up(players_and_target_volumes: List[Tuple[MusicAssistantPlayer, float]]
     """
     steps = max(1, round(duration / step_time)) if step_time > 0 else 1
 
+    print(f"Number of steps {steps}")
+
     fade_ups = []
-    for player, target_volume in players_and_target_volumes:
-        fade_ups.append(PlayerFadeUp(player, target_volume=target_volume, num_steps=steps))
+    for player, current_volume, target_volume in players_and_target_volumes:
+        fade_ups.append(PlayerFadeUp(player, initial_volume=current_volume, target_volume=target_volume, num_steps=steps))
 
     while fade_ups:
         loop_start = time.monotonic()
@@ -278,11 +279,17 @@ class MusicAssistant:
             player.pause()
 
     def dip_volume(self):
+        """
+        Before an announcement
+        """
         fade_out(self.players, self.announcement_settings.fade_down_duration, self.announcement_settings.fade_volume)
 
     def restore_volume(self):
+        """
+        After an announcement
+        """
         playing_players = [player for player in self.players if player.get_original_state().playing()]
-        fade_up([(player, player.get_original_state().get_volume()) for player in playing_players], duration=self.announcement_settings.fade_up_duration)
+        fade_up([(player, self.announcement_settings.fade_volume, player.get_original_state().get_volume()) for player in playing_players], duration=self.announcement_settings.fade_up_duration)
 
     def restore_original_state(self):
         playing_players = [player for player in self.players if player.get_original_state().playing()]
@@ -293,7 +300,7 @@ class MusicAssistant:
             # give the buffers time to get their glitches out
             time.sleep(1)
 
-            fade_up([(player, player.get_original_state().get_volume()) for player in playing_players], duration=self.announcement_settings.fade_up_duration)
+            fade_up([(player, 0.0, player.get_original_state().get_volume()) for player in playing_players], duration=self.announcement_settings.fade_up_duration)
 
     def playing(self) -> bool:
         return any(player.get_original_state().playing() for player in self.players)
