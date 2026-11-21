@@ -1,12 +1,24 @@
 # TODO
 
 [] Add warning in morning announcements when data is not fresh
+[x] Full day events in calendar view should have date
+[x] update UI and API for notificationsn outside of operating hours
+[] work out how to handle scheduled announcements off grid
+[ ] snooze announcements too
+[ ] warning when can't update
+[x] add players to notification rules
+[ ] include reminders in template options
+[ ] snooze until I get home
+[ ] add "disabled" to notification or departure rule label
 
+[ ] Mute MA when doorbell
+
+[ ] Add ding to "nothing to snooze" announcment.
 
 # Dwain
 
 [x] Move calendar refresh to a service
-[ ] Leaving time feature
+[x] Leaving time feature
 
 
 # Feature ideas
