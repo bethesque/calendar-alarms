@@ -165,10 +165,10 @@ class AdminRoutes:
                         props=self.player_select_props,
                     ),
                     "snapcast_settings.snapclients.[].volumes.doorbell": FieldConfig(
-                        visible_when=f"{str(DOORBELL_ENABLED).lower()} == false"
+                        visible_when=f"{str(DOORBELL_ENABLED).lower()} = true"
                     ),
                     "snapcast_settings.snapclients.[].volumes.voice": FieldConfig(
-                        visible_when=f"{str(HOUSIE_TALKIE_ENABLED).lower()} == false"
+                        visible_when=f"{str(HOUSIE_TALKIE_ENABLED).lower()} == true"
                     ),
                     "snapcast_settings.scheduled_mute_periods.[]": FieldConfig(
                         display=DisplayConfig(
